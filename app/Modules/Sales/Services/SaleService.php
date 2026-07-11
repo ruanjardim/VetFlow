@@ -155,7 +155,7 @@ class SaleService extends BaseService
             foreach ($sale->items as $item) {
                 $item->update([
                     'returned_quantity' => (float) $item->quantity,
-                    'refunded_total' => (float) ($item->net_total ?: $item->total),
+                    'refunded_total' => $this->saleItemNetTotal($item),
                 ]);
             }
 
@@ -227,6 +227,7 @@ class SaleService extends BaseService
             $reason = trim((string) ($data['reason'] ?? '')) ?: 'Devolucao de venda';
             $itemsData = $data['items'] ?? [];
             $returnedValue = 0.0;
+            $returnedQuantityTotal = 0.0;
             $returnedQuantityByItem = [];
 
             foreach ($sale->items as $item) {
@@ -244,10 +245,11 @@ class SaleService extends BaseService
                 }
 
                 $unitValue = (float) $item->quantity > 0
-                    ? round((float) ($item->net_total ?: $item->total) / (float) $item->quantity, 2)
+                    ? round($this->saleItemNetTotal($item) / (float) $item->quantity, 2)
                     : 0.0;
                 $lineReturnValue = round($quantity * $unitValue, 2);
                 $returnedValue = round($returnedValue + $lineReturnValue, 2);
+                $returnedQuantityTotal = round($returnedQuantityTotal + $quantity, 3);
                 $returnedQuantityByItem[$item->id] = $quantity;
 
                 if ($sale->stock_applied && $item->type === 'product' && $item->product_id) {
@@ -282,7 +284,7 @@ class SaleService extends BaseService
                 );
             }
 
-            if ($returnedValue <= 0) {
+            if ($returnedQuantityTotal <= 0) {
                 throw ValidationException::withMessages([
                     'items' => 'Informe pelo menos uma quantidade valida para devolver.',
                 ]);
@@ -586,6 +588,13 @@ class SaleService extends BaseService
         ];
     }
 
+    private function saleItemNetTotal(SaleItem $item): float
+    {
+        $netTotal = (float) $item->net_total;
+
+        return $netTotal > 0 ? $netTotal : (float) $item->total;
+    }
+
     private function hasBillableItems(array $items): bool
     {
         foreach ($items as $item) {
@@ -658,7 +667,7 @@ class SaleService extends BaseService
     {
         $sale->load(['items', 'payments']);
 
-        $subtotal = (float) $sale->items->sum(fn ($item) => (float) ($item->net_total ?: $item->total));
+        $subtotal = (float) $sale->items->sum(fn (SaleItem $item) => $this->saleItemNetTotal($item));
         $discount = (float) ($sale->discount_total ?? 0);
         $additions = (float) ($sale->additions_total ?? 0);
         $total = max(0, $subtotal + $additions - $discount);

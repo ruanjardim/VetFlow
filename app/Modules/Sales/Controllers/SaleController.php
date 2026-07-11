@@ -153,6 +153,23 @@ class SaleController extends BaseCrudController
             ->with('success', 'Devolucao registrada com estoque e estorno.');
     }
 
+    public function destroy(int $id)
+    {
+        $sale = $this->service->findOrFail($id);
+
+        if ($sale->status !== 'draft') {
+            return redirect()
+                ->route('sales.index')
+                ->with('error', 'Venda com historico nao deve ser excluida. Use cancelar ou devolver.');
+        }
+
+        $this->service->delete($id);
+
+        return redirect()
+            ->route('sales.index')
+            ->with('success', 'Rascunho removido com sucesso.');
+    }
+
     public function lookupProduct(string $gtin, ProductLookupService $lookupService): JsonResponse
     {
         $normalized = Gtin::normalize($gtin);

@@ -58,7 +58,8 @@
               @foreach($sale->items as $item)
                 @php
                   $available = max(0, (float) $item->quantity - (float) $item->returned_quantity);
-                  $unitValue = (float) $item->quantity > 0 ? ((float) ($item->net_total ?: $item->total) / (float) $item->quantity) : 0;
+                  $lineTotal = (float) $item->net_total > 0 ? (float) $item->net_total : (float) $item->total;
+                  $unitValue = (float) $item->quantity > 0 ? ($lineTotal / (float) $item->quantity) : 0;
                 @endphp
                 <tr>
                   <td>
