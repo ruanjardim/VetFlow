@@ -1,0 +1,156 @@
+<?php
+
+namespace App\Modules\Financial\Services;
+
+use App\Core\Base\BaseService;
+use App\Modules\Financial\Contracts\FinancialTransactionRepositoryInterface;
+use App\Modules\Financial\Models\FinancialTransaction;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Collection;
+
+class FinancialTransactionService extends BaseService
+{
+    public function __construct(FinancialTransactionRepositoryInterface $repository)
+    {
+        $this->repository = $repository;
+    }
+
+    public function paginate(int $perPage = 15): LengthAwarePaginator
+    {
+        return FinancialTransaction::query()
+            ->with(['supplier', 'purchaseEntry'])
+            ->orderByRaw("status = 'pending' desc")
+            ->orderBy('due_date')
+            ->orderByDesc('id')
+            ->paginate($perPage);
+    }
+
+    public function findOrFail(int $id): Model
+    {
+        return FinancialTransaction::query()
+            ->with(['supplier', 'purchaseEntry'])
+            ->findOrFail($id);
+    }
+
+    public function markAsPaid(int $id): FinancialTransaction
+    {
+        $transaction = FinancialTransaction::query()->findOrFail($id);
+
+        $transaction->update([
+            'status' => 'paid',
+            'paid_at' => $transaction->paid_at ?? now(),
+        ]);
+
+        return $transaction->refresh();
+    }
+
+    public function cancel(int $id): FinancialTransaction
+    {
+        $transaction = FinancialTransaction::query()->findOrFail($id);
+
+        $transaction->update([
+            'status' => 'cancelled',
+            'paid_at' => null,
+        ]);
+
+        return $transaction->refresh();
+    }
+
+    public function cashFlowSummary(): array
+    {
+        $monthStart = now()->startOfMonth();
+        $monthEnd = now()->endOfMonth();
+        $nextWeek = today()->addDays(7);
+
+        $incomeMonth = $this->paidTotal('income', $monthStart, $monthEnd);
+        $expenseMonth = $this->paidTotal('expense', $monthStart, $monthEnd);
+
+        return [
+            'stats' => [
+                'income_month' => $incomeMonth,
+                'expense_month' => $expenseMonth,
+                'balance_month' => $incomeMonth - $expenseMonth,
+                'income_pending' => $this->pendingTotal('income'),
+                'expense_pending' => $this->pendingTotal('expense'),
+                'income_overdue' => $this->overdueTotal('income'),
+                'expense_overdue' => $this->overdueTotal('expense'),
+                'income_next_7_days' => $this->dueBetweenTotal('income', today(), $nextWeek),
+                'expense_next_7_days' => $this->dueBetweenTotal('expense', today(), $nextWeek),
+            ],
+            'upcoming' => $this->upcomingTransactions(),
+            'overdue' => $this->overdueTransactions(),
+        ];
+    }
+
+    private function paidTotal(string $type, mixed $from, mixed $to): float
+    {
+        return (float) FinancialTransaction::query()
+            ->where('type', $type)
+            ->where('status', 'paid')
+            ->whereBetween('paid_at', [$from, $to])
+            ->sum('amount');
+    }
+
+    private function pendingTotal(string $type): float
+    {
+        return (float) FinancialTransaction::query()
+            ->where('type', $type)
+            ->where('status', 'pending')
+            ->sum('amount');
+    }
+
+    private function overdueTotal(string $type): float
+    {
+        return (float) FinancialTransaction::query()
+            ->where('type', $type)
+            ->where(function ($query) {
+                $query
+                    ->where('status', 'overdue')
+                    ->orWhere(function ($query) {
+                        $query
+                            ->where('status', 'pending')
+                            ->whereDate('due_date', '<', today());
+                    });
+            })
+            ->sum('amount');
+    }
+
+    private function dueBetweenTotal(string $type, mixed $from, mixed $to): float
+    {
+        return (float) FinancialTransaction::query()
+            ->where('type', $type)
+            ->where('status', 'pending')
+            ->whereBetween('due_date', [$from, $to])
+            ->sum('amount');
+    }
+
+    private function upcomingTransactions(): Collection
+    {
+        return FinancialTransaction::query()
+            ->with(['supplier', 'purchaseEntry'])
+            ->where('status', 'pending')
+            ->whereBetween('due_date', [today(), today()->addDays(15)])
+            ->orderBy('due_date')
+            ->limit(12)
+            ->get();
+    }
+
+    private function overdueTransactions(): Collection
+    {
+        return FinancialTransaction::query()
+            ->with(['supplier', 'purchaseEntry'])
+            ->where(function ($query) {
+                $query
+                    ->where('status', 'overdue')
+                    ->orWhere(function ($query) {
+                        $query
+                            ->where('status', 'pending')
+                            ->whereDate('due_date', '<', today());
+                    });
+            })
+            ->orderBy('due_date')
+            ->limit(12)
+            ->get();
+    }
+}
