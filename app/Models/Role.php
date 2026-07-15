@@ -44,13 +44,18 @@ class Role extends Model
 
     public function permissions(): BelongsToMany
     {
-        return $this->belongsToMany(Permission::class, 'role_permission')
-            ->withTimestamps();
+        return $this->belongsToMany(Permission::class, 'role_permission');
     }
 
     public function users(): BelongsToMany
     {
         return $this->belongsToMany(User::class, 'user_roles')
+            ->wherePivotNull('deleted_at')
             ->withTimestamps();
+    }
+
+    public function scopeActive($query)
+    {
+        return $query->where('active', true);
     }
 }

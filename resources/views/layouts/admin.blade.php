@@ -20,22 +20,52 @@
       </a>
 
       <nav class="nav">
-        <a class="{{ request()->routeIs('dashboard') ? 'is-active' : '' }}" href="{{ route('dashboard') }}">Dashboard</a>
-        <a class="{{ request()->routeIs('clinics.*') ? 'is-active' : '' }}" href="{{ route('clinics.index') }}">Clinicas</a>
-        <a class="{{ request()->routeIs('tutores.*') ? 'is-active' : '' }}" href="{{ route('tutores.index') }}">Tutores</a>
-        <a class="{{ request()->routeIs('patients.*') ? 'is-active' : '' }}" href="{{ route('patients.index') }}">Pacientes</a>
-        <a class="{{ request()->routeIs('schedules.*') ? 'is-active' : '' }}" href="{{ route('schedules.index') }}">Agenda</a>
-        <a class="{{ request()->routeIs('appointments.*') ? 'is-active' : '' }}" href="{{ route('appointments.index') }}">Consultas</a>
-        <a class="{{ request()->routeIs('petshop-services.*') ? 'is-active' : '' }}" href="{{ route('petshop-services.index') }}">Servicos PetShop</a>
-        <a class="{{ request()->routeIs('service-orders.*') ? 'is-active' : '' }}" href="{{ route('service-orders.index') }}">Comandas</a>
-        <a class="{{ request()->routeIs('sales.*') ? 'is-active' : '' }}" href="{{ route('sales.index') }}">PDV / Vendas</a>
-        <a class="{{ request()->routeIs('products.*') ? 'is-active' : '' }}" href="{{ route('products.index') }}">Produtos</a>
-        <a class="{{ request()->routeIs('global-products.*') ? 'is-active' : '' }}" href="{{ route('global-products.index') }}">Catalogo Global</a>
-        <a class="{{ request()->routeIs('inventory-movements.*') && ! request()->routeIs('inventory-movements.alerts') ? 'is-active' : '' }}" href="{{ route('inventory-movements.index') }}">Estoque</a>
-        <a class="{{ request()->routeIs('inventory-movements.alerts') ? 'is-active' : '' }}" href="{{ route('inventory-movements.alerts') }}">Alertas</a>
-        <a class="{{ request()->routeIs('purchase-entries.*') ? 'is-active' : '' }}" href="{{ route('purchase-entries.index') }}">Entradas</a>
-        <a class="{{ request()->routeIs('suppliers.*') ? 'is-active' : '' }}" href="{{ route('suppliers.index') }}">Fornecedores</a>
-        <a class="{{ request()->routeIs('financial-transactions.*') ? 'is-active' : '' }}" href="{{ route('financial-transactions.index') }}">Financeiro</a>
+        @can('dashboard.view')
+          <a class="{{ request()->routeIs('dashboard') ? 'is-active' : '' }}" href="{{ route('dashboard') }}">Dashboard</a>
+        @endcan
+        @can('clinics.manage')
+          <a class="{{ request()->routeIs('clinics.*') ? 'is-active' : '' }}" href="{{ route('clinics.index') }}">Clinicas</a>
+        @endcan
+        @can('tutors.manage')
+          <a class="{{ request()->routeIs('tutores.*') ? 'is-active' : '' }}" href="{{ route('tutores.index') }}">Tutores</a>
+        @endcan
+        @can('patients.manage')
+          <a class="{{ request()->routeIs('patients.*') ? 'is-active' : '' }}" href="{{ route('patients.index') }}">Pacientes</a>
+        @endcan
+        @can('schedules.manage')
+          <a class="{{ request()->routeIs('schedules.*') ? 'is-active' : '' }}" href="{{ route('schedules.index') }}">Agenda</a>
+        @endcan
+        @can('appointments.manage')
+          <a class="{{ request()->routeIs('appointments.*') ? 'is-active' : '' }}" href="{{ route('appointments.index') }}">Consultas</a>
+        @endcan
+        @can('petshop-services.manage')
+          <a class="{{ request()->routeIs('petshop-services.*') ? 'is-active' : '' }}" href="{{ route('petshop-services.index') }}">Servicos PetShop</a>
+        @endcan
+        @can('service-orders.manage')
+          <a class="{{ request()->routeIs('service-orders.*') ? 'is-active' : '' }}" href="{{ route('service-orders.index') }}">Comandas</a>
+        @endcan
+        @can('sales.manage')
+          <a class="{{ request()->routeIs('sales.*') ? 'is-active' : '' }}" href="{{ route('sales.index') }}">PDV / Vendas</a>
+        @endcan
+        @can('products.manage')
+          <a class="{{ request()->routeIs('products.*') ? 'is-active' : '' }}" href="{{ route('products.index') }}">Produtos</a>
+        @endcan
+        @can('global-products.manage')
+          <a class="{{ request()->routeIs('global-products.*') ? 'is-active' : '' }}" href="{{ route('global-products.index') }}">Catalogo Global</a>
+        @endcan
+        @can('inventory.manage')
+          <a class="{{ request()->routeIs('inventory-movements.*') && ! request()->routeIs('inventory-movements.alerts') ? 'is-active' : '' }}" href="{{ route('inventory-movements.index') }}">Estoque</a>
+          <a class="{{ request()->routeIs('inventory-movements.alerts') ? 'is-active' : '' }}" href="{{ route('inventory-movements.alerts') }}">Alertas</a>
+        @endcan
+        @can('purchase-entries.manage')
+          <a class="{{ request()->routeIs('purchase-entries.*') ? 'is-active' : '' }}" href="{{ route('purchase-entries.index') }}">Entradas</a>
+        @endcan
+        @can('suppliers.manage')
+          <a class="{{ request()->routeIs('suppliers.*') ? 'is-active' : '' }}" href="{{ route('suppliers.index') }}">Fornecedores</a>
+        @endcan
+        @can('financial.manage')
+          <a class="{{ request()->routeIs('financial-transactions.*') ? 'is-active' : '' }}" href="{{ route('financial-transactions.index') }}">Financeiro</a>
+        @endcan
       </nav>
     </aside>
 

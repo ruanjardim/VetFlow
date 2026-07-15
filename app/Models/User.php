@@ -63,7 +63,42 @@ class User extends Authenticatable
         return $this->belongsToMany(
             Role::class,
             'user_roles'
-        )->withTimestamps();
+        )
+            ->wherePivotNull('deleted_at')
+            ->withTimestamps();
+    }
+
+    public function hasRole(string $role): bool
+    {
+        return $this->roles()
+            ->where('roles.slug', $role)
+            ->where('roles.active', true)
+            ->exists();
+    }
+
+    public function hasPermission(string $permission): bool
+    {
+        return $this->hasAnyPermission([$permission]);
+    }
+
+    /**
+     * @param array<int, string> $permissions
+     */
+    public function hasAnyPermission(array $permissions): bool
+    {
+        $permissions = array_values(array_filter($permissions));
+
+        if ($permissions === []) {
+            return true;
+        }
+
+        return $this->roles()
+            ->where('roles.active', true)
+            ->whereHas('permissions', function ($query) use ($permissions): void {
+                $query->whereIn('permissions.slug', $permissions)
+                    ->where('permissions.active', true);
+            })
+            ->exists();
     }
 
     public function scopeActive($query)
