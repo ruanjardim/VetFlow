@@ -4,6 +4,8 @@ namespace App\Modules\Inventory\Models;
 
 use App\Modules\Clinics\Models\Clinic;
 use App\Modules\Products\Models\Product;
+use App\Modules\PurchaseEntries\Models\PurchaseEntry;
+use App\Modules\PurchaseEntries\Models\PurchaseEntryItem;
 use App\Modules\Sales\Models\Sale;
 use App\Modules\Sales\Models\SaleItem;
 use Illuminate\Database\Eloquent\Model;
@@ -46,5 +48,15 @@ class InventoryMovement extends Model
     public function saleItem(): BelongsTo
     {
         return $this->belongsTo(SaleItem::class);
+    }
+
+    public function purchaseEntry(): BelongsTo
+    {
+        return $this->belongsTo(PurchaseEntry::class);
+    }
+
+    public function purchaseEntryItem(): BelongsTo
+    {
+        return $this->belongsTo(PurchaseEntryItem::class);
     }
 }

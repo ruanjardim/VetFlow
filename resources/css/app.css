@@ -222,12 +222,57 @@ button.danger {
   margin-bottom: 18px;
 }
 
+.intelligence-health {
+  align-items: center;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 18px;
+  justify-content: space-between;
+  margin-bottom: 16px;
+  padding: 12px 14px;
+}
+
+.intelligence-health span {
+  color: #64748b;
+}
+
+.intelligence-grid {
+  margin-top: 16px;
+}
+
+.intelligence-section {
+  min-width: 0;
+}
+
+.intelligence-section-heading {
+  align-items: end;
+  display: flex;
+  gap: 16px;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.intelligence-section-heading h2 {
+  font-size: 18px;
+  line-height: 1.25;
+  margin: 0;
+}
+
+.intelligence-section-heading p {
+  color: #64748b;
+  margin: 2px 0 0;
+}
+
 .badge {
   border-radius: 999px;
   display: inline-flex;
   font-size: 12px;
   font-weight: 700;
   padding: 4px 9px;
+  text-decoration: none;
   white-space: nowrap;
 }
 
@@ -251,6 +296,23 @@ button.danger {
   color: #475569;
 }
 
+.alert-soft {
+  align-items: center;
+  background: #eef6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 8px;
+  color: #1e3a8a;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  margin: 0 0 18px;
+  padding: 12px 14px;
+}
+
+.alert-soft span {
+  flex: 1;
+}
+
 .content-grid {
   display: grid;
   gap: 18px;
@@ -269,6 +331,11 @@ table {
   border-collapse: collapse;
   min-width: 720px;
   width: 100%;
+}
+
+input[type="checkbox"] {
+  min-height: auto;
+  width: auto;
 }
 
 th,
@@ -293,6 +360,30 @@ form.inline {
   display: grid;
   gap: 14px;
   grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.filter-grid {
+  align-items: end;
+  display: grid;
+  gap: 14px;
+  grid-template-columns: minmax(220px, 1.4fr) repeat(4, minmax(150px, 1fr)) auto;
+}
+
+.compact-filter-grid {
+  grid-template-columns: minmax(180px, 1fr) minmax(180px, 1fr) auto;
+  margin-bottom: 14px;
+}
+
+.filter-actions,
+.row-actions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.row-actions {
+  min-width: 280px;
 }
 
 .field {
@@ -374,6 +465,12 @@ textarea {
   color: #64748b;
 }
 
+.field-hint {
+  color: #64748b;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
 .lookup-status {
   font-size: 12px;
   min-height: 18px;
@@ -399,6 +496,32 @@ textarea {
   gap: 8px;
   margin-bottom: 12px;
   padding: 12px;
+}
+
+.purchase-scan {
+  background: #f8fafc;
+  border: 1px solid #dbe3ee;
+  border-radius: 8px;
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+}
+
+.purchase-scan.is-next-step {
+  background: #fffdf2;
+  border-color: #f59e0b;
+  box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.12);
+}
+
+.purchase-scan.is-next-step::before {
+  background: #fef3c7;
+  border: 1px solid #f59e0b;
+  border-radius: 8px;
+  color: #78350f;
+  content: "Proximo passo: clique em Escolher arquivo e selecione o XML da NF-e";
+  font-size: 13px;
+  font-weight: 700;
+  padding: 10px 12px;
 }
 
 .sale-scan-row {
@@ -533,6 +656,288 @@ textarea {
   width: 42px;
 }
 
+.product-thumb-empty {
+  align-items: center;
+  color: #64748b;
+  display: inline-flex;
+  font-size: 10px;
+  font-weight: 700;
+  justify-content: center;
+  line-height: 1.1;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.products-table {
+  min-width: 1180px;
+}
+
+.purchase-items-table {
+  min-width: 1500px;
+}
+
+.purchase-items-table tr.is-warning td {
+  background: #fff7ed;
+}
+
+.nfe-review-grid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+}
+
+.nfe-review-grid div,
+.nfe-review-meta div {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  display: grid;
+  gap: 4px;
+  padding: 12px;
+}
+
+.nfe-review-grid span,
+.nfe-review-meta span {
+  color: #64748b;
+  font-size: 12px;
+  text-transform: uppercase;
+}
+
+.nfe-review-grid strong {
+  font-size: 20px;
+}
+
+.nfe-review-grid strong.is-success {
+  color: #047857;
+}
+
+.nfe-review-grid strong.is-warning {
+  color: #b45309;
+}
+
+.nfe-review-meta {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  margin-top: 12px;
+}
+
+.nfe-review-alerts {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.nfe-review-alert {
+  border-radius: 8px;
+  font-size: 13px;
+  padding: 10px 12px;
+}
+
+.nfe-review-alert.is-success {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.nfe-review-alert.is-warning {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.nfe-review-table {
+  margin-top: 12px;
+}
+
+.nfe-review-table table {
+  min-width: 980px;
+}
+
+.nfe-review-table tr.is-warning td {
+  background: #fff7ed;
+}
+
+.purchase-impact-preview {
+  border-color: #c7d2fe;
+}
+
+.purchase-preview-grid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+}
+
+.purchase-preview-grid div {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  display: grid;
+  gap: 4px;
+  padding: 12px;
+}
+
+.purchase-preview-grid span {
+  color: #64748b;
+  font-size: 12px;
+  text-transform: uppercase;
+}
+
+.purchase-preview-grid strong {
+  font-size: 20px;
+}
+
+.purchase-preview-columns {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-top: 16px;
+}
+
+.purchase-preview-section {
+  min-width: 0;
+}
+
+.purchase-preview-section h3 {
+  font-size: 16px;
+  margin: 0 0 8px;
+}
+
+.purchase-preview-section + .purchase-preview-section {
+  margin-top: 16px;
+}
+
+.purchase-preview-columns .purchase-preview-section + .purchase-preview-section {
+  margin-top: 0;
+}
+
+.purchase-preview-table table {
+  min-width: 620px;
+}
+
+.compact-button {
+  min-height: 0;
+  padding: 8px 12px;
+}
+
+.checkbox-inline {
+  align-items: center;
+  color: #334155;
+  display: inline-flex;
+  gap: 6px;
+  min-height: 40px;
+}
+
+.global-product-hero {
+  align-items: start;
+  display: grid;
+  gap: 18px;
+  grid-template-columns: 180px minmax(0, 1fr);
+}
+
+.global-product-media {
+  align-items: center;
+  aspect-ratio: 1;
+  background: #f8fafc;
+  border: 1px solid #dbe3ee;
+  border-radius: 8px;
+  color: #64748b;
+  display: flex;
+  justify-content: center;
+  overflow: hidden;
+  padding: 12px;
+}
+
+.global-product-media img,
+.image-tile img {
+  height: 100%;
+  object-fit: contain;
+  width: 100%;
+}
+
+.global-product-summary {
+  display: grid;
+  gap: 14px;
+}
+
+.definition-grid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin: 0;
+}
+
+.definition-grid div {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 10px;
+}
+
+.definition-grid dt {
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.definition-grid dd {
+  margin: 2px 0 0;
+}
+
+.compact-form {
+  grid-template-columns: 1fr;
+}
+
+.badge-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.image-gallery {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+}
+
+.image-tile {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  display: grid;
+  gap: 6px;
+  min-height: 170px;
+  padding: 10px;
+}
+
+.image-tile img {
+  aspect-ratio: 1;
+  background: #ffffff;
+  border-radius: 6px;
+}
+
+.image-tile span {
+  color: #64748b;
+  font-size: 12px;
+}
+
+.payload-details summary {
+  color: #0f766e;
+  cursor: pointer;
+  font-size: 13px;
+  margin-top: 6px;
+}
+
+.payload-details pre {
+  background: #0f172a;
+  border-radius: 8px;
+  color: #e2e8f0;
+  font-size: 12px;
+  max-height: 220px;
+  overflow: auto;
+  padding: 10px;
+  white-space: pre-wrap;
+}
+
 .receipt-card {
   margin: 0 auto;
   max-width: 920px;
@@ -658,6 +1063,11 @@ textarea {
   .grid.stats,
   .content-grid,
   .form-grid,
+  .filter-grid,
+  .compact-filter-grid,
+  .global-product-hero,
+  .definition-grid,
+  .purchase-preview-columns,
   .receipt-info-grid,
   .receipt-summary,
   .sale-checkout-grid,
@@ -670,6 +1080,11 @@ textarea {
   }
 
   .sale-scan-row {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .alert-soft {
     align-items: stretch;
     flex-direction: column;
   }

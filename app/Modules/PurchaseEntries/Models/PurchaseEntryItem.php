@@ -16,7 +16,12 @@ class PurchaseEntryItem extends Model
     protected $casts = [
         'quantity' => 'decimal:3',
         'unit_cost' => 'decimal:2',
+        'sale_price' => 'decimal:2',
+        'margin_percent' => 'decimal:2',
         'total_cost' => 'decimal:2',
+        'update_sale_price' => 'boolean',
+        'minimum_stock_after_entry' => 'decimal:3',
+        'intelligence_metadata' => 'array',
         'expires_at' => 'date',
     ];
 

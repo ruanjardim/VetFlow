@@ -9,10 +9,117 @@
       <p>Compras, recebimentos, lotes e validade dos produtos.</p>
     </div>
     <div class="actions">
+      <a class="button secondary" href="{{ route('purchase-entries.replenishment') }}">Reposicao</a>
       <a class="button secondary" href="{{ route('suppliers.index') }}">Fornecedores</a>
       <a class="button" href="{{ route('purchase-entries.create') }}">Nova entrada</a>
     </div>
   </header>
+
+  @php
+    $purchaseStats = $purchaseInsights['stats'] ?? [];
+    $replenishmentItems = $purchaseInsights['replenishment'] ?? collect();
+    $recentCosts = $purchaseInsights['recentCosts'] ?? collect();
+  @endphp
+  <section class="grid stats inventory-lot-stats">
+    <a class="stat stat-link" href="{{ route('purchase-entries.index') }}">
+      <span>Entradas no mes</span>
+      <strong>{{ $purchaseStats['entries_month'] ?? 0 }}</strong>
+    </a>
+    <a class="stat stat-link" href="{{ route('purchase-entries.replenishment') }}">
+      <span>Itens para repor</span>
+      <strong>{{ $purchaseStats['replenishment_items'] ?? 0 }}</strong>
+    </a>
+    <div class="stat">
+      <span>Compras recebidas</span>
+      <strong>R$ {{ number_format((float) ($purchaseStats['month_total'] ?? 0), 2, ',', '.') }}</strong>
+    </div>
+    <div class="stat">
+      <span>A pagar</span>
+      <strong>R$ {{ number_format((float) ($purchaseStats['pending_payables'] ?? 0), 2, ',', '.') }}</strong>
+    </div>
+    <div class="stat">
+      <span>Vencido</span>
+      <strong>R$ {{ number_format((float) ($purchaseStats['overdue_payables'] ?? 0), 2, ',', '.') }}</strong>
+    </div>
+    <div class="stat">
+      <span>Previsao reposicao</span>
+      <strong>R$ {{ number_format((float) ($purchaseStats['estimated_replenishment_cost'] ?? 0), 2, ',', '.') }}</strong>
+    </div>
+  </section>
+
+  <section class="content-grid">
+    <div class="panel">
+      <div class="panel-heading">
+        <div>
+          <h2>Reposicao sugerida</h2>
+          <p>Produtos abaixo do minimo para entrar na proxima compra.</p>
+        </div>
+        <a class="button secondary" href="{{ route('purchase-entries.replenishment') }}">Ver todos</a>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Produto</th>
+              <th>Saldo</th>
+              <th>Sugestao</th>
+              <th>Acao</th>
+            </tr>
+          </thead>
+          <tbody>
+            @forelse($replenishmentItems as $item)
+              <tr>
+                <td>
+                  <strong>{{ $item['product']->name }}</strong>
+                  <div class="muted">{{ $item['product']->gtin ?: $item['product']->barcode ?: 'Sem EAN' }}</div>
+                </td>
+                <td>{{ number_format((float) $item['stock_quantity'], 3, ',', '.') }} / {{ number_format((float) $item['minimum_stock'], 3, ',', '.') }} {{ $item['unit'] }}</td>
+                <td>{{ number_format((float) $item['suggested_quantity'], 3, ',', '.') }} {{ $item['unit'] }}</td>
+                <td><a class="button secondary" href="{{ $item['scan_url'] }}">Comprar</a></td>
+              </tr>
+            @empty
+              <tr>
+                <td colspan="4" class="muted">Nenhum produto abaixo do minimo agora.</td>
+              </tr>
+            @endforelse
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-heading">
+        <div>
+          <h2>Custos recentes</h2>
+          <p>Ultimos custos recebidos na entrada.</p>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Produto</th>
+              <th>Custo</th>
+              <th>Margem</th>
+            </tr>
+          </thead>
+          <tbody>
+            @forelse($recentCosts as $cost)
+              <tr>
+                <td>{{ $cost['product'] }}</td>
+                <td>R$ {{ number_format((float) $cost['unit_cost'], 2, ',', '.') }}</td>
+                <td>{{ $cost['margin_percent'] !== null ? number_format((float) $cost['margin_percent'], 2, ',', '.').'%' : '-' }}</td>
+              </tr>
+            @empty
+              <tr>
+                <td colspan="3" class="muted">Nenhum custo recente registrado.</td>
+              </tr>
+            @endforelse
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
 
   <div class="panel">
     <div class="table-wrap">
@@ -74,7 +181,11 @@
               <td>{{ $entry->items_count }}</td>
               <td>R$ {{ number_format((float) $entry->total, 2, ',', '.') }}</td>
               <td>
-                <span class="badge {{ $financialBadge }}">{{ $financialLabel }}</span>
+                @if($financialCount > 0)
+                  <a class="badge {{ $financialBadge }}" href="{{ route('financial-transactions.index', ['purchase_entry_id' => $entry->id]) }}">{{ $financialLabel }}</a>
+                @else
+                  <span class="badge {{ $financialBadge }}">{{ $financialLabel }}</span>
+                @endif
                 @if($financialCount > 1)
                   <div class="muted">{{ $financialCount }} parcelas</div>
                 @endif

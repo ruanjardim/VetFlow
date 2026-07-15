@@ -14,6 +14,22 @@
     </div>
   </header>
 
+  @if(! empty($filters))
+    <div class="alert-soft">
+      <strong>Financeiro filtrado</strong>
+      <span>
+        @if(! empty($filters['purchase_entry_id']))
+          Mostrando lancamentos da entrada #{{ $filters['purchase_entry_id'] }}.
+        @elseif(! empty($filters['status']))
+          Mostrando status {{ $filters['status'] }}.
+        @else
+          Mostrando lancamentos filtrados.
+        @endif
+      </span>
+      <a class="button secondary" href="{{ route('financial-transactions.index') }}">Limpar filtro</a>
+    </div>
+  @endif
+
   <div class="panel">
     <div class="table-wrap">
       <table>
@@ -113,5 +129,5 @@
     </div>
   </div>
 
-  {{ $financialTransactions->links() }}
+  {{ $financialTransactions->withQueryString()->links() }}
 @endsection

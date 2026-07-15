@@ -124,6 +124,236 @@
     </div>
   </section>
 
+  @php($intelligence = $productIntelligence ?? [])
+  @php($intelligenceStats = $intelligence['stats'] ?? [])
+  @php($intelligenceHealth = $intelligence['health'] ?? ['label' => 'Sem dados', 'level' => 'muted-badge', 'description' => ''])
+  @php($healthBadge = match ($intelligenceHealth['level'] ?? 'info') {
+    'success' => 'success',
+    'danger' => 'danger',
+    'warning' => 'warning',
+    default => 'muted-badge',
+  })
+
+  <section class="panel nested-panel">
+    <div class="panel-heading">
+      <div>
+        <h2>VetFlow Intelligence</h2>
+        <p>Indicadores do Catalogo Global, sugestoes e qualidade dos produtos aprendidos.</p>
+      </div>
+      <div class="actions">
+        <span class="badge {{ $healthBadge }}">{{ $intelligenceHealth['label'] }}</span>
+        <a class="button secondary" href="{{ $intelligence['routes']['products_diagnostics'] ?? route('products.diagnostics') }}">Diagnostico produtos</a>
+        <a class="button secondary" href="{{ route('global-products.index') }}">Ver catalogo</a>
+      </div>
+    </div>
+    <div class="panel-body">
+      <div class="intelligence-health">
+        <strong>{{ $intelligenceHealth['description'] }}</strong>
+        <span>Cobertura local-global: {{ number_format((float) ($intelligenceStats['coverage_percent'] ?? 0), 1, ',', '.') }}%</span>
+      </div>
+
+      <div class="grid stats inventory-lot-stats">
+        <a class="stat stat-link" href="{{ $intelligence['routes']['catalog'] ?? route('global-products.index') }}">
+          <span>Catalogo global</span>
+          <strong>{{ $intelligenceStats['total'] ?? 0 }}</strong>
+        </a>
+        <a class="stat stat-link" href="{{ $intelligence['routes']['conflicts'] ?? route('global-products.index') }}">
+          <span>Conflitos</span>
+          <strong>{{ $intelligenceStats['conflict'] ?? 0 }}</strong>
+        </a>
+        <a class="stat stat-link" href="{{ $intelligence['routes']['suggestions'] ?? route('global-products.suggestions') }}">
+          <span>Sugestoes</span>
+          <strong>{{ $intelligenceStats['suggestions_pending'] ?? 0 }}</strong>
+        </a>
+        <a class="stat stat-link" href="{{ $intelligence['routes']['missing_image'] ?? route('global-products.index') }}">
+          <span>Sem imagem</span>
+          <strong>{{ $intelligenceStats['missing_image'] ?? 0 }}</strong>
+        </a>
+      </div>
+
+      <div class="grid stats inventory-lot-stats">
+        <a class="stat stat-link" href="{{ $intelligence['routes']['stale'] ?? route('global-products.index') }}">
+          <span>Consulta antiga</span>
+          <strong>{{ $intelligenceStats['stale'] ?? 0 }}</strong>
+        </a>
+        <a class="stat stat-link" href="{{ $intelligence['routes']['low_quality'] ?? route('global-products.index') }}">
+          <span>Qualidade baixa</span>
+          <strong>{{ $intelligenceStats['low_quality'] ?? 0 }}</strong>
+        </a>
+        <div class="stat">
+          <span>Qualidade media</span>
+          <strong>{{ number_format((float) ($intelligenceStats['average_quality'] ?? 0), 1, ',', '.') }}%</strong>
+        </div>
+        <div class="stat">
+          <span>Produtos locais vinculados</span>
+          <strong>{{ $intelligenceStats['linked_local_products'] ?? 0 }}/{{ $intelligenceStats['local_products'] ?? 0 }}</strong>
+        </div>
+      </div>
+
+      <div class="grid stats inventory-lot-stats">
+        <a class="stat stat-link" href="{{ $intelligence['routes']['products_unlinked'] ?? route('products.index', ['intelligence' => 'unlinked']) }}">
+          <span>Locais sem global</span>
+          <strong>{{ $intelligenceStats['unlinked_local_with_gtin'] ?? 0 }}</strong>
+        </a>
+        <a class="stat stat-link" href="{{ $intelligence['routes']['products_invalid_gtin'] ?? route('products.index', ['intelligence' => 'invalid_gtin']) }}">
+          <span>EAN invalido</span>
+          <strong>{{ $intelligenceStats['local_invalid_gtin'] ?? 0 }}</strong>
+        </a>
+        <a class="stat stat-link" href="{{ $intelligence['routes']['products_without_price'] ?? route('products.index', ['intelligence' => 'without_price']) }}">
+          <span>Sem preco local</span>
+          <strong>{{ $intelligenceStats['local_without_price'] ?? 0 }}</strong>
+        </a>
+        <a class="stat stat-link" href="{{ $intelligence['routes']['products_low_stock'] ?? route('products.index', ['intelligence' => 'low_stock']) }}">
+          <span>Estoque local baixo</span>
+          <strong>{{ $intelligenceStats['local_low_stock'] ?? 0 }}</strong>
+        </a>
+      </div>
+
+      <div class="content-grid intelligence-grid">
+        <div class="intelligence-section">
+          <div class="intelligence-section-heading">
+            <div>
+              <h2>Acoes recomendadas</h2>
+              <p>Prioridades para melhorar automacao e confiabilidade.</p>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Acao</th>
+                  <th>Qtd</th>
+                  <th>Atalho</th>
+                </tr>
+              </thead>
+              <tbody>
+                @forelse($intelligence['actions'] ?? [] as $action)
+                  @php($badge = $action['level'] === 'danger' ? 'danger' : ($action['level'] === 'warning' ? 'warning' : 'muted-badge'))
+                  <tr>
+                    <td>
+                      <a href="{{ $action['url'] }}">
+                        <strong>{{ $action['title'] }}</strong>
+                        <div class="muted">{{ $action['description'] }}</div>
+                      </a>
+                    </td>
+                    <td><a class="badge {{ $badge }}" href="{{ $action['url'] }}">{{ $action['count'] }}</a></td>
+                    <td><a class="button secondary" href="{{ $action['url'] }}">Abrir</a></td>
+                  </tr>
+                @empty
+                  <tr>
+                    <td colspan="3" class="muted">Nenhuma acao critica do Intelligence no momento.</td>
+                  </tr>
+                @endforelse
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="intelligence-section">
+          <div class="intelligence-section-heading">
+            <div>
+              <h2>Aprendizados recentes</h2>
+              <p>Ultimos produtos globais atualizados.</p>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Produto</th>
+                  <th>Qualidade</th>
+                </tr>
+              </thead>
+              <tbody>
+                @forelse($intelligence['recent'] ?? [] as $product)
+                  <tr>
+                    <td>
+                      <a href="{{ $product['url'] }}">
+                        <strong>{{ $product['name'] }}</strong>
+                        <div class="muted">{{ $product['gtin'] }} {{ $product['brand'] ? '- '.$product['brand'] : '' }}</div>
+                      </a>
+                    </td>
+                    <td>{{ $product['quality'] }}%</td>
+                  </tr>
+                @empty
+                  <tr>
+                    <td colspan="2" class="muted">Nenhum aprendizado global ainda.</td>
+                  </tr>
+                @endforelse
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div class="content-grid intelligence-grid">
+        <div class="intelligence-section">
+          <div class="intelligence-section-heading">
+            <div>
+              <h2>Fontes mais usadas</h2>
+              <p>Origens que mais alimentaram o catalogo.</p>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Fonte</th>
+                  <th>Itens</th>
+                  <th>Confianca media</th>
+                </tr>
+              </thead>
+              <tbody>
+                @forelse($intelligence['sources'] ?? [] as $source)
+                  <tr>
+                    <td>{{ $source['name'] }}</td>
+                    <td>{{ $source['total'] }}</td>
+                    <td>{{ number_format((float) $source['average_confidence'], 1, ',', '.') }}%</td>
+                  </tr>
+                @empty
+                  <tr>
+                    <td colspan="3" class="muted">Nenhuma fonte registrada ainda.</td>
+                  </tr>
+                @endforelse
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="intelligence-section">
+          <div class="intelligence-section-heading">
+            <div>
+              <h2>Categorias globais</h2>
+              <p>Principais grupos aprendidos.</p>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Categoria</th>
+                  <th>Itens</th>
+                </tr>
+              </thead>
+              <tbody>
+                @forelse($intelligence['categories'] ?? [] as $category)
+                  <tr>
+                    <td><a href="{{ $category['url'] }}">{{ $category['category'] }}</a></td>
+                    <td>{{ $category['total'] }}</td>
+                  </tr>
+                @empty
+                  <tr>
+                    <td colspan="2" class="muted">Nenhuma categoria global ainda.</td>
+                  </tr>
+                @endforelse
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
   <section class="content-grid">
     <div class="panel">
       <div class="panel-body">

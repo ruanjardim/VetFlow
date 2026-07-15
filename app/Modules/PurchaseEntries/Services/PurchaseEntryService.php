@@ -156,6 +156,19 @@ class PurchaseEntryService
         $unitCost = $unitCost !== null && $unitCost !== ''
             ? (float) $unitCost
             : (float) $product->cost_price;
+        $salePrice = $item['sale_price'] ?? null;
+        $salePrice = $salePrice !== null && $salePrice !== ''
+            ? (float) $salePrice
+            : (float) $product->sale_price;
+        $marginPercent = $item['margin_percent'] ?? null;
+        $marginPercent = $marginPercent !== null && $marginPercent !== ''
+            ? (float) $marginPercent
+            : $this->marginPercent($unitCost, $salePrice);
+        $minimumStock = $item['minimum_stock_after_entry'] ?? null;
+        $minimumStock = $minimumStock !== null && $minimumStock !== ''
+            ? (float) $minimumStock
+            : null;
+        $metadata = $this->decodeMetadata($item['intelligence_metadata'] ?? null);
 
         return [
             'product_id' => $product->id,
@@ -163,6 +176,19 @@ class PurchaseEntryService
             'quantity' => $quantity,
             'unit_cost' => $unitCost,
             'total_cost' => round($quantity * $unitCost, 2),
+            'barcode_snapshot' => trim((string) ($item['barcode_snapshot'] ?? '')) ?: ($product->gtin ?: $product->barcode),
+            'supplier_sku' => trim((string) ($item['supplier_sku'] ?? '')) ?: null,
+            'sale_price' => $salePrice,
+            'margin_percent' => $marginPercent,
+            'update_sale_price' => (bool) ($item['update_sale_price'] ?? false),
+            'minimum_stock_after_entry' => $minimumStock,
+            'intelligence_status' => trim((string) ($item['intelligence_status'] ?? '')) ?: null,
+            'intelligence_metadata' => array_merge($metadata, [
+                'normalized_at' => now()->toDateTimeString(),
+                'product_cost_before_entry' => (float) $product->cost_price,
+                'product_sale_price_before_entry' => (float) $product->sale_price,
+                'product_stock_before_entry' => (float) $product->stock_quantity,
+            ]),
             'lot_number' => trim((string) ($item['lot_number'] ?? '')) ?: null,
             'expires_at' => $item['expires_at'] ?? null,
             'notes' => $item['notes'] ?? null,
@@ -197,6 +223,8 @@ class PurchaseEntryService
             $movement = $this->inventoryMovementService->create([
                 'clinic_id' => $entry->clinic_id,
                 'product_id' => $item->product_id,
+                'purchase_entry_id' => $entry->id,
+                'purchase_entry_item_id' => $item->id,
                 'type' => 'entry',
                 'quantity' => $item->quantity,
                 'unit_cost' => $item->unit_cost,
@@ -204,15 +232,40 @@ class PurchaseEntryService
                 'expires_at' => $item->expires_at,
                 'occurred_at' => $entry->received_at ?? $entry->purchased_at ?? now(),
                 'reason' => 'Entrada de mercadoria '.$entry->code,
+                'source' => 'purchase_entry',
                 'notes' => $this->movementNotes($entry, $item->description),
+                'metadata' => [
+                    'purchase_entry_code' => $entry->code,
+                    'purchase_entry_id' => $entry->id,
+                    'purchase_entry_item_id' => $item->id,
+                    'invoice_number' => $entry->invoice_number,
+                    'invoice_key' => $entry->invoice_key,
+                    'supplier_id' => $entry->supplier_id,
+                    'supplier_name' => $entry->supplier?->name,
+                    'item_description' => $item->description,
+                ],
             ]);
 
             $item->update(['inventory_movement_id' => $movement->id]);
 
+            $updates = [];
+
             if ((float) $item->unit_cost > 0) {
+                $updates['cost_price'] = $item->unit_cost;
+            }
+
+            if ($item->update_sale_price && (float) $item->sale_price > 0) {
+                $updates['sale_price'] = $item->sale_price;
+            }
+
+            if ($item->minimum_stock_after_entry !== null) {
+                $updates['minimum_stock'] = $item->minimum_stock_after_entry;
+            }
+
+            if ($updates !== []) {
                 Product::query()
                     ->whereKey($item->product_id)
-                    ->update(['cost_price' => $item->unit_cost]);
+                    ->update($updates);
             }
         }
     }
@@ -275,19 +328,27 @@ class PurchaseEntryService
     {
         $entry->loadMissing('items');
 
-        foreach ($entry->items as $item) {
-            if (! $item->inventory_movement_id) {
-                continue;
-            }
+        $movementIds = $entry->items
+            ->pluck('inventory_movement_id')
+            ->filter()
+            ->merge(
+                InventoryMovement::query()
+                    ->where('source', 'purchase_entry')
+                    ->where('purchase_entry_id', $entry->id)
+                    ->pluck('id')
+            )
+            ->unique()
+            ->values();
 
-            $movement = InventoryMovement::withTrashed()->find($item->inventory_movement_id);
+        foreach ($movementIds as $movementId) {
+            $movement = InventoryMovement::withTrashed()->find($movementId);
 
             if ($movement && ! $movement->trashed()) {
                 $this->inventoryMovementService->delete($movement->id);
             }
-
-            $item->update(['inventory_movement_id' => null]);
         }
+
+        $entry->items()->update(['inventory_movement_id' => null]);
     }
 
     private function movementNotes(PurchaseEntry $entry, ?string $description): string
@@ -347,6 +408,30 @@ class PurchaseEntryService
         }
 
         return $amounts;
+    }
+
+    private function marginPercent(float $unitCost, float $salePrice): ?float
+    {
+        if ($salePrice <= 0) {
+            return null;
+        }
+
+        return round((($salePrice - $unitCost) / $salePrice) * 100, 2);
+    }
+
+    private function decodeMetadata(mixed $metadata): array
+    {
+        if (is_array($metadata)) {
+            return $metadata;
+        }
+
+        if (! is_string($metadata) || trim($metadata) === '') {
+            return [];
+        }
+
+        $decoded = json_decode($metadata, true);
+
+        return is_array($decoded) ? $decoded : [];
     }
 
     private function extractFinancialData(array $data): array

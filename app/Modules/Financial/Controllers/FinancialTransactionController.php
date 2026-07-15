@@ -21,8 +21,14 @@ class FinancialTransactionController extends BaseCrudController
 
     public function index()
     {
+        $filters = array_filter(
+            request()->only(['purchase_entry_id', 'supplier_id', 'status', 'type']),
+            fn ($value) => $value !== null && $value !== ''
+        );
+
         return view("{$this->viewPath}.index", [
-            $this->viewVariable => $this->service->paginate(),
+            $this->viewVariable => $this->service->paginate(filters: $filters),
+            'filters' => $filters,
         ]);
     }
 

@@ -25,6 +25,9 @@ class StorePurchaseEntryRequest extends FormRequest
 
                 $item['quantity'] = $this->normalizeDecimalValue($item['quantity'] ?? null);
                 $item['unit_cost'] = $this->normalizeDecimalValue($item['unit_cost'] ?? null);
+                $item['sale_price'] = $this->normalizeDecimalValue($item['sale_price'] ?? null);
+                $item['margin_percent'] = $this->normalizeDecimalValue($item['margin_percent'] ?? null);
+                $item['minimum_stock_after_entry'] = $this->normalizeDecimalValue($item['minimum_stock_after_entry'] ?? null);
 
                 return $item;
             }, $data['items']);
@@ -57,6 +60,14 @@ class StorePurchaseEntryRequest extends FormRequest
             'items.*.description' => ['nullable', 'string', 'max:255'],
             'items.*.quantity' => ['nullable', 'numeric', 'min:0.001'],
             'items.*.unit_cost' => ['nullable', 'numeric', 'min:0'],
+            'items.*.sale_price' => ['nullable', 'numeric', 'min:0'],
+            'items.*.margin_percent' => ['nullable', 'numeric'],
+            'items.*.update_sale_price' => ['nullable', 'boolean'],
+            'items.*.minimum_stock_after_entry' => ['nullable', 'numeric', 'min:0'],
+            'items.*.barcode_snapshot' => ['nullable', 'string', 'max:64'],
+            'items.*.supplier_sku' => ['nullable', 'string', 'max:255'],
+            'items.*.intelligence_status' => ['nullable', 'string', 'max:255'],
+            'items.*.intelligence_metadata' => ['nullable'],
             'items.*.lot_number' => ['nullable', 'string', 'max:255'],
             'items.*.expires_at' => ['nullable', 'date'],
             'items.*.notes' => ['nullable', 'string'],

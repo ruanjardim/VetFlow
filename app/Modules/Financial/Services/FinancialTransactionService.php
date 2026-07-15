@@ -16,10 +16,14 @@ class FinancialTransactionService extends BaseService
         $this->repository = $repository;
     }
 
-    public function paginate(int $perPage = 15): LengthAwarePaginator
+    public function paginate(int $perPage = 15, array $filters = []): LengthAwarePaginator
     {
         return FinancialTransaction::query()
             ->with(['supplier', 'purchaseEntry'])
+            ->when($filters['purchase_entry_id'] ?? null, fn ($query, $purchaseEntryId) => $query->where('purchase_entry_id', $purchaseEntryId))
+            ->when($filters['supplier_id'] ?? null, fn ($query, $supplierId) => $query->where('supplier_id', $supplierId))
+            ->when($filters['status'] ?? null, fn ($query, $status) => $query->where('status', $status))
+            ->when($filters['type'] ?? null, fn ($query, $type) => $query->where('type', $type))
             ->orderByRaw("status = 'pending' desc")
             ->orderBy('due_date')
             ->orderByDesc('id')

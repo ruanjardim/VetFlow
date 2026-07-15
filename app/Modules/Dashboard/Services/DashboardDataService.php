@@ -11,6 +11,7 @@ class DashboardDataService
         private readonly DashboardLatestTutorService $dashboardLatestTutorService,
         private readonly DashboardActivityService $dashboardActivityService,
         private readonly DashboardAlertService $dashboardAlertService,
+        private readonly DashboardProductIntelligenceService $dashboardProductIntelligenceService,
         private readonly DashboardWidgetRegistry $dashboardWidgetRegistry
     ) {
     }
@@ -29,6 +30,7 @@ class DashboardDataService
             'recentActivities'   => $this->dashboardActivityService->latest(),
             'alerts'             => $alertSummary['latest'],
             'alertSummary'       => $alertSummary,
+            'productIntelligence' => $this->dashboardProductIntelligenceService->summary(),
         ];
     }
 }

@@ -4,12 +4,20 @@
     'description' => $item->description,
     'quantity' => $item->quantity,
     'unit_cost' => $item->unit_cost,
+    'sale_price' => $item->sale_price,
+    'margin_percent' => $item->margin_percent,
+    'update_sale_price' => $item->update_sale_price,
+    'minimum_stock_after_entry' => $item->minimum_stock_after_entry,
+    'barcode_snapshot' => $item->barcode_snapshot,
+    'supplier_sku' => $item->supplier_sku,
+    'intelligence_status' => $item->intelligence_status,
+    'intelligence_metadata' => $item->intelligence_metadata,
     'lot_number' => $item->lot_number,
     'expires_at' => optional($item->expires_at)->format('Y-m-d'),
     'notes' => $item->notes,
   ])->toArray() ?? [];
   $rows = array_values(old('items', $entryItems));
-  $rowCount = max(8, count($rows));
+  $rowCount = max(12, count($rows));
   $financials = $entry?->financialTransactions?->sortBy('installment_number')->values() ?? collect();
   $firstFinancial = $financials->first();
   $secondFinancial = $financials->get(1);
@@ -50,6 +58,44 @@
         </option>
       @endforeach
     </select>
+  </div>
+  <div class="field full">
+    <label for="invoice_scan">Leitura da chave da NF-e</label>
+    <div
+      class="purchase-scan"
+      data-purchase-invoice-scanner
+      data-purchase-nfe-key-import-url="{{ route('purchase-entries.import-nfe-key') }}"
+    >
+      <div class="sale-scan-row">
+        <input id="invoice_scan" data-purchase-invoice-input inputmode="numeric" placeholder="Escaneie a chave de acesso com 44 digitos, codigo de barras do DANFE ou QR Code">
+        <button type="button" data-purchase-invoice-button>Buscar NF-e</button>
+      </div>
+      <div class="field-hint">Busca a NF-e completa pela chave. Se a integracao nao encontrar, use o XML como fallback.</div>
+      <div class="lookup-status" data-purchase-invoice-status></div>
+    </div>
+  </div>
+  <div class="field full">
+    <label for="nfe_xml_file">XML da NF-e (importacao completa)</label>
+    <div
+      class="purchase-scan"
+      data-purchase-xml-importer
+      data-purchase-xml-import-url="{{ route('purchase-entries.import-nfe-xml') }}"
+    >
+      <div class="sale-scan-row">
+        <input id="nfe_xml_file" type="file" accept=".xml,text/xml,application/xml" data-purchase-xml-input>
+        <label class="checkbox-inline">
+          <input type="checkbox" data-purchase-xml-create-supplier checked>
+          Cadastrar fornecedor novo
+        </label>
+        <label class="checkbox-inline">
+          <input type="checkbox" data-purchase-xml-create-products checked>
+          Cadastrar produtos novos
+        </label>
+        <button type="button" data-purchase-xml-button>Importar XML</button>
+      </div>
+      <div class="field-hint">Depois de ler a chave, importe o XML para preencher data da compra, fornecedor, produtos, quantidades e total.</div>
+      <div class="lookup-status" data-purchase-xml-status></div>
+    </div>
   </div>
   <div class="field">
     <label for="invoice_number">Numero da NF</label>
@@ -119,21 +165,111 @@
   </div>
 </div>
 
+<div class="panel nested-panel nfe-review" data-purchase-nfe-review hidden>
+  <div class="panel-heading">
+    <div>
+      <h2>Conferencia da NF importada</h2>
+      <p data-purchase-nfe-review-subtitle>Resumo para revisar antes de salvar a entrada.</p>
+    </div>
+    <span class="badge muted-badge" data-purchase-nfe-review-state>Aguardando XML</span>
+  </div>
+  <div class="panel-body">
+    <div class="nfe-review-grid">
+      <div>
+        <span>Itens</span>
+        <strong data-purchase-nfe-items-count>0</strong>
+      </div>
+      <div>
+        <span>Vinculados</span>
+        <strong data-purchase-nfe-matched-count>0</strong>
+      </div>
+      <div>
+        <span>Criados</span>
+        <strong data-purchase-nfe-created-count>0</strong>
+      </div>
+      <div>
+        <span>Pendentes</span>
+        <strong data-purchase-nfe-pending-count>0</strong>
+      </div>
+      <div>
+        <span>Total XML</span>
+        <strong data-purchase-nfe-xml-total>R$ 0,00</strong>
+      </div>
+      <div>
+        <span>Total entrada</span>
+        <strong data-purchase-nfe-entry-total>R$ 0,00</strong>
+      </div>
+      <div>
+        <span>Diferenca</span>
+        <strong data-purchase-nfe-total-diff>R$ 0,00</strong>
+      </div>
+    </div>
+    <div class="nfe-review-meta">
+      <div>
+        <span>Nota</span>
+        <strong data-purchase-nfe-invoice-label>-</strong>
+      </div>
+      <div>
+        <span>Fornecedor</span>
+        <strong data-purchase-nfe-supplier-label>-</strong>
+      </div>
+    </div>
+    <div class="nfe-review-alerts" data-purchase-nfe-alerts></div>
+    <div class="table-wrap nfe-review-table">
+      <table>
+        <thead>
+          <tr>
+            <th>Item</th>
+            <th>EAN</th>
+            <th>Status</th>
+            <th>Qtd</th>
+            <th>Custo</th>
+            <th>Total</th>
+            <th>Acao</th>
+          </tr>
+        </thead>
+        <tbody data-purchase-nfe-items></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
 <div class="panel nested-panel">
   <div class="panel-heading">
     <div>
       <h2>Produtos recebidos</h2>
-      <p>Informe custo, quantidade, lote e validade de cada item.</p>
+      <p>Escaneie o EAN ou informe custo, quantidade, lote, validade e preco sugerido.</p>
+    </div>
+  </div>
+  <div class="panel-body">
+    <div
+      class="purchase-scan"
+      data-purchase-scanner
+      data-purchase-lookup-url="{{ route('purchase-entries.product-lookup', ['gtin' => '__GTIN__']) }}"
+      data-product-create-url="{{ route('products.create') }}?gtin=__GTIN__&from=purchase&return_to=purchase"
+      data-purchase-lookup-auto="{{ ! empty($scanGtin) ? '1' : '0' }}"
+    >
+      <div class="sale-scan-row">
+        <input data-purchase-barcode-input value="{{ $scanGtin ?? '' }}" inputmode="numeric" placeholder="Escaneie ou digite o EAN/GTIN para adicionar na entrada">
+        <button type="button" data-purchase-barcode-button>Buscar EAN</button>
+        <a class="button secondary" data-purchase-create-product-link href="#" hidden>Cadastrar produto agora</a>
+      </div>
+      <div class="lookup-status" data-purchase-lookup-status></div>
     </div>
   </div>
   <div class="table-wrap">
-    <table>
+    <table class="purchase-items-table">
       <thead>
         <tr>
           <th>Produto</th>
           <th>Descricao</th>
+          <th>EAN</th>
           <th>Qtd</th>
           <th>Custo unit.</th>
+          <th>Venda</th>
+          <th>Margem</th>
+          <th>Atualizar venda</th>
+          <th>Minimo</th>
           <th>Lote</th>
           <th>Validade</th>
           <th>Total</th>
@@ -151,6 +287,11 @@
                     value="{{ $product->id }}"
                     data-description="{{ $product->name }}"
                     data-cost="{{ $product->cost_price }}"
+                    data-sale-price="{{ $product->sale_price }}"
+                    data-stock="{{ $product->stock_quantity }}"
+                    data-minimum-stock="{{ $product->minimum_stock }}"
+                    data-gtin="{{ $product->gtin ?: $product->barcode }}"
+                    data-unit="{{ $product->unit }}"
                     @selected((int) ($item['product_id'] ?? 0) === $product->id)
                   >
                     {{ $product->name }}
@@ -159,15 +300,122 @@
               </select>
             </td>
             <td><input name="items[{{ $index }}][description]" value="{{ $item['description'] ?? '' }}" data-purchase-description></td>
+            <td>
+              <input name="items[{{ $index }}][barcode_snapshot]" value="{{ $item['barcode_snapshot'] ?? '' }}" data-purchase-barcode-snapshot>
+              <input type="hidden" name="items[{{ $index }}][supplier_sku]" value="{{ $item['supplier_sku'] ?? '' }}" data-purchase-supplier-sku>
+              <input type="hidden" name="items[{{ $index }}][intelligence_status]" value="{{ $item['intelligence_status'] ?? '' }}" data-purchase-intelligence-status>
+              <input type="hidden" name="items[{{ $index }}][intelligence_metadata]" value="{{ is_array($item['intelligence_metadata'] ?? null) ? json_encode($item['intelligence_metadata']) : ($item['intelligence_metadata'] ?? '') }}" data-purchase-intelligence-metadata>
+            </td>
             <td><input name="items[{{ $index }}][quantity]" type="number" step="0.001" min="0" value="{{ $item['quantity'] ?? '' }}" data-purchase-quantity></td>
             <td><input name="items[{{ $index }}][unit_cost]" type="text" inputmode="decimal" placeholder="0,00" value="{{ $item['unit_cost'] ?? '' }}" data-money-input data-purchase-unit-cost></td>
-            <td><input name="items[{{ $index }}][lot_number]" value="{{ $item['lot_number'] ?? '' }}" placeholder="Lote"></td>
-            <td><input name="items[{{ $index }}][expires_at]" type="date" value="{{ $item['expires_at'] ?? '' }}"></td>
+            <td><input name="items[{{ $index }}][sale_price]" type="text" inputmode="decimal" placeholder="0,00" value="{{ $item['sale_price'] ?? '' }}" data-money-input data-purchase-sale-price></td>
+            <td><input name="items[{{ $index }}][margin_percent]" type="text" inputmode="decimal" placeholder="%" value="{{ $item['margin_percent'] ?? '' }}" data-purchase-margin></td>
+            <td>
+              <label class="checkbox-inline">
+                <input name="items[{{ $index }}][update_sale_price]" type="checkbox" value="1" @checked((bool) ($item['update_sale_price'] ?? false)) data-purchase-update-sale-price>
+                Sim
+              </label>
+            </td>
+            <td><input name="items[{{ $index }}][minimum_stock_after_entry]" type="number" step="0.001" min="0" value="{{ $item['minimum_stock_after_entry'] ?? '' }}" data-purchase-minimum-stock></td>
+            <td><input name="items[{{ $index }}][lot_number]" value="{{ $item['lot_number'] ?? '' }}" placeholder="Lote" data-purchase-lot-number></td>
+            <td><input name="items[{{ $index }}][expires_at]" type="date" value="{{ $item['expires_at'] ?? '' }}" data-purchase-expires-at></td>
             <td><span data-purchase-row-total>R$ 0,00</span></td>
           </tr>
         @endfor
       </tbody>
     </table>
+  </div>
+</div>
+
+<div class="panel nested-panel purchase-impact-preview" data-purchase-impact-preview>
+  <div class="panel-heading">
+    <div>
+      <h2>Conferencia antes de salvar</h2>
+      <p>Estoque, lotes e contas que serao gerados por esta entrada.</p>
+    </div>
+    <span class="badge muted-badge" data-purchase-preview-status>Aguardando itens</span>
+  </div>
+  <div class="panel-body">
+    <div class="purchase-preview-grid">
+      <div>
+        <span>Itens no estoque</span>
+        <strong data-purchase-preview-stock-count>0</strong>
+      </div>
+      <div>
+        <span>Lotes criados</span>
+        <strong data-purchase-preview-lot-count>0</strong>
+      </div>
+      <div>
+        <span>Contas a pagar</span>
+        <strong data-purchase-preview-payable-count>0</strong>
+      </div>
+      <div>
+        <span>Total da compra</span>
+        <strong data-purchase-preview-total>R$ 0,00</strong>
+      </div>
+    </div>
+
+    <div class="purchase-preview-columns">
+      <div class="purchase-preview-section">
+        <h3>Estoque que vai entrar</h3>
+        <div class="table-wrap purchase-preview-table">
+          <table>
+            <thead>
+              <tr>
+                <th>Produto</th>
+                <th>Qtd</th>
+                <th>Saldo atual</th>
+                <th>Saldo apos</th>
+                <th>Total</th>
+              </tr>
+            </thead>
+            <tbody data-purchase-preview-stock-body>
+              <tr><td colspan="5" class="muted">Inclua produtos para visualizar o estoque.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="purchase-preview-section">
+        <h3>Lotes criados</h3>
+        <div class="table-wrap purchase-preview-table">
+          <table>
+            <thead>
+              <tr>
+                <th>Produto</th>
+                <th>Lote</th>
+                <th>Validade</th>
+                <th>Qtd</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody data-purchase-preview-lot-body>
+              <tr><td colspan="5" class="muted">Informe lote e validade quando precisar controlar o item.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="purchase-preview-section">
+      <h3>Contas a pagar geradas</h3>
+      <div class="table-wrap purchase-preview-table">
+        <table>
+          <thead>
+            <tr>
+              <th>Parcela</th>
+              <th>Valor</th>
+              <th>Vencimento</th>
+              <th>Status</th>
+              <th>Referencia</th>
+            </tr>
+          </thead>
+          <tbody data-purchase-preview-payable-body>
+            <tr><td colspan="5" class="muted">Informe valor e pagamento para visualizar as contas.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
   </div>
 </div>
 

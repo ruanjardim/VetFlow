@@ -109,6 +109,44 @@ class ProductIntelligenceService
         return $this->lookupGlobalCatalog(Gtin::variants($normalized));
     }
 
+    public function enrichGlobalProduct(GlobalProduct $globalProduct): ?GlobalProduct
+    {
+        $normalized = Gtin::normalize($globalProduct->gtin ?: $globalProduct->ean ?: $globalProduct->barcode);
+
+        if (! Gtin::looksValid($normalized)) {
+            return null;
+        }
+
+        foreach (self::LAYERS as $layer) {
+            $results = $this->lookupExternalLayer($layer, Gtin::variants($normalized));
+
+            if ($results->isEmpty()) {
+                continue;
+            }
+
+            $result = $this->consolidateResults($normalized, $results);
+
+            if (! $result?->hasUsefulData()) {
+                continue;
+            }
+
+            return $this->rememberFound($result, $results, $globalProduct->status);
+        }
+
+        $metadata = $globalProduct->metadata ?? [];
+        $metadata['last_enrichment_attempt'] = [
+            'attempted_at' => now()->toDateTimeString(),
+            'result' => 'not_found',
+        ];
+
+        $globalProduct->update([
+            'metadata' => $metadata,
+            'last_lookup_at' => now(),
+        ]);
+
+        return null;
+    }
+
     private function lookupGlobalCatalog(array $gtins): ?GlobalProduct
     {
         if (! $this->catalogReady()) {
@@ -298,20 +336,20 @@ class ProductIntelligenceService
                     [
                         'ean' => $result->gtin,
                         'barcode' => $result->gtin,
-                        'name' => $result->name,
-                        'brand' => $result->brand,
-                        'manufacturer' => $result->manufacturer,
-                        'category' => $result->category,
-                        'description' => $result->description,
-                        'image_url' => $result->imageUrl,
-                        'image_path' => $result->imagePath,
-                        'weight' => $result->weight,
-                        'unit' => $result->unit,
-                        'package' => $result->metadata['packaging'] ?? $result->metadata['quantity'] ?? null,
+                        'name' => $result->name ?: $existing?->name,
+                        'brand' => $result->brand ?: $existing?->brand,
+                        'manufacturer' => $result->manufacturer ?: $existing?->manufacturer,
+                        'category' => $result->category ?: $existing?->category,
+                        'description' => $result->description ?: $existing?->description,
+                        'image_url' => $result->imageUrl ?: $existing?->image_url,
+                        'image_path' => $result->imagePath ?: $existing?->image_path,
+                        'weight' => $result->weight ?: $existing?->weight,
+                        'unit' => $result->unit ?: $existing?->unit,
+                        'package' => $result->metadata['packaging'] ?? $result->metadata['quantity'] ?? $existing?->package,
                         'api_source' => $result->source,
-                        'source_confidence' => (float) ($result->metadata['source_confidence'] ?? 70),
+                        'source_confidence' => max((float) ($existing?->source_confidence ?? 0), (float) ($result->metadata['source_confidence'] ?? 70)),
                         'status' => $status,
-                        'metadata' => $result->metadata,
+                        'metadata' => array_merge($existing?->metadata ?? [], $result->metadata),
                         'last_lookup_at' => now(),
                     ]
                 );

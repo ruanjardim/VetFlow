@@ -7,8 +7,8 @@
   @if(file_exists(public_path('build/manifest.json')))
     @vite(['resources/css/app.css', 'resources/js/app.js'])
   @else
-    <link rel="stylesheet" href="{{ route('assets.css') }}">
-    <script src="{{ route('assets.js') }}" defer></script>
+    <link rel="stylesheet" href="{{ route('assets.css', ['v' => filemtime(resource_path('css/app.css'))]) }}">
+    <script src="{{ route('assets.js', ['v' => filemtime(resource_path('js/app.js'))]) }}" defer></script>
   @endif
 </head>
 <body>
@@ -42,6 +42,10 @@
     <main class="main">
       @if(session('success'))
         <div class="alert success">{{ session('success') }}</div>
+      @endif
+
+      @if(session('error'))
+        <div class="alert error">{{ session('error') }}</div>
       @endif
 
       @if($errors->any())

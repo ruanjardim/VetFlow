@@ -4,6 +4,7 @@ namespace App\Modules\PurchaseEntries\Models;
 
 use App\Modules\Clinics\Models\Clinic;
 use App\Modules\Financial\Models\FinancialTransaction;
+use App\Modules\Inventory\Models\InventoryMovement;
 use App\Modules\Suppliers\Models\Supplier;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -49,5 +50,10 @@ class PurchaseEntry extends Model
     public function financialTransactions(): HasMany
     {
         return $this->hasMany(FinancialTransaction::class);
+    }
+
+    public function inventoryMovements(): HasMany
+    {
+        return $this->hasMany(InventoryMovement::class);
     }
 }
