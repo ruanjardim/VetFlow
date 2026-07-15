@@ -5,6 +5,7 @@
 /public/storage
 /storage/*.key
 /storage/app/public
+/storage/app/nfe-xml-cache/
 /storage/framework/cache/*
 /storage/framework/sessions/*
 /storage/framework/views/*
