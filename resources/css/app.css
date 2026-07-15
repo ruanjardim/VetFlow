@@ -81,6 +81,28 @@ textarea {
   padding: 28px;
 }
 
+.user-bar {
+  align-items: center;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  display: flex;
+  gap: 16px;
+  justify-content: space-between;
+  margin-bottom: 18px;
+  padding: 12px 14px;
+}
+
+.user-bar div {
+  display: grid;
+  gap: 2px;
+}
+
+.user-bar span {
+  color: #64748b;
+  font-size: 13px;
+}
+
 .topbar {
   align-items: center;
   display: flex;
@@ -132,6 +154,72 @@ button.secondary {
 button.danger {
   background: #b42318;
   border-color: #b42318;
+}
+
+.auth-shell {
+  align-items: center;
+  background: #edf3f7;
+  display: flex;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 24px;
+}
+
+.auth-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  box-shadow: 0 20px 60px rgba(15, 23, 42, 0.12);
+  display: grid;
+  gap: 18px;
+  max-width: 440px;
+  padding: 28px;
+  width: 100%;
+}
+
+.auth-brand {
+  display: grid;
+  gap: 2px;
+}
+
+.auth-brand strong {
+  color: #0f766e;
+  font-size: 24px;
+}
+
+.auth-brand span,
+.auth-heading p,
+.auth-link {
+  color: #64748b;
+}
+
+.auth-heading h1 {
+  font-size: 28px;
+  line-height: 1.15;
+  margin: 0;
+}
+
+.auth-heading p {
+  margin: 6px 0 0;
+}
+
+.auth-form {
+  display: grid;
+  gap: 14px;
+}
+
+.checkbox-field {
+  align-items: center;
+  color: #475569;
+  display: flex;
+  gap: 8px;
+  font-size: 14px;
+}
+
+.auth-link {
+  font-size: 14px;
+  justify-self: start;
+  text-decoration: underline;
 }
 
 .panel {

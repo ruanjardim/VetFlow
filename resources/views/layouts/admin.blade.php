@@ -40,6 +40,17 @@
     </aside>
 
     <main class="main">
+      <header class="user-bar">
+        <div>
+          <strong>{{ auth()->user()?->name }}</strong>
+          <span>{{ auth()->user()?->email }}</span>
+        </div>
+        <form method="POST" action="{{ route('logout') }}">
+          @csrf
+          <button class="button secondary" type="submit">Sair</button>
+        </form>
+      </header>
+
       @if(session('success'))
         <div class="alert success">{{ session('success') }}</div>
       @endif
