@@ -8,12 +8,26 @@
     <input id="scheduled_at" name="scheduled_at" type="datetime-local" value="{{ old('scheduled_at', isset($appointment) && $appointment?->scheduled_at ? $appointment->scheduled_at->format('Y-m-d\TH:i') : '') }}" required>
   </div>
   <div class="field">
-    <label for="patient_id">Paciente ID</label>
-    <input id="patient_id" name="patient_id" type="number" value="{{ old('patient_id', $appointment->patient_id ?? '') }}">
+    <label for="patient_id">Pet</label>
+    <select id="patient_id" name="patient_id">
+      <option value="">Selecione</option>
+      @foreach($patients ?? [] as $patient)
+        <option value="{{ $patient->id }}" @selected((int) old('patient_id', $appointment->patient_id ?? 0) === $patient->id)>
+          {{ $patient->name }}
+        </option>
+      @endforeach
+    </select>
   </div>
   <div class="field">
-    <label for="tutor_id">Tutor ID</label>
-    <input id="tutor_id" name="tutor_id" type="number" value="{{ old('tutor_id', $appointment->tutor_id ?? '') }}">
+    <label for="tutor_id">Tutor</label>
+    <select id="tutor_id" name="tutor_id">
+      <option value="">Selecione</option>
+      @foreach($tutors ?? [] as $tutor)
+        <option value="{{ $tutor->id }}" @selected((int) old('tutor_id', $appointment->tutor_id ?? 0) === $tutor->id)>
+          {{ $tutor->name }}
+        </option>
+      @endforeach
+    </select>
   </div>
   <div class="field">
     <label for="status">Status</label>

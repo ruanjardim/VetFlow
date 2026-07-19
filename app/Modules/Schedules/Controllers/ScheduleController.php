@@ -3,9 +3,11 @@
 namespace App\Modules\Schedules\Controllers;
 
 use App\Core\Base\BaseCrudController;
+use App\Modules\Patients\Models\Patient;
 use App\Modules\Schedules\Requests\StoreScheduleRequest;
 use App\Modules\Schedules\Requests\UpdateScheduleRequest;
 use App\Modules\Schedules\Services\ScheduleService;
+use App\Modules\Tutors\Models\Tutor;
 
 class ScheduleController extends BaseCrudController
 {
@@ -17,6 +19,18 @@ class ScheduleController extends BaseCrudController
         $this->viewVariable = 'schedules';
     }
 
+    public function create()
+    {
+        return view("{$this->viewPath}.create", $this->formData());
+    }
+
+    public function edit(int $id)
+    {
+        return view("{$this->viewPath}.edit", array_merge($this->formData(), [
+            'item' => $this->service->findOrFail($id),
+        ]));
+    }
+
     protected function storeRequest(): string
     {
         return StoreScheduleRequest::class;
@@ -25,5 +39,13 @@ class ScheduleController extends BaseCrudController
     protected function updateRequest(): string
     {
         return UpdateScheduleRequest::class;
+    }
+
+    private function formData(): array
+    {
+        return [
+            'patients' => Patient::query()->orderBy('name')->get(),
+            'tutors' => Tutor::query()->orderBy('name')->get(),
+        ];
     }
 }

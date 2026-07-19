@@ -238,6 +238,71 @@ class PurchaseAndClinicalFlowTest extends TestCase
         $this->assertSame(0, Schedule::query()->count());
     }
 
+    public function test_appointment_and_schedule_screens_use_clinic_scoped_selects_and_names(): void
+    {
+        $clinicA = $this->clinic('Clinica Agenda C', '00000000000341');
+        $clinicB = $this->clinic('Clinica Agenda D', '00000000000342');
+        $localTutor = $this->tutor($clinicA, 'Tutor Agenda Local');
+        $localPatient = $this->patient($clinicA, 'Paciente Agenda Local');
+        $externalTutor = $this->tutor($clinicB, 'Tutor Agenda Externo');
+        $externalPatient = $this->patient($clinicB, 'Paciente Agenda Externo');
+        $user = $this->userForClinic($clinicA, ['appointments.manage', 'schedules.manage']);
+
+        $this->actingAs($user)
+            ->get(route('appointments.create'))
+            ->assertOk()
+            ->assertSee('Paciente Agenda Local')
+            ->assertSee('Tutor Agenda Local')
+            ->assertDontSee('Paciente Agenda Externo')
+            ->assertDontSee('Tutor Agenda Externo')
+            ->assertDontSee('Paciente ID')
+            ->assertDontSee('Tutor ID');
+
+        $this->get(route('schedules.create'))
+            ->assertOk()
+            ->assertSee('Paciente Agenda Local')
+            ->assertSee('Tutor Agenda Local')
+            ->assertDontSee('Paciente Agenda Externo')
+            ->assertDontSee('Tutor Agenda Externo')
+            ->assertDontSee('Paciente ID')
+            ->assertDontSee('Tutor ID');
+
+        Appointment::query()->create([
+            'clinic_id' => $clinicA->id,
+            'patient_id' => $localPatient->id,
+            'tutor_id' => $localTutor->id,
+            'title' => 'Consulta local listada',
+            'scheduled_at' => now()->addDay(),
+            'status' => 'scheduled',
+        ]);
+
+        Schedule::query()->create([
+            'clinic_id' => $clinicA->id,
+            'patient_id' => $localPatient->id,
+            'tutor_id' => $localTutor->id,
+            'title' => 'Agenda local listada',
+            'scheduled_date' => today()->addDay(),
+            'scheduled_time' => '10:00',
+            'status' => 'agendado',
+        ]);
+
+        $this->get(route('appointments.index'))
+            ->assertOk()
+            ->assertSee('Consulta local listada')
+            ->assertSee('Paciente Agenda Local')
+            ->assertSee('Tutor Agenda Local')
+            ->assertDontSee($externalPatient->name)
+            ->assertDontSee($externalTutor->name);
+
+        $this->get(route('schedules.index'))
+            ->assertOk()
+            ->assertSee('Agenda local listada')
+            ->assertSee('Paciente Agenda Local')
+            ->assertSee('Tutor Agenda Local')
+            ->assertDontSee($externalPatient->name)
+            ->assertDontSee($externalTutor->name);
+    }
+
     private function clinic(string $name, string $cnpj): Clinic
     {
         return Clinic::query()->create([

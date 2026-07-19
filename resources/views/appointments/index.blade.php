@@ -29,8 +29,8 @@
             <tr>
               <td>{{ $appointment->title }}</td>
               <td>{{ optional($appointment->scheduled_at)->format('d/m/Y H:i') }}</td>
-              <td>{{ $appointment->patient_id }}</td>
-              <td>{{ $appointment->tutor_id }}</td>
+              <td>{{ $appointment->patient?->name ?? '-' }}</td>
+              <td>{{ $appointment->tutor?->name ?? '-' }}</td>
               <td>{{ $appointment->status }}</td>
               <td>
                 <a class="button secondary" href="{{ route('appointments.edit', $appointment->id) }}">Editar</a>

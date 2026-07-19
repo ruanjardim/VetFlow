@@ -19,6 +19,8 @@
             <th>Titulo</th>
             <th>Data</th>
             <th>Hora</th>
+            <th>Pet</th>
+            <th>Tutor</th>
             <th>Tipo</th>
             <th>Status</th>
             <th>Acoes</th>
@@ -30,6 +32,8 @@
               <td>{{ $schedule->title }}</td>
               <td>{{ $schedule->scheduled_date }}</td>
               <td>{{ $schedule->scheduled_time }}</td>
+              <td>{{ $schedule->patient?->name ?? '-' }}</td>
+              <td>{{ $schedule->tutor?->name ?? '-' }}</td>
               <td>{{ $schedule->type }}</td>
               <td>{{ $schedule->status }}</td>
               <td>
@@ -43,7 +47,7 @@
             </tr>
           @empty
             <tr>
-              <td colspan="6" class="muted">Nenhum agendamento cadastrado.</td>
+              <td colspan="8" class="muted">Nenhum agendamento cadastrado.</td>
             </tr>
           @endforelse
         </tbody>
