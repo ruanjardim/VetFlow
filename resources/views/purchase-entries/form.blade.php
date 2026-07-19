@@ -1,4 +1,5 @@
 @php
+  $selectedClinicId = (int) old('clinic_id', $entry->clinic_id ?? request('clinic_id', $clinics->count() === 1 ? $clinics->first()->id : 0));
   $entryItems = $entry?->items?->map(fn ($item) => [
     'product_id' => $item->product_id,
     'description' => $item->description,
@@ -54,7 +55,7 @@
       <select id="clinic_id" name="clinic_id" data-purchase-clinic-select required>
         <option value="">Selecione</option>
         @foreach($clinics as $clinic)
-          <option value="{{ $clinic->id }}" @selected((int) old('clinic_id', $entry->clinic_id ?? request('clinic_id', 0)) === $clinic->id)>{{ $clinic->trade_name ?? $clinic->corporate_name }}</option>
+          <option value="{{ $clinic->id }}" @selected($selectedClinicId === $clinic->id)>{{ $clinic->trade_name ?? $clinic->corporate_name }}</option>
         @endforeach
       </select>
     </div>

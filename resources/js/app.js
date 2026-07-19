@@ -981,7 +981,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const selectedPurchaseClinicId = () => clinicSelect?.value || '';
 
+    const autoSelectOnlyPurchaseClinic = () => {
+      if (!clinicSelect || selectedPurchaseClinicId()) {
+        return;
+      }
+
+      const options = Array.from(clinicSelect.options).filter((option) => option.value);
+
+      if (options.length === 1) {
+        clinicSelect.value = options[0].value;
+      }
+    };
+
     const requirePurchaseClinic = (statusElement) => {
+      autoSelectOnlyPurchaseClinic();
+
       if (!clinicSelect || selectedPurchaseClinicId()) {
         return true;
       }
@@ -993,6 +1007,8 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const appendPurchaseClinic = (formData) => {
+      autoSelectOnlyPurchaseClinic();
+
       const clinicId = selectedPurchaseClinicId();
 
       if (clinicId) {

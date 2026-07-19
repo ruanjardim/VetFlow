@@ -13,6 +13,7 @@ use App\Modules\Patients\Models\Patient;
 use App\Modules\PetShopServices\Models\PetShopService;
 use App\Modules\Products\Models\Product;
 use App\Modules\PurchaseEntries\Models\PurchaseEntry;
+use App\Modules\PurchaseEntries\Services\NfeAccessKeyImportService;
 use App\Modules\Schedules\Models\Schedule;
 use App\Modules\ServiceOrders\Models\ServiceOrder;
 use App\Modules\Suppliers\Models\Supplier;
@@ -208,6 +209,73 @@ class PurchaseAndClinicalFlowTest extends TestCase
         $this->assertSame($clinicB->id, (int) DB::table('suppliers')->where('id', $externalSupplier->id)->value('clinic_id'));
         $this->assertSame($clinicB->id, (int) DB::table('products')->where('id', $externalProduct->id)->value('clinic_id'));
         $this->assertSame(7.0, (float) DB::table('products')->where('id', $externalProduct->id)->value('stock_quantity'));
+    }
+
+    public function test_nfe_xml_import_is_not_blocked_when_key_cache_is_unavailable(): void
+    {
+        $clinic = $this->clinic('Clinica XML Cache', '00000000000355');
+        $document = '11222333000155';
+        $gtin = '7891000315507';
+        $user = $this->userForClinic($clinic, ['purchase-entries.manage']);
+
+        $this->app->instance(NfeAccessKeyImportService::class, new class {
+            public function rememberXml(string $accessKey, string $xml): void
+            {
+                throw new \RuntimeException('Cache indisponivel');
+            }
+        });
+
+        $response = $this->actingAs($user)->post(route('purchase-entries.import-nfe-xml'), [
+            'xml_file' => UploadedFile::fake()->createWithContent('nfe.xml', $this->nfeXml($document, $gtin)),
+            'create_missing_products' => true,
+            'create_missing_supplier' => true,
+        ]);
+
+        $response
+            ->assertOk()
+            ->assertJsonPath('found', true)
+            ->assertJsonPath('supplier.document', $document)
+            ->assertJsonPath('items.0.product_created', true);
+    }
+
+    public function test_nfe_key_import_uses_xml_cached_by_previous_xml_import(): void
+    {
+        $clinic = $this->clinic('Clinica XML Chave', '00000000000356');
+        $document = '11222333000166';
+        $gtin = '7891000315507';
+        $accessKey = '92345678901234567890123456789012345678901234';
+        $user = $this->userForClinic($clinic, ['purchase-entries.manage']);
+
+        $this->actingAs($user)->post(route('purchase-entries.import-nfe-xml'), [
+            'xml_file' => UploadedFile::fake()->createWithContent('nfe.xml', $this->nfeXml($document, $gtin, $accessKey)),
+            'create_missing_products' => true,
+            'create_missing_supplier' => true,
+        ])->assertOk();
+
+        $response = $this->actingAs($user)->post(route('purchase-entries.import-nfe-key'), [
+            'access_key' => $accessKey,
+            'create_missing_products' => true,
+            'create_missing_supplier' => true,
+        ]);
+
+        $response
+            ->assertOk()
+            ->assertJsonPath('found', true)
+            ->assertJsonPath('invoice.access_key', $accessKey)
+            ->assertJsonPath('lookup.source', 'vetflow_key_cache')
+            ->assertJsonPath('items.0.matched_by', 'nfe_xml_gtin');
+    }
+
+    public function test_purchase_entry_create_preselects_only_clinic_for_global_users(): void
+    {
+        $clinic = $this->clinic('Clinica Unica Compras', '00000000000357');
+        $user = $this->globalUser(['purchase-entries.manage']);
+
+        $response = $this->actingAs($user)->get(route('purchase-entries.create'));
+
+        $response
+            ->assertOk()
+            ->assertSee('value="'.$clinic->id.'" selected', false);
     }
 
     public function test_service_order_accepts_current_clinic_items_and_rejects_external_references(): void
@@ -478,12 +546,12 @@ class PurchaseAndClinicalFlowTest extends TestCase
         ]);
     }
 
-    private function nfeXml(string $document, string $gtin): string
+    private function nfeXml(string $document, string $gtin, string $accessKey = '12345678901234567890123456789012345678901234'): string
     {
         return <<<XML
 <?xml version="1.0" encoding="UTF-8"?>
 <NFe>
-  <infNFe Id="NFe12345678901234567890123456789012345678901234">
+  <infNFe Id="NFe{$accessKey}">
     <ide>
       <nNF>100</nNF>
       <serie>1</serie>

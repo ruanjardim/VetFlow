@@ -89,8 +89,7 @@ class PurchaseEntryController extends Controller
 
     public function importNfeXml(
         Request $request,
-        NfeXmlImportService $importer,
-        NfeAccessKeyImportService $keyImporter
+        NfeXmlImportService $importer
     ): JsonResponse
     {
         $validated = $request->validate([
@@ -110,9 +109,7 @@ class PurchaseEntryController extends Controller
                 $this->selectedClinicId($request, $validated)
             );
 
-            if ($accessKey = ($payload['invoice']['access_key'] ?? null)) {
-                $keyImporter->rememberXml($accessKey, $content ?: '');
-            }
+            $this->rememberNfeXmlInKeyCache($payload['invoice']['access_key'] ?? null, $content ?: '');
 
             return response()->json($payload);
         } catch (InvalidArgumentException $exception) {
@@ -232,5 +229,21 @@ class PurchaseEntryController extends Controller
         $clinicId = $validated['clinic_id'] ?? $request->input('clinic_id');
 
         return $clinicId !== null && $clinicId !== '' ? (int) $clinicId : null;
+    }
+
+    private function rememberNfeXmlInKeyCache(?string $accessKey, string $content): void
+    {
+        if (! $accessKey || trim($content) === '') {
+            return;
+        }
+
+        try {
+            app(NfeAccessKeyImportService::class)->rememberXml($accessKey, $content);
+        } catch (Throwable $exception) {
+            Log::warning('XML da NF-e importado, mas nao foi salvo no cache de chave.', [
+                'message' => $exception->getMessage(),
+                'exception' => $exception::class,
+            ]);
+        }
     }
 }
