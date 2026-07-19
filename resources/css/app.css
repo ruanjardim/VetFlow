@@ -544,9 +544,26 @@ textarea {
   color: #166534;
 }
 
+.alert.warning {
+  background: #fef3c7;
+  color: #92400e;
+}
+
 .alert.error {
   background: #fee2e2;
   color: #991b1b;
+}
+
+.action-alert {
+  align-items: center;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+}
+
+.action-alert div {
+  display: grid;
+  gap: 4px;
 }
 
 .muted {

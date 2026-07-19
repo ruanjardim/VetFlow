@@ -41,6 +41,8 @@
 @endphp
 
 <div class="form-grid">
+  @include('shared.clinic-required-alert', ['clinics' => $clinics])
+
   <div class="field">
     <label for="status">Status</label>
     <select id="status" name="status">

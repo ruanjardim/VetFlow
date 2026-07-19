@@ -15,6 +15,8 @@
     'other' => 'Outro',
   ];
 
+  $selectedClinicId = (int) old('clinic_id', $sale->clinic_id ?? request('clinic_id', $clinics->count() === 1 ? $clinics->first()->id : 0));
+
   $rows = old('items');
 
   if ($rows === null && isset($sale) && $sale) {
@@ -62,6 +64,8 @@
     </div>
   @endif
 
+  @include('shared.clinic-required-alert', ['clinics' => $clinics])
+
   <div class="field">
     <label for="status">Status</label>
     <select id="status" name="status" data-sale-status @disabled($locked)>
@@ -94,7 +98,7 @@
       <select id="clinic_id" name="clinic_id">
         <option value="">Selecione</option>
         @foreach($clinics as $clinic)
-          <option value="{{ $clinic->id }}" @selected((int) old('clinic_id', $sale->clinic_id ?? 0) === $clinic->id)>{{ $clinic->trade_name ?? $clinic->corporate_name }}</option>
+          <option value="{{ $clinic->id }}" @selected($selectedClinicId === $clinic->id)>{{ $clinic->trade_name ?? $clinic->corporate_name }}</option>
         @endforeach
       </select>
     </div>
