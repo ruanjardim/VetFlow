@@ -26,6 +26,12 @@
       <h2>Base da migracao</h2>
       <p class="muted">Este modulo marca o ponto oficial de implantacao. A proxima evolucao sera anexar arquivos, validar colunas e executar importacoes em lote.</p>
 
+      <div class="row-actions">
+        @foreach($templates as $template)
+          <a class="button secondary" href="{{ route('implementation.templates', $template) }}">{{ ucfirst($template) }} CSV</a>
+        @endforeach
+      </div>
+
       <div class="table-wrap">
         <table>
           <thead>

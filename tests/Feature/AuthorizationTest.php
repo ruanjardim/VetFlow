@@ -92,7 +92,21 @@ class AuthorizationTest extends TestCase
             ->assertOk()
             ->assertSee('Implantacao')
             ->assertSee('Base da migracao')
+            ->assertSee('Tutors CSV')
             ->assertSee('Cadastrar clinica');
+    }
+
+    public function test_user_with_implementation_permission_can_download_migration_template(): void
+    {
+        $user = User::factory()->create(['active' => true]);
+        $this->grantPermission($user, 'implementation.manage');
+
+        $response = $this->actingAs($user)->get(route('implementation.templates', 'tutors'));
+
+        $response
+            ->assertOk()
+            ->assertHeader('content-type', 'text/csv; charset=UTF-8')
+            ->assertSee('nome,telefone,whatsapp,email,cpf_cnpj,endereco,observacoes', false);
     }
 
     private function grantPermission(
