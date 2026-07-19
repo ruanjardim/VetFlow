@@ -16,15 +16,29 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        User::query()->firstOrCreate(
-            ['email' => 'test@example.com'],
-            [
-                'name' => 'Test User',
-                'password' => Hash::make('password'),
-                'active' => true,
-            ]
-        );
+        if ($this->shouldSeedDemoUser()) {
+            User::query()->firstOrCreate(
+                ['email' => 'test@example.com'],
+                [
+                    'name' => 'Test User',
+                    'password' => Hash::make('password'),
+                    'active' => true,
+                ]
+            );
+        }
 
         $this->call(AuthorizationSeeder::class);
+    }
+
+    private function shouldSeedDemoUser(): bool
+    {
+        if (! app()->environment(['local', 'testing'])) {
+            return false;
+        }
+
+        return filter_var(
+            env('VETFLOW_SEED_DEMO_USER', false),
+            FILTER_VALIDATE_BOOLEAN
+        );
     }
 }

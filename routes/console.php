@@ -1,5 +1,8 @@
 <?php
 
+use App\Models\Role;
+use App\Models\User;
+use App\Modules\Clinics\Models\Clinic;
 use App\Modules\Products\Models\Product;
 use App\Modules\Products\Services\ProductIntelligenceAuditService;
 use App\Modules\Products\Services\ProductLookupService;
@@ -7,11 +10,96 @@ use App\Modules\Products\Services\ProductService;
 use App\Modules\ProductIntelligence\Models\GlobalProduct;
 use App\Modules\ProductIntelligence\Models\GlobalProductSuggestion;
 use App\Modules\ProductIntelligence\Services\ProductIntelligenceService;
+use Database\Seeders\AuthorizationSeeder;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 
 Artisan::command('vetflow:status', function () {
     $this->info('VetFlow pronto para diagnostico.');
 })->purpose('Mostra o status basico do VetFlow');
+
+Artisan::command('vetflow:admin:create {--name=} {--email=} {--password=} {--clinic-id=}', function () {
+    $name = trim((string) ($this->option('name') ?: $this->ask('Nome do administrador', 'Administrador VetFlow')));
+    $email = mb_strtolower(trim((string) ($this->option('email') ?: $this->ask('E-mail do administrador'))));
+    $password = (string) ($this->option('password') ?: $this->secret('Senha inicial do administrador'));
+    $clinicId = $this->option('clinic-id') !== null && $this->option('clinic-id') !== ''
+        ? (int) $this->option('clinic-id')
+        : null;
+
+    if ($name === '') {
+        $this->error('Informe o nome do administrador.');
+        return 1;
+    }
+
+    if (! filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        $this->error('Informe um e-mail valido.');
+        return 1;
+    }
+
+    if (mb_strlen($password) < 10) {
+        $this->error('A senha inicial deve ter pelo menos 10 caracteres.');
+        return 1;
+    }
+
+    if ($clinicId !== null && ! Clinic::query()->whereKey($clinicId)->exists()) {
+        $this->error("Clinica {$clinicId} nao encontrada.");
+        return 1;
+    }
+
+    $this->call(AuthorizationSeeder::class);
+
+    DB::transaction(function () use ($name, $email, $password, $clinicId): void {
+        $user = User::query()
+            ->withTrashed()
+            ->firstOrNew(['email' => $email]);
+
+        $user->fill([
+            'clinic_id' => $clinicId,
+            'name' => $name,
+            'email' => $email,
+            'password' => Hash::make($password),
+            'active' => true,
+        ]);
+        $user->save();
+
+        if ($user->trashed()) {
+            $user->restore();
+        }
+
+        $adminRole = Role::query()
+            ->whereNull('clinic_id')
+            ->where('slug', 'administrador')
+            ->firstOrFail();
+
+        $existingRole = DB::table('user_roles')
+            ->where('user_id', $user->id)
+            ->where('role_id', $adminRole->id)
+            ->first();
+
+        if ($existingRole) {
+            DB::table('user_roles')
+                ->where('id', $existingRole->id)
+                ->update([
+                    'deleted_at' => null,
+                    'updated_at' => now(),
+                ]);
+        } else {
+            DB::table('user_roles')->insert([
+                'ulid' => (string) Str::ulid(),
+                'user_id' => $user->id,
+                'role_id' => $adminRole->id,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }
+    });
+
+    $this->info("Administrador {$email} criado/atualizado com sucesso.");
+
+    return 0;
+})->purpose('Cria ou atualiza o primeiro administrador do VetFlow para implantacao.');
 
 Artisan::command('vetflow:global-products:backfill {--limit=}', function (ProductLookupService $lookupService) {
     $query = Product::query()
