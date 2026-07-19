@@ -2,11 +2,14 @@
 
 namespace App\Modules\Financial\Requests;
 
+use App\Http\Requests\Concerns\ValidatesTenantScopedReferences;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
 class StoreFinancialTransactionRequest extends FormRequest
 {
+    use ValidatesTenantScopedReferences;
+
     public function authorize(): bool
     {
         return true;
@@ -16,8 +19,8 @@ class StoreFinancialTransactionRequest extends FormRequest
     {
         return [
             'clinic_id' => ['nullable', 'integer', 'exists:clinics,id'],
-            'supplier_id' => ['nullable', 'integer', 'exists:suppliers,id'],
-            'purchase_entry_id' => ['nullable', 'integer', 'exists:purchase_entries,id'],
+            'supplier_id' => ['nullable', 'integer', $this->existsInCurrentClinic('suppliers')],
+            'purchase_entry_id' => ['nullable', 'integer', $this->existsInCurrentClinic('purchase_entries')],
             'installment_number' => ['nullable', 'integer', 'min:1', 'max:60'],
             'installment_total' => ['nullable', 'integer', 'min:1', 'max:60'],
             'type' => ['required', 'string', Rule::in(['income', 'expense'])],

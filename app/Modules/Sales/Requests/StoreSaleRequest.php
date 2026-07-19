@@ -2,6 +2,7 @@
 
 namespace App\Modules\Sales\Requests;
 
+use App\Http\Requests\Concerns\ValidatesTenantScopedReferences;
 use App\Modules\Inventory\Services\ProductLotService;
 use App\Modules\PetShopServices\Models\PetShopService;
 use App\Modules\Products\Models\Product;
@@ -12,6 +13,8 @@ use Illuminate\Validation\Validator;
 
 class StoreSaleRequest extends FormRequest
 {
+    use ValidatesTenantScopedReferences;
+
     public function authorize(): bool
     {
         return true;
@@ -81,9 +84,9 @@ class StoreSaleRequest extends FormRequest
             'clinic_id' => ['nullable', 'integer', 'exists:clinics,id'],
             'unit_id' => ['nullable', 'integer'],
             'seller_user_id' => ['nullable', 'integer', 'exists:users,id'],
-            'tutor_id' => ['nullable', 'integer', 'exists:tutors,id'],
-            'patient_id' => ['nullable', 'integer', 'exists:patients,id'],
-            'service_order_id' => ['nullable', 'integer', 'exists:service_orders,id'],
+            'tutor_id' => ['nullable', 'integer', $this->existsInCurrentClinic('tutors')],
+            'patient_id' => ['nullable', 'integer', $this->existsInCurrentClinic('patients')],
+            'service_order_id' => ['nullable', 'integer', $this->existsInCurrentClinic('service_orders')],
             'status' => ['required', 'string', Rule::in(['draft', 'completed', 'cancelled', 'returned'])],
             'sold_at' => ['nullable', 'date'],
             'source' => ['nullable', 'string', 'max:40'],
@@ -93,8 +96,8 @@ class StoreSaleRequest extends FormRequest
 
             'items' => ['nullable', 'array'],
             'items.*.type' => ['nullable', 'string', Rule::in(['product', 'service', 'custom'])],
-            'items.*.product_id' => ['nullable', 'integer', 'exists:products,id'],
-            'items.*.petshop_service_id' => ['nullable', 'integer', 'exists:petshop_services,id'],
+            'items.*.product_id' => ['nullable', 'integer', $this->existsInCurrentClinic('products')],
+            'items.*.petshop_service_id' => ['nullable', 'integer', $this->existsInCurrentClinic('petshop_services')],
             'items.*.description' => ['nullable', 'string', 'max:255'],
             'items.*.quantity' => ['nullable', 'numeric', 'min:0.001'],
             'items.*.unit_price' => ['nullable', 'numeric', 'min:0'],

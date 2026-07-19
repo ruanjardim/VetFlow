@@ -2,12 +2,15 @@
 
 namespace App\Modules\Inventory\Requests;
 
+use App\Http\Requests\Concerns\ValidatesTenantScopedReferences;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
 
 class StoreInventoryMovementRequest extends FormRequest
 {
+    use ValidatesTenantScopedReferences;
+
     public function authorize(): bool
     {
         return true;
@@ -17,7 +20,7 @@ class StoreInventoryMovementRequest extends FormRequest
     {
         return [
             'clinic_id' => ['nullable', 'integer', 'exists:clinics,id'],
-            'product_id' => ['required', 'integer', 'exists:products,id'],
+            'product_id' => ['required', 'integer', $this->existsInCurrentClinic('products')],
             'type' => ['required', 'string', Rule::in(['entry', 'exit', 'adjustment', 'lot_assignment'])],
             'quantity' => ['required', 'numeric', 'min:0.001'],
             'unit_cost' => ['nullable', 'numeric', 'min:0'],
