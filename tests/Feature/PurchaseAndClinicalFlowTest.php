@@ -18,6 +18,7 @@ use App\Modules\ServiceOrders\Models\ServiceOrder;
 use App\Modules\Suppliers\Models\Supplier;
 use App\Modules\Tutors\Models\Tutor;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Tests\TestCase;
@@ -122,6 +123,48 @@ class PurchaseAndClinicalFlowTest extends TestCase
             2.0,
             (float) DB::table('products')->where('id', $otherProduct->id)->value('stock_quantity')
         );
+    }
+
+    public function test_nfe_xml_import_creates_supplier_and_product_inside_current_clinic_only(): void
+    {
+        $clinicA = $this->clinic('Clinica XML A', '00000000000351');
+        $clinicB = $this->clinic('Clinica XML B', '00000000000352');
+        $document = '11222333000144';
+        $gtin = '7891000315507';
+        $externalSupplier = $this->supplier($clinicB, 'Distribuidora XML');
+        $externalSupplier->update(['document' => $document]);
+        $externalProduct = $this->product($clinicB, 'Produto XML externo', stock: 7, costPrice: 9, salePrice: 19);
+        $externalProduct->update([
+            'gtin' => $gtin,
+            'barcode' => $gtin,
+        ]);
+        $user = $this->userForClinic($clinicA, ['purchase-entries.manage']);
+
+        $response = $this->actingAs($user)->post(route('purchase-entries.import-nfe-xml'), [
+            'xml_file' => UploadedFile::fake()->createWithContent('nfe.xml', $this->nfeXml($document, $gtin)),
+            'create_missing_products' => true,
+            'create_missing_supplier' => true,
+        ]);
+
+        $response
+            ->assertOk()
+            ->assertJsonPath('found', true)
+            ->assertJsonPath('supplier.created', true)
+            ->assertJsonPath('items.0.product_created', true);
+
+        $payload = $response->json();
+        $supplier = Supplier::query()->findOrFail($payload['supplier']['id']);
+        $product = Product::query()->findOrFail($payload['items'][0]['product_id']);
+
+        $this->assertSame($clinicA->id, (int) $supplier->clinic_id);
+        $this->assertSame($document, $supplier->document);
+        $this->assertSame($clinicA->id, (int) $product->clinic_id);
+        $this->assertSame($gtin, $product->gtin);
+        $this->assertSame('nfe_xml_created', $payload['items'][0]['matched_by']);
+
+        $this->assertSame($clinicB->id, (int) DB::table('suppliers')->where('id', $externalSupplier->id)->value('clinic_id'));
+        $this->assertSame($clinicB->id, (int) DB::table('products')->where('id', $externalProduct->id)->value('clinic_id'));
+        $this->assertSame(7.0, (float) DB::table('products')->where('id', $externalProduct->id)->value('stock_quantity'));
     }
 
     public function test_service_order_accepts_current_clinic_items_and_rejects_external_references(): void
@@ -378,6 +421,55 @@ class PurchaseAndClinicalFlowTest extends TestCase
             'name' => $name,
             'species' => 'canino',
         ]);
+    }
+
+    private function nfeXml(string $document, string $gtin): string
+    {
+        return <<<XML
+<?xml version="1.0" encoding="UTF-8"?>
+<NFe>
+  <infNFe Id="NFe12345678901234567890123456789012345678901234">
+    <ide>
+      <nNF>100</nNF>
+      <serie>1</serie>
+      <mod>55</mod>
+      <dhEmi>2026-07-19T10:00:00-03:00</dhEmi>
+    </ide>
+    <emit>
+      <CNPJ>{$document}</CNPJ>
+      <xNome>Distribuidora XML</xNome>
+      <enderEmit>
+        <xMun>Rio de Janeiro</xMun>
+        <UF>RJ</UF>
+        <fone>2133334444</fone>
+      </enderEmit>
+    </emit>
+    <det nItem="1">
+      <prod>
+        <cProd>SKU-XML-1</cProd>
+        <cEAN>{$gtin}</cEAN>
+        <xProd>Produto XML importado</xProd>
+        <NCM>30049099</NCM>
+        <CFOP>5102</CFOP>
+        <uCom>UN</uCom>
+        <qCom>2.0000</qCom>
+        <vUnCom>15.5000</vUnCom>
+        <vProd>31.00</vProd>
+      </prod>
+    </det>
+    <total>
+      <ICMSTot>
+        <vNF>31.00</vNF>
+      </ICMSTot>
+    </total>
+    <cobr>
+      <dup>
+        <dVenc>2026-08-01</dVenc>
+      </dup>
+    </cobr>
+  </infNFe>
+</NFe>
+XML;
     }
 
     private function grantPermissions(User $user, array $permissionSlugs): void
