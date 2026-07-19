@@ -23,6 +23,12 @@ class PermissionCatalog
                 'description' => 'Permite acessar cadastro e manutencao de clinicas.',
             ],
             [
+                'slug' => 'implementation.manage',
+                'name' => 'Gerenciar implantacao',
+                'group' => 'Administrativo',
+                'description' => 'Permite acessar o roteiro de implantacao e migracao de dados da clinica.',
+            ],
+            [
                 'slug' => 'tutors.manage',
                 'name' => 'Gerenciar tutores',
                 'group' => 'Atendimento',
@@ -121,6 +127,7 @@ class PermissionCatalog
                 'description' => 'Acesso aos fluxos de recepcao, agenda, tutores, pacientes e comandas.',
                 'permissions' => [
                     'dashboard.view',
+                    'implementation.manage',
                     'tutors.manage',
                     'patients.manage',
                     'schedules.manage',

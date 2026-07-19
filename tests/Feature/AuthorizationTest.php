@@ -69,12 +69,30 @@ class AuthorizationTest extends TestCase
             'slug' => 'financial.manage',
             'active' => true,
         ]);
+        $this->assertDatabaseHas('permissions', [
+            'slug' => 'implementation.manage',
+            'active' => true,
+        ]);
         $this->assertDatabaseHas('roles', [
             'slug' => 'administrador',
             'system' => true,
             'active' => true,
         ]);
         $this->assertTrue($user->fresh()->hasPermission('financial.manage'));
+        $this->assertTrue($user->fresh()->hasPermission('implementation.manage'));
+    }
+
+    public function test_user_with_implementation_permission_can_access_implantation_screen(): void
+    {
+        $user = User::factory()->create(['active' => true]);
+        $this->grantPermission($user, 'implementation.manage');
+
+        $this->actingAs($user)
+            ->get(route('implementation.index'))
+            ->assertOk()
+            ->assertSee('Implantacao')
+            ->assertSee('Base da migracao')
+            ->assertSee('Cadastrar clinica');
     }
 
     private function grantPermission(
