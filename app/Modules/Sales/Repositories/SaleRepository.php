@@ -17,7 +17,7 @@ class SaleRepository extends BaseRepository implements SaleRepositoryInterface
 
     public function paginate(int $perPage = 15): LengthAwarePaginator
     {
-        return $this->model
+        return $this->query()
             ->with(['tutor', 'patient', 'serviceOrder'])
             ->latest('sold_at')
             ->paginate($perPage);
@@ -25,7 +25,7 @@ class SaleRepository extends BaseRepository implements SaleRepositoryInterface
 
     public function findOrFail(int $id): Model
     {
-        return $this->model
+        return $this->query()
             ->with(['tutor', 'patient', 'serviceOrder', 'items.product', 'items.petShopService', 'payments'])
             ->findOrFail($id);
     }

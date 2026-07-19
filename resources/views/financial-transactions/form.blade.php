@@ -63,10 +63,6 @@
     <label for="reference">Referencia</label>
     <input id="reference" name="reference" value="{{ old('reference', $transaction->reference ?? '') }}">
   </div>
-  <div class="field">
-    <label for="clinic_id">Clinica ID</label>
-    <input id="clinic_id" name="clinic_id" type="number" value="{{ old('clinic_id', $transaction->clinic_id ?? '') }}">
-  </div>
   <div class="field full">
     <label for="notes">Observacoes</label>
     <textarea id="notes" name="notes">{{ old('notes', $transaction->notes ?? '') }}</textarea>

@@ -2,6 +2,7 @@
 
 namespace App\Modules\Inventory\Models;
 
+use App\Models\Concerns\BelongsToClinicTenant;
 use App\Modules\Clinics\Models\Clinic;
 use App\Modules\Products\Models\Product;
 use App\Modules\PurchaseEntries\Models\PurchaseEntry;
@@ -14,6 +15,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class InventoryMovement extends Model
 {
+    use BelongsToClinicTenant;
     use SoftDeletes;
 
     protected $table = 'inventory_movements';
@@ -33,6 +35,11 @@ class InventoryMovement extends Model
     public function clinic(): BelongsTo
     {
         return $this->belongsTo(Clinic::class);
+    }
+
+    public function tenantColumn(): string
+    {
+        return 'clinic_id';
     }
 
     public function product(): BelongsTo

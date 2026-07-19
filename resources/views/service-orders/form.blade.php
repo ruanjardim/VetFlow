@@ -66,10 +66,6 @@
     <label for="discount_total">Desconto</label>
     <input id="discount_total" name="discount_total" type="number" step="0.01" min="0" value="{{ old('discount_total', $order->discount_total ?? 0) }}">
   </div>
-  <div class="field">
-    <label for="clinic_id">Clinica ID</label>
-    <input id="clinic_id" name="clinic_id" type="number" value="{{ old('clinic_id', $order->clinic_id ?? '') }}">
-  </div>
   <div class="field full">
     <label for="notes">Observacoes</label>
     <textarea id="notes" name="notes">{{ old('notes', $order->notes ?? '') }}</textarea>

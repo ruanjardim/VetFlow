@@ -2,6 +2,7 @@
 
 namespace App\Modules\Sales\Models;
 
+use App\Models\Concerns\BelongsToClinicTenant;
 use App\Models\User;
 use App\Modules\Clinics\Models\Clinic;
 use Illuminate\Database\Eloquent\Model;
@@ -9,6 +10,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class CashRegisterClosure extends Model
 {
+    use BelongsToClinicTenant;
+
     protected $table = 'cash_register_closures';
 
     protected $guarded = [];
@@ -29,6 +32,11 @@ class CashRegisterClosure extends Model
     public function clinic(): BelongsTo
     {
         return $this->belongsTo(Clinic::class);
+    }
+
+    public function tenantColumn(): string
+    {
+        return 'clinic_id';
     }
 
     public function closedBy(): BelongsTo

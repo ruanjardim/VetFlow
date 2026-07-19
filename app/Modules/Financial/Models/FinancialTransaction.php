@@ -2,6 +2,7 @@
 
 namespace App\Modules\Financial\Models;
 
+use App\Models\Concerns\BelongsToClinicTenant;
 use App\Modules\Clinics\Models\Clinic;
 use App\Modules\PurchaseEntries\Models\PurchaseEntry;
 use App\Modules\Suppliers\Models\Supplier;
@@ -11,6 +12,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class FinancialTransaction extends Model
 {
+    use BelongsToClinicTenant;
     use SoftDeletes;
 
     protected $table = 'financial_transactions';
@@ -28,6 +30,11 @@ class FinancialTransaction extends Model
     public function clinic(): BelongsTo
     {
         return $this->belongsTo(Clinic::class);
+    }
+
+    public function tenantColumn(): string
+    {
+        return 'clinic_id';
     }
 
     public function supplier(): BelongsTo

@@ -2,6 +2,7 @@
 
 namespace App\Modules\Sales\Models;
 
+use App\Models\Concerns\BelongsToClinicTenant;
 use App\Models\User;
 use App\Modules\Clinics\Models\Clinic;
 use App\Modules\Financial\Models\FinancialTransaction;
@@ -15,6 +16,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Sale extends Model
 {
+    use BelongsToClinicTenant;
     use SoftDeletes;
 
     protected $table = 'sales';
@@ -44,6 +46,11 @@ class Sale extends Model
     public function clinic(): BelongsTo
     {
         return $this->belongsTo(Clinic::class);
+    }
+
+    public function tenantColumn(): string
+    {
+        return 'clinic_id';
     }
 
     public function tutor(): BelongsTo

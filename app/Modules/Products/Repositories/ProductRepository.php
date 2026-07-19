@@ -16,7 +16,7 @@ class ProductRepository extends BaseRepository implements ProductRepositoryInter
 
     public function paginate(int $perPage = 15): LengthAwarePaginator
     {
-        return $this->model
+        return $this->query()
             ->orderBy('name')
             ->paginate($perPage);
     }

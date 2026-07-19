@@ -88,15 +88,17 @@
       @endforeach
     </select>
   </div>
-  <div class="field">
-    <label for="clinic_id">Clinica</label>
-    <select id="clinic_id" name="clinic_id">
-      <option value="">Selecione</option>
-      @foreach($clinics as $clinic)
-        <option value="{{ $clinic->id }}" @selected((int) old('clinic_id', $sale->clinic_id ?? 0) === $clinic->id)>{{ $clinic->trade_name ?? $clinic->corporate_name }}</option>
-      @endforeach
-    </select>
-  </div>
+  @if(auth()->user()?->clinic_id === null)
+    <div class="field">
+      <label for="clinic_id">Clinica</label>
+      <select id="clinic_id" name="clinic_id">
+        <option value="">Selecione</option>
+        @foreach($clinics as $clinic)
+          <option value="{{ $clinic->id }}" @selected((int) old('clinic_id', $sale->clinic_id ?? 0) === $clinic->id)>{{ $clinic->trade_name ?? $clinic->corporate_name }}</option>
+        @endforeach
+      </select>
+    </div>
+  @endif
   <div class="field">
     <label for="tutor_id">Tutor</label>
     <select id="tutor_id" name="tutor_id">

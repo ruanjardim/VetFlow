@@ -72,10 +72,6 @@
     <label for="occurred_at">Data</label>
     <input id="occurred_at" name="occurred_at" type="datetime-local" value="{{ old('occurred_at', isset($movement) && $movement?->occurred_at ? $movement->occurred_at->format('Y-m-d\TH:i') : now()->format('Y-m-d\TH:i')) }}">
   </div>
-  <div class="field">
-    <label for="clinic_id">Clinica ID</label>
-    <input id="clinic_id" name="clinic_id" type="number" value="{{ old('clinic_id', $movement->clinic_id ?? '') }}">
-  </div>
   <div class="field full">
     <label for="reason">Motivo</label>
     <input id="reason" name="reason" value="{{ old('reason', $movement->reason ?? request('reason', '')) }}">

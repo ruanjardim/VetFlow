@@ -2,15 +2,19 @@
 
 namespace App\Modules\Tutors\Models;
 
+use App\Models\Concerns\BelongsToClinicTenant;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Tutor extends Model
 {
-    use HasFactory, SoftDeletes;
+    use BelongsToClinicTenant;
+    use HasFactory;
+    use SoftDeletes;
 
     protected $fillable = [
+        'clinic_id',
         'name',
         'cpf',
         'rg',

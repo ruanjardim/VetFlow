@@ -2,6 +2,7 @@
 
 namespace App\Modules\Appointments\Models;
 
+use App\Models\Concerns\BelongsToClinicTenant;
 use App\Modules\Patients\Models\Patient;
 use App\Modules\Tutors\Models\Tutor;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -10,6 +11,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Appointment extends Model
 {
+    use BelongsToClinicTenant;
     use SoftDeletes;
 
     protected $table = 'appointments';

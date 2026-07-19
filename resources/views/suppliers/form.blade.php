@@ -32,10 +32,6 @@
     <input id="state" name="state" maxlength="2" value="{{ old('state', $supplier->state ?? '') }}">
   </div>
   <div class="field">
-    <label for="clinic_id">Clinica ID</label>
-    <input id="clinic_id" name="clinic_id" type="number" value="{{ old('clinic_id', $supplier->clinic_id ?? '') }}">
-  </div>
-  <div class="field">
     <label for="active">Status</label>
     <select id="active" name="active">
       <option value="1" @selected(old('active', $supplier->active ?? true))>Ativo</option>

@@ -114,10 +114,6 @@
     <input id="received_at" name="received_at" type="datetime-local" value="{{ old('received_at', isset($entry) && $entry?->received_at ? $entry->received_at->format('Y-m-d\TH:i') : now()->format('Y-m-d\TH:i')) }}">
   </div>
   <div class="field">
-    <label for="clinic_id">Clinica ID</label>
-    <input id="clinic_id" name="clinic_id" type="number" value="{{ old('clinic_id', $entry->clinic_id ?? '') }}">
-  </div>
-  <div class="field">
     <label>Total estimado</label>
     <div class="readonly-total" data-purchase-total>R$ {{ number_format((float) ($entry->total ?? 0), 2, ',', '.') }}</div>
   </div>

@@ -2,6 +2,7 @@
 
 namespace App\Modules\Products\Models;
 
+use App\Models\Concerns\BelongsToClinicTenant;
 use App\Modules\Clinics\Models\Clinic;
 use App\Modules\Inventory\Models\InventoryMovement;
 use App\Modules\ProductIntelligence\Models\GlobalProduct;
@@ -12,6 +13,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Product extends Model
 {
+    use BelongsToClinicTenant;
     use SoftDeletes;
 
     protected $table = 'products';
@@ -31,6 +33,11 @@ class Product extends Model
     public function clinic(): BelongsTo
     {
         return $this->belongsTo(Clinic::class);
+    }
+
+    public function tenantColumn(): string
+    {
+        return 'clinic_id';
     }
 
     public function globalProduct(): BelongsTo

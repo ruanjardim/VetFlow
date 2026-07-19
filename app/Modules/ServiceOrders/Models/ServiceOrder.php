@@ -2,6 +2,7 @@
 
 namespace App\Modules\ServiceOrders\Models;
 
+use App\Models\Concerns\BelongsToClinicTenant;
 use App\Modules\Clinics\Models\Clinic;
 use App\Modules\Patients\Models\Patient;
 use App\Modules\Tutors\Models\Tutor;
@@ -12,6 +13,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class ServiceOrder extends Model
 {
+    use BelongsToClinicTenant;
     use SoftDeletes;
 
     protected $table = 'service_orders';
@@ -31,6 +33,11 @@ class ServiceOrder extends Model
     public function clinic(): BelongsTo
     {
         return $this->belongsTo(Clinic::class);
+    }
+
+    public function tenantColumn(): string
+    {
+        return 'clinic_id';
     }
 
     public function tutor(): BelongsTo

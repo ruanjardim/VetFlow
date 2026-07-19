@@ -78,10 +78,6 @@
     <input id="minimum_stock" name="minimum_stock" type="number" step="0.001" min="0" value="{{ old('minimum_stock', $product->minimum_stock ?? 0) }}">
   </div>
   <div class="field">
-    <label for="clinic_id">Clinica ID</label>
-    <input id="clinic_id" name="clinic_id" type="number" value="{{ old('clinic_id', $product->clinic_id ?? '') }}">
-  </div>
-  <div class="field">
     <label for="active">Status</label>
     <select id="active" name="active">
       <option value="1" @selected(old('active', $product->active ?? true))>Ativo</option>
