@@ -76,6 +76,43 @@ class OperationalFlowTest extends TestCase
         $this->assertEquals(50.0, (float) $financialTransaction->amount);
     }
 
+    public function test_global_user_sale_keeps_financial_record_inside_selected_clinic(): void
+    {
+        $clinic = $this->clinic('Clinica Venda Global A', '00000000000261');
+        $product = $this->product($clinic, 'Vermifugo global', stock: 10, costPrice: 9, salePrice: 45);
+        $user = $this->globalUser(['sales.manage']);
+
+        $response = $this->actingAs($user)->post(route('sales.store'), [
+            'clinic_id' => $clinic->id,
+            'status' => 'completed',
+            'items' => [
+                [
+                    'type' => 'product',
+                    'product_id' => $product->id,
+                    'description' => 'Vermifugo global',
+                    'quantity' => '1',
+                    'unit_price' => '45',
+                ],
+            ],
+            'payments' => [
+                [
+                    'method' => 'pix',
+                    'amount' => '45',
+                ],
+            ],
+        ]);
+
+        $response
+            ->assertRedirect(route('sales.index'))
+            ->assertSessionDoesntHaveErrors();
+
+        $sale = Sale::query()->with(['financialTransaction'])->firstOrFail();
+
+        $this->assertSame($clinic->id, (int) $sale->clinic_id);
+        $this->assertNotNull($sale->financialTransaction);
+        $this->assertSame($clinic->id, (int) $sale->financialTransaction->clinic_id);
+    }
+
     public function test_sale_rejects_product_from_another_clinic_before_side_effects(): void
     {
         $clinicA = $this->clinic('Clinica Operacional B', '00000000000211');
@@ -467,6 +504,18 @@ class OperationalFlowTest extends TestCase
         $user = User::factory()->create([
             'active' => true,
             'clinic_id' => $clinic->id,
+        ]);
+
+        $this->grantPermissions($user, $permissionSlugs);
+
+        return $user;
+    }
+
+    private function globalUser(array $permissionSlugs): User
+    {
+        $user = User::factory()->create([
+            'active' => true,
+            'clinic_id' => null,
         ]);
 
         $this->grantPermissions($user, $permissionSlugs);

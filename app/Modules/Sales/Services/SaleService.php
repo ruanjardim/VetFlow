@@ -726,6 +726,7 @@ class SaleService extends BaseService
 
         if (! $sale->financial_applied) {
             $financialTransaction = FinancialTransaction::query()->create([
+                'clinic_id' => $sale->clinic_id,
                 'type' => 'income',
                 'description' => 'Venda '.$sale->code,
                 'amount' => $sale->total,
