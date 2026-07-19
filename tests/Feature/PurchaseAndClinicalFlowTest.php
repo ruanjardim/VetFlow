@@ -167,6 +167,49 @@ class PurchaseAndClinicalFlowTest extends TestCase
         $this->assertSame(7.0, (float) DB::table('products')->where('id', $externalProduct->id)->value('stock_quantity'));
     }
 
+    public function test_global_nfe_xml_import_uses_selected_clinic_for_matches_and_created_records(): void
+    {
+        $clinicA = $this->clinic('Clinica XML Global A', '00000000000353');
+        $clinicB = $this->clinic('Clinica XML Global B', '00000000000354');
+        $document = '11222333000144';
+        $gtin = '7891000315507';
+        $externalSupplier = $this->supplier($clinicB, 'Distribuidora XML');
+        $externalSupplier->update(['document' => $document]);
+        $externalProduct = $this->product($clinicB, 'Produto XML externo global', stock: 7, costPrice: 9, salePrice: 19);
+        $externalProduct->update([
+            'gtin' => $gtin,
+            'barcode' => $gtin,
+        ]);
+        $user = $this->globalUser(['purchase-entries.manage']);
+
+        $response = $this->actingAs($user)->post(route('purchase-entries.import-nfe-xml'), [
+            'clinic_id' => $clinicA->id,
+            'xml_file' => UploadedFile::fake()->createWithContent('nfe.xml', $this->nfeXml($document, $gtin)),
+            'create_missing_products' => true,
+            'create_missing_supplier' => true,
+        ]);
+
+        $response
+            ->assertOk()
+            ->assertJsonPath('found', true)
+            ->assertJsonPath('supplier.created', true)
+            ->assertJsonPath('items.0.product_created', true);
+
+        $payload = $response->json();
+        $supplier = Supplier::query()->findOrFail($payload['supplier']['id']);
+        $product = Product::query()->findOrFail($payload['items'][0]['product_id']);
+
+        $this->assertSame($clinicA->id, (int) $supplier->clinic_id);
+        $this->assertSame($document, $supplier->document);
+        $this->assertSame($clinicA->id, (int) $product->clinic_id);
+        $this->assertSame($gtin, $product->gtin);
+        $this->assertSame('nfe_xml_created', $payload['items'][0]['matched_by']);
+
+        $this->assertSame($clinicB->id, (int) DB::table('suppliers')->where('id', $externalSupplier->id)->value('clinic_id'));
+        $this->assertSame($clinicB->id, (int) DB::table('products')->where('id', $externalProduct->id)->value('clinic_id'));
+        $this->assertSame(7.0, (float) DB::table('products')->where('id', $externalProduct->id)->value('stock_quantity'));
+    }
+
     public function test_service_order_accepts_current_clinic_items_and_rejects_external_references(): void
     {
         $clinicA = $this->clinic('Clinica Comanda A', '00000000000321');
@@ -361,6 +404,18 @@ class PurchaseAndClinicalFlowTest extends TestCase
         $user = User::factory()->create([
             'active' => true,
             'clinic_id' => $clinic->id,
+        ]);
+
+        $this->grantPermissions($user, $permissionSlugs);
+
+        return $user;
+    }
+
+    private function globalUser(array $permissionSlugs): User
+    {
+        $user = User::factory()->create([
+            'active' => true,
+            'clinic_id' => null,
         ]);
 
         $this->grantPermissions($user, $permissionSlugs);

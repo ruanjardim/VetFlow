@@ -55,7 +55,10 @@ class ProductController extends BaseCrudController
 
         if ($request->input('return_to') === 'purchase') {
             return redirect()
-                ->route('purchase-entries.create', ['scan' => $scan])
+                ->route('purchase-entries.create', array_filter([
+                    'scan' => $scan,
+                    'clinic_id' => $request->input('clinic_id'),
+                ]))
                 ->with('success', 'Produto cadastrado com sucesso. A entrada vai buscar este EAN automaticamente.');
         }
 

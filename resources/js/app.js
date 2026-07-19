@@ -922,6 +922,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const xmlStatus = xmlImporter?.querySelector('[data-purchase-xml-status]');
     const xmlCreateSupplier = xmlImporter?.querySelector('[data-purchase-xml-create-supplier]');
     const xmlCreateProducts = xmlImporter?.querySelector('[data-purchase-xml-create-products]');
+    const clinicSelect = purchaseForm.querySelector('[data-purchase-clinic-select]');
     const supplierSelect = document.getElementById('supplier_id');
     const nfeReview = purchaseForm.querySelector('[data-purchase-nfe-review]');
     const nfeReviewSubtitle = purchaseForm.querySelector('[data-purchase-nfe-review-subtitle]');
@@ -975,6 +976,46 @@ document.addEventListener('DOMContentLoaded', () => {
 
       if (field) {
         field.value = value;
+      }
+    };
+
+    const selectedPurchaseClinicId = () => clinicSelect?.value || '';
+
+    const requirePurchaseClinic = (statusElement) => {
+      if (!clinicSelect || selectedPurchaseClinicId()) {
+        return true;
+      }
+
+      setLookupStatus(statusElement, 'Selecione a clinica antes de buscar ou importar itens.', 'warning');
+      clinicSelect.focus();
+
+      return false;
+    };
+
+    const appendPurchaseClinic = (formData) => {
+      const clinicId = selectedPurchaseClinicId();
+
+      if (clinicId) {
+        formData.append('clinic_id', clinicId);
+      }
+    };
+
+    const withPurchaseClinic = (url) => {
+      const clinicId = selectedPurchaseClinicId();
+
+      if (!clinicId || !url || url === '#') {
+        return url;
+      }
+
+      try {
+        const parsed = new URL(url, window.location.origin);
+        parsed.searchParams.set('clinic_id', clinicId);
+
+        return `${parsed.pathname}${parsed.search}${parsed.hash}`;
+      } catch (error) {
+        const separator = url.includes('?') ? '&' : '?';
+
+        return `${url}${separator}clinic_id=${encodeURIComponent(clinicId)}`;
       }
     };
 
@@ -1084,11 +1125,16 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
       }
 
+      if (!requirePurchaseClinic(invoiceStatus)) {
+        return;
+      }
+
       const token = purchaseForm.querySelector('input[name="_token"]')?.value || '';
       const formData = new FormData();
       formData.append('access_key', accessKey);
       formData.append('create_missing_supplier', xmlCreateSupplier?.checked ? '1' : '0');
       formData.append('create_missing_products', xmlCreateProducts?.checked ? '1' : '0');
+      appendPurchaseClinic(formData);
 
       const previousButtonText = invoiceButton?.textContent || '';
 
@@ -1727,12 +1773,16 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
       }
 
+      if (!requirePurchaseClinic(lookupStatus)) {
+        return;
+      }
+
       barcodeInput.value = gtin;
       setLookupStatus(lookupStatus, 'Buscando produto para entrada...');
       setPurchaseCreateProductLink('');
 
       try {
-        const url = purchaseScanner.dataset.purchaseLookupUrl.replace('__GTIN__', encodeURIComponent(gtin));
+        const url = withPurchaseClinic(purchaseScanner.dataset.purchaseLookupUrl.replace('__GTIN__', encodeURIComponent(gtin)));
         const response = await fetch(url, {
           headers: {
             Accept: 'application/json',
@@ -1934,7 +1984,7 @@ document.addEventListener('DOMContentLoaded', () => {
         appendCell(row, moneyFormatter.format(quantity * unitCost));
 
         const actionCell = document.createElement('td');
-        const actionUrl = item.product_edit_url || item.product_create_url;
+        const actionUrl = withPurchaseClinic(item.product_edit_url || item.product_create_url);
 
         if (actionUrl) {
           const link = document.createElement('a');
@@ -2089,11 +2139,16 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
       }
 
+      if (!requirePurchaseClinic(xmlStatus)) {
+        return;
+      }
+
       const token = purchaseForm.querySelector('input[name="_token"]')?.value || '';
       const formData = new FormData();
       formData.append('xml_file', xmlInput.files[0]);
       formData.append('create_missing_supplier', xmlCreateSupplier?.checked ? '1' : '0');
       formData.append('create_missing_products', xmlCreateProducts?.checked ? '1' : '0');
+      appendPurchaseClinic(formData);
 
       clearXmlImportGuide();
       setLookupStatus(xmlStatus, 'Importando XML da NF-e...');

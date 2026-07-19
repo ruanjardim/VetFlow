@@ -19,7 +19,12 @@ class NfeXmlImportService
     {
     }
 
-    public function import(string $xml, bool $createMissingProducts = true, bool $createMissingSupplier = true): array
+    public function import(
+        string $xml,
+        bool $createMissingProducts = true,
+        bool $createMissingSupplier = true,
+        ?int $clinicId = null
+    ): array
     {
         $document = $this->loadXml($xml);
         $xpath = new DOMXPath($document);
@@ -29,11 +34,11 @@ class NfeXmlImportService
             throw new InvalidArgumentException('XML da NF-e invalido ou sem bloco infNFe.');
         }
 
-        return DB::transaction(function () use ($xpath, $infNfe, $createMissingProducts, $createMissingSupplier) {
+        return DB::transaction(function () use ($xpath, $infNfe, $createMissingProducts, $createMissingSupplier, $clinicId) {
             $invoice = $this->invoicePayload($xpath, $infNfe);
             $supplierPayload = $this->supplierPayload($xpath, $infNfe);
-            $supplier = $this->resolveSupplier($supplierPayload, $createMissingSupplier);
-            $items = $this->itemsPayload($xpath, $infNfe, $supplierPayload, $createMissingProducts);
+            $supplier = $this->resolveSupplier($supplierPayload, $createMissingSupplier, $clinicId);
+            $items = $this->itemsPayload($xpath, $infNfe, $supplierPayload, $createMissingProducts, $clinicId);
 
             $summary = [
                 'items_count' => count($items),
@@ -134,7 +139,13 @@ class NfeXmlImportService
         ];
     }
 
-    private function itemsPayload(DOMXPath $xpath, DOMNode $infNfe, array $supplier, bool $createMissingProducts): array
+    private function itemsPayload(
+        DOMXPath $xpath,
+        DOMNode $infNfe,
+        array $supplier,
+        bool $createMissingProducts,
+        ?int $clinicId
+    ): array
     {
         $items = [];
 
@@ -157,7 +168,7 @@ class NfeXmlImportService
             $total = $this->decimal($this->text($xpath, './*[local-name()="vProd"]', $prod));
             $ncm = $this->text($xpath, './*[local-name()="NCM"]', $prod);
             $cfop = $this->text($xpath, './*[local-name()="CFOP"]', $prod);
-            $product = $this->resolveProduct($gtin, $name, $supplierSku, $unit, $unitCost, $ncm, $cfop, $supplier, $createMissingProducts);
+            $product = $this->resolveProduct($gtin, $name, $supplierSku, $unit, $unitCost, $ncm, $cfop, $supplier, $createMissingProducts, $clinicId);
             $salePrice = $this->salePriceFor($product, $unitCost);
 
             $items[] = [
@@ -168,6 +179,7 @@ class NfeXmlImportService
                 'product_edit_url' => $product['model'] ? route('products.edit', $product['model']->id) : null,
                 'product_create_url' => $gtin ? route('products.create').'?'.http_build_query([
                     'gtin' => $gtin,
+                    'clinic_id' => $clinicId,
                     'from' => 'purchase',
                     'return_to' => 'purchase',
                 ]) : null,
@@ -206,14 +218,13 @@ class NfeXmlImportService
         return $items;
     }
 
-    private function resolveSupplier(array $payload, bool $createMissingSupplier): ?Supplier
+    private function resolveSupplier(array $payload, bool $createMissingSupplier, ?int $clinicId): ?Supplier
     {
         $document = $payload['document'] ?? null;
         $name = trim((string) ($payload['name'] ?? ''));
 
         if ($document) {
-            $supplier = Supplier::query()
-                ->active()
+            $supplier = $this->supplierQuery($clinicId)
                 ->get()
                 ->first(fn (Supplier $supplier) => $this->normalizeDocument($supplier->document) === $document);
 
@@ -223,8 +234,7 @@ class NfeXmlImportService
         }
 
         if ($name !== '') {
-            $supplier = Supplier::query()
-                ->active()
+            $supplier = $this->supplierQuery($clinicId)
                 ->where('name', $name)
                 ->first();
 
@@ -238,6 +248,7 @@ class NfeXmlImportService
         }
 
         return Supplier::query()->create([
+            'clinic_id' => $clinicId,
             'name' => $name,
             'document' => $document,
             'phone' => $payload['phone'] ?? null,
@@ -257,9 +268,10 @@ class NfeXmlImportService
         ?string $ncm,
         ?string $cfop,
         array $supplier,
-        bool $createMissingProducts
+        bool $createMissingProducts,
+        ?int $clinicId
     ): array {
-        if ($product = $this->findProduct($gtin, $name)) {
+        if ($product = $this->findProduct($gtin, $name, $clinicId)) {
             return [
                 'model' => $product,
                 'matched_by' => $gtin ? 'nfe_xml_gtin' : 'nfe_xml_name',
@@ -277,6 +289,7 @@ class NfeXmlImportService
 
         /** @var Product $product */
         $product = $this->productService->create([
+            'clinic_id' => $clinicId,
             'name' => $name,
             'category' => $this->inferCategory($name),
             'sku' => $supplierSku,
@@ -308,13 +321,12 @@ class NfeXmlImportService
         ];
     }
 
-    private function findProduct(?string $gtin, ?string $name): ?Product
+    private function findProduct(?string $gtin, ?string $name, ?int $clinicId): ?Product
     {
         if (Gtin::looksValid($gtin)) {
             $variants = Gtin::variants($gtin);
 
-            return Product::query()
-                ->active()
+            return $this->productQuery($clinicId)
                 ->where(function ($query) use ($variants) {
                     $query
                         ->whereIn('gtin', $variants)
@@ -330,11 +342,32 @@ class NfeXmlImportService
             return null;
         }
 
-        return Product::query()
-            ->active()
+        return $this->productQuery($clinicId)
             ->whereRaw('lower(name) = ?', [mb_strtolower($name)])
             ->orderByDesc('updated_at')
             ->first();
+    }
+
+    private function supplierQuery(?int $clinicId)
+    {
+        $query = Supplier::query()->active();
+
+        if ($clinicId !== null) {
+            $query->where('clinic_id', $clinicId);
+        }
+
+        return $query;
+    }
+
+    private function productQuery(?int $clinicId)
+    {
+        $query = Product::query()->active();
+
+        if ($clinicId !== null) {
+            $query->where('clinic_id', $clinicId);
+        }
+
+        return $query;
     }
 
     private function successMessage(array $summary): string

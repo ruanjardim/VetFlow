@@ -3,6 +3,7 @@
 namespace App\Modules\PurchaseEntries\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Modules\Clinics\Models\Clinic;
 use App\Modules\Products\Models\Product;
 use App\Modules\PurchaseEntries\Exceptions\NfeAccessKeyLookupException;
 use App\Modules\PurchaseEntries\Services\NfeAccessKeyImportService;
@@ -16,6 +17,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\Rule;
 use InvalidArgumentException;
 use Throwable;
 
@@ -40,6 +42,7 @@ class PurchaseEntryController extends Controller
     {
         return view('purchase-entries.create', [
             'entry' => null,
+            'clinics' => $this->clinics(),
             'products' => $this->products(),
             'suppliers' => $this->suppliers(),
             'purchaseInsights' => $this->insights->dashboard(),
@@ -60,6 +63,7 @@ class PurchaseEntryController extends Controller
     {
         return view('purchase-entries.edit', [
             'entry' => $this->service->findOrFail($id),
+            'clinics' => $this->clinics(),
             'products' => $this->products(),
             'suppliers' => $this->suppliers(),
             'purchaseInsights' => $this->insights->dashboard(),
@@ -72,9 +76,13 @@ class PurchaseEntryController extends Controller
         return view('purchase-entries.replenishment', $this->insights->replenishmentData());
     }
 
-    public function lookupProduct(string $gtin): JsonResponse
+    public function lookupProduct(Request $request, string $gtin): JsonResponse
     {
-        $result = $this->insights->lookupPayload($gtin);
+        $validated = $request->validate([
+            'clinic_id' => ['nullable', 'integer', 'exists:clinics,id'],
+        ]);
+
+        $result = $this->insights->lookupPayload($gtin, $this->selectedClinicId($request, $validated));
 
         return response()->json($result['payload'], $result['status']);
     }
@@ -86,6 +94,7 @@ class PurchaseEntryController extends Controller
     ): JsonResponse
     {
         $validated = $request->validate([
+            'clinic_id' => [Rule::requiredIf($request->user()?->clinic_id === null), 'nullable', 'integer', 'exists:clinics,id'],
             'xml_file' => ['required', 'file', 'max:5120'],
             'create_missing_products' => ['nullable', 'boolean'],
             'create_missing_supplier' => ['nullable', 'boolean'],
@@ -97,7 +106,8 @@ class PurchaseEntryController extends Controller
             $payload = $importer->import(
                 $content ?: '',
                 $request->boolean('create_missing_products', true),
-                $request->boolean('create_missing_supplier', true)
+                $request->boolean('create_missing_supplier', true),
+                $this->selectedClinicId($request, $validated)
             );
 
             if ($accessKey = ($payload['invoice']['access_key'] ?? null)) {
@@ -126,6 +136,7 @@ class PurchaseEntryController extends Controller
     public function importNfeKey(Request $request, NfeAccessKeyImportService $importer): JsonResponse
     {
         $validated = $request->validate([
+            'clinic_id' => [Rule::requiredIf($request->user()?->clinic_id === null), 'nullable', 'integer', 'exists:clinics,id'],
             'access_key' => ['required', 'string', 'regex:/^\D*\d(?:\D*\d){43}\D*$/'],
             'create_missing_products' => ['nullable', 'boolean'],
             'create_missing_supplier' => ['nullable', 'boolean'],
@@ -135,7 +146,8 @@ class PurchaseEntryController extends Controller
             return response()->json($importer->import(
                 $validated['access_key'],
                 $request->boolean('create_missing_products', true),
-                $request->boolean('create_missing_supplier', true)
+                $request->boolean('create_missing_supplier', true),
+                $this->selectedClinicId($request, $validated)
             ));
         } catch (InvalidArgumentException $exception) {
             return response()->json([
@@ -185,6 +197,14 @@ class PurchaseEntryController extends Controller
             ->with('success', 'Entrada de mercadorias removida com sucesso.');
     }
 
+    private function clinics()
+    {
+        return Clinic::query()
+            ->orderBy('trade_name')
+            ->orderBy('corporate_name')
+            ->get();
+    }
+
     private function products()
     {
         return Product::query()
@@ -199,5 +219,18 @@ class PurchaseEntryController extends Controller
             ->active()
             ->orderBy('name')
             ->get();
+    }
+
+    private function selectedClinicId(Request $request, array $validated = []): ?int
+    {
+        $userClinicId = $request->user()?->clinic_id;
+
+        if ($userClinicId !== null) {
+            return (int) $userClinicId;
+        }
+
+        $clinicId = $validated['clinic_id'] ?? $request->input('clinic_id');
+
+        return $clinicId !== null && $clinicId !== '' ? (int) $clinicId : null;
     }
 }

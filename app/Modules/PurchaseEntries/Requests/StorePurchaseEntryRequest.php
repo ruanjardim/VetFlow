@@ -42,7 +42,7 @@ class StorePurchaseEntryRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'clinic_id' => ['nullable', 'integer', 'exists:clinics,id'],
+            'clinic_id' => [Rule::requiredIf($this->user()?->clinic_id === null), 'nullable', 'integer', 'exists:clinics,id'],
             'supplier_id' => ['nullable', 'integer', $this->existsInCurrentClinic('suppliers')],
             'status' => ['required', 'string', Rule::in(['draft', 'received', 'cancelled'])],
             'invoice_number' => ['nullable', 'string', 'max:255'],
@@ -92,6 +92,7 @@ class StorePurchaseEntryRequest extends FormRequest
             'installments_count.min' => 'Informe pelo menos uma parcela.',
             'installments_count.max' => 'Informe no maximo 60 parcelas.',
             'installment_interval_days.min' => 'Informe um intervalo valido entre parcelas.',
+            'clinic_id.required' => 'Selecione a clinica da entrada.',
         ];
     }
 

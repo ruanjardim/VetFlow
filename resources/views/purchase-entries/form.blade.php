@@ -48,6 +48,17 @@
       <option value="cancelled" @selected(old('status', $entry->status ?? 'received') === 'cancelled')>Cancelada</option>
     </select>
   </div>
+  @if(auth()->user()?->clinic_id === null)
+    <div class="field">
+      <label for="clinic_id">Clinica</label>
+      <select id="clinic_id" name="clinic_id" data-purchase-clinic-select required>
+        <option value="">Selecione</option>
+        @foreach($clinics as $clinic)
+          <option value="{{ $clinic->id }}" @selected((int) old('clinic_id', $entry->clinic_id ?? request('clinic_id', 0)) === $clinic->id)>{{ $clinic->trade_name ?? $clinic->corporate_name }}</option>
+        @endforeach
+      </select>
+    </div>
+  @endif
   <div class="field">
     <label for="supplier_id">Fornecedor</label>
     <select id="supplier_id" name="supplier_id">

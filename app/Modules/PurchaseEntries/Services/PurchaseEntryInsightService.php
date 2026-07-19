@@ -73,7 +73,7 @@ class PurchaseEntryInsightService
         ];
     }
 
-    public function lookupPayload(string $gtin): array
+    public function lookupPayload(string $gtin, ?int $clinicId = null): array
     {
         $normalized = Gtin::normalize($gtin);
         $variants = Gtin::variants($normalized);
@@ -89,9 +89,15 @@ class PurchaseEntryInsightService
             ];
         }
 
-        $product = Product::query()
+        $productQuery = Product::query()
             ->with('globalProduct')
-            ->active()
+            ->active();
+
+        if ($clinicId !== null) {
+            $productQuery->where('clinic_id', $clinicId);
+        }
+
+        $product = $productQuery
             ->where(function ($query) use ($variants) {
                 $query
                     ->whereIn('gtin', $variants)
@@ -118,6 +124,7 @@ class PurchaseEntryInsightService
         $result = $this->lookupService->lookup($normalized);
         $createUrl = route('products.create').'?'.http_build_query([
             'gtin' => $normalized,
+            'clinic_id' => $clinicId,
             'from' => 'purchase',
             'return_to' => 'purchase',
         ]);

@@ -17,7 +17,12 @@ class NfeAccessKeyImportService
     {
     }
 
-    public function import(string $accessKey, bool $createMissingProducts = true, bool $createMissingSupplier = true): array
+    public function import(
+        string $accessKey,
+        bool $createMissingProducts = true,
+        bool $createMissingSupplier = true,
+        ?int $clinicId = null
+    ): array
     {
         $accessKey = $this->normalizeAccessKey($accessKey);
 
@@ -35,7 +40,7 @@ class NfeAccessKeyImportService
             );
         }
 
-        $payload = $this->xmlImporter->import($resolved['xml'], $createMissingProducts, $createMissingSupplier);
+        $payload = $this->xmlImporter->import($resolved['xml'], $createMissingProducts, $createMissingSupplier, $clinicId);
         $payload['message'] = 'NF-e carregada pela chave. '.$payload['message'];
         $payload['lookup'] = [
             'source' => $resolved['source'],

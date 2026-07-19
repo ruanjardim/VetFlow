@@ -6,6 +6,7 @@
   $cancelRoute = match (request('from')) {
     'sales' => route('sales.create'),
     'inventory' => route('inventory-movements.create'),
+    'purchase' => route('purchase-entries.create', array_filter(['clinic_id' => request('clinic_id')])),
     default => route('products.index'),
   };
 @endphp
@@ -29,7 +30,7 @@
   <input id="lookup_source" name="lookup_source" type="hidden" value="{{ old('lookup_source', $product->lookup_source ?? '') }}">
   <input id="lookup_metadata" name="lookup_metadata" type="hidden" value="{{ old('lookup_metadata', isset($product) && $product?->lookup_metadata ? json_encode($product->lookup_metadata) : '') }}">
   <input id="looked_up_at" name="looked_up_at" type="hidden" value="{{ old('looked_up_at', isset($product) && $product?->looked_up_at ? $product->looked_up_at->format('Y-m-d H:i:s') : '') }}">
-  @if(in_array(request('from'), ['sales', 'inventory'], true))
+  @if(in_array(request('from'), ['sales', 'inventory', 'purchase'], true))
     <input name="return_to" type="hidden" value="{{ request('from') }}">
   @endif
 
