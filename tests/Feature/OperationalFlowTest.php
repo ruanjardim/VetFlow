@@ -11,6 +11,7 @@ use App\Modules\Inventory\Models\InventoryMovement;
 use App\Modules\Products\Models\Product;
 use App\Modules\Sales\Models\Sale;
 use App\Modules\Sales\Models\SaleEvent;
+use App\Modules\Sales\Services\SaleService;
 use App\Modules\Suppliers\Models\Supplier;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -254,6 +255,92 @@ class OperationalFlowTest extends TestCase
         $this->assertSame(1, SaleEvent::query()->where('sale_id', $sale->id)->where('event_type', 'refund')->count());
         $this->assertSame(1, SaleEvent::query()->where('sale_id', $sale->id)->where('event_type', 'partial_return')->count());
         $this->assertSame(1, SaleEvent::query()->where('sale_id', $sale->id)->where('event_type', 'stock_return')->count());
+    }
+
+    public function test_cashier_summary_ignores_refunds_from_other_clinics(): void
+    {
+        $clinicA = $this->clinic('Clinica Caixa A', '00000000000251');
+        $clinicB = $this->clinic('Clinica Caixa B', '00000000000252');
+        $productA = $this->product($clinicA, 'Shampoo caixa A', stock: 10, costPrice: 10, salePrice: 30);
+        $productB = $this->product($clinicB, 'Shampoo caixa B', stock: 10, costPrice: 10, salePrice: 40);
+        $userA = $this->userForClinic($clinicA, ['sales.manage']);
+        $userB = $this->userForClinic($clinicB, ['sales.manage']);
+
+        $this->actingAs($userA)->post(route('sales.store'), [
+            'status' => 'completed',
+            'items' => [
+                [
+                    'type' => 'product',
+                    'product_id' => $productA->id,
+                    'description' => 'Shampoo caixa A',
+                    'quantity' => '2',
+                    'unit_price' => '30',
+                ],
+            ],
+            'payments' => [
+                [
+                    'method' => 'cash',
+                    'amount' => '60',
+                ],
+            ],
+        ])->assertRedirect(route('sales.index'));
+
+        $saleA = Sale::query()->with('items')->firstOrFail();
+
+        $this->post(route('sales.returns.store', $saleA->id), [
+            'reason' => 'Devolucao local',
+            'refund_method' => 'cash',
+            'refund_amount' => '30',
+            'items' => [
+                $saleA->items->first()->id => [
+                    'quantity' => '1',
+                ],
+            ],
+        ])->assertRedirect(route('sales.edit', $saleA->id));
+
+        $this->actingAs($userB)->post(route('sales.store'), [
+            'status' => 'completed',
+            'items' => [
+                [
+                    'type' => 'product',
+                    'product_id' => $productB->id,
+                    'description' => 'Shampoo caixa B',
+                    'quantity' => '2',
+                    'unit_price' => '40',
+                ],
+            ],
+            'payments' => [
+                [
+                    'method' => 'cash',
+                    'amount' => '80',
+                ],
+            ],
+        ])->assertRedirect(route('sales.index'));
+
+        $saleB = Sale::query()->with('items')->firstOrFail();
+
+        $this->post(route('sales.returns.store', $saleB->id), [
+            'reason' => 'Devolucao externa',
+            'refund_method' => 'cash',
+            'refund_amount' => '40',
+            'items' => [
+                $saleB->items->first()->id => [
+                    'quantity' => '1',
+                ],
+            ],
+        ])->assertRedirect(route('sales.edit', $saleB->id));
+
+        $this->actingAs($userA);
+
+        $summary = app(SaleService::class)->cashierSummary(today()->toDateString(), today()->toDateString());
+
+        $this->assertSame(1, $summary['stats']['sales_count']);
+        $this->assertEquals(60.0, (float) $summary['stats']['received']);
+        $this->assertEquals(30.0, (float) $summary['stats']['refunds']);
+        $this->assertEquals(30.0, (float) $summary['stats']['cash_refunds']);
+        $this->assertEquals(30.0, (float) $summary['stats']['net_received']);
+        $this->assertEquals(30.0, (float) $summary['stats']['cash_drawer']);
+        $this->assertSame($saleA->id, $summary['recent_sales']->first()->id);
     }
 
     public function test_inventory_movement_updates_stock_and_rejects_cross_clinic_product(): void

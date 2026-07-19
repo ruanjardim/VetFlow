@@ -383,6 +383,7 @@ class SaleService extends BaseService
 
         $refundEvents = SaleEvent::query()
             ->where('event_type', 'refund')
+            ->whereHas('sale')
             ->whereBetween('occurred_at', [$start, $end])
             ->get();
 
@@ -983,9 +984,19 @@ class SaleService extends BaseService
 
     private function nextCode(): string
     {
-        $nextId = ((int) Sale::withTrashed()->max('id')) + 1;
+        $nextId = ((int) Sale::withTrashed()
+            ->withoutGlobalScope('clinic_tenant')
+            ->max('id')) + 1;
 
-        return 'VEN-'.str_pad((string) $nextId, 6, '0', STR_PAD_LEFT);
+        do {
+            $code = 'VEN-'.str_pad((string) $nextId, 6, '0', STR_PAD_LEFT);
+            $nextId++;
+        } while (Sale::withTrashed()
+            ->withoutGlobalScope('clinic_tenant')
+            ->where('code', $code)
+            ->exists());
+
+        return $code;
     }
 
     private function cashierRange(?string $from, ?string $to): array
