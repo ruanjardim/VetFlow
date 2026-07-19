@@ -2,12 +2,15 @@
 
 namespace App\Modules\PurchaseEntries\Requests;
 
+use App\Http\Requests\Concerns\ValidatesTenantScopedReferences;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
 
 class StorePurchaseEntryRequest extends FormRequest
 {
+    use ValidatesTenantScopedReferences;
+
     public function authorize(): bool
     {
         return true;
@@ -40,7 +43,7 @@ class StorePurchaseEntryRequest extends FormRequest
     {
         return [
             'clinic_id' => ['nullable', 'integer', 'exists:clinics,id'],
-            'supplier_id' => ['nullable', 'integer', 'exists:suppliers,id'],
+            'supplier_id' => ['nullable', 'integer', $this->existsInCurrentClinic('suppliers')],
             'status' => ['required', 'string', Rule::in(['draft', 'received', 'cancelled'])],
             'invoice_number' => ['nullable', 'string', 'max:255'],
             'invoice_key' => ['nullable', 'string', 'max:255'],
@@ -56,7 +59,7 @@ class StorePurchaseEntryRequest extends FormRequest
             'paid_at' => ['nullable', 'date'],
 
             'items' => ['required', 'array'],
-            'items.*.product_id' => ['nullable', 'integer', 'exists:products,id'],
+            'items.*.product_id' => ['nullable', 'integer', $this->existsInCurrentClinic('products')],
             'items.*.description' => ['nullable', 'string', 'max:255'],
             'items.*.quantity' => ['nullable', 'numeric', 'min:0.001'],
             'items.*.unit_cost' => ['nullable', 'numeric', 'min:0'],

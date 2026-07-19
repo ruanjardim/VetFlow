@@ -2,11 +2,14 @@
 
 namespace App\Modules\Appointments\Requests;
 
+use App\Http\Requests\Concerns\ValidatesTenantScopedReferences;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
 class StoreAppointmentRequest extends FormRequest
 {
+    use ValidatesTenantScopedReferences;
+
     public function authorize(): bool
     {
         return true;
@@ -15,8 +18,8 @@ class StoreAppointmentRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'patient_id' => ['nullable', 'integer', 'exists:patients,id'],
-            'tutor_id' => ['nullable', 'integer', 'exists:tutors,id'],
+            'patient_id' => ['nullable', 'integer', $this->existsInCurrentClinic('patients')],
+            'tutor_id' => ['nullable', 'integer', $this->existsInCurrentClinic('tutors')],
             'title' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
             'scheduled_at' => ['required', 'date'],
