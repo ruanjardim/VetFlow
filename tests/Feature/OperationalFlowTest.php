@@ -113,6 +113,46 @@ class OperationalFlowTest extends TestCase
         $this->assertSame($clinic->id, (int) $sale->financialTransaction->clinic_id);
     }
 
+    public function test_global_user_sale_rejects_product_outside_selected_clinic(): void
+    {
+        $clinicA = $this->clinic('Clinica Venda Global B', '00000000000262');
+        $clinicB = $this->clinic('Clinica Venda Global C', '00000000000263');
+        $externalProduct = $this->product($clinicB, 'Produto global externo', stock: 5, salePrice: 30);
+        $user = $this->globalUser(['sales.manage']);
+
+        $response = $this
+            ->actingAs($user)
+            ->from(route('sales.create'))
+            ->post(route('sales.store'), [
+                'clinic_id' => $clinicA->id,
+                'status' => 'completed',
+                'items' => [
+                    [
+                        'type' => 'product',
+                        'product_id' => $externalProduct->id,
+                        'description' => 'Tentativa produto global externo',
+                        'quantity' => '1',
+                        'unit_price' => '30',
+                    ],
+                ],
+                'payments' => [
+                    [
+                        'method' => 'cash',
+                        'amount' => '30',
+                    ],
+                ],
+            ]);
+
+        $response
+            ->assertRedirect(route('sales.create'))
+            ->assertSessionHasErrors('items.0.product_id');
+
+        $this->assertDatabaseCount('sales', 0);
+        $this->assertDatabaseCount('inventory_movements', 0);
+        $this->assertDatabaseCount('financial_transactions', 0);
+        $this->assertEquals(5.0, (float) $externalProduct->fresh()->stock_quantity);
+    }
+
     public function test_sale_rejects_product_from_another_clinic_before_side_effects(): void
     {
         $clinicA = $this->clinic('Clinica Operacional B', '00000000000211');
