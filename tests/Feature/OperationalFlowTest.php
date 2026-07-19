@@ -10,6 +10,7 @@ use App\Modules\Financial\Models\FinancialTransaction;
 use App\Modules\Inventory\Models\InventoryMovement;
 use App\Modules\Products\Models\Product;
 use App\Modules\Sales\Models\Sale;
+use App\Modules\Sales\Models\SaleEvent;
 use App\Modules\Suppliers\Models\Supplier;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -110,6 +111,149 @@ class OperationalFlowTest extends TestCase
         $this->assertDatabaseCount('sales', 0);
         $this->assertDatabaseCount('inventory_movements', 0);
         $this->assertDatabaseCount('financial_transactions', 0);
+    }
+
+    public function test_cancelled_sale_restores_stock_cancels_financial_record_and_is_idempotent(): void
+    {
+        $clinic = $this->clinic('Clinica Cancelamento A', '00000000000241');
+        $product = $this->product($clinic, 'Antipulgas', stock: 10, costPrice: 12, salePrice: 35);
+        $user = $this->userForClinic($clinic, ['sales.manage']);
+
+        $this->actingAs($user)->post(route('sales.store'), [
+            'status' => 'completed',
+            'items' => [
+                [
+                    'type' => 'product',
+                    'product_id' => $product->id,
+                    'description' => 'Antipulgas',
+                    'quantity' => '2',
+                    'unit_price' => '35',
+                ],
+            ],
+            'payments' => [
+                [
+                    'method' => 'cash',
+                    'amount' => '70',
+                ],
+            ],
+        ])->assertRedirect(route('sales.index'));
+
+        $sale = Sale::query()->with(['items', 'financialTransaction', 'payments'])->firstOrFail();
+
+        $this->assertEquals(8.0, (float) $product->fresh()->stock_quantity);
+
+        $this->patch(route('sales.cancel', $sale->id), [
+            'reason' => 'Cliente desistiu',
+        ])->assertRedirect(route('sales.index'));
+
+        $sale->refresh()->load(['items', 'financialTransaction', 'payments']);
+        $stockReturn = InventoryMovement::query()
+            ->where('sale_id', $sale->id)
+            ->where('source', 'sale_cancellation')
+            ->firstOrFail();
+
+        $this->assertSame('cancelled', $sale->status);
+        $this->assertSame('cancelled', $sale->payment_status);
+        $this->assertSame('Cliente desistiu', $sale->cancellation_reason);
+        $this->assertEquals(70.0, (float) $sale->return_total);
+        $this->assertEquals(70.0, (float) $sale->refunded_total);
+        $this->assertEquals(10.0, (float) $product->fresh()->stock_quantity);
+        $this->assertSame('entry', $stockReturn->type);
+        $this->assertEquals(2.0, (float) $stockReturn->quantity);
+        $this->assertEquals(10.0, (float) $stockReturn->balance_after);
+        $this->assertSame('cancelled', $sale->financialTransaction->status);
+        $this->assertNull($sale->financialTransaction->paid_at);
+        $this->assertTrue($sale->payments->every(fn ($payment) => $payment->status === 'cancelled'));
+        $this->assertEquals(2.0, (float) $sale->items->first()->returned_quantity);
+        $this->assertEquals(70.0, (float) $sale->items->first()->refunded_total);
+        $this->assertDatabaseHas('sale_events', [
+            'sale_id' => $sale->id,
+            'event_type' => 'cancelled',
+        ]);
+        $this->assertDatabaseHas('sale_events', [
+            'sale_id' => $sale->id,
+            'event_type' => 'stock_reversal',
+        ]);
+
+        $this->patch(route('sales.cancel', $sale->id), [
+            'reason' => 'Nova tentativa',
+        ])->assertRedirect(route('sales.index'));
+
+        $this->assertSame(2, InventoryMovement::query()->where('sale_id', $sale->id)->count());
+        $this->assertEquals(10.0, (float) $product->fresh()->stock_quantity);
+    }
+
+    public function test_partial_sale_return_restores_stock_and_records_refund_without_cancelling_income(): void
+    {
+        $clinic = $this->clinic('Clinica Devolucao A', '00000000000242');
+        $product = $this->product($clinic, 'Racao retorno', stock: 10, costPrice: 8, salePrice: 20);
+        $user = $this->userForClinic($clinic, ['sales.manage']);
+
+        $this->actingAs($user)->post(route('sales.store'), [
+            'status' => 'completed',
+            'items' => [
+                [
+                    'type' => 'product',
+                    'product_id' => $product->id,
+                    'description' => 'Racao retorno',
+                    'quantity' => '3',
+                    'unit_price' => '20',
+                ],
+            ],
+            'payments' => [
+                [
+                    'method' => 'pix',
+                    'amount' => '60',
+                ],
+            ],
+        ])->assertRedirect(route('sales.index'));
+
+        $sale = Sale::query()->with(['items', 'financialTransaction'])->firstOrFail();
+        $item = $sale->items->first();
+
+        $this->assertEquals(7.0, (float) $product->fresh()->stock_quantity);
+
+        $this->post(route('sales.returns.store', $sale->id), [
+            'reason' => 'Devolucao parcial',
+            'refund_method' => 'pix',
+            'refund_amount' => '20',
+            'reference' => 'PIX-DEV-1',
+            'items' => [
+                $item->id => [
+                    'quantity' => '1',
+                ],
+            ],
+        ])->assertRedirect(route('sales.edit', $sale->id));
+
+        $sale->refresh()->load(['items', 'financialTransaction']);
+        $refund = FinancialTransaction::query()
+            ->where('type', 'expense')
+            ->where('description', 'Estorno venda '.$sale->code)
+            ->firstOrFail();
+        $stockReturn = InventoryMovement::query()
+            ->where('sale_id', $sale->id)
+            ->where('source', 'sale_return')
+            ->firstOrFail();
+
+        $this->assertSame('completed', $sale->status);
+        $this->assertSame('paid', $sale->payment_status);
+        $this->assertEquals(20.0, (float) $sale->return_total);
+        $this->assertEquals(20.0, (float) $sale->refunded_total);
+        $this->assertEquals(8.0, (float) $product->fresh()->stock_quantity);
+        $this->assertEquals(1.0, (float) $sale->items->first()->returned_quantity);
+        $this->assertEquals(20.0, (float) $sale->items->first()->refunded_total);
+        $this->assertSame('paid', $sale->financialTransaction->status);
+        $this->assertSame($clinic->id, (int) $refund->clinic_id);
+        $this->assertSame('paid', $refund->status);
+        $this->assertSame('pix', $refund->payment_method);
+        $this->assertSame('PIX-DEV-1', $refund->reference);
+        $this->assertEquals(20.0, (float) $refund->amount);
+        $this->assertSame('entry', $stockReturn->type);
+        $this->assertEquals(1.0, (float) $stockReturn->quantity);
+        $this->assertEquals(8.0, (float) $stockReturn->balance_after);
+        $this->assertSame(1, SaleEvent::query()->where('sale_id', $sale->id)->where('event_type', 'refund')->count());
+        $this->assertSame(1, SaleEvent::query()->where('sale_id', $sale->id)->where('event_type', 'partial_return')->count());
+        $this->assertSame(1, SaleEvent::query()->where('sale_id', $sale->id)->where('event_type', 'stock_return')->count());
     }
 
     public function test_inventory_movement_updates_stock_and_rejects_cross_clinic_product(): void
