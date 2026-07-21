@@ -1,0 +1,25 @@
+name: Documentation task
+description: Request missing, outdated, or unclear documentation.
+title: "[Docs]: "
+body:
+  - type: textarea
+    id: gap
+    attributes:
+      label: Documentation Gap
+      description: What is missing or unclear?
+    validations:
+      required: true
+  - type: textarea
+    id: location
+    attributes:
+      label: Current Location
+      description: Link or path to the current document, if one exists.
+      placeholder: docs/modules/products.md
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected Update
+      description: What should the documentation explain?
+    validations:
+      required: true
+

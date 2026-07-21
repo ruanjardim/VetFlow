@@ -12,6 +12,7 @@ This directory contains the working documentation for VetFlow.
 - [Database overview](BANCO_DE_DADOS.md)
 - [Continuous integration](ci.md)
 - [Deployment guide](deployment.md)
+- [Roadmap](ROADMAP.md)
 
 ## Database Notes
 
@@ -42,6 +43,12 @@ The employee/access note documents the current decision to use `users`,
 - [Authorization sprint](audits/authorization-sprint-2.md)
 - [Reconciliation sprint](audits/reconciliation-sprint-0-1.md)
 - [GitHub VetFlow comparison](audits/github-vetflow-comparison-2026-07-21.md)
+
+## Repository Governance
+
+- [Contributing guide](../CONTRIBUTING.md)
+- [Security policy](../SECURITY.md)
+- GitHub issue and pull request templates live under `../.github/`.
 
 ## Documentation Rules
 

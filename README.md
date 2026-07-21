@@ -94,10 +94,18 @@ php artisan optimize:clear
 - [Frontend architecture](docs/frontend-architecture.md)
 - [Database documentation](docs/BANCO_DE_DADOS.md)
 - [Module index](docs/modules/_INDEX.md)
+- [Roadmap](docs/ROADMAP.md)
 - [CI guide](docs/ci.md)
 - [Deployment guide](docs/deployment.md)
 - [Engineering process](docs/engineering-process.md)
 - [GitHub VetFlow comparison audit](docs/audits/github-vetflow-comparison-2026-07-21.md)
+
+## Project Governance
+
+- [Contributing guide](CONTRIBUTING.md)
+- [Security policy](SECURITY.md)
+- GitHub issue templates for bugs, feature requests, and documentation tasks.
+- GitHub pull request checklist for validation, tenant safety, and release hygiene.
 
 ## Development Principles
 

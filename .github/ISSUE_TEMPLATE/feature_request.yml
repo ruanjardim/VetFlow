@@ -1,0 +1,44 @@
+name: Feature request
+description: Suggest a product, workflow, or engineering improvement.
+title: "[Feature]: "
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What user or business problem should this solve?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed Solution
+      description: Describe the desired behavior.
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Clinic operations
+        - Clinical workflow
+        - Pet shop services
+        - Products and inventory
+        - Purchase entries and NF-e
+        - Sales and cashier
+        - Financial
+        - Dashboard and insights
+        - Security and permissions
+        - Developer experience
+        - Documentation
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: success
+    attributes:
+      label: Success Criteria
+      description: How will we know this is complete?
+      placeholder: List observable outcomes or acceptance criteria.
+

@@ -1,0 +1,67 @@
+name: Bug report
+description: Report behavior that is broken or unsafe.
+title: "[Bug]: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping improve VetFlow. Do not include real clinic, patient, tutor, payment, NF-e, or credential data.
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: What happened?
+      placeholder: Describe the issue briefly.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps To Reproduce
+      description: List the smallest set of steps that shows the problem.
+      placeholder: |
+        1. Go to ...
+        2. Submit ...
+        3. See ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected Behavior
+      description: What should have happened?
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual Behavior
+      description: What happened instead?
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Authentication and authorization
+        - Clinic tenancy
+        - Tutors and patients
+        - Appointments and schedules
+        - Products and product intelligence
+        - Inventory
+        - Purchase entries and NF-e
+        - Sales and cashier
+        - Financial
+        - Dashboard
+        - Documentation
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Local or production details that help reproduce the issue.
+      placeholder: PHP version, database, browser, branch, commit.
+

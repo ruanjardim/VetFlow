@@ -126,19 +126,23 @@ Added:
 - `STATUS.md`
 - `CHANGELOG.md`
 - `AGENTS.md`
+- `CONTRIBUTING.md`
+- `SECURITY.md`
 - `docs/README.md`
 - `docs/PROJECT_CONTEXT.md`
+- `docs/ROADMAP.md`
 - `docs/modules/_INDEX.md`
+- GitHub issue templates.
+- GitHub pull request template.
 
 Updated:
 
 - `docs/engineering-process.md`
+- `.github/workflows/ci.yml`
 
 ## Remaining Recommended Work
 
-1. Complete database documentation for clinics, users, and employees/access.
-2. Write module docs for Products, Product Intelligence, Inventory, Purchase Entries, Sales, and Financial.
-3. Add a deployment guide.
-4. Add GitHub Actions for at least backend tests and frontend build.
-5. Add screenshots or a short walkthrough once the UI is stable.
-6. Decide whether to add a public roadmap.
+1. Add screenshots or a short walkthrough once the UI is stable.
+2. Add standalone docs for Dashboard, Suppliers, and Validation.
+3. Add release notes when a stable demo or first production pilot is defined.
+4. Keep CI green as product features expand.

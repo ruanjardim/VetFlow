@@ -54,11 +54,13 @@ Those repositories reinforced the same conclusion: the public-facing gap in this
 - Added module documentation for Products, Product Intelligence, Inventory, Purchase Entries, Sales, Financial, and Clinical Core.
 - Added CI and deployment documentation.
 - Added GitHub Actions workflow for Laravel tests and Vite build.
+- Added contribution and security guidance.
+- Added GitHub issue and pull request templates.
+- Added a public roadmap with product differentiators and milestones.
 
 ## Open Documentation Gaps
 
 - Add screenshots or short walkthroughs for the main screens.
-- Decide whether a public roadmap belongs in the repository.
 - Add standalone docs for Dashboard, Suppliers, and Validation when their rules
   stabilize.
 
@@ -67,4 +69,4 @@ Those repositories reinforced the same conclusion: the public-facing gap in this
 1. Run the full test/build suite locally after documentation review.
 2. Commit and push the documentation/CI pass.
 3. Add a small screenshots/walkthrough section to the README after the UI is stable.
-4. Add a public roadmap only after deciding which milestones should be visible.
+4. Keep the public roadmap aligned with implementation and release decisions.

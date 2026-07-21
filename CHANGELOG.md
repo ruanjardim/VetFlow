@@ -20,6 +20,10 @@ This project follows the spirit of Keep a Changelog, with one practical adjustme
 - Continuous integration guide.
 - Deployment guide.
 - GitHub Actions CI workflow for Laravel tests and frontend build.
+- Contribution guide and security policy.
+- GitHub issue templates for bug reports, feature requests, and documentation tasks.
+- GitHub pull request template with validation and tenant-safety checks.
+- Public roadmap with product differentiators and milestones.
 
 ### Changed
 
@@ -29,4 +33,4 @@ This project follows the spirit of Keep a Changelog, with one practical adjustme
 ### Pending
 
 - Add screenshots or short walkthroughs for the main screens.
-- Decide whether a public roadmap belongs in the repository.
+- Add standalone docs for Dashboard, Suppliers, and Validation.
