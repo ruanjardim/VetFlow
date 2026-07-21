@@ -1,111 +1,85 @@
-# VetFlow ERP — Banco de Dados
+# VetFlow Database
 
-## 1. Objetivo
+This document summarizes the current database model. Detailed table notes live in
+`docs/banco/`.
 
-Este documento define a estrutura inicial do banco de dados do VetFlow ERP.
+## Design Goals
 
-Antes de criar migrations, models ou telas, as tabelas principais serão planejadas aqui para reduzir retrabalho e manter o sistema escalável.
+- Keep operational data separated by clinic through `clinic_id`.
+- Keep business identifiers stable with generated codes and ULIDs where useful.
+- Prefer soft deletes for operational records that can affect history.
+- Preserve audit context through source fields, snapshots, metadata, and event
+  records instead of recalculating old business facts from mutable records.
+- Keep local development simple with SQLite while keeping the model compatible
+  with a MySQL/MariaDB production path.
 
----
+## Base Tables
 
-## 2. Padrão Geral
+| Table | Purpose |
+| --- | --- |
+| `clinics` | Clinics, units, or clinic networks using VetFlow. |
+| `users` | Login identities and user profile/access state. |
+| `roles` | Access profiles, global or clinic-specific. |
+| `permissions` | Functional permissions used by middleware, Gates, and menus. |
+| `role_permission` | Pivot between roles and permissions. |
+| `user_roles` | Pivot between users and roles. |
 
-Todas as tabelas principais deverão seguir, sempre que fizer sentido:
+## Clinical Core
 
-- id
-- clinic_id
-- created_at
-- updated_at
-- deleted_at
+| Table | Purpose |
+| --- | --- |
+| `tutors` | Pet tutors/customers. |
+| `patients` | Pets/patients linked to tutors and clinics. |
+| `schedules` | Scheduling records. |
+| `appointments` | Appointment records. |
+| `petshop_services` | Pet shop service catalog. |
+| `service_orders` | Operational service orders. |
+| `service_order_items` | Products and services attached to service orders. |
 
-O campo `clinic_id` será usado para separar os dados de cada clínica.
+## Product, Stock, And Purchase Flow
 
----
+| Table | Purpose |
+| --- | --- |
+| `products` | Clinic-local product catalog, price, stock, and GTIN lookup data. |
+| `inventory_movements` | Stock ledger for entries, exits, reversals, and adjustments. |
+| `suppliers` | Supplier records scoped to clinics. |
+| `purchase_entries` | Purchase receipts and NF-e imported entries. |
+| `purchase_entry_items` | Purchase-entry items with lot, cost, price, and intelligence snapshots. |
+| `product_lookup_catalogs` | Legacy/local lookup cache for GTIN enrichment. |
+| `global_products` | Shared product intelligence catalog. |
+| `global_product_sources` | Source-level evidence for global product records. |
+| `global_product_images` | Product images collected from external or manual sources. |
+| `global_product_regulatory_data` | Regulatory or pharmaceutical metadata. |
+| `global_product_suggestions` | Review queue for missing/conflicting product data. |
+| `clinic_products` | Clinic-specific association with global products. |
 
-## 3. Tabelas Base
+## Sales And Finance
 
-As primeiras tabelas do sistema serão:
+| Table | Purpose |
+| --- | --- |
+| `sales` | Sale header, totals, status, margin, and side-effect flags. |
+| `sale_items` | Product, service, and custom sale lines with price/cost snapshots. |
+| `sale_payments` | Payment records by method, installments, and references. |
+| `sale_events` | Operational event trail for completion, stock exits, returns, refunds, and cancellation. |
+| `cash_register_closures` | Cashier closure summaries and differences. |
+| `financial_transactions` | Income/expense ledger, including sales income and purchase payables. |
 
-- clinics
-- users
-- roles
-- permissions
-- role_user
-- permission_role
-- employees
+## Tenant Boundary
 
----
+The current convention is:
 
-## 4. Próxima Etapa
+- Operational records include `clinic_id` whenever the data belongs to a clinic.
+- Eloquent models that use tenant scoping implement `tenantColumn()` returning
+  `clinic_id`.
+- Users with `clinic_id = null` are global users and must explicitly select or
+  operate inside a clinic context for tenant-sensitive flows.
+- Tests cover cross-clinic rejection for sales, purchase entries, inventory,
+  financial records, schedules, appointments, and NF-e import.
 
-Detalhar cada tabela com:
+## Documentation Map
 
-- campos
-- tipos
-- relacionamentos
-- índices
-- regras de exclusão
-
----
-
-# 5. Núcleo do Sistema
-
-## 5.1 Tabela: clinics
-
-Tabela responsável por armazenar as clínicas, unidades ou redes que usarão o VetFlow ERP.
-
-### Campos
-
-| Campo | Tipo | Obrigatório | Observação |
-|---|---|---|---|
-| id | bigint unsigned | Sim | Chave primária |
-| parent_clinic_id | bigint unsigned nullable | Não | Clínica matriz, quando for filial |
-| corporate_name | string | Sim | Razão social |
-| trade_name | string | Sim | Nome fantasia |
-| document | string | Sim | CPF ou CNPJ |
-| state_registration | string nullable | Não | Inscrição estadual |
-| municipal_registration | string nullable | Não | Inscrição municipal |
-| email | string nullable | Não | E-mail principal |
-| phone | string nullable | Não | Telefone |
-| whatsapp | string nullable | Não | WhatsApp |
-| zip_code | string nullable | Não | CEP |
-| state | string nullable | Não | Estado |
-| city | string nullable | Não | Cidade |
-| district | string nullable | Não | Bairro |
-| street | string nullable | Não | Rua |
-| number | string nullable | Não | Número |
-| complement | string nullable | Não | Complemento |
-| logo | string nullable | Não | Caminho do logotipo |
-| timezone | string | Sim | Fuso horário padrão |
-| currency | string | Sim | Moeda padrão |
-| active | boolean | Sim | Define se a clínica está ativa |
-| created_at | timestamp | Sim | Criado automaticamente pelo Laravel |
-| updated_at | timestamp | Sim | Atualizado automaticamente pelo Laravel |
-| deleted_at | timestamp nullable | Não | Exclusão lógica |
-
-### Relacionamentos
-
-- Uma clínica pode ter várias filiais.
-- Uma clínica filial pode pertencer a uma clínica matriz.
-- Uma clínica terá vários usuários.
-- Uma clínica terá vários funcionários.
-- Uma clínica terá vários clientes/tutores.
-- Uma clínica terá vários pets.
-- Uma clínica terá vários produtos.
-- Uma clínica terá várias vendas.
-- Uma clínica terá vários registros financeiros.
-
-### Índices
-
-- `document` deve ser único.
-- `parent_clinic_id` deve ser indexado.
-- `active` deve ser indexado.
-- `deleted_at` será usado pelo Soft Delete.
-
-### Regras
-
-- Nenhuma clínica deve ser apagada fisicamente do banco.
-- Ao excluir uma clínica, usar Soft Delete.
-- Clínicas inativas não podem acessar o sistema.
-- Uma filial deve conseguir herdar configurações da matriz no futuro.
-- Toda tabela operacional deverá ter `clinic_id`.
+- [Clinics](banco/01-clinics.md)
+- [Users](banco/02-users.md)
+- [Roles](banco/03-roles.md)
+- [Permissions](banco/04-permissions.md)
+- [Employee/access model](banco/05-employees.md)
