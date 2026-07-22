@@ -43,6 +43,7 @@ The product should feel different from a generic CRUD system by connecting the c
 - README, status, changelog, architecture docs, module docs, and CI are present.
 - GitHub issue and pull request templates guide future work.
 - Security and contribution expectations are documented.
+- A visual walkthrough with fictitious demo data shows the main product experience.
 
 ### Milestone 2: Operational Reliability
 
@@ -73,4 +74,3 @@ The product should feel different from a generic CRUD system by connecting the c
 - Appointment reminders and follow-up workflows.
 - Audit trail for sensitive operational changes.
 - Role presets for administrator, veterinarian, attendant, stock, cashier, and finance users.
-

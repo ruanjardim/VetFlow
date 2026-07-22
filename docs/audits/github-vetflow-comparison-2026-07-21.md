@@ -131,7 +131,9 @@ Added:
 - `docs/README.md`
 - `docs/PROJECT_CONTEXT.md`
 - `docs/ROADMAP.md`
+- `docs/WALKTHROUGH.md`
 - `docs/modules/_INDEX.md`
+- `database/seeders/WalkthroughDemoSeeder.php`
 - GitHub issue templates.
 - GitHub pull request template.
 
@@ -142,7 +144,7 @@ Updated:
 
 ## Remaining Recommended Work
 
-1. Add screenshots or a short walkthrough once the UI is stable.
+1. Refresh screenshots after relevant UI changes.
 2. Add standalone docs for Dashboard, Suppliers, and Validation.
 3. Add release notes when a stable demo or first production pilot is defined.
 4. Keep CI green as product features expand.

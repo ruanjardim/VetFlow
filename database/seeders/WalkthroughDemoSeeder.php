@@ -1,0 +1,513 @@
+<?php
+
+namespace Database\Seeders;
+
+use App\Models\Role;
+use App\Models\User;
+use App\Modules\Appointments\Models\Appointment;
+use App\Modules\Clinics\Models\Clinic;
+use App\Modules\Financial\Models\FinancialTransaction;
+use App\Modules\Inventory\Models\InventoryMovement;
+use App\Modules\Patients\Models\Patient;
+use App\Modules\ProductIntelligence\Models\GlobalProduct;
+use App\Modules\ProductIntelligence\Models\GlobalProductSource;
+use App\Modules\ProductIntelligence\Models\GlobalProductSuggestion;
+use App\Modules\Products\Models\Product;
+use App\Modules\Sales\Models\Sale;
+use App\Modules\Sales\Models\SaleItem;
+use App\Modules\Sales\Models\SalePayment;
+use App\Modules\Tutors\Models\Tutor;
+use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
+
+class WalkthroughDemoSeeder extends Seeder
+{
+    public const DEMO_EMAIL = 'walkthrough@vetflow.local';
+
+    public const DEMO_PASSWORD = 'VetFlowDemo123!';
+
+    public function run(): void
+    {
+        $this->call(AuthorizationSeeder::class);
+
+        DB::transaction(function (): void {
+            $clinic = $this->seedClinic();
+            $user = $this->seedUser($clinic);
+            $this->seedTutorJourney($clinic);
+            $products = $this->seedProductIntelligence($clinic);
+            $this->seedInventory($clinic, $products);
+            $this->seedCommercialFlow($clinic, $user, $products);
+        });
+    }
+
+    private function seedClinic(): Clinic
+    {
+        return Clinic::query()->updateOrCreate(
+            ['cnpj' => '12345678000190'],
+            [
+                'corporate_name' => 'VetFlow Demo Clinica Veterinaria LTDA',
+                'trade_name' => 'VetFlow Demo Clinic',
+                'crmv' => 'CRMV-SP 12345',
+                'technical_manager' => 'Dra. Helena Prado',
+                'email' => 'demo@vetflow.local',
+                'phone' => '(11) 4002-8922',
+                'whatsapp' => '(11) 94002-8922',
+                'website' => 'https://vetflow.local',
+                'zip_code' => '01001-000',
+                'state' => 'SP',
+                'city' => 'Sao Paulo',
+                'district' => 'Centro',
+                'street' => 'Rua Demo VetFlow',
+                'number' => '100',
+                'timezone' => 'America/Sao_Paulo',
+                'currency' => 'BRL',
+                'language' => 'pt_BR',
+                'active' => true,
+            ]
+        );
+    }
+
+    private function seedUser(Clinic $clinic): User
+    {
+        $user = User::query()
+            ->withTrashed()
+            ->firstOrNew(['email' => self::DEMO_EMAIL]);
+
+        $user->fill([
+            'clinic_id' => $clinic->id,
+            'name' => 'Admin Walkthrough',
+            'email' => self::DEMO_EMAIL,
+            'position' => 'Administracao',
+            'password' => Hash::make(self::DEMO_PASSWORD),
+            'active' => true,
+        ]);
+        $user->save();
+
+        if ($user->trashed()) {
+            $user->restore();
+        }
+
+        $adminRole = Role::query()
+            ->whereNull('clinic_id')
+            ->where('slug', 'administrador')
+            ->firstOrFail();
+
+        $existingRole = DB::table('user_roles')
+            ->where('user_id', $user->id)
+            ->where('role_id', $adminRole->id)
+            ->first();
+
+        if ($existingRole) {
+            DB::table('user_roles')
+                ->where('id', $existingRole->id)
+                ->update([
+                    'deleted_at' => null,
+                    'updated_at' => now(),
+                ]);
+        } else {
+            DB::table('user_roles')->insert([
+                'ulid' => (string) Str::ulid(),
+                'user_id' => $user->id,
+                'role_id' => $adminRole->id,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }
+
+        return $user;
+    }
+
+    private function seedTutorJourney(Clinic $clinic): void
+    {
+        $tutor = Tutor::query()->updateOrCreate(
+            ['email' => 'mariana.demo@vetflow.local'],
+            [
+                'clinic_id' => $clinic->id,
+                'name' => 'Mariana Alves',
+                'cpf' => '12345678909',
+                'phone' => '(11) 98888-0001',
+                'phone_secondary' => '(11) 97777-0001',
+                'city' => 'Sao Paulo',
+                'state' => 'SP',
+                'notes' => 'Tutor ficticio para walkthrough publico.',
+                'active' => true,
+            ]
+        );
+
+        $patient = Patient::query()->updateOrCreate(
+            [
+                'clinic_id' => $clinic->id,
+                'name' => 'Luna',
+            ],
+            [
+                'species' => 'Canino',
+                'breed' => 'Spitz Alemao',
+                'gender' => 'Femea',
+                'birth_date' => today()->subYears(3)->subMonths(2),
+                'weight' => 4.80,
+                'notes' => 'Paciente ficticio para demonstracao.',
+            ]
+        );
+
+        Appointment::query()->updateOrCreate(
+            [
+                'clinic_id' => $clinic->id,
+                'title' => 'Consulta de retorno - Luna',
+            ],
+            [
+                'patient_id' => $patient->id,
+                'tutor_id' => $tutor->id,
+                'description' => 'Revisao pos-vacina e orientacao nutricional.',
+                'scheduled_at' => now()->addHours(3)->minute(0),
+                'status' => 'scheduled',
+            ]
+        );
+    }
+
+    /**
+     * @return array<string, Product>
+     */
+    private function seedProductIntelligence(Clinic $clinic): array
+    {
+        $globalFood = GlobalProduct::query()->updateOrCreate(
+            ['gtin' => '7891000100103'],
+            [
+                'ean' => '7891000100103',
+                'barcode' => '7891000100103',
+                'name' => 'Racao Premium Filhotes 3kg',
+                'brand' => 'VetNutrition',
+                'manufacturer' => 'VetNutrition Brasil',
+                'category' => 'Alimentos',
+                'subcategory' => 'Racoes',
+                'description' => 'Produto ficticio para demonstracao do Catalogo Global.',
+                'weight' => '3kg',
+                'unit' => 'un',
+                'species' => 'Canino',
+                'api_source' => 'walkthrough_demo',
+                'source_confidence' => 94,
+                'status' => GlobalProduct::STATUS_VERIFIED,
+                'metadata' => ['demo' => true],
+                'last_lookup_at' => now()->subDay(),
+            ]
+        );
+
+        GlobalProductSource::query()->updateOrCreate(
+            [
+                'global_product_id' => $globalFood->id,
+                'source_name' => 'walkthrough_demo',
+            ],
+            [
+                'source_label' => 'Base demonstrativa',
+                'source_type' => 'internal',
+                'confidence' => 94,
+                'status' => GlobalProduct::STATUS_VERIFIED,
+                'queried_at' => now()->subDay(),
+                'payload' => ['demo' => true],
+            ]
+        );
+
+        $globalMedicine = GlobalProduct::query()->updateOrCreate(
+            ['gtin' => '7891000200209'],
+            [
+                'ean' => '7891000200209',
+                'barcode' => '7891000200209',
+                'name' => 'Vermifugo Pet 10kg',
+                'brand' => 'SaudeVet',
+                'manufacturer' => 'SaudeVet Laboratorios',
+                'category' => 'Medicamentos',
+                'subcategory' => 'Vermifugos',
+                'description' => 'Produto ficticio pendente de validacao.',
+                'species' => 'Canino',
+                'active_ingredient' => 'Praziquantel demo',
+                'prescription_required' => false,
+                'api_source' => 'walkthrough_demo',
+                'source_confidence' => 72,
+                'status' => GlobalProduct::STATUS_PENDING,
+                'metadata' => ['demo' => true],
+                'last_lookup_at' => now()->subDays(3),
+            ]
+        );
+
+        GlobalProductSuggestion::query()->updateOrCreate(
+            [
+                'gtin' => '7891000200209',
+                'suggestion_type' => 'enrichment',
+            ],
+            [
+                'suggested_name' => 'Vermifugo Pet 10kg - sugestao de enriquecimento',
+                'source_name' => 'walkthrough_demo',
+                'status' => GlobalProduct::STATUS_PENDING,
+                'confidence' => 72,
+                'payload' => ['demo' => true],
+            ]
+        );
+
+        $food = Product::query()->updateOrCreate(
+            [
+                'clinic_id' => $clinic->id,
+                'sku' => 'DEMO-RACAO-3KG',
+            ],
+            [
+                'global_product_id' => $globalFood->id,
+                'name' => 'Racao Premium Filhotes 3kg',
+                'category' => 'Alimentos',
+                'brand' => 'VetNutrition',
+                'manufacturer' => 'VetNutrition Brasil',
+                'barcode' => '7891000100103',
+                'gtin' => '7891000100103',
+                'description' => 'Item demonstrativo vinculado ao Catalogo Global.',
+                'cost_price' => 62.50,
+                'sale_price' => 99.90,
+                'stock_quantity' => 3,
+                'minimum_stock' => 8,
+                'unit' => 'un',
+                'lookup_source' => 'walkthrough_demo',
+                'lookup_metadata' => ['confidence' => 94],
+                'looked_up_at' => now()->subDay(),
+                'active' => true,
+            ]
+        );
+
+        $medicine = Product::query()->updateOrCreate(
+            [
+                'clinic_id' => $clinic->id,
+                'sku' => 'DEMO-VERM-10KG',
+            ],
+            [
+                'global_product_id' => $globalMedicine->id,
+                'name' => 'Vermifugo Pet 10kg',
+                'category' => 'Medicamentos',
+                'brand' => 'SaudeVet',
+                'manufacturer' => 'SaudeVet Laboratorios',
+                'barcode' => '7891000200209',
+                'gtin' => '7891000200209',
+                'cost_price' => 18.40,
+                'sale_price' => 34.90,
+                'stock_quantity' => 14,
+                'minimum_stock' => 5,
+                'unit' => 'cx',
+                'lookup_source' => 'walkthrough_demo',
+                'lookup_metadata' => ['confidence' => 72],
+                'looked_up_at' => now()->subDays(3),
+                'active' => true,
+            ]
+        );
+
+        $shampoo = Product::query()->updateOrCreate(
+            [
+                'clinic_id' => $clinic->id,
+                'sku' => 'DEMO-SHAMPOO-500',
+            ],
+            [
+                'name' => 'Shampoo Neutro Pet 500ml',
+                'category' => 'Higiene',
+                'brand' => 'BanhoBom',
+                'manufacturer' => 'BanhoBom Pet Care',
+                'barcode' => '7891000300305',
+                'gtin' => '7891000300305',
+                'cost_price' => 9.90,
+                'sale_price' => 0,
+                'stock_quantity' => 12,
+                'minimum_stock' => 4,
+                'unit' => 'un',
+                'active' => true,
+            ]
+        );
+
+        return [
+            'food' => $food,
+            'medicine' => $medicine,
+            'shampoo' => $shampoo,
+        ];
+    }
+
+    /**
+     * @param  array<string, Product>  $products
+     */
+    private function seedInventory(Clinic $clinic, array $products): void
+    {
+        $this->movement($clinic, $products['food'], 'entry', 3, 'DEMO-FOOD-EXP', today()->subDays(5), 'Lote vencido para alerta critico.');
+        $this->movement($clinic, $products['medicine'], 'entry', 8, 'DEMO-MED-30D', today()->addDays(12), 'Lote proximo de vencer para alerta de atencao.');
+        $this->movement($clinic, $products['shampoo'], 'entry', 5, null, null, 'Estoque sem lote para demonstracao.');
+    }
+
+    private function movement(Clinic $clinic, Product $product, string $type, float $quantity, ?string $lotNumber, mixed $expiresAt, string $notes): void
+    {
+        InventoryMovement::query()->updateOrCreate(
+            [
+                'clinic_id' => $clinic->id,
+                'product_id' => $product->id,
+                'lot_number' => $lotNumber,
+                'reason' => 'Walkthrough demo',
+            ],
+            [
+                'type' => $type,
+                'quantity' => $quantity,
+                'unit_cost' => $product->cost_price,
+                'balance_before' => 0,
+                'balance_after' => $product->stock_quantity,
+                'expires_at' => $expiresAt,
+                'occurred_at' => now()->subHours(5),
+                'source' => 'walkthrough_demo',
+                'notes' => $notes,
+                'metadata' => ['demo' => true],
+            ]
+        );
+    }
+
+    /**
+     * @param  array<string, Product>  $products
+     */
+    private function seedCommercialFlow(Clinic $clinic, User $user, array $products): void
+    {
+        $tutor = Tutor::query()->where('email', 'mariana.demo@vetflow.local')->firstOrFail();
+        $patient = Patient::query()
+            ->where('clinic_id', $clinic->id)
+            ->where('name', 'Luna')
+            ->firstOrFail();
+
+        $financial = FinancialTransaction::query()->updateOrCreate(
+            [
+                'clinic_id' => $clinic->id,
+                'reference' => 'DEMO-SALE-0001',
+            ],
+            [
+                'type' => 'income',
+                'description' => 'Venda PDV walkthrough',
+                'amount' => 134.80,
+                'due_date' => today(),
+                'paid_at' => now()->subHours(1),
+                'status' => 'paid',
+                'payment_method' => 'pix',
+                'installment_number' => 1,
+                'installment_total' => 1,
+                'notes' => 'Lancamento ficticio criado pelo WalkthroughDemoSeeder.',
+            ]
+        );
+
+        $sale = Sale::query()->updateOrCreate(
+            [
+                'clinic_id' => $clinic->id,
+                'code' => 'DEMO-SALE-0001',
+            ],
+            [
+                'tutor_id' => $tutor->id,
+                'patient_id' => $patient->id,
+                'financial_transaction_id' => $financial->id,
+                'seller_user_id' => $user->id,
+                'source' => 'pdv',
+                'status' => 'completed',
+                'payment_status' => 'paid',
+                'sold_at' => now()->subHours(1),
+                'completed_at' => now()->subHours(1),
+                'subtotal' => 134.80,
+                'discount_total' => 0,
+                'additions_total' => 0,
+                'total' => 134.80,
+                'paid_total' => 134.80,
+                'change_total' => 0,
+                'cost_total' => 80.90,
+                'gross_profit_total' => 53.90,
+                'gross_margin_percent' => 39.99,
+                'stock_applied' => true,
+                'financial_applied' => true,
+                'notes' => 'Venda ficticia para walkthrough publico.',
+                'metadata' => ['demo' => true],
+            ]
+        );
+
+        SaleItem::query()->updateOrCreate(
+            [
+                'sale_id' => $sale->id,
+                'product_id' => $products['food']->id,
+            ],
+            [
+                'type' => 'product',
+                'description' => $products['food']->name,
+                'barcode' => $products['food']->barcode,
+                'sku' => $products['food']->sku,
+                'product_name_snapshot' => $products['food']->name,
+                'brand_snapshot' => $products['food']->brand,
+                'category_snapshot' => $products['food']->category,
+                'manufacturer_snapshot' => $products['food']->manufacturer,
+                'unit_snapshot' => $products['food']->unit,
+                'quantity' => 1,
+                'unit_price' => 99.90,
+                'cost_unit_price' => 62.50,
+                'original_unit_price' => 99.90,
+                'discount_total' => 0,
+                'gross_total' => 99.90,
+                'net_total' => 99.90,
+                'gross_profit_total' => 37.40,
+                'gross_margin_percent' => 37.44,
+                'total' => 99.90,
+                'metadata' => ['demo' => true],
+            ]
+        );
+
+        SaleItem::query()->updateOrCreate(
+            [
+                'sale_id' => $sale->id,
+                'product_id' => $products['medicine']->id,
+            ],
+            [
+                'type' => 'product',
+                'description' => $products['medicine']->name,
+                'barcode' => $products['medicine']->barcode,
+                'sku' => $products['medicine']->sku,
+                'product_name_snapshot' => $products['medicine']->name,
+                'brand_snapshot' => $products['medicine']->brand,
+                'category_snapshot' => $products['medicine']->category,
+                'manufacturer_snapshot' => $products['medicine']->manufacturer,
+                'unit_snapshot' => $products['medicine']->unit,
+                'quantity' => 1,
+                'unit_price' => 34.90,
+                'cost_unit_price' => 18.40,
+                'original_unit_price' => 34.90,
+                'discount_total' => 0,
+                'gross_total' => 34.90,
+                'net_total' => 34.90,
+                'gross_profit_total' => 16.50,
+                'gross_margin_percent' => 47.28,
+                'total' => 34.90,
+                'metadata' => ['demo' => true],
+            ]
+        );
+
+        SalePayment::query()->updateOrCreate(
+            [
+                'sale_id' => $sale->id,
+                'reference' => 'DEMO-PAY-0001',
+            ],
+            [
+                'method' => 'pix',
+                'amount' => 134.80,
+                'installments' => 1,
+                'paid_at' => now()->subHours(1),
+                'transaction_reference' => 'DEMO-TX-0001',
+                'status' => 'paid',
+                'notes' => 'Pagamento ficticio.',
+            ]
+        );
+
+        FinancialTransaction::query()->updateOrCreate(
+            [
+                'clinic_id' => $clinic->id,
+                'reference' => 'DEMO-EXPENSE-0001',
+            ],
+            [
+                'type' => 'expense',
+                'description' => 'Compra de insumos veterinarios',
+                'amount' => 420.00,
+                'due_date' => today()->addDays(3),
+                'status' => 'pending',
+                'payment_method' => 'bank_slip',
+                'installment_number' => 1,
+                'installment_total' => 1,
+                'notes' => 'Conta a pagar ficticia para fluxo de caixa.',
+            ]
+        );
+    }
+}

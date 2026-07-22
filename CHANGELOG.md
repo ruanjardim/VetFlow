@@ -24,6 +24,8 @@ This project follows the spirit of Keep a Changelog, with one practical adjustme
 - GitHub issue templates for bug reports, feature requests, and documentation tasks.
 - GitHub pull request template with validation and tenant-safety checks.
 - Public roadmap with product differentiators and milestones.
+- Optional walkthrough demo seeder with fictitious clinic, product, stock, sales, and financial data.
+- Visual walkthrough with real application screenshots.
 
 ### Changed
 
@@ -32,5 +34,4 @@ This project follows the spirit of Keep a Changelog, with one practical adjustme
 
 ### Pending
 
-- Add screenshots or short walkthroughs for the main screens.
 - Add standalone docs for Dashboard, Suppliers, and Validation.

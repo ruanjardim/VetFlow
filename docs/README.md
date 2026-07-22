@@ -5,6 +5,7 @@ This directory contains the working documentation for VetFlow.
 ## Core Documents
 
 - [Project context](PROJECT_CONTEXT.md)
+- [Visual walkthrough](WALKTHROUGH.md)
 - [System architecture](ARQUITETURA.md)
 - [Backend architecture](backend-architecture.md)
 - [Frontend architecture](frontend-architecture.md)

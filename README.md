@@ -89,6 +89,7 @@ php artisan optimize:clear
 
 - [Documentation index](docs/README.md)
 - [Project context](docs/PROJECT_CONTEXT.md)
+- [Visual walkthrough](docs/WALKTHROUGH.md)
 - [System architecture](docs/ARQUITETURA.md)
 - [Backend architecture](docs/backend-architecture.md)
 - [Frontend architecture](docs/frontend-architecture.md)
@@ -99,6 +100,14 @@ php artisan optimize:clear
 - [Deployment guide](docs/deployment.md)
 - [Engineering process](docs/engineering-process.md)
 - [GitHub VetFlow comparison audit](docs/audits/github-vetflow-comparison-2026-07-21.md)
+
+## Visual Preview
+
+The repository includes a short walkthrough with real application screenshots generated from fictitious demo data.
+
+[Open the visual walkthrough](docs/WALKTHROUGH.md)
+
+![VetFlow dashboard preview](docs/assets/walkthrough/01-dashboard.png)
 
 ## Project Governance
 

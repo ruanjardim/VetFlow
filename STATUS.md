@@ -57,10 +57,11 @@ Those repositories reinforced the same conclusion: the public-facing gap in this
 - Added contribution and security guidance.
 - Added GitHub issue and pull request templates.
 - Added a public roadmap with product differentiators and milestones.
+- Added an optional walkthrough demo seeder.
+- Added a visual walkthrough with real application screenshots and fictitious data.
 
 ## Open Documentation Gaps
 
-- Add screenshots or short walkthroughs for the main screens.
 - Add standalone docs for Dashboard, Suppliers, and Validation when their rules
   stabilize.
 
@@ -68,5 +69,5 @@ Those repositories reinforced the same conclusion: the public-facing gap in this
 
 1. Run the full test/build suite locally after documentation review.
 2. Commit and push the documentation/CI pass.
-3. Add a small screenshots/walkthrough section to the README after the UI is stable.
+3. Refresh walkthrough screenshots after relevant UI changes.
 4. Keep the public roadmap aligned with implementation and release decisions.
