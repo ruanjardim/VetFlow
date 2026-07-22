@@ -29,13 +29,16 @@ The employee/access note documents the current decision to use `users`,
 ## Modules
 
 - [Module index](modules/_INDEX.md)
+- [Dashboard](modules/dashboard.md)
 - [Products](modules/products.md)
 - [Product Intelligence](modules/product-intelligence.md)
 - [Inventory](modules/inventory.md)
 - [Purchase Entries](modules/purchase-entries.md)
+- [Suppliers](modules/suppliers.md)
 - [Sales](modules/sales.md)
 - [Financial](modules/financial.md)
 - [Clinical Core](modules/clinical-core.md)
+- [Validation](modules/validation.md)
 
 ## Audits
 

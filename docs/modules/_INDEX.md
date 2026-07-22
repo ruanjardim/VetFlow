@@ -10,7 +10,7 @@ This index maps the current code modules and the documentation that should event
 | Clients | Client-related area | Pending module doc |
 | ClinicProducts | Clinic-specific product association | Pending module doc |
 | Clinics | Clinic administration and tenant foundation | Partially covered in database docs |
-| Dashboard | Operational dashboard data and widgets | Pending module doc |
+| Dashboard | Operational dashboard data and widgets | Documented in [Dashboard](dashboard.md) |
 | Finance | Finance-related area | Pending review; overlaps with Financial |
 | Financial | Financial transactions and payable/receivable flows | Documented in [Financial](financial.md) |
 | Implementation | Implementation/onboarding flow | Pending module doc |
@@ -26,18 +26,18 @@ This index maps the current code modules and the documentation that should event
 | Sales | Sales, sale items, payments, returns, cash register support | Documented in [Sales](sales.md) |
 | Schedules | Scheduling base | Covered in [Clinical Core](clinical-core.md) |
 | ServiceOrders | Service orders and service order items | Covered in [Clinical Core](clinical-core.md) |
-| Suppliers | Supplier management | Pending module doc |
+| Suppliers | Supplier management | Documented in [Suppliers](suppliers.md) |
 | Tutors | Tutor/customer records | Covered in [Clinical Core](clinical-core.md) |
 | Users | User records and access foundation | Partially covered in database docs |
-| Validation | Shared validation services/controllers | Pending module doc |
+| Validation | Shared validation services/controllers | Documented in [Validation](validation.md) |
 
 ## Priority For Module Documentation
 
-1. Dashboard and reporting documentation.
-2. Clinics, Users, Roles, and Permissions as operational docs, beyond database
+1. Clinics, Users, Roles, and Permissions as operational docs, beyond database
    notes.
-3. Suppliers and PetShopServices as standalone docs if their business rules grow.
-4. Validation and shared support services.
+2. Reporting documentation.
+3. PetShopServices as a standalone doc if its business rules grow.
+4. Clients, Implementation, and other present-but-thin module areas.
 
 ## Suggested Module Doc Template
 

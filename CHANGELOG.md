@@ -26,6 +26,7 @@ This project follows the spirit of Keep a Changelog, with one practical adjustme
 - Public roadmap with product differentiators and milestones.
 - Optional walkthrough demo seeder with fictitious clinic, product, stock, sales, and financial data.
 - Visual walkthrough with real application screenshots.
+- Standalone module documentation for Dashboard, Suppliers, and Validation.
 
 ### Changed
 
@@ -34,4 +35,4 @@ This project follows the spirit of Keep a Changelog, with one practical adjustme
 
 ### Pending
 
-- Add standalone docs for Dashboard, Suppliers, and Validation.
+- Add standalone operational docs for Clinics, Users, Roles, and Permissions.

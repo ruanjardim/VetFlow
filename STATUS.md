@@ -52,6 +52,7 @@ Those repositories reinforced the same conclusion: the public-facing gap in this
 - Added the GitHub comparison audit under `docs/audits/`.
 - Completed database notes for clinics, users, and the current employee/access model.
 - Added module documentation for Products, Product Intelligence, Inventory, Purchase Entries, Sales, Financial, and Clinical Core.
+- Added standalone module documentation for Dashboard, Suppliers, and Validation.
 - Added CI and deployment documentation.
 - Added GitHub Actions workflow for Laravel tests and Vite build.
 - Added contribution and security guidance.
@@ -62,8 +63,8 @@ Those repositories reinforced the same conclusion: the public-facing gap in this
 
 ## Open Documentation Gaps
 
-- Add standalone docs for Dashboard, Suppliers, and Validation when their rules
-  stabilize.
+- Add standalone operational docs for Clinics, Users, Roles, and Permissions.
+- Add module docs for thin or overlapping areas as their rules stabilize.
 
 ## Next Recommended Documentation Slice
 
