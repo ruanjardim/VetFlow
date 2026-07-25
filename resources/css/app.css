@@ -1115,6 +1115,220 @@ textarea {
   min-width: 620px;
 }
 
+.implementation-heading {
+  align-items: flex-start;
+  display: flex;
+  gap: 18px;
+  justify-content: space-between;
+}
+
+.implementation-heading h2 {
+  margin: 0;
+}
+
+.implementation-heading > strong {
+  color: #0f766e;
+  font-size: 18px;
+}
+
+.eyebrow {
+  color: #0f766e;
+  display: block;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  margin-bottom: 6px;
+  text-transform: uppercase;
+}
+
+.implementation-progress {
+  background: #e2e8f0;
+  border-radius: 999px;
+  height: 8px;
+  margin-top: 16px;
+  overflow: hidden;
+}
+
+.implementation-progress span {
+  background: #0f766e;
+  border-radius: inherit;
+  display: block;
+  height: 100%;
+}
+
+.implementation-steps {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(8, minmax(110px, 1fr));
+  margin-top: 16px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+
+.implementation-step {
+  align-items: center;
+  border: 1px solid #dbe3ee;
+  border-radius: 8px;
+  color: #64748b;
+  display: flex;
+  font-size: 12px;
+  gap: 8px;
+  min-height: 48px;
+  padding: 8px 10px;
+  white-space: nowrap;
+}
+
+.implementation-step-number {
+  align-items: center;
+  background: #f1f5f9;
+  border-radius: 999px;
+  display: inline-flex;
+  flex: 0 0 24px;
+  font-weight: 700;
+  height: 24px;
+  justify-content: center;
+}
+
+.implementation-step.current {
+  background: #f0fdfa;
+  border-color: #0f766e;
+  color: #115e59;
+  font-weight: 700;
+}
+
+.implementation-step.current .implementation-step-number,
+.implementation-step.completed .implementation-step-number {
+  background: #0f766e;
+  color: #ffffff;
+}
+
+.implementation-step.completed {
+  color: #0f766e;
+}
+
+.implementation-options {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-top: 18px;
+  max-width: 920px;
+}
+
+.implementation-option {
+  align-items: flex-start;
+  background: #ffffff;
+  border: 1px solid #dbe3ee;
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  gap: 12px;
+  min-height: 72px;
+  padding: 14px;
+}
+
+.implementation-option:hover {
+  border-color: #94a3b8;
+}
+
+.implementation-option:focus-within {
+  box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.14);
+}
+
+.implementation-option:has(input:checked) {
+  background: #f0fdfa;
+  border-color: #0f766e;
+}
+
+.implementation-option:has(input:disabled) {
+  background: #f8fafc;
+  cursor: not-allowed;
+  opacity: 0.68;
+}
+
+.implementation-option input[type="radio"] {
+  accent-color: #0f766e;
+  flex: 0 0 18px;
+  height: 18px;
+  margin: 2px 0 0;
+  min-height: 0;
+  padding: 0;
+  width: 18px;
+}
+
+.implementation-option > span {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.implementation-option strong {
+  color: #1e293b;
+  font-size: 14px;
+}
+
+.implementation-option small {
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.4;
+}
+
+.implementation-blocks {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-top: 18px;
+}
+
+.implementation-block {
+  align-items: center;
+  background: #f8fafc;
+  border: 1px solid #dbe3ee;
+  border-radius: 8px;
+  display: flex;
+  gap: 10px;
+  padding: 12px;
+}
+
+.implementation-block input {
+  flex: 0 0 auto;
+}
+
+.compact-panel {
+  margin-top: 18px;
+}
+
+.implementation-placeholder {
+  color: #475569;
+  padding: 34px 18px;
+  text-align: center;
+}
+
+.implementation-placeholder > span {
+  color: #0f766e;
+  display: block;
+  font-size: 32px;
+  font-weight: 700;
+}
+
+.implementation-placeholder h2 {
+  color: #1e293b;
+  margin: 6px 0;
+}
+
+.implementation-placeholder p {
+  margin: 0;
+}
+
+.implementation-actions {
+  align-items: center;
+  border-top: 1px solid #e2e8f0;
+  display: flex;
+  justify-content: space-between;
+  margin-top: 24px;
+  padding-top: 18px;
+}
+
 @media print {
   body {
     background: #ffffff;
@@ -1176,7 +1390,9 @@ textarea {
   .receipt-info-grid,
   .receipt-summary,
   .sale-checkout-grid,
-  .sale-checkout-payment {
+  .sale-checkout-payment,
+  .implementation-options,
+  .implementation-blocks {
     grid-template-columns: 1fr;
   }
 
@@ -1190,6 +1406,12 @@ textarea {
   }
 
   .alert-soft {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .implementation-heading,
+  .implementation-actions {
     align-items: stretch;
     flex-direction: column;
   }
