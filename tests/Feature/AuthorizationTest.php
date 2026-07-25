@@ -90,10 +90,10 @@ class AuthorizationTest extends TestCase
         $this->actingAs($user)
             ->get(route('implementation.index'))
             ->assertOk()
-            ->assertSee('Implantacao')
-            ->assertSee('Base da migracao')
-            ->assertSee('Tutors CSV')
-            ->assertSee('Cadastrar clinica');
+            ->assertSee('Assistente de Implantação')
+            ->assertSee('Clínica destino')
+            ->assertSee('Cadastre uma clínica antes de iniciar.')
+            ->assertSee('Cadastrar clínica');
     }
 
     public function test_user_with_implementation_permission_can_download_migration_template(): void
