@@ -9,10 +9,27 @@
       <p>Prepare, valide e acompanhe a migração de dados da clínica para o VetFlow.</p>
     </div>
 
-    <a class="button secondary" href="{{ route('clinics.index') }}">
-      Clínicas
-    </a>
+    <div class="row-actions">
+      @if(!empty($wizardState))
+        <form method="POST" action="{{ route('implementation.reset') }}">
+          @csrf
+          @method('DELETE')
+
+          <button class="button secondary" type="submit">
+            Reiniciar
+          </button>
+        </form>
+      @endif
+
+      <a class="button secondary" href="{{ route('clinics.index') }}">
+        Clínicas
+      </a>
+    </div>
   </header>
+
+  @if(session('warning'))
+    <div class="alert warning">{{ session('warning') }}</div>
+  @endif
 
   @if($clinicsCount === 0)
     <div class="alert warning action-alert">
@@ -56,23 +73,31 @@
             $stepState = $stepNumber < $currentStep
               ? 'completed'
               : ($stepNumber === $currentStep ? 'current' : 'pending');
+            $stepEnabled = $stepNumber <= $maxAllowedStep;
           @endphp
 
-          <a
-            href="{{ route('implementation.index', ['step' => $stepNumber]) }}"
-            class="implementation-step {{ $stepState }}"
-            @if($stepNumber === $currentStep) aria-current="step" @endif
-          >
-            <span class="implementation-step-number">
-              @if($stepNumber < $currentStep)
-                ✓
-              @else
-                {{ $stepNumber }}
-              @endif
-            </span>
+          @if($stepEnabled)
+            <a
+              href="{{ route('implementation.index', ['step' => $stepNumber]) }}"
+              class="implementation-step {{ $stepState }}"
+              @if($stepNumber === $currentStep) aria-current="step" @endif
+            >
+              <span class="implementation-step-number">
+                @if($stepNumber < $currentStep)
+                  ✓
+                @else
+                  {{ $stepNumber }}
+                @endif
+              </span>
 
-            <span>{{ $step['short_title'] }}</span>
-          </a>
+              <span>{{ $step['short_title'] }}</span>
+            </a>
+          @else
+            <span class="implementation-step disabled" aria-disabled="true">
+              <span class="implementation-step-number">{{ $stepNumber }}</span>
+              <span>{{ $step['short_title'] }}</span>
+            </span>
+          @endif
         @endforeach
       </nav>
     </div>
@@ -84,27 +109,38 @@
         @case(1)
           <h2>Selecione a clínica destino</h2>
           <p class="muted">
-            Todos os dados validados nesta implantação serão vinculados à clínica escolhida.
+            Todos os tutores confirmados nesta implantação serão vinculados à clínica escolhida.
           </p>
 
           @if($clinicsCount > 0)
-            <div class="form-group">
-              <label for="implementation-clinic">Clínica</label>
+            <form method="POST" action="{{ route('implementation.clinic') }}">
+              @csrf
 
-              <select id="implementation-clinic" name="clinic_id">
-                <option value="">Selecione uma clínica</option>
+              <div class="form-group implementation-form-width">
+                <label for="implementation-clinic">Clínica</label>
 
-                @foreach($clinics as $clinic)
-                  <option value="{{ $clinic->id }}">
-                    {{ $clinic->trade_name }} — {{ $clinic->corporate_name }}
-                  </option>
-                @endforeach
-              </select>
-            </div>
+                <select id="implementation-clinic" name="clinic_id" required>
+                  <option value="">Selecione uma clínica</option>
+
+                  @foreach($clinics as $clinic)
+                    <option
+                      value="{{ $clinic->id }}"
+                      @selected((string) old('clinic_id', $wizardState['clinic_id'] ?? '') === (string) $clinic->id)
+                    >
+                      {{ $clinic->trade_name }} — {{ $clinic->corporate_name }}
+                    </option>
+                  @endforeach
+                </select>
+              </div>
+
+              <div class="form-actions">
+                <button class="button" type="submit">Salvar e continuar</button>
+              </div>
+            </form>
           @else
             <div class="empty-state">
-              <h3>Nenhuma clínica cadastrada</h3>
-              <p>Cadastre a clínica destino para liberar o assistente.</p>
+              <h3>Nenhuma clínica disponível</h3>
+              <p>Cadastre ou ative a clínica destino para liberar o assistente.</p>
             </div>
           @endif
           @break
@@ -112,52 +148,73 @@
         @case(2)
           <h2>Escolha a origem dos dados</h2>
           <p class="muted">
-            Nesta primeira versão, CSV e Excel serão os formatos prioritários.
+            A primeira importação funcional usa CSV. Excel será habilitado após este fluxo estar consolidado.
           </p>
 
-          <div class="implementation-options">
-            @foreach($dataSources as $sourceValue => $sourceLabel)
-              <label class="implementation-option">
-                <input
-                  type="radio"
-                  name="data_source"
-                  value="{{ $sourceValue }}"
-                  @disabled(!in_array($sourceValue, ['csv', 'excel'], true))
-                >
+          <form method="POST" action="{{ route('implementation.source') }}">
+            @csrf
 
-                <span>
-                  <strong>{{ $sourceLabel }}</strong>
+            <div class="implementation-options">
+              @foreach($dataSources as $sourceValue => $sourceLabel)
+                @php($sourceAvailable = $sourceValue === 'csv')
 
-                  @if(in_array($sourceValue, ['csv', 'excel'], true))
-                    <small>Disponível na próxima etapa da implementação</small>
-                  @else
-                    <small>Conector planejado</small>
-                  @endif
-                </span>
-              </label>
-            @endforeach
-          </div>
+                <label class="implementation-option">
+                  <input
+                    type="radio"
+                    name="data_source"
+                    value="{{ $sourceValue }}"
+                    @checked(old('data_source', $wizardState['data_source'] ?? '') === $sourceValue)
+                    @disabled(!$sourceAvailable)
+                  >
+
+                  <span>
+                    <strong>{{ $sourceLabel }}</strong>
+
+                    @if($sourceAvailable)
+                      <small>Disponível agora para importação de Tutores</small>
+                    @elseif($sourceValue === 'excel')
+                      <small>Próxima origem planejada</small>
+                    @else
+                      <small>Conector planejado</small>
+                    @endif
+                  </span>
+                </label>
+              @endforeach
+            </div>
+
+            <div class="form-actions">
+              <button class="button" type="submit">Salvar e continuar</button>
+            </div>
+          </form>
           @break
 
         @case(3)
-          <h2>Envio de arquivos</h2>
+          <h2>Envie o CSV de Tutores</h2>
           <p class="muted">
-            O upload real será conectado na próxima sprint. A estrutura dos blocos já está preparada.
+            Use o template do VetFlow. O arquivo pode ter até 2 MB e 500 registros.
           </p>
 
           <div class="implementation-blocks">
             @foreach($migrationBlocks as $block)
-              <label class="implementation-block">
-                <input type="checkbox" disabled>
-                <span>{{ $block }}</span>
+              <label class="implementation-block {{ $block['available'] ? 'available' : 'disabled' }}">
+                <input
+                  type="checkbox"
+                  @checked($block['available'])
+                  disabled
+                >
+
+                <span>
+                  <strong>{{ $block['label'] }}</strong>
+                  <small>{{ $block['available'] ? 'Disponível nesta entrega' : 'Planejado' }}</small>
+                </span>
               </label>
             @endforeach
           </div>
 
           <div class="panel compact-panel">
             <div class="panel-body">
-              <h3>Templates CSV</h3>
-              <p class="muted">Use os modelos do VetFlow para organizar os dados antes do envio.</p>
+              <h3>1. Baixe o template</h3>
+              <p class="muted">Mantenha os nomes das colunas para que o mapeamento seja automático.</p>
 
               <div class="row-actions">
                 @foreach($templates as $template)
@@ -165,58 +222,257 @@
                     class="button secondary"
                     href="{{ route('implementation.templates', $template) }}"
                   >
-                    {{ ucfirst($template) }} CSV
+                    Tutores CSV
                   </a>
                 @endforeach
               </div>
             </div>
           </div>
+
+          <form
+            class="implementation-upload"
+            method="POST"
+            action="{{ route('implementation.tutors.upload') }}"
+            enctype="multipart/form-data"
+          >
+            @csrf
+
+            <h3>2. Envie o arquivo preenchido</h3>
+
+            <div class="form-group implementation-form-width">
+              <label for="tutors-file">Arquivo CSV</label>
+              <input
+                id="tutors-file"
+                type="file"
+                name="tutors_file"
+                accept=".csv,text/csv"
+                required
+              >
+              <span class="field-hint">
+                Colunas esperadas: nome, telefone, whatsapp, email, cpf_cnpj, endereco e observacoes.
+              </span>
+            </div>
+
+            <div class="form-actions">
+              <button class="button" type="submit">Analisar arquivo</button>
+            </div>
+          </form>
           @break
 
         @case(4)
-          <div class="implementation-placeholder">
-            <span>04</span>
-            <h2>Mapeamento de colunas</h2>
-            <p>Os campos do arquivo serão relacionados aos campos oficiais do VetFlow.</p>
+          <h2>Mapeamento automático</h2>
+          <p class="muted">
+            Arquivo <strong>{{ $wizardState['file_name'] ?? 'tutores.csv' }}</strong>,
+            separado por {{ $analysis['delimiter'] ?? 'delimitador não identificado' }}.
+          </p>
+
+          <div class="table-wrap implementation-table">
+            <table>
+              <thead>
+                <tr>
+                  <th>Coluna do CSV</th>
+                  <th>Campo no VetFlow</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                @foreach($mappingDefinitions as $mapping)
+                  @php($columnFound = in_array($mapping['source_label'], $analysis['headers'] ?? [], true))
+
+                  <tr>
+                    <td><code>{{ $mapping['source_label'] }}</code></td>
+                    <td>{{ $mapping['target_label'] }}</td>
+                    <td>
+                      <span class="badge {{ $columnFound ? 'success' : 'danger' }}">
+                        {{ $columnFound ? 'Detectada' : 'Ausente' }}
+                      </span>
+                    </td>
+                  </tr>
+                @endforeach
+              </tbody>
+            </table>
           </div>
           @break
 
         @case(5)
-          <div class="implementation-placeholder">
-            <span>05</span>
-            <h2>Validação dos dados</h2>
-            <p>Duplicidades, campos obrigatórios e inconsistências serão apresentados aqui.</p>
+          <h2>Resultado da validação</h2>
+
+          <div class="implementation-summary">
+            <div>
+              <span>Registros lidos</span>
+              <strong>{{ $analysis['total_rows'] ?? 0 }}</strong>
+            </div>
+            <div>
+              <span>Válidos</span>
+              <strong>{{ $analysis['valid_rows'] ?? 0 }}</strong>
+            </div>
+            <div>
+              <span>Com pendências</span>
+              <strong>{{ $analysis['invalid_rows'] ?? 0 }}</strong>
+            </div>
           </div>
+
+          @if(!empty($analysis['file_errors']))
+            <div class="alert error">
+              <strong>Problemas no arquivo:</strong>
+
+              <ul class="implementation-error-list">
+                @foreach($analysis['file_errors'] as $error)
+                  <li>{{ $error }}</li>
+                @endforeach
+              </ul>
+            </div>
+          @endif
+
+          @if(($analysis['can_import'] ?? false))
+            <div class="alert success">
+              Todos os registros estão prontos para a pré-visualização.
+            </div>
+          @else
+            <div class="alert warning action-alert">
+              <div>
+                <strong>Envie um novo arquivo após as correções.</strong>
+                <span>Nenhum registro será gravado enquanto houver pendências.</span>
+              </div>
+
+              <a class="button secondary" href="{{ route('implementation.index', ['step' => 3]) }}">
+                Substituir CSV
+              </a>
+            </div>
+          @endif
+
+          @if(($analysis['invalid_rows'] ?? 0) > 0)
+            <div class="table-wrap implementation-table">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Linha</th>
+                    <th>Tutor</th>
+                    <th>Pendências</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @foreach($analysis['rows'] as $row)
+                    @if(!empty($row['errors']))
+                      <tr>
+                        <td>{{ $row['line'] }}</td>
+                        <td>{{ $row['values']['name'] ?: 'Sem nome' }}</td>
+                        <td>{{ implode(' ', $row['errors']) }}</td>
+                      </tr>
+                    @endif
+                  @endforeach
+                </tbody>
+              </table>
+            </div>
+          @endif
           @break
 
         @case(6)
-          <div class="implementation-placeholder">
-            <span>06</span>
-            <h2>Pré-visualização</h2>
-            <p>Uma amostra dos registros ficará disponível para conferência antes da gravação.</p>
+          <h2>Pré-visualização dos Tutores</h2>
+          <p class="muted">
+            Confira os dados antes da gravação. Até 20 registros são exibidos nesta tela.
+          </p>
+
+          <div class="table-wrap implementation-table">
+            <table>
+              <thead>
+                <tr>
+                  <th>Linha</th>
+                  <th>Nome</th>
+                  <th>Telefone</th>
+                  <th>WhatsApp</th>
+                  <th>E-mail</th>
+                  <th>CPF</th>
+                </tr>
+              </thead>
+              <tbody>
+                @foreach(array_slice($analysis['rows'] ?? [], 0, 20) as $row)
+                  <tr>
+                    <td>{{ $row['line'] }}</td>
+                    <td>{{ $row['values']['name'] }}</td>
+                    <td>{{ $row['values']['phone'] }}</td>
+                    <td>{{ $row['values']['phone_secondary'] ?: '—' }}</td>
+                    <td>{{ $row['values']['email'] ?: '—' }}</td>
+                    <td>{{ $row['values']['cpf'] ?: '—' }}</td>
+                  </tr>
+                @endforeach
+              </tbody>
+            </table>
           </div>
           @break
 
         @case(7)
-          <div class="implementation-placeholder">
-            <span>07</span>
-            <h2>Importação</h2>
-            <p>O progresso de cada bloco será acompanhado nesta etapa.</p>
+          <h2>Confirmar importação</h2>
+          <p class="muted">
+            Esta ação criará os tutores validados na clínica selecionada.
+          </p>
+
+          <dl class="implementation-confirmation">
+            <div>
+              <dt>Clínica</dt>
+              <dd>{{ $selectedClinic?->trade_name }}</dd>
+            </div>
+            <div>
+              <dt>Arquivo</dt>
+              <dd>{{ $wizardState['file_name'] ?? 'tutores.csv' }}</dd>
+            </div>
+            <div>
+              <dt>Tutores</dt>
+              <dd>{{ $analysis['valid_rows'] ?? 0 }}</dd>
+            </div>
+          </dl>
+
+          <div class="alert warning">
+            Confirme somente depois de revisar a prévia. A importação é executada em uma transação.
           </div>
+
+          <form method="POST" action="{{ route('implementation.tutors.import') }}">
+            @csrf
+
+            <button class="button" type="submit">Importar Tutores</button>
+          </form>
           @break
 
         @case(8)
-          <div class="implementation-placeholder">
-            <span>08</span>
-            <h2>Finalização</h2>
-            <p>O relatório final da implantação será exibido aqui.</p>
+          <div class="implementation-finish">
+            <span aria-hidden="true">✓</span>
+            <h2>Importação concluída</h2>
+            <p>Os Tutores foram adicionados à clínica selecionada.</p>
           </div>
+
+          @if($completedSummary)
+            <dl class="implementation-confirmation">
+              <div>
+                <dt>Clínica</dt>
+                <dd>{{ $completedSummary['clinic_name'] }}</dd>
+              </div>
+              <div>
+                <dt>Arquivo</dt>
+                <dd>{{ $completedSummary['file_name'] }}</dd>
+              </div>
+              <div>
+                <dt>Importados</dt>
+                <dd>{{ $completedSummary['imported_count'] }}</dd>
+              </div>
+              <div>
+                <dt>Concluído em</dt>
+                <dd>{{ $completedSummary['completed_at'] }}</dd>
+              </div>
+            </dl>
+          @endif
+
+          <form method="POST" action="{{ route('implementation.reset') }}">
+            @csrf
+            @method('DELETE')
+
+            <button class="button" type="submit">Iniciar nova importação</button>
+          </form>
           @break
       @endswitch
 
       <div class="implementation-actions">
         <div>
-          @if($previousStep)
+          @if($previousStep && $currentStep !== 8)
             <a
               class="button secondary"
               href="{{ route('implementation.index', ['step' => $previousStep]) }}"
@@ -227,16 +483,26 @@
         </div>
 
         <div>
-          @if($nextStep)
+          @if($currentStep === 4)
             <a
               class="button"
-              href="{{ route('implementation.index', ['step' => $nextStep]) }}"
+              href="{{ route('implementation.index', ['step' => 5]) }}"
             >
-              Continuar
+              Validar dados
             </a>
-          @else
-            <a class="button" href="{{ route('dashboard') }}">
-              Concluir
+          @elseif($currentStep === 5 && ($analysis['can_import'] ?? false))
+            <a
+              class="button"
+              href="{{ route('implementation.index', ['step' => 6]) }}"
+            >
+              Ver prévia
+            </a>
+          @elseif($currentStep === 6)
+            <a
+              class="button"
+              href="{{ route('implementation.index', ['step' => 7]) }}"
+            >
+              Continuar para importação
             </a>
           @endif
         </div>

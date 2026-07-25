@@ -1206,6 +1206,13 @@ textarea {
   color: #0f766e;
 }
 
+.implementation-step.disabled {
+  background: #f8fafc;
+  color: #94a3b8;
+  cursor: not-allowed;
+  opacity: 0.72;
+}
+
 .implementation-options {
   display: grid;
   gap: 12px;
@@ -1294,8 +1301,131 @@ textarea {
   flex: 0 0 auto;
 }
 
+.implementation-block > span {
+  display: grid;
+  gap: 2px;
+}
+
+.implementation-block small {
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 400;
+}
+
+.implementation-block.available {
+  background: #f0fdfa;
+  border-color: #99f6e4;
+}
+
+.implementation-block.disabled {
+  opacity: 0.66;
+}
+
 .compact-panel {
   margin-top: 18px;
+}
+
+.implementation-form-width {
+  margin-top: 18px;
+  max-width: 680px;
+}
+
+.implementation-form-width label,
+.implementation-form-width .field-hint {
+  display: block;
+}
+
+.implementation-form-width .field-hint {
+  margin-top: 6px;
+}
+
+.implementation-upload {
+  border-top: 1px solid #e2e8f0;
+  margin-top: 22px;
+  padding-top: 22px;
+}
+
+.implementation-error-list {
+  margin: 8px 0 0;
+  padding-left: 20px;
+}
+
+.implementation-table {
+  margin-top: 18px;
+}
+
+.implementation-table table {
+  min-width: 720px;
+}
+
+.implementation-summary {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin: 18px 0;
+}
+
+.implementation-summary div,
+.implementation-confirmation div {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  display: grid;
+  gap: 4px;
+  padding: 14px;
+}
+
+.implementation-summary span,
+.implementation-confirmation dt {
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.implementation-summary strong {
+  color: #0f172a;
+  font-size: 24px;
+}
+
+.implementation-confirmation {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  margin: 18px 0;
+}
+
+.implementation-confirmation dd {
+  color: #0f172a;
+  font-weight: 700;
+  margin: 0;
+}
+
+.implementation-finish {
+  padding: 24px 12px 10px;
+  text-align: center;
+}
+
+.implementation-finish > span {
+  align-items: center;
+  background: #dcfce7;
+  border-radius: 999px;
+  color: #166534;
+  display: inline-flex;
+  font-size: 28px;
+  font-weight: 700;
+  height: 58px;
+  justify-content: center;
+  width: 58px;
+}
+
+.implementation-finish h2 {
+  margin: 12px 0 6px;
+}
+
+.implementation-finish p {
+  color: #64748b;
+  margin: 0;
 }
 
 .implementation-placeholder {
@@ -1392,7 +1522,8 @@ textarea {
   .sale-checkout-grid,
   .sale-checkout-payment,
   .implementation-options,
-  .implementation-blocks {
+  .implementation-blocks,
+  .implementation-summary {
     grid-template-columns: 1fr;
   }
 
