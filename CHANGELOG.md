@@ -27,6 +27,8 @@ This project follows the spirit of Keep a Changelog, with one practical adjustme
 - Optional walkthrough demo seeder with fictitious clinic, product, stock, sales, and financial data.
 - Visual walkthrough with real application screenshots.
 - Standalone module documentation for Dashboard, Suppliers, and Validation.
+- Assisted Tutor CSV import with clinic isolation, validation, preview, and transactional confirmation.
+- Standalone module documentation for Implementation.
 
 ### Changed
 

@@ -7,5 +7,20 @@ Route::get('implementation/templates/{template}', [ImplementationController::cla
     ->where('template', '[a-z-]+')
     ->name('implementation.templates');
 
+Route::post('implementation/clinic', [ImplementationController::class, 'selectClinic'])
+    ->name('implementation.clinic');
+
+Route::post('implementation/source', [ImplementationController::class, 'selectSource'])
+    ->name('implementation.source');
+
+Route::post('implementation/tutors/upload', [ImplementationController::class, 'uploadTutors'])
+    ->name('implementation.tutors.upload');
+
+Route::post('implementation/tutors/import', [ImplementationController::class, 'importTutors'])
+    ->name('implementation.tutors.import');
+
+Route::delete('implementation', [ImplementationController::class, 'reset'])
+    ->name('implementation.reset');
+
 Route::get('implementation', [ImplementationController::class, 'index'])
     ->name('implementation.index');
