@@ -142,6 +142,7 @@ class WalkthroughDemoSeeder extends Seeder
                 'name' => 'Luna',
             ],
             [
+                'tutor_id' => $tutor->id,
                 'species' => 'Canino',
                 'breed' => 'Spitz Alemao',
                 'gender' => 'Femea',

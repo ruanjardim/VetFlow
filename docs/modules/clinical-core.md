@@ -23,6 +23,17 @@ order flows that connect clinic operations to sales and finance.
 - Build service orders with product and service items.
 - Convert service orders into billable sales when appropriate.
 
+## Tutor And Patient Relationship
+
+Every new Patient must reference a Tutor from the same clinic. Existing legacy
+Patient rows remain compatible because the database relationship is nullable,
+but the application requires `tutor_id` for new manual records and CSV imports.
+Hard-deleting a Tutor keeps the historical Patient and clears its Tutor
+reference.
+
+The Patient screens expose the Tutor relationship, and the repository loads it
+with the Patient list to avoid repeated queries.
+
 ## Tables
 
 - `tutors`
@@ -50,7 +61,8 @@ service order as finished.
 ## Tenant Rules
 
 Clinical records are tenant-scoped through `clinic_id`. Tests cover rejection of
-tutors, patients, products, and services from another clinic.
+tutors, patients, products, and services from another clinic. Patient creation
+also verifies that the selected Tutor belongs to the destination clinic.
 
 ## Permissions
 
@@ -65,4 +77,6 @@ Relevant permission slugs:
 
 ## Tests
 
-Relevant coverage is present in `tests/Feature/PurchaseAndClinicalFlowTest.php`.
+Relevant coverage is present in
+`tests/Feature/PurchaseAndClinicalFlowTest.php` and
+`tests/Feature/PatientTutorFoundationTest.php`.

@@ -11,7 +11,7 @@ use RuntimeException;
 
 class ImplementationWorkflowService
 {
-    private const SESSION_KEY = 'implementation.tutor_csv';
+    private const SESSION_KEY = 'implementation.csv';
 
     /**
      * @return array<string, mixed>
@@ -65,13 +65,17 @@ class ImplementationWorkflowService
     /**
      * @param  array<string, mixed>  $analysis
      */
-    public function storeAnalysis(array $analysis, string $originalName): void
-    {
+    public function storeAnalysis(
+        array $analysis,
+        string $originalName,
+        string $entityType
+    ): void {
         $state = $this->state();
         $this->deleteAnalysis($state);
 
         $path = sprintf(
-            'implementation/tutor-csv/%s/%s.json',
+            'implementation/%s-csv/%s/%s.json',
+            $entityType,
             Auth::id(),
             Str::uuid()
         );
@@ -92,6 +96,7 @@ class ImplementationWorkflowService
             'can_import' => $analysis['can_import'],
         ];
         $state['file_name'] = $originalName;
+        $state['entity_type'] = $entityType;
 
         unset($state['completed']);
 

@@ -28,6 +28,9 @@ This project follows the spirit of Keep a Changelog, with one practical adjustme
 - Visual walkthrough with real application screenshots.
 - Standalone module documentation for Dashboard, Suppliers, and Validation.
 - Assisted Tutor CSV import with clinic isolation, validation, preview, and transactional confirmation.
+- Patient-to-Tutor relationship with clinic-safe validation for manual records.
+- Assisted Patient CSV import with Tutor lookup by CPF, preview, validation,
+  clinic isolation, and transactional confirmation.
 - Standalone module documentation for Implementation.
 
 ### Changed

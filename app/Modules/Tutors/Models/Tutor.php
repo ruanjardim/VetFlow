@@ -3,8 +3,10 @@
 namespace App\Modules\Tutors\Models;
 
 use App\Models\Concerns\BelongsToClinicTenant;
+use App\Modules\Patients\Models\Patient;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Tutor extends Model
@@ -38,4 +40,9 @@ class Tutor extends Model
         'birth_date' => 'date',
         'active' => 'boolean',
     ];
+
+    public function patients(): HasMany
+    {
+        return $this->hasMany(Patient::class);
+    }
 }

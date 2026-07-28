@@ -19,6 +19,12 @@ Route::post('implementation/tutors/upload', [ImplementationController::class, 'u
 Route::post('implementation/tutors/import', [ImplementationController::class, 'importTutors'])
     ->name('implementation.tutors.import');
 
+Route::post('implementation/patients/upload', [ImplementationController::class, 'uploadPatients'])
+    ->name('implementation.patients.upload');
+
+Route::post('implementation/patients/import', [ImplementationController::class, 'importPatients'])
+    ->name('implementation.patients.import');
+
 Route::delete('implementation', [ImplementationController::class, 'reset'])
     ->name('implementation.reset');
 

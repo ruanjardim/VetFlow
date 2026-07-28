@@ -95,7 +95,7 @@ class ImplementationTutorCsvTest extends TestCase
 
         $this->assertSame(
             [],
-            Storage::disk('local')->allFiles('implementation/tutor-csv/'.$user->id)
+            Storage::disk('local')->allFiles('implementation/tutors-csv/'.$user->id)
         );
     }
 
@@ -147,7 +147,7 @@ class ImplementationTutorCsvTest extends TestCase
             'clinic_id' => $otherClinic->id,
         ])
             ->assertSessionHasErrors('clinic_id')
-            ->assertSessionMissing('implementation.tutor_csv');
+            ->assertSessionMissing('implementation.csv');
 
         $this->post(route('implementation.clinic'), [
             'clinic_id' => $ownClinic->id,
