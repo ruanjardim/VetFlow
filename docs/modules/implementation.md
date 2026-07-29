@@ -5,9 +5,9 @@ Code path: `app/Modules/Implementation`
 ## Purpose
 
 Guides assisted clinic onboarding and data migration into VetFlow. The current
-flow imports Tutors, Patients, Suppliers, Products, and initial Stock from
-standardized CSV files after clinic selection, validation, mapping review, and
-explicit confirmation.
+flow imports Tutors, Patients, Suppliers, Products, initial Stock, and
+Financial records from standardized CSV files after clinic selection,
+validation, mapping review, and explicit confirmation.
 
 ## Current Flow
 
@@ -106,19 +106,40 @@ ean_gtin_ou_sku,quantidade,custo_unitario,lote,validade,observacoes
 - Stock already created through `estoque_atual` in the Products file must not
   be repeated in the Stock file.
 
+The Financial template contains these columns:
+
+```text
+tipo,descricao,pessoa_documento,valor,vencimento,status,forma_pagamento,data_pagamento,referencia,observacoes
+```
+
+- `tipo` accepts `entrada`, `receita`, or `income` for income and `saida`,
+  `despesa`, or `expense` for expenses.
+- `descricao` and `valor` are required; values accept Brazilian decimal commas
+  and cannot be negative.
+- `pessoa_documento` is optional and resolves only an active Supplier from the
+  selected clinic because the current Financial model has no Tutor relation.
+- `vencimento` and `data_pagamento` accept `DD/MM/YYYY` or `YYYY-MM-DD`.
+- `status` accepts pending/paid/cancelled/overdue and their Portuguese labels.
+- Paid records require `data_pagamento`; non-paid records must leave it empty.
+- Payment methods accept the internal codes or Portuguese labels for cash, Pix,
+  debit card, credit card, transfer, bank slip, and other.
+- Each row creates one clinic-scoped Financial Transaction with installment
+  number and total equal to one.
+
 ## Key Classes
 
 | Class | Role |
 | --- | --- |
 | `ImplementationController` | Coordinates wizard pages and redirects. |
 | `ImplementationWorkflowService` | Manages session state and private temporary analysis files. |
-| `CsvFileAnalyzer` | Applies shared delimiter, header, encoding, row-limit, and summary rules to catalog and Stock CSV files. |
-| `CsvValueNormalizer` | Normalizes strings, Brazilian decimals, and supported dates for catalog and Stock imports. |
+| `CsvFileAnalyzer` | Applies shared delimiter, header, encoding, row-limit, and summary rules to catalog, Stock, and Financial CSV files. |
+| `CsvValueNormalizer` | Normalizes strings, Brazilian decimals, and supported dates for catalog, Stock, and Financial imports. |
 | `TutorCsvImportService` | Parses, maps, validates, previews, and imports Tutor rows. |
 | `PatientCsvImportService` | Parses, maps, validates, resolves Tutors, previews, and imports Patient rows. |
 | `SupplierCsvImportService` | Validates CPF/CNPJ and imports clinic Suppliers. |
 | `ProductCsvImportService` | Resolves Suppliers, creates Products, and opens optional initial stock. |
 | `StockCsvImportService` | Resolves Products and creates audited Inventory entries. |
+| `FinancialCsvImportService` | Normalizes ledger labels, resolves Suppliers, and imports Financial Transactions. |
 | `SelectClinicRequest` | Restricts the destination clinic to the user's accessible active clinic scope. |
 | `SelectSourceRequest` | Enables only the currently supported CSV source. |
 | `UploadTutorCsvRequest` | Validates extension and upload size. |
@@ -126,6 +147,7 @@ ean_gtin_ou_sku,quantidade,custo_unitario,lote,validade,observacoes
 | `UploadSupplierCsvRequest` | Validates the Supplier CSV extension and upload size. |
 | `UploadProductCsvRequest` | Validates the Product CSV extension and upload size. |
 | `UploadStockCsvRequest` | Validates the Stock CSV extension and upload size. |
+| `UploadFinancialCsvRequest` | Validates the Financial CSV extension and upload size. |
 
 ## Tenant And Permission Rules
 
@@ -137,14 +159,18 @@ ean_gtin_ou_sku,quantidade,custo_unitario,lote,validade,observacoes
   belonging to that same clinic.
 - Supplier resolution for Products is restricted to the selected clinic.
 - Product resolution for Stock is restricted to the selected clinic.
+- Supplier resolution for Financial records is restricted to the selected
+  clinic.
 - Product creation and Inventory movements receive the selected `clinic_id`.
+- Every imported Financial Transaction receives the selected `clinic_id`.
 - Temporary analysis is associated with the authenticated user's session.
 
 ## Tables
 
 The module does not own a database table. Confirmed imports create records in
-`tutors`, `patients`, `suppliers`, `products`, or `inventory_movements`;
-transient wizard data is not persisted as a business record.
+`tutors`, `patients`, `suppliers`, `products`, `inventory_movements`, or
+`financial_transactions`; transient wizard data is not persisted as a business
+record.
 
 ## Tests
 
@@ -166,10 +192,13 @@ import, Tutor linkage, row validation, and cross-clinic isolation.
 Supplier, Product, and Stock imports, Inventory balance traceability, invalid
 rows, templates, and cross-clinic isolation.
 
+`tests/Feature/ImplementationFinancialCsvTest.php` covers paid and pending
+Financial imports, label normalization, invalid rows, template output, and
+cross-clinic Supplier isolation.
+
 ## Intentionally Out Of Scope
 
 - Excel parsing.
 - Manual column mapping.
 - Partial import of valid rows.
-- Financial imports.
 - Durable migration history or background processing.

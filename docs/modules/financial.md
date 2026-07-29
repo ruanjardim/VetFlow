@@ -17,6 +17,7 @@ manual financial records, and dashboard/cash-flow summaries.
 - Mark transactions as paid.
 - Cancel transactions.
 - Produce cash-flow summary data.
+- Import initial income and expense records through the assisted CSV workflow.
 
 ## Key Classes
 
@@ -44,6 +45,11 @@ manual financial records, and dashboard/cash-flow summaries.
 - Purchase entries can create multiple installment rows for the same purchase.
 - Sale returns can create expense transactions for refunds without cancelling
   the original sale income.
+- Financial CSV import accepts Portuguese labels and internal codes, resolves
+  optional Suppliers inside the selected clinic, and requires payment dates
+  for paid records.
+- Imported rows are standalone single-installment transactions and are not
+  linked to Purchase Entries.
 
 ## Cash Flow Summary
 
@@ -68,4 +74,5 @@ Protected by `financial.manage`.
 ## Tests
 
 Relevant coverage is present in `tests/Feature/OperationalFlowTest.php` and
-`tests/Feature/PurchaseAndClinicalFlowTest.php`.
+`tests/Feature/PurchaseAndClinicalFlowTest.php`. The assisted import is covered
+by `tests/Feature/ImplementationFinancialCsvTest.php`.

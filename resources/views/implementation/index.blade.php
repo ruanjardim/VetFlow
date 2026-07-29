@@ -148,7 +148,7 @@
         @case(2)
           <h2>Escolha a origem dos dados</h2>
           <p class="muted">
-            Tutores, Pacientes, Fornecedores, Produtos e Estoque já podem ser importados por CSV.
+            Tutores, Pacientes, Fornecedores, Produtos, Estoque e Financeiro já podem ser importados por CSV.
             Excel será habilitado após este fluxo estar consolidado.
           </p>
 
@@ -172,7 +172,7 @@
                     <strong>{{ $sourceLabel }}</strong>
 
                     @if($sourceAvailable)
-                      <small>Disponível para os cinco blocos da implantação</small>
+                      <small>Disponível para os seis blocos da implantação</small>
                     @elseif($sourceValue === 'excel')
                       <small>Próxima origem planejada</small>
                     @else
@@ -198,7 +198,7 @@
           <div class="alert warning">
             Ordem recomendada: Fornecedores, Produtos e depois Estoque. Se preencher
             <code>estoque_atual</code> no CSV de Produtos, não repita esse mesmo saldo
-            no CSV de Estoque.
+            no CSV de Estoque. Importe o Financeiro por último.
           </div>
 
           <div class="implementation-blocks">
@@ -366,6 +366,7 @@
                         <td>
                           {{
                             data_get($row, 'values.name')
+                              ?: data_get($row, 'values.description')
                               ?: data_get($row, 'values.product_name')
                               ?: data_get($row, 'values.identifier')
                               ?: 'Sem identificação'

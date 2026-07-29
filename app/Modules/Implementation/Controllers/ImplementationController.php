@@ -7,11 +7,13 @@ use App\Modules\Clinics\Models\Clinic;
 use App\Modules\Implementation\Contracts\CsvImportService;
 use App\Modules\Implementation\Requests\SelectClinicRequest;
 use App\Modules\Implementation\Requests\SelectSourceRequest;
+use App\Modules\Implementation\Requests\UploadFinancialCsvRequest;
 use App\Modules\Implementation\Requests\UploadPatientCsvRequest;
 use App\Modules\Implementation\Requests\UploadProductCsvRequest;
 use App\Modules\Implementation\Requests\UploadStockCsvRequest;
 use App\Modules\Implementation\Requests\UploadSupplierCsvRequest;
 use App\Modules\Implementation\Requests\UploadTutorCsvRequest;
+use App\Modules\Implementation\Services\FinancialCsvImportService;
 use App\Modules\Implementation\Services\ImplementationWorkflowService;
 use App\Modules\Implementation\Services\PatientCsvImportService;
 use App\Modules\Implementation\Services\ProductCsvImportService;
@@ -129,6 +131,27 @@ class ImplementationController extends Controller
                 ['key' => 'expires_at', 'label' => 'Validade'],
             ],
         ],
+        'financial' => [
+            'label' => 'Financeiro',
+            'singular' => 'Lançamento',
+            'template' => 'financial',
+            'template_label' => 'Financeiro CSV',
+            'upload_route' => 'implementation.financial.upload',
+            'import_route' => 'implementation.financial.import',
+            'input_name' => 'financial_file',
+            'input_id' => 'financial-file',
+            'default_file' => 'financeiro.csv',
+            'expected_columns' => 'tipo, descricao, pessoa_documento, valor, vencimento, status, forma_pagamento, data_pagamento, referencia e observacoes',
+            'preview_columns' => [
+                ['key' => 'description', 'label' => 'Descrição'],
+                ['key' => 'type_label', 'label' => 'Tipo'],
+                ['key' => 'supplier_name', 'label' => 'Fornecedor'],
+                ['key' => 'amount', 'label' => 'Valor'],
+                ['key' => 'due_date', 'label' => 'Vencimento'],
+                ['key' => 'status_label', 'label' => 'Status'],
+                ['key' => 'payment_method_label', 'label' => 'Pagamento'],
+            ],
+        ],
     ];
 
     private const TEMPLATES = [
@@ -187,6 +210,9 @@ class ImplementationController extends Controller
             'vencimento',
             'status',
             'forma_pagamento',
+            'data_pagamento',
+            'referencia',
+            'observacoes',
         ],
     ];
 
@@ -247,7 +273,8 @@ class ImplementationController extends Controller
         private readonly PatientCsvImportService $patientCsvImporter,
         private readonly SupplierCsvImportService $supplierCsvImporter,
         private readonly ProductCsvImportService $productCsvImporter,
-        private readonly StockCsvImportService $stockCsvImporter
+        private readonly StockCsvImportService $stockCsvImporter,
+        private readonly FinancialCsvImportService $financialCsvImporter
     ) {}
 
     public function index(Request $request): View|RedirectResponse
@@ -306,7 +333,7 @@ class ImplementationController extends Controller
                 ['label' => 'Fornecedores', 'available' => true],
                 ['label' => 'Produtos', 'available' => true],
                 ['label' => 'Estoque inicial', 'available' => true],
-                ['label' => 'Financeiro inicial e contas abertas', 'available' => false],
+                ['label' => 'Financeiro inicial e contas abertas', 'available' => true],
             ],
             'dataSources' => [
                 'csv' => 'Arquivo CSV',
@@ -401,6 +428,16 @@ class ImplementationController extends Controller
     public function importStock(Request $request): RedirectResponse
     {
         return $this->importCsv($request, 'stock');
+    }
+
+    public function uploadFinancial(UploadFinancialCsvRequest $request): RedirectResponse
+    {
+        return $this->uploadCsv($request, 'financial', 'financial_file');
+    }
+
+    public function importFinancial(Request $request): RedirectResponse
+    {
+        return $this->importCsv($request, 'financial');
     }
 
     private function uploadCsv(
@@ -529,6 +566,7 @@ class ImplementationController extends Controller
             'suppliers' => $this->supplierCsvImporter,
             'products' => $this->productCsvImporter,
             'stock' => $this->stockCsvImporter,
+            'financial' => $this->financialCsvImporter,
             default => $this->tutorCsvImporter,
         };
     }
