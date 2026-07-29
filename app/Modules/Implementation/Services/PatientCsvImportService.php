@@ -4,6 +4,7 @@ namespace App\Modules\Implementation\Services;
 
 use App\Core\Support\DocumentNormalizer;
 use App\Core\Validation\Rules\ValidCpf;
+use App\Modules\Implementation\Contracts\CsvImportService;
 use App\Modules\Patients\Models\Patient;
 use App\Modules\Tutors\Models\Tutor;
 use DateTimeImmutable;
@@ -15,7 +16,7 @@ use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use RuntimeException;
 
-class PatientCsvImportService
+class PatientCsvImportService implements CsvImportService
 {
     private const MAX_ROWS = 500;
 

@@ -148,7 +148,8 @@
         @case(2)
           <h2>Escolha a origem dos dados</h2>
           <p class="muted">
-            Tutores e Pacientes já podem ser importados por CSV. Excel será habilitado após este fluxo estar consolidado.
+            Tutores, Pacientes, Fornecedores, Produtos e Estoque já podem ser importados por CSV.
+            Excel será habilitado após este fluxo estar consolidado.
           </p>
 
           <form method="POST" action="{{ route('implementation.source') }}">
@@ -171,7 +172,7 @@
                     <strong>{{ $sourceLabel }}</strong>
 
                     @if($sourceAvailable)
-                      <small>Disponível agora para Tutores e Pacientes</small>
+                      <small>Disponível para os cinco blocos da implantação</small>
                     @elseif($sourceValue === 'excel')
                       <small>Próxima origem planejada</small>
                     @else
@@ -193,6 +194,12 @@
           <p class="muted">
             Use um template do VetFlow. Cada arquivo pode ter até 2 MB e 500 registros.
           </p>
+
+          <div class="alert warning">
+            Ordem recomendada: Fornecedores, Produtos e depois Estoque. Se preencher
+            <code>estoque_atual</code> no CSV de Produtos, não repita esse mesmo saldo
+            no CSV de Estoque.
+          </div>
 
           <div class="implementation-blocks">
             @foreach($migrationBlocks as $block)
@@ -356,7 +363,14 @@
                     @if(!empty($row['errors']))
                       <tr>
                         <td>{{ $row['line'] }}</td>
-                        <td>{{ $row['values']['name'] ?: 'Sem nome' }}</td>
+                        <td>
+                          {{
+                            data_get($row, 'values.name')
+                              ?: data_get($row, 'values.product_name')
+                              ?: data_get($row, 'values.identifier')
+                              ?: 'Sem identificação'
+                          }}
+                        </td>
                         <td>{{ implode(' ', $row['errors']) }}</td>
                       </tr>
                     @endif
@@ -433,7 +447,11 @@
           <div class="implementation-finish">
             <span aria-hidden="true">✓</span>
             <h2>Importação concluída</h2>
-            <p>{{ $completedSummary['entity_label'] ?? $activeImport['label'] }} foram adicionados à clínica selecionada.</p>
+            <p>
+              A importação do bloco
+              {{ $completedSummary['entity_label'] ?? $activeImport['label'] }}
+              foi concluída para a clínica selecionada.
+            </p>
           </div>
 
           @if($completedSummary)

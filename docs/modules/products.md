@@ -17,6 +17,8 @@ record, even when it is linked to a shared global product.
 - Enrich products from lookup providers and from the global product catalog.
 - Link local products to `global_products` when a valid GTIN is available.
 - Store uploaded product images under the public disk.
+- Import clinic Products from CSV with optional Supplier trace metadata and
+  audited initial Stock entries.
 
 ## Key Classes
 
@@ -45,6 +47,10 @@ record, even when it is linked to a shared global product.
 - Product enrichment should not overwrite commercial decisions blindly. Price,
   stock, and minimum stock remain local clinic data.
 - `lookup_metadata` stores trace context for enrichment decisions.
+- CSV Supplier references are stored in `lookup_metadata` because Products do
+  not own a direct Supplier foreign key.
+- A positive CSV `estoque_atual` is applied through
+  `InventoryMovementService`, preserving the Inventory ledger.
 
 ## Integrations
 

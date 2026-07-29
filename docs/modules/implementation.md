@@ -5,15 +5,16 @@ Code path: `app/Modules/Implementation`
 ## Purpose
 
 Guides assisted clinic onboarding and data migration into VetFlow. The current
-flow imports Tutors and Patients from standardized CSV files after clinic
-selection, validation, mapping review, and explicit confirmation.
+flow imports Tutors, Patients, Suppliers, Products, and initial Stock from
+standardized CSV files after clinic selection, validation, mapping review, and
+explicit confirmation.
 
 ## Current Flow
 
 1. Select an active destination clinic.
 2. Select CSV as the data source.
-3. Choose Tutors or Patients, download the corresponding template, and upload
-   the completed file.
+3. Choose a supported data block, download its template, and upload the
+   completed file.
 4. Review the automatic column mapping.
 5. Correct header or row validation errors.
 6. Preview up to 20 valid records.
@@ -58,18 +59,73 @@ tutor_documento,nome_pet,especie,raca,sexo,nascimento,peso,observacoes
 - The common delimiter, size, row-limit, UTF-8, and all-or-nothing rules also
   apply to Patients.
 
+The Suppliers template contains these columns:
+
+```text
+nome,cpf_cnpj,telefone,email,cidade,estado,observacoes
+```
+
+- `nome` is required.
+- `cpf_cnpj`, when filled, is normalized and must be a valid CPF or CNPJ.
+- `estado`, when filled, must contain a two-letter UF.
+- New records are active and receive the selected `clinic_id`.
+
+The Products template contains these columns:
+
+```text
+nome,ean_gtin,sku,categoria,fornecedor_documento,custo,preco_venda,estoque_atual,estoque_minimo
+```
+
+- `nome` is required.
+- `ean_gtin`, when filled, must contain 8 to 14 digits and cannot identify an
+  existing Product in the selected clinic.
+- `sku`, when filled, cannot identify an existing Product in the selected
+  clinic.
+- `fornecedor_documento` is optional. When filled, it must identify exactly one
+  active Supplier in the selected clinic.
+- The Supplier reference is retained in `lookup_metadata`; Products do not have
+  a direct Supplier foreign key.
+- Prices and stock values accept Brazilian decimal commas and cannot be
+  negative.
+- A positive `estoque_atual` creates an `entry` Inventory Movement instead of
+  changing `products.stock_quantity` directly.
+
+The initial Stock template contains these columns:
+
+```text
+ean_gtin_ou_sku,quantidade,custo_unitario,lote,validade,observacoes
+```
+
+- `ean_gtin_ou_sku` must identify exactly one active Product in the selected
+  clinic.
+- `quantidade` must be greater than zero.
+- `custo_unitario` is optional and cannot be negative.
+- `validade` accepts `DD/MM/YYYY` or `YYYY-MM-DD`.
+- Each row creates an `entry` movement with source `implementation_csv`,
+  preserving balance before, balance after, lot, expiration, and notes.
+- Stock already created through `estoque_atual` in the Products file must not
+  be repeated in the Stock file.
+
 ## Key Classes
 
 | Class | Role |
 | --- | --- |
 | `ImplementationController` | Coordinates wizard pages and redirects. |
 | `ImplementationWorkflowService` | Manages session state and private temporary analysis files. |
+| `CsvFileAnalyzer` | Applies shared delimiter, header, encoding, row-limit, and summary rules to catalog and Stock CSV files. |
+| `CsvValueNormalizer` | Normalizes strings, Brazilian decimals, and supported dates for catalog and Stock imports. |
 | `TutorCsvImportService` | Parses, maps, validates, previews, and imports Tutor rows. |
 | `PatientCsvImportService` | Parses, maps, validates, resolves Tutors, previews, and imports Patient rows. |
+| `SupplierCsvImportService` | Validates CPF/CNPJ and imports clinic Suppliers. |
+| `ProductCsvImportService` | Resolves Suppliers, creates Products, and opens optional initial stock. |
+| `StockCsvImportService` | Resolves Products and creates audited Inventory entries. |
 | `SelectClinicRequest` | Restricts the destination clinic to the user's accessible active clinic scope. |
 | `SelectSourceRequest` | Enables only the currently supported CSV source. |
 | `UploadTutorCsvRequest` | Validates extension and upload size. |
 | `UploadPatientCsvRequest` | Validates the Patient CSV extension and upload size. |
+| `UploadSupplierCsvRequest` | Validates the Supplier CSV extension and upload size. |
+| `UploadProductCsvRequest` | Validates the Product CSV extension and upload size. |
+| `UploadStockCsvRequest` | Validates the Stock CSV extension and upload size. |
 
 ## Tenant And Permission Rules
 
@@ -79,13 +135,16 @@ tutor_documento,nome_pet,especie,raca,sexo,nascimento,peso,observacoes
 - Every imported Tutor receives the selected `clinic_id`.
 - Every imported Patient receives the selected `clinic_id` and a `tutor_id`
   belonging to that same clinic.
+- Supplier resolution for Products is restricted to the selected clinic.
+- Product resolution for Stock is restricted to the selected clinic.
+- Product creation and Inventory movements receive the selected `clinic_id`.
 - Temporary analysis is associated with the authenticated user's session.
 
 ## Tables
 
 The module does not own a database table. Confirmed imports create records in
-`tutors` or `patients`; transient wizard data is not persisted as a business
-record.
+`tutors`, `patients`, `suppliers`, `products`, or `inventory_movements`;
+transient wizard data is not persisted as a business record.
 
 ## Tests
 
@@ -103,10 +162,14 @@ Authorization and template download remain covered by
 `tests/Feature/ImplementationPatientCsvTest.php` covers successful Patient
 import, Tutor linkage, row validation, and cross-clinic isolation.
 
+`tests/Feature/ImplementationCatalogStockCsvTest.php` covers sequential
+Supplier, Product, and Stock imports, Inventory balance traceability, invalid
+rows, templates, and cross-clinic isolation.
+
 ## Intentionally Out Of Scope
 
 - Excel parsing.
 - Manual column mapping.
 - Partial import of valid rows.
-- Product, supplier, inventory, and financial imports.
+- Financial imports.
 - Durable migration history or background processing.

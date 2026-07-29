@@ -25,6 +25,24 @@ Route::post('implementation/patients/upload', [ImplementationController::class, 
 Route::post('implementation/patients/import', [ImplementationController::class, 'importPatients'])
     ->name('implementation.patients.import');
 
+Route::post('implementation/suppliers/upload', [ImplementationController::class, 'uploadSuppliers'])
+    ->name('implementation.suppliers.upload');
+
+Route::post('implementation/suppliers/import', [ImplementationController::class, 'importSuppliers'])
+    ->name('implementation.suppliers.import');
+
+Route::post('implementation/products/upload', [ImplementationController::class, 'uploadProducts'])
+    ->name('implementation.products.upload');
+
+Route::post('implementation/products/import', [ImplementationController::class, 'importProducts'])
+    ->name('implementation.products.import');
+
+Route::post('implementation/stock/upload', [ImplementationController::class, 'uploadStock'])
+    ->name('implementation.stock.upload');
+
+Route::post('implementation/stock/import', [ImplementationController::class, 'importStock'])
+    ->name('implementation.stock.import');
+
 Route::delete('implementation', [ImplementationController::class, 'reset'])
     ->name('implementation.reset');
 

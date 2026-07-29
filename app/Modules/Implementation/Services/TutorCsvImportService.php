@@ -4,6 +4,7 @@ namespace App\Modules\Implementation\Services;
 
 use App\Core\Support\DocumentNormalizer;
 use App\Core\Validation\Rules\ValidCpf;
+use App\Modules\Implementation\Contracts\CsvImportService;
 use App\Modules\Tutors\Models\Tutor;
 use DomainException;
 use Illuminate\Http\UploadedFile;
@@ -13,7 +14,7 @@ use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use RuntimeException;
 
-class TutorCsvImportService
+class TutorCsvImportService implements CsvImportService
 {
     private const MAX_ROWS = 500;
 

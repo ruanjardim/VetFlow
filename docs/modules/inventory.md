@@ -17,6 +17,7 @@ movements to `products.stock_quantity`.
 - Store lot and expiration data when available.
 - Connect stock movements to sales and purchase entries.
 - Provide low-stock and stock-alert support.
+- Import initial Stock by Product GTIN or SKU through audited entry movements.
 
 ## Key Classes
 
@@ -52,6 +53,9 @@ Known movement sources include:
 - Deleting a movement reverses the effect and then soft-deletes the movement.
 - Sales and purchase entries should call inventory services instead of changing
   product stock directly.
+- CSV initial Stock uses source `implementation_csv` and the same
+  `InventoryMovementService` used by operational flows.
+- Product and Stock CSV imports never write `products.stock_quantity` directly.
 
 ## Tenant Rules
 

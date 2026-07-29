@@ -31,6 +31,12 @@ This project follows the spirit of Keep a Changelog, with one practical adjustme
 - Patient-to-Tutor relationship with clinic-safe validation for manual records.
 - Assisted Patient CSV import with Tutor lookup by CPF, preview, validation,
   clinic isolation, and transactional confirmation.
+- Assisted Supplier CSV import with CPF/CNPJ normalization and validation.
+- Assisted Product CSV import with Supplier trace metadata, identifier
+  collision checks, and audited opening Stock.
+- Assisted initial Stock CSV import by GTIN or SKU with lot, expiration, cost,
+  and Inventory balance traceability.
+- Shared CSV analyzer and value normalizer for catalog and Stock data blocks.
 - Standalone module documentation for Implementation.
 
 ### Changed

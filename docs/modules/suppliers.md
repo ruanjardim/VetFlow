@@ -16,6 +16,7 @@ give purchase/financial flows a consistent reference.
 - Scope supplier records by clinic when a clinic context is active.
 - Provide active suppliers to purchase entry, NF-e, and financial screens.
 - Support supplier matching and creation during NF-e XML import.
+- Support clinic-scoped Supplier creation through the assisted CSV importer.
 
 ## Key Classes
 
@@ -45,6 +46,8 @@ give purchase/financial flows a consistent reference.
 - Purchase entries and financial records can reference suppliers.
 - NF-e import can match suppliers by normalized document or create missing
   suppliers inside the selected clinic.
+- CSV import normalizes and validates optional CPF/CNPJ values, validates
+  contact fields, and creates active Suppliers transactionally.
 
 ## Tenant Rules
 
