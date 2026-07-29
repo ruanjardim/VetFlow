@@ -18,6 +18,8 @@ area first.
 - List upcoming and same-day appointments.
 - List recent patients and tutors.
 - Show stock, product, and financial alerts.
+- Turn existing operational totals into an ordered "Prioridades de hoje" action
+  list for finance, stock, service orders, sales, and appointments.
 - Summarize product intelligence coverage, quality, and recommended actions.
 - Register dashboard widgets available to the view.
 
@@ -29,6 +31,7 @@ area first.
 | `DashboardDataService` | Composes the full data payload for the view. |
 | `DashboardStatsService` | Builds high-level operational counters. |
 | `DashboardAlertService` | Combines stock/product alerts with financial alerts. |
+| `DashboardOperationalInsightService` | Converts non-zero operational counters into ordered, actionable links. |
 | `DashboardProductIntelligenceService` | Summarizes global catalog and local product quality. |
 | `DashboardWidgetRegistry` | Lists dashboard widgets enabled in the view. |
 
@@ -56,7 +59,14 @@ The dashboard does not own tables. It reads from operational modules, including:
 - The controller delegates data building to `DashboardDataService`.
 - Financial stats distinguish paid income, pending income, overdue income,
   pending expenses, overdue expenses, and paid expenses for the current month.
+- "Prioridades de hoje" reuses the dashboard stats without extra queries,
+  suppresses zero-value items, and orders financial risk before stock,
+  fulfillment, sales, and same-day schedule signals.
+- Low-stock totals include only active products with a configured minimum above
+  zero, matching the inventory alert rule.
 - Stock alerts are based on the Inventory `StockAlertService`.
+- The alert center separates stock/catalog totals from financial totals so each
+  summary link opens the correct module.
 - Product intelligence actions link users to product diagnostics, local product
   lists, global catalog filters, and pending suggestions.
 - `DashboardActivityService` currently returns static activity examples rather
@@ -78,6 +88,7 @@ Relevant access coverage is present in:
 
 - `tests/Feature/AuthenticationTest.php`
 - `tests/Feature/AuthorizationTest.php`
+- `tests/Feature/DashboardOperationalInsightsTest.php`
 
-Operational correctness is indirectly covered by the feature tests for the
-modules that feed dashboard totals and alerts.
+Operational insight coverage verifies clinic isolation, ordering, zero-value
+suppression, and the low-stock eligibility rule.

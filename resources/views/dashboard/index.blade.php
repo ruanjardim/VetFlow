@@ -53,39 +53,87 @@
     </div>
   </section>
 
+  <section class="panel">
+    <div class="panel-heading">
+      <div>
+        <h2>Prioridades de hoje</h2>
+        <p>Acoes operacionais ordenadas por impacto para orientar o trabalho da equipe.</p>
+      </div>
+    </div>
+    <div class="panel-body">
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Area</th>
+              <th>O que fazer</th>
+              <th>Indicador</th>
+              <th>Acao</th>
+            </tr>
+          </thead>
+          <tbody>
+            @forelse($operationalPriorities ?? [] as $priority)
+              @php($priorityBadge = $priority['level'] === 'danger' ? 'danger' : ($priority['level'] === 'warning' ? 'warning' : 'muted-badge'))
+              <tr data-dashboard-priority="{{ $priority['key'] }}">
+                <td>{{ $priority['area'] }}</td>
+                <td>
+                  <a href="{{ $priority['url'] }}">
+                    <strong>{{ $priority['title'] }}</strong>
+                    <div class="muted">{{ $priority['description'] }}</div>
+                  </a>
+                </td>
+                <td>
+                  <a class="badge {{ $priorityBadge }}" href="{{ $priority['url'] }}">
+                    @if($priority['value_type'] === 'currency')
+                      R$ {{ number_format($priority['value'], 2, ',', '.') }}
+                    @else
+                      {{ number_format($priority['value'], 0, ',', '.') }}
+                    @endif
+                  </a>
+                </td>
+                <td><a class="button secondary" href="{{ $priority['url'] }}">{{ $priority['action'] }}</a></td>
+              </tr>
+            @empty
+              <tr>
+                <td colspan="4" class="muted">Operacao em dia. Nenhuma prioridade pendente nos indicadores acompanhados.</td>
+              </tr>
+            @endforelse
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
   @php($alertStats = $alertSummary['stats'] ?? [])
-  @php($alertStatLinks = [
-    'total' => route('inventory-movements.alerts'),
-    'critical' => route('inventory-movements.alerts', ['level' => 'critical']),
-    'attention' => route('inventory-movements.alerts', ['level' => 'attention']),
-    'cadastro' => route('inventory-movements.alerts', ['level' => 'cadastro']),
-  ])
 
   <section class="panel">
     <div class="panel-heading">
       <div>
-        <h2>Alertas de estoque e produtos</h2>
-        <p>Resumo do que precisa de acao no cadastro, lotes e vendas.</p>
+        <h2>Central de alertas</h2>
+        <p>Resumo do que precisa de acao no estoque, cadastro e financeiro.</p>
       </div>
-      <a class="button secondary" href="{{ route('inventory-movements.alerts') }}">Ver painel</a>
     </div>
     <div class="panel-body">
       <div class="grid stats inventory-lot-stats">
-        <a class="stat stat-link" href="{{ $alertStatLinks['total'] }}">
+        <div class="stat">
           <span>Total</span>
           <strong>{{ $alertStats['total'] ?? 0 }}</strong>
-        </a>
-        <a class="stat stat-link" href="{{ $alertStatLinks['critical'] }}">
+        </div>
+        <div class="stat">
           <span>Criticos</span>
           <strong>{{ $alertStats['critical'] ?? 0 }}</strong>
-        </a>
-        <a class="stat stat-link" href="{{ $alertStatLinks['attention'] }}">
+        </div>
+        <div class="stat">
           <span>Atencao</span>
           <strong>{{ $alertStats['attention'] ?? 0 }}</strong>
+        </div>
+        <a class="stat stat-link" href="{{ route('inventory-movements.alerts') }}">
+          <span>Estoque e cadastro</span>
+          <strong>{{ $alertStats['inventory'] ?? 0 }}</strong>
         </a>
-        <a class="stat stat-link" href="{{ $alertStatLinks['cadastro'] }}">
-          <span>Cadastro</span>
-          <strong>{{ $alertStats['cadastro'] ?? 0 }}</strong>
+        <a class="stat stat-link" href="{{ route('financial-transactions.cash-flow') }}">
+          <span>Financeiro</span>
+          <strong>{{ $alertStats['financial'] ?? 0 }}</strong>
         </a>
       </div>
 
@@ -115,7 +163,7 @@
               </tr>
             @empty
               <tr>
-                <td colspan="3" class="muted">Nenhum alerta de estoque ou produto no momento.</td>
+                <td colspan="3" class="muted">Nenhum alerta de estoque, cadastro ou financeiro no momento.</td>
               </tr>
             @endforelse
           </tbody>

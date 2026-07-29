@@ -46,6 +46,8 @@ This project follows the spirit of Keep a Changelog, with one practical adjustme
 - Assisted Excel `.xlsx` import and templates for Tutors, Patients, Suppliers,
   Products, initial Stock, and Financial records using the existing validation,
   transaction, tenant-isolation, and history rules.
+- Actionable dashboard priorities for overdue finance, low stock, service order
+  pickup, pending sales, drafts, and same-day appointments.
 
 ### Changed
 
@@ -58,6 +60,8 @@ This project follows the spirit of Keep a Changelog, with one practical adjustme
   diagnostics, and configurable connection limits.
 - Hardened external product lookup with provider availability outcomes, real
   negative caching, bounded retries, and restricted image downloads.
+- Split dashboard alert summaries between inventory/catalog and financial
+  domains, and aligned low-stock counters with active configured products.
 
 ### Pending
 
