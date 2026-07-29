@@ -19,6 +19,7 @@ remain operational records; global products are reusable intelligence records.
 - Consolidate source results and confidence metadata.
 - Store found products, source payloads, images, and regulatory data.
 - Record not-found suggestions for later review.
+- Distinguish a confirmed miss from temporary provider unavailability.
 
 ## Key Classes
 
@@ -63,9 +64,19 @@ providers by priority and groups them by tier. The current code supports:
 
 - The module normalizes GTIN values before lookup.
 - A global catalog hit is returned before external network calls.
+- Confirmed external misses are cached for seven days by default, avoiding
+  repeated calls for the same GTIN.
+- A provider outage is not stored as a product miss and returns a retryable
+  unavailable outcome while manual product registration remains enabled.
+- Provider calls use bounded connection/response timeouts and at most three
+  attempts.
 - Source confidence is carried into stored metadata.
-- Images can be downloaded and stored when a provider returns an image URL.
+- Images are downloaded only from configured host allowlists, without
+  redirects, with accepted image MIME types and a 5 MB default limit.
 - Not-found lookups can create suggestions instead of failing silently.
+
+Operational limits and image hosts are configurable through the
+`PRODUCT_LOOKUP_*` variables in `.env.example`.
 
 ## Permissions
 

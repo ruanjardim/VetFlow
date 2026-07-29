@@ -26,6 +26,8 @@ The local working tree was clean before this documentation pass.
   Products, initial Stock, and Financial records, with an equivalent Excel
   `.xlsx` source and a permanent
   clinic-scoped summary of successful imports.
+- Bounded NF-e XML/key intake and resilient external product lookup that keep
+  manual operational fallbacks available during provider outages.
 
 ## GitHub Scan Summary
 

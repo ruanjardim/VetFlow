@@ -3,27 +3,28 @@
 namespace App\Modules\PurchaseEntries\Services;
 
 use App\Modules\PurchaseEntries\Exceptions\NfeAccessKeyLookupException;
+use DirectoryIterator;
+use FilesystemIterator;
+use Illuminate\Http\Client\PendingRequest;
+use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Http;
 use InvalidArgumentException;
+use RecursiveDirectoryIterator;
+use RecursiveIteratorIterator;
 use SplFileInfo;
 use Throwable;
 
 class NfeAccessKeyImportService
 {
-    private const MAX_XML_SIZE = 10 * 1024 * 1024;
-
-    public function __construct(private readonly NfeXmlImportService $xmlImporter)
-    {
-    }
+    public function __construct(private readonly NfeXmlImportService $xmlImporter) {}
 
     public function import(
         string $accessKey,
         bool $createMissingProducts = true,
         bool $createMissingSupplier = true,
         ?int $clinicId = null
-    ): array
-    {
+    ): array {
         $accessKey = $this->normalizeAccessKey($accessKey);
 
         if (strlen($accessKey) !== 44) {
@@ -40,12 +41,18 @@ class NfeAccessKeyImportService
             );
         }
 
-        $payload = $this->xmlImporter->import($resolved['xml'], $createMissingProducts, $createMissingSupplier, $clinicId);
+        $payload = $this->xmlImporter->import(
+            $resolved['xml'],
+            $createMissingProducts,
+            $createMissingSupplier,
+            $clinicId,
+            $accessKey
+        );
         $payload['message'] = 'NF-e carregada pela chave. '.$payload['message'];
         $payload['lookup'] = [
             'source' => $resolved['source'],
-            'path' => $resolved['path'] ?? null,
-            'diagnostics' => $diagnostics,
+            'file' => isset($resolved['path']) ? basename((string) $resolved['path']) : null,
+            'diagnostics' => $this->publicDiagnostics($diagnostics),
         ];
 
         $this->cacheXml($accessKey, $resolved['xml']);
@@ -57,7 +64,11 @@ class NfeAccessKeyImportService
     {
         $accessKey = $this->normalizeAccessKey($accessKey);
 
-        if (strlen($accessKey) === 44 && trim($xml) !== '') {
+        if (
+            strlen($accessKey) === 44
+            && trim($xml) !== ''
+            && strlen($xml) <= $this->maxXmlBytes()
+        ) {
             $this->cacheXml($accessKey, $xml);
         }
     }
@@ -81,6 +92,15 @@ class NfeAccessKeyImportService
 
         if (! is_file($path) || ! is_readable($path)) {
             $diagnostics[] = $diagnostic;
+
+            return null;
+        }
+
+        if (filesize($path) > $this->maxXmlBytes()) {
+            $diagnostic['status'] = 'too_large';
+            $diagnostic['message'] = 'Arquivo de cache excede o limite permitido.';
+            $diagnostics[] = $diagnostic;
+
             return null;
         }
 
@@ -107,6 +127,9 @@ class NfeAccessKeyImportService
 
     private function findLocalXml(string $accessKey, array &$diagnostics): ?array
     {
+        $maxFiles = max(1, (int) config('nfe_import.max_local_xml_files', 1000));
+        $totalChecked = 0;
+
         foreach ($this->xmlSearchRoots() as $root) {
             $checked = 0;
             $rootDiagnostic = [
@@ -120,11 +143,13 @@ class NfeAccessKeyImportService
                 $rootDiagnostic['status'] = 'missing';
                 $rootDiagnostic['message'] = 'Pasta ou arquivo nao existe neste ambiente.';
                 $diagnostics[] = $rootDiagnostic;
+
                 continue;
             }
 
             foreach ($this->xmlFiles($root['path'], $root['recursive']) as $file) {
                 $checked++;
+                $totalChecked++;
                 $xml = $this->readXmlIfMatches($file, $accessKey);
 
                 if ($xml !== null) {
@@ -139,6 +164,15 @@ class NfeAccessKeyImportService
                         'source' => 'local_xml_archive',
                         'path' => $file->getPathname(),
                     ];
+                }
+
+                if ($totalChecked >= $maxFiles) {
+                    $rootDiagnostic['status'] = 'limit_reached';
+                    $rootDiagnostic['message'] = "A busca local foi interrompida apos {$maxFiles} XMLs.";
+                    $rootDiagnostic['checked_files'] = $checked;
+                    $diagnostics[] = $rootDiagnostic;
+
+                    return null;
                 }
             }
 
@@ -157,7 +191,7 @@ class NfeAccessKeyImportService
 
     private function fetchExternalXml(string $accessKey, array &$diagnostics): ?array
     {
-        $url = trim((string) env('NFE_KEY_LOOKUP_URL', ''));
+        $url = trim((string) config('nfe_import.key_lookup.url', ''));
         $diagnostic = [
             'source' => 'Integracao fiscal',
             'path' => $url ?: null,
@@ -167,31 +201,48 @@ class NfeAccessKeyImportService
 
         if ($url === '') {
             $diagnostics[] = $diagnostic;
+
             return null;
         }
 
         try {
-            $request = Http::timeout(20)->accept('*/*');
-            $token = trim((string) env('NFE_KEY_LOOKUP_TOKEN', ''));
+            $request = Http::timeout(max(1, (int) config('nfe_import.key_lookup.timeout_seconds', 10)))
+                ->connectTimeout(max(1, (int) config('nfe_import.key_lookup.connect_timeout_seconds', 3)))
+                ->accept('*/*');
+            $token = trim((string) config('nfe_import.key_lookup.token', ''));
 
             if ($token !== '') {
                 $request = $request->withToken($token);
             }
 
-            $response = str_contains($url, '{key}')
-                ? $request->get(str_replace('{key}', $accessKey, $url))
-                : $request->get($url, ['key' => $accessKey]);
+            $response = $this->externalRequest($request, $url, $accessKey);
 
-            $diagnostic['status'] = $response->successful() ? 'connected' : 'http_error';
+            $diagnostic['status'] = match (true) {
+                $response->successful() => 'connected',
+                $response->status() === 404 => 'not_found',
+                default => 'http_error',
+            };
             $diagnostic['http_status'] = $response->status();
 
             if (! $response->successful()) {
-                $diagnostic['message'] = 'API fiscal respondeu sem sucesso.';
+                $diagnostic['message'] = $response->status() === 404
+                    ? 'A integracao fiscal nao encontrou XML para esta chave.'
+                    : 'A integracao fiscal respondeu sem sucesso.';
                 $diagnostics[] = $diagnostic;
+
                 return null;
             }
 
             $body = trim($response->body());
+
+            if (strlen($body) > ($this->maxXmlBytes() * 2)) {
+                $diagnostic['status'] = 'too_large';
+                $diagnostic['message'] = 'API fiscal retornou um conteudo acima do limite permitido.';
+                $diagnostics[] = $diagnostic;
+
+                return null;
+            }
+
             $xml = $this->xmlFromExternalValue($body);
 
             if (! $xml) {
@@ -199,7 +250,7 @@ class NfeAccessKeyImportService
                 $xml = is_array($data) ? $this->xmlFromExternalPayload($data) : null;
             }
 
-            if (is_string($xml) && trim($xml) !== '') {
+            if (is_string($xml) && trim($xml) !== '' && strlen($xml) <= $this->maxXmlBytes()) {
                 $diagnostic['status'] = 'found';
                 $diagnostic['message'] = 'XML retornado pela integracao fiscal.';
                 $diagnostics[] = $diagnostic;
@@ -207,15 +258,19 @@ class NfeAccessKeyImportService
                 return ['xml' => $xml, 'source' => 'external_key_lookup'];
             }
 
-            $diagnostic['status'] = 'empty';
-            $diagnostic['message'] = 'API respondeu, mas nao retornou XML reconhecido.';
+            $diagnostic['status'] = is_string($xml) ? 'too_large' : 'empty';
+            $diagnostic['message'] = is_string($xml)
+                ? 'API fiscal retornou XML acima do limite permitido.'
+                : 'API respondeu, mas nao retornou XML reconhecido.';
             $diagnostics[] = $diagnostic;
 
             return null;
         } catch (Throwable $exception) {
             $diagnostic['status'] = 'error';
-            $diagnostic['message'] = 'Erro ao consultar integracao fiscal: '.$exception->getMessage();
+            $diagnostic['message'] = 'Nao foi possivel consultar a integracao fiscal agora.';
+            $diagnostic['exception'] = $exception::class;
             $diagnostics[] = $diagnostic;
+
             return null;
         }
     }
@@ -231,7 +286,7 @@ class NfeAccessKeyImportService
             ['path' => base_path('nfe-xml'), 'recursive' => true],
         ];
 
-        $configured = trim((string) env('NFE_XML_ARCHIVE_PATH', ''));
+        $configured = trim((string) config('nfe_import.archive_paths', ''));
 
         if ($configured !== '') {
             foreach (preg_split('/[;|]/', $configured) ?: [] as $path) {
@@ -266,11 +321,13 @@ class NfeAccessKeyImportService
 
         try {
             $iterator = $recursive
-                ? File::allFiles($path)
-                : File::files($path);
+                ? new RecursiveIteratorIterator(
+                    new RecursiveDirectoryIterator($path, FilesystemIterator::SKIP_DOTS)
+                )
+                : new DirectoryIterator($path);
 
             foreach ($iterator as $file) {
-                if (strtolower($file->getExtension()) === 'xml') {
+                if ($file instanceof SplFileInfo && $file->isFile() && strtolower($file->getExtension()) === 'xml') {
                     yield $file;
                 }
             }
@@ -281,7 +338,7 @@ class NfeAccessKeyImportService
 
     private function readXmlIfMatches(SplFileInfo $file, string $accessKey): ?string
     {
-        if (! $file->isReadable() || $file->getSize() > self::MAX_XML_SIZE) {
+        if (! $file->isReadable() || $file->getSize() > $this->maxXmlBytes()) {
             return null;
         }
 
@@ -292,6 +349,10 @@ class NfeAccessKeyImportService
 
     private function cacheXml(string $accessKey, string $xml): void
     {
+        if (strlen($xml) > $this->maxXmlBytes() || ! str_contains($xml, $accessKey)) {
+            return;
+        }
+
         try {
             $directory = storage_path('app/nfe-xml-cache');
             File::ensureDirectoryExists($directory);
@@ -357,5 +418,52 @@ class NfeAccessKeyImportService
     private function normalizeAccessKey(string $value): string
     {
         return preg_replace('/\D+/', '', $value) ?? '';
+    }
+
+    private function maxXmlBytes(): int
+    {
+        return max(1, (int) config('nfe_import.max_xml_bytes', 5 * 1024 * 1024));
+    }
+
+    private function publicDiagnostics(array $diagnostics): array
+    {
+        return array_map(
+            fn (array $diagnostic) => array_filter([
+                'source' => $diagnostic['source'] ?? null,
+                'status' => $diagnostic['status'] ?? null,
+                'message' => $diagnostic['message'] ?? null,
+                'http_status' => $diagnostic['http_status'] ?? null,
+                'checked_files' => $diagnostic['checked_files'] ?? null,
+            ], fn ($value) => $value !== null),
+            $diagnostics
+        );
+    }
+
+    private function externalRequest(PendingRequest $request, string $url, string $accessKey): Response
+    {
+        $attempts = max(1, min(3, (int) config('nfe_import.key_lookup.attempts', 2)));
+        $lastException = null;
+
+        for ($attempt = 1; $attempt <= $attempts; $attempt++) {
+            try {
+                $response = str_contains($url, '{key}')
+                    ? $request->get(str_replace('{key}', $accessKey, $url))
+                    : $request->get($url, ['key' => $accessKey]);
+
+                if (! in_array($response->status(), [429, 500, 502, 503, 504], true) || $attempt === $attempts) {
+                    return $response;
+                }
+            } catch (Throwable $exception) {
+                $lastException = $exception;
+
+                if ($attempt === $attempts) {
+                    throw $exception;
+                }
+            }
+        }
+
+        throw $lastException ?? new NfeAccessKeyLookupException(
+            'Nao foi possivel consultar a integracao fiscal.'
+        );
     }
 }

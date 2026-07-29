@@ -28,13 +28,27 @@ class ProductIntelligenceApiController
 
     public function lookup(string $gtin, ProductLookupService $lookupService): JsonResponse
     {
-        $result = $lookupService->lookup($gtin);
+        $outcome = $lookupService->lookupOutcome($gtin);
+        $result = $outcome->result;
+
+        if ($outcome->unavailable()) {
+            return response()->json([
+                'ok' => false,
+                'found' => false,
+                'manual_allowed' => true,
+                'lookup_status' => $outcome->status,
+                'retryable' => true,
+                'message' => 'As bases externas de produtos estao temporariamente indisponiveis.',
+            ], 503);
+        }
 
         if (! $result) {
             return response()->json([
                 'ok' => true,
                 'found' => false,
                 'manual_allowed' => true,
+                'lookup_status' => $outcome->status,
+                'cached' => $outcome->cached,
                 'message' => 'Produto nao encontrado nas bases conectadas.',
             ]);
         }

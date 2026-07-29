@@ -53,6 +53,11 @@ This project follows the spirit of Keep a Changelog, with one practical adjustme
 - Replaced the database overview with a migration-aligned current model summary.
 - Updated Guzzle and PSR-7 to patched compatible releases after dependency
   auditing identified redirect, cookie, and proxy-header advisories.
+- Hardened NF-e XML and access-key intake with bounded parsing and local
+  searches, DOCTYPE/entity rejection, key-to-XML verification, safer
+  diagnostics, and configurable connection limits.
+- Hardened external product lookup with provider availability outcomes, real
+  negative caching, bounded retries, and restricted image downloads.
 
 ### Pending
 

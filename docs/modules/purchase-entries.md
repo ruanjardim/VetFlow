@@ -17,6 +17,8 @@ payables in the financial ledger.
 - Generate financial payables from received purchase entries.
 - Split payables into installments.
 - Import NF-e XML and use cached XML by access key.
+- Keep XML upload available as the operational fallback when the optional
+  access-key integration is unavailable.
 
 ## Key Classes
 
@@ -55,6 +57,26 @@ payables in the financial ledger.
 - Global users must operate through an explicit clinic selection.
 - NF-e import creates or matches supplier/product records inside the selected
   clinic only.
+
+## NF-e Resilience And Safety
+
+- Uploaded and externally resolved XML is limited to 5 MB by default.
+- XML containing `DOCTYPE` or entity declarations is rejected before parsing.
+- A single NF-e can contain up to 500 items by default.
+- Access-key lookup checks the VetFlow cache, configured local archives, and
+  then the optional fiscal API.
+- Local archive scans are streamed and stop after 1,000 XML files by default.
+- The requested 44-digit key must match the key parsed from the resolved XML
+  before any Supplier or Product is created.
+- Connection timeout, total timeout, and retry count for the fiscal API are
+  bounded and configurable.
+- Browser diagnostics omit server filesystem paths, tokens, and raw exception
+  details.
+- Fiscal API outages return a retryable response and direct the operator to
+  upload the XML instead of blocking the purchase workflow.
+
+The defaults can be adjusted through the `NFE_*` variables documented in
+`.env.example`.
 
 ## Permissions
 

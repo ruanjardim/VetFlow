@@ -3,6 +3,7 @@
 namespace App\Modules\Products\Services;
 
 use App\Modules\ProductIntelligence\Services\ProductIntelligenceService;
+use App\Modules\Products\Data\ProductLookupOutcome;
 use App\Modules\Products\Data\ProductLookupResult;
 use App\Modules\Products\Models\Product;
 use App\Modules\Products\Models\ProductLookupCatalog;
@@ -10,19 +11,23 @@ use Throwable;
 
 class ProductLookupService
 {
-    public function __construct(private readonly ProductIntelligenceService $intelligence)
-    {
-    }
+    public function __construct(private readonly ProductIntelligenceService $intelligence) {}
 
     public function lookup(string $gtin): ?ProductLookupResult
     {
-        $result = $this->intelligence->lookup($gtin);
+        return $this->lookupOutcome($gtin)->result;
+    }
+
+    public function lookupOutcome(string $gtin): ProductLookupOutcome
+    {
+        $outcome = $this->intelligence->lookupOutcome($gtin);
+        $result = $outcome->result;
 
         if ($result?->hasUsefulData()) {
             $this->rememberFound($result);
         }
 
-        return $result;
+        return $outcome;
     }
 
     public function rememberProduct(Product $product, string $source = 'vetflow_manual'): ?ProductLookupResult
@@ -42,23 +47,6 @@ class ProductLookupService
             ProductLookupCatalog::query()->updateOrCreate(
                 ['gtin' => $result->gtin],
                 $result->toCatalogAttributes('found')
-            );
-        } catch (Throwable) {
-            //
-        }
-    }
-
-    private function rememberMiss(string $gtin): void
-    {
-        try {
-            ProductLookupCatalog::query()->updateOrCreate(
-                ['gtin' => $gtin],
-                [
-                    'lookup_status' => 'not_found',
-                    'source' => 'external_lookup',
-                    'last_lookup_at' => now(),
-                    'failed_at' => now(),
-                ]
             );
         } catch (Throwable) {
             //

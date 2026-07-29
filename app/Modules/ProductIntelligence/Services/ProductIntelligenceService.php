@@ -5,16 +5,20 @@ namespace App\Modules\ProductIntelligence\Services;
 use App\Modules\ProductIntelligence\Models\GlobalProduct;
 use App\Modules\ProductIntelligence\Models\GlobalProductImage;
 use App\Modules\ProductIntelligence\Models\GlobalProductRegulatoryData;
-use App\Modules\ProductIntelligence\Models\GlobalProductSuggestion;
 use App\Modules\ProductIntelligence\Models\GlobalProductSource;
+use App\Modules\ProductIntelligence\Models\GlobalProductSuggestion;
+use App\Modules\Products\Data\ProductLookupOutcome;
 use App\Modules\Products\Data\ProductLookupResult;
+use App\Modules\Products\Exceptions\ProductLookupProviderException;
 use App\Modules\Products\LookupProviders\CommercialGtinJsonProvider;
 use App\Modules\Products\LookupProviders\OpenFoodFactsFamilyProvider;
 use App\Modules\Products\Models\Product;
+use App\Modules\Products\Models\ProductLookupCatalog;
 use App\Modules\Products\Support\Gtin;
 use App\Modules\Products\Support\ProductLookupImageDownloader;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 use Throwable;
 
@@ -22,34 +26,52 @@ class ProductIntelligenceService
 {
     private const LAYERS = ['free', 'commercial', 'official'];
 
-    public function __construct(private readonly ProductLookupImageDownloader $imageDownloader)
-    {
-    }
+    public function __construct(private readonly ProductLookupImageDownloader $imageDownloader) {}
 
     public function lookup(string $gtin): ?ProductLookupResult
+    {
+        return $this->lookupOutcome($gtin)->result;
+    }
+
+    public function lookupOutcome(string $gtin): ProductLookupOutcome
     {
         $normalized = Gtin::normalize($gtin);
 
         if (! Gtin::looksValid($normalized)) {
-            return null;
+            return new ProductLookupOutcome(ProductLookupOutcome::INVALID);
         }
 
         $variants = Gtin::variants($normalized);
 
         if ($global = $this->lookupGlobalCatalog($variants)) {
-            return $this->resultFromGlobalProduct($global);
+            return new ProductLookupOutcome(
+                ProductLookupOutcome::FOUND,
+                $this->resultFromGlobalProduct($global)
+            );
         }
 
         if ($product = $this->lookupExistingClinicProduct($variants)) {
-            return $this->rememberProduct($product, 'vetflow_product');
+            return new ProductLookupOutcome(
+                ProductLookupOutcome::FOUND,
+                $this->rememberProduct($product, 'vetflow_product')
+            );
         }
 
         if (! config('product_lookup.enabled', true)) {
-            return null;
+            return new ProductLookupOutcome(ProductLookupOutcome::DISABLED);
         }
 
+        if ($this->hasRecentNegativeCache($variants)) {
+            return new ProductLookupOutcome(
+                ProductLookupOutcome::NOT_FOUND,
+                cached: true
+            );
+        }
+
+        $diagnostics = [];
+
         foreach (self::LAYERS as $layer) {
-            $results = $this->lookupExternalLayer($layer, $variants);
+            $results = $this->lookupExternalLayer($layer, $variants, $diagnostics);
 
             if ($results->isEmpty()) {
                 continue;
@@ -63,12 +85,30 @@ class ProductIntelligenceService
 
             $this->rememberFound($result, $results);
 
-            return $result;
+            return new ProductLookupOutcome(
+                ProductLookupOutcome::FOUND,
+                $result,
+                $diagnostics
+            );
         }
 
-        $this->rememberMiss($normalized);
+        if ($diagnostics === []) {
+            return new ProductLookupOutcome(ProductLookupOutcome::DISABLED);
+        }
 
-        return null;
+        if ($this->allAttemptedProvidersUnavailable($diagnostics)) {
+            return new ProductLookupOutcome(
+                ProductLookupOutcome::UNAVAILABLE,
+                diagnostics: $diagnostics
+            );
+        }
+
+        $this->rememberMiss($normalized, $diagnostics);
+
+        return new ProductLookupOutcome(
+            ProductLookupOutcome::NOT_FOUND,
+            diagnostics: $diagnostics
+        );
     }
 
     public function rememberProduct(Product $product, string $source = 'vetflow_manual'): ?ProductLookupResult
@@ -117,8 +157,10 @@ class ProductIntelligenceService
             return null;
         }
 
+        $diagnostics = [];
+
         foreach (self::LAYERS as $layer) {
-            $results = $this->lookupExternalLayer($layer, Gtin::variants($normalized));
+            $results = $this->lookupExternalLayer($layer, Gtin::variants($normalized), $diagnostics);
 
             if ($results->isEmpty()) {
                 continue;
@@ -136,7 +178,10 @@ class ProductIntelligenceService
         $metadata = $globalProduct->metadata ?? [];
         $metadata['last_enrichment_attempt'] = [
             'attempted_at' => now()->toDateTimeString(),
-            'result' => 'not_found',
+            'result' => $this->allAttemptedProvidersUnavailable($diagnostics)
+                ? ProductLookupOutcome::UNAVAILABLE
+                : ProductLookupOutcome::NOT_FOUND,
+            'providers' => $diagnostics,
         ];
 
         $globalProduct->update([
@@ -177,15 +222,50 @@ class ProductIntelligenceService
             ->first();
     }
 
-    private function lookupExternalLayer(string $layer, array $gtins): Collection
+    private function lookupExternalLayer(string $layer, array $gtins, array &$diagnostics): Collection
     {
         return $this->externalProviders()
             ->filter(fn (array $entry) => $entry['tier'] === $layer)
-            ->flatMap(function (array $entry) use ($gtins) {
+            ->flatMap(function (array $entry) use ($gtins, &$diagnostics) {
                 $found = [];
+                $providerName = (string) ($entry['config']['name'] ?? 'external_provider');
+                $diagnostic = [
+                    'provider' => $providerName,
+                    'tier' => $entry['tier'],
+                    'status' => ProductLookupOutcome::NOT_FOUND,
+                ];
 
                 foreach ($gtins as $candidate) {
-                    $result = $entry['provider']->lookup($candidate);
+                    try {
+                        $result = $entry['provider']->lookup($candidate);
+                    } catch (ProductLookupProviderException $exception) {
+                        $diagnostic['status'] = ProductLookupOutcome::UNAVAILABLE;
+                        $diagnostic['http_status'] = $exception->httpStatus();
+                        $diagnostics[] = array_filter(
+                            $diagnostic,
+                            fn ($value) => $value !== null
+                        );
+
+                        Log::warning('Provedor de consulta de produtos indisponivel.', [
+                            'provider' => $providerName,
+                            'tier' => $entry['tier'],
+                            'http_status' => $exception->httpStatus(),
+                            'exception' => $exception::class,
+                        ]);
+
+                        return [];
+                    } catch (Throwable $exception) {
+                        $diagnostic['status'] = ProductLookupOutcome::UNAVAILABLE;
+                        $diagnostics[] = $diagnostic;
+
+                        Log::warning('Falha inesperada em provedor de consulta de produtos.', [
+                            'provider' => $providerName,
+                            'tier' => $entry['tier'],
+                            'exception' => $exception::class,
+                        ]);
+
+                        return [];
+                    }
 
                     if (! $result?->hasUsefulData()) {
                         continue;
@@ -198,7 +278,13 @@ class ProductIntelligenceService
                     }
 
                     $found[] = $this->withIntelligenceMetadata($result, $entry);
+                    $diagnostic['status'] = ProductLookupOutcome::FOUND;
+                    $diagnostics[] = $diagnostic;
                     break;
+                }
+
+                if ($found === []) {
+                    $diagnostics[] = $diagnostic;
                 }
 
                 return $found;
@@ -441,8 +527,25 @@ class ProductIntelligenceService
         );
     }
 
-    private function rememberMiss(string $gtin): void
+    private function rememberMiss(string $gtin, array $diagnostics = []): void
     {
+        if (Schema::hasTable('product_lookup_catalogs')) {
+            try {
+                ProductLookupCatalog::query()->updateOrCreate(
+                    ['gtin' => $gtin],
+                    [
+                        'lookup_status' => ProductLookupOutcome::NOT_FOUND,
+                        'source' => 'external_lookup',
+                        'metadata' => ['providers' => $diagnostics],
+                        'last_lookup_at' => now(),
+                        'failed_at' => now(),
+                    ]
+                );
+            } catch (Throwable) {
+                //
+            }
+        }
+
         if (! Schema::hasTable('global_product_suggestions')) {
             return;
         }
@@ -459,12 +562,44 @@ class ProductIntelligenceService
                     'confidence' => 0,
                     'payload' => [
                         'message' => 'Nenhuma fonte retornou dados uteis para este GTIN.',
+                        'providers' => $diagnostics,
                     ],
                 ]
             );
         } catch (Throwable) {
             //
         }
+    }
+
+    private function hasRecentNegativeCache(array $gtins): bool
+    {
+        if (! Schema::hasTable('product_lookup_catalogs')) {
+            return false;
+        }
+
+        $days = max(0, (int) config('product_lookup.negative_cache_days', 7));
+
+        if ($days === 0) {
+            return false;
+        }
+
+        try {
+            return ProductLookupCatalog::query()
+                ->whereIn('gtin', $gtins)
+                ->where('lookup_status', ProductLookupOutcome::NOT_FOUND)
+                ->where('failed_at', '>=', now()->subDays($days))
+                ->exists();
+        } catch (Throwable) {
+            return false;
+        }
+    }
+
+    private function allAttemptedProvidersUnavailable(array $diagnostics): bool
+    {
+        return $diagnostics !== []
+            && collect($diagnostics)->every(
+                fn (array $diagnostic) => ($diagnostic['status'] ?? null) === ProductLookupOutcome::UNAVAILABLE
+            );
     }
 
     private function resolveStatus(?GlobalProduct $existing, ProductLookupResult $result, string $newStatus): string
