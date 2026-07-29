@@ -7,9 +7,7 @@ use App\Modules\Inventory\Services\StockAlertService;
 
 class DashboardAlertService
 {
-    public function __construct(private readonly StockAlertService $stockAlertService)
-    {
-    }
+    public function __construct(private readonly StockAlertService $stockAlertService) {}
 
     public function latest(): array
     {
@@ -37,6 +35,8 @@ class DashboardAlertService
                 'critical' => ($data['stats']['critical'] ?? 0) + $financialCritical,
                 'attention' => ($data['stats']['attention'] ?? 0) + ($financialTotal - $financialCritical),
                 'cadastro' => $data['stats']['cadastro'] ?? 0,
+                'inventory' => $data['stats']['total'] ?? 0,
+                'financial' => $financialTotal,
             ],
             'latest' => array_slice([
                 ...$financialAlerts,

@@ -14,6 +14,8 @@ class DashboardInventoryService
     public function lowStock(): int
     {
         return Product::query()
+            ->active()
+            ->where('minimum_stock', '>', 0)
             ->lowStock()
             ->count();
     }
