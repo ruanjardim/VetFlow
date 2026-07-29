@@ -3,6 +3,7 @@
 namespace App\Modules\Implementation\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Models\User;
 use App\Modules\Clinics\Models\Clinic;
 use App\Modules\Implementation\Contracts\CsvImportService;
 use App\Modules\Implementation\Requests\SelectClinicRequest;
@@ -14,6 +15,7 @@ use App\Modules\Implementation\Requests\UploadStockCsvRequest;
 use App\Modules\Implementation\Requests\UploadSupplierCsvRequest;
 use App\Modules\Implementation\Requests\UploadTutorCsvRequest;
 use App\Modules\Implementation\Services\FinancialCsvImportService;
+use App\Modules\Implementation\Services\ImplementationImportService;
 use App\Modules\Implementation\Services\ImplementationWorkflowService;
 use App\Modules\Implementation\Services\PatientCsvImportService;
 use App\Modules\Implementation\Services\ProductCsvImportService;
@@ -274,7 +276,8 @@ class ImplementationController extends Controller
         private readonly SupplierCsvImportService $supplierCsvImporter,
         private readonly ProductCsvImportService $productCsvImporter,
         private readonly StockCsvImportService $stockCsvImporter,
-        private readonly FinancialCsvImportService $financialCsvImporter
+        private readonly FinancialCsvImportService $financialCsvImporter,
+        private readonly ImplementationImportService $implementationImporter
     ) {}
 
     public function index(Request $request): View|RedirectResponse
@@ -308,6 +311,8 @@ class ImplementationController extends Controller
             : 'tutors';
         $activeImport = self::IMPORTS[$entityType];
         $importer = $this->importerFor($entityType);
+        /** @var User $user */
+        $user = $request->user();
 
         return view('implementation.index', [
             'clinics' => $clinics,
@@ -349,6 +354,7 @@ class ImplementationController extends Controller
             'analysis' => $analysis,
             'mappingDefinitions' => $importer->mappingDefinitions(),
             'completedSummary' => $state['completed'] ?? null,
+            'recentImports' => $this->implementationImporter->recentFor($user),
         ]);
     }
 
@@ -497,23 +503,36 @@ class ImplementationController extends Controller
                 ->with('warning', 'Corrija as pendências do arquivo antes de importar.');
         }
 
+        $config = self::IMPORTS[$entityType];
+        $completedAt = now();
+        /** @var User $user */
+        $user = $request->user();
+
         try {
-            $result = $this->importerFor($entityType)
-                ->import($analysis, $clinic->id);
+            $result = $this->implementationImporter->import(
+                $this->importerFor($entityType),
+                $analysis,
+                $clinic,
+                $user,
+                $entityType,
+                $config['label'],
+                $state['data_source'] ?? 'csv',
+                $state['file_name'] ?? $config['default_file'],
+                $completedAt
+            );
         } catch (DomainException $exception) {
             return redirect()
                 ->route('implementation.index', ['step' => 5])
                 ->with('error', $exception->getMessage());
         }
 
-        $config = self::IMPORTS[$entityType];
         $this->workflow->complete([
             'entity_type' => $entityType,
             'entity_label' => $config['label'],
             'clinic_name' => $clinic->trade_name,
             'file_name' => $state['file_name'] ?? $config['default_file'],
             'imported_count' => $result['imported_count'],
-            'completed_at' => now()->format('d/m/Y H:i'),
+            'completed_at' => $completedAt->format('d/m/Y H:i'),
         ]);
 
         return redirect()

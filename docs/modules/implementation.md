@@ -20,10 +20,15 @@ validation, mapping review, and explicit confirmation.
 6. Preview up to 20 valid records.
 7. Confirm the transactional import.
 8. Review the completion summary.
+9. Consult the permanent summary in the recent import history.
 
 The wizard state is kept in the authenticated session. Normalized rows are
 stored temporarily as a private JSON file on the `local` disk, separated by
 entity type, and removed when the wizard is reset or the import finishes.
+After a successful confirmation, VetFlow permanently records only audit
+metadata: destination clinic, responsible user, data block, source, file name,
+row counts, and completion time. Imported row contents and validation details
+are not copied into the history.
 
 ## CSV Contract
 
@@ -131,7 +136,9 @@ tipo,descricao,pessoa_documento,valor,vencimento,status,forma_pagamento,data_pag
 | Class | Role |
 | --- | --- |
 | `ImplementationController` | Coordinates wizard pages and redirects. |
+| `ImplementationImportService` | Runs the selected importer and durable audit write in one outer transaction, and scopes recent history queries. |
 | `ImplementationWorkflowService` | Manages session state and private temporary analysis files. |
+| `ImplementationImport` | Represents one successfully completed import summary. |
 | `CsvFileAnalyzer` | Applies shared delimiter, header, encoding, row-limit, and summary rules to catalog, Stock, and Financial CSV files. |
 | `CsvValueNormalizer` | Normalizes strings, Brazilian decimals, and supported dates for catalog, Stock, and Financial imports. |
 | `TutorCsvImportService` | Parses, maps, validates, previews, and imports Tutor rows. |
@@ -164,13 +171,23 @@ tipo,descricao,pessoa_documento,valor,vencimento,status,forma_pagamento,data_pag
 - Product creation and Inventory movements receive the selected `clinic_id`.
 - Every imported Financial Transaction receives the selected `clinic_id`.
 - Temporary analysis is associated with the authenticated user's session.
+- Clinic users can see only import history from their own clinic.
+- Global implementation users can see recent history across the active clinic
+  scope available to the wizard.
+- The import rows and their sensitive business fields are never copied into
+  the history table.
 
 ## Tables
 
-The module does not own a database table. Confirmed imports create records in
-`tutors`, `patients`, `suppliers`, `products`, `inventory_movements`, or
-`financial_transactions`; transient wizard data is not persisted as a business
-record.
+The module owns `implementation_imports`, an append-only operational audit
+summary for successfully completed imports. It stores clinic and user foreign
+keys plus name snapshots, the imported block and source, the normalized
+original file name, total/imported/invalid counts, and completion time.
+
+Confirmed imports continue creating their business records in `tutors`,
+`patients`, `suppliers`, `products`, `inventory_movements`, or
+`financial_transactions`. Transient normalized rows remain outside the
+database and are deleted after completion or reset.
 
 ## Tests
 
@@ -196,9 +213,13 @@ rows, templates, and cross-clinic isolation.
 Financial imports, label normalization, invalid rows, template output, and
 cross-clinic Supplier isolation.
 
+`tests/Feature/ImplementationImportHistoryTest.php` covers permanent summaries
+after successful confirmation, absence of row payloads, survival after wizard
+reset, clinic-scoped visibility, and no history for blocked imports.
+
 ## Intentionally Out Of Scope
 
 - Excel parsing.
 - Manual column mapping.
 - Partial import of valid rows.
-- Durable migration history or background processing.
+- Failed-attempt history or background processing.

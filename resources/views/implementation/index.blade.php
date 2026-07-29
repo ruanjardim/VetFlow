@@ -48,6 +48,56 @@
     <div class="panel-body">
       <div class="implementation-heading">
         <div>
+          <span class="eyebrow">Auditoria</span>
+          <h2>Importações recentes</h2>
+          <p class="muted">
+            Resumos permanentes das últimas importações concluídas nas clínicas disponíveis para seu acesso.
+          </p>
+        </div>
+      </div>
+
+      @if($recentImports->isEmpty())
+        <div class="empty-state">
+          <h3>Nenhuma importação concluída</h3>
+          <p>O histórico será preenchido após a confirmação do primeiro bloco.</p>
+        </div>
+      @else
+        <div class="table-wrap implementation-table">
+          <table>
+            <thead>
+              <tr>
+                <th>Concluída em</th>
+                <th>Clínica</th>
+                <th>Bloco</th>
+                <th>Origem</th>
+                <th>Arquivo</th>
+                <th>Importados</th>
+                <th>Responsável</th>
+              </tr>
+            </thead>
+            <tbody>
+              @foreach($recentImports as $recentImport)
+                <tr>
+                  <td>{{ $recentImport->completed_at?->format('d/m/Y H:i') }}</td>
+                  <td>{{ $recentImport->clinic_name }}</td>
+                  <td>{{ $recentImport->entity_label }}</td>
+                  <td>{{ mb_strtoupper($recentImport->data_source) }}</td>
+                  <td>{{ $recentImport->file_name }}</td>
+                  <td>{{ $recentImport->imported_count }}</td>
+                  <td>{{ $recentImport->user_name }}</td>
+                </tr>
+              @endforeach
+            </tbody>
+          </table>
+        </div>
+      @endif
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-body">
+      <div class="implementation-heading">
+        <div>
           <span class="eyebrow">Etapa {{ $currentStep }} de {{ count($wizardSteps) }}</span>
           <h2>{{ $currentStepData['title'] }}</h2>
           <p class="muted">{{ $currentStepData['description'] }}</p>
