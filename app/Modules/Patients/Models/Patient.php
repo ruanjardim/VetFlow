@@ -3,7 +3,9 @@
 namespace App\Modules\Patients\Models;
 
 use App\Models\Concerns\BelongsToClinicTenant;
+use App\Modules\Tutors\Models\Tutor;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Patient extends Model
@@ -19,4 +21,9 @@ class Patient extends Model
         'birth_date' => 'date',
         'weight' => 'decimal:2',
     ];
+
+    public function tutor(): BelongsTo
+    {
+        return $this->belongsTo(Tutor::class);
+    }
 }

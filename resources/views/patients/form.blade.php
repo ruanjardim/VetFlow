@@ -1,7 +1,21 @@
 <div class="form-grid">
+  <div class="field full">
+    <label for="tutor_id">Tutor responsável</label>
+    <select id="tutor_id" name="tutor_id" required>
+      <option value="">Selecione o tutor</option>
+      @foreach($tutors as $tutor)
+        <option
+          value="{{ $tutor->id }}"
+          @selected((string) old('tutor_id', $patient->tutor_id ?? '') === (string) $tutor->id)
+        >
+          {{ $tutor->name }}{{ $tutor->cpf ? ' — '.$tutor->cpf : '' }}
+        </option>
+      @endforeach
+    </select>
+  </div>
   <div class="field">
     <label for="name">Nome</label>
-    <input id="name" name="name" value="{{ old('name', $patient->name ?? '') }}">
+    <input id="name" name="name" value="{{ old('name', $patient->name ?? '') }}" required>
   </div>
   <div class="field">
     <label for="species">Especie</label>

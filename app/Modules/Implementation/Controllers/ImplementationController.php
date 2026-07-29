@@ -6,8 +6,10 @@ use App\Http\Controllers\Controller;
 use App\Modules\Clinics\Models\Clinic;
 use App\Modules\Implementation\Requests\SelectClinicRequest;
 use App\Modules\Implementation\Requests\SelectSourceRequest;
+use App\Modules\Implementation\Requests\UploadPatientCsvRequest;
 use App\Modules\Implementation\Requests\UploadTutorCsvRequest;
 use App\Modules\Implementation\Services\ImplementationWorkflowService;
+use App\Modules\Implementation\Services\PatientCsvImportService;
 use App\Modules\Implementation\Services\TutorCsvImportService;
 use DomainException;
 use Illuminate\Contracts\View\View;
@@ -18,6 +20,48 @@ use Illuminate\Http\Response;
 
 class ImplementationController extends Controller
 {
+    private const IMPORTS = [
+        'tutors' => [
+            'label' => 'Tutores',
+            'singular' => 'Tutor',
+            'template' => 'tutors',
+            'template_label' => 'Tutores CSV',
+            'upload_route' => 'implementation.tutors.upload',
+            'import_route' => 'implementation.tutors.import',
+            'input_name' => 'tutors_file',
+            'input_id' => 'tutors-file',
+            'default_file' => 'tutores.csv',
+            'expected_columns' => 'nome, telefone, whatsapp, email, cpf_cnpj, endereco e observacoes',
+            'preview_columns' => [
+                ['key' => 'name', 'label' => 'Nome'],
+                ['key' => 'phone', 'label' => 'Telefone'],
+                ['key' => 'phone_secondary', 'label' => 'WhatsApp'],
+                ['key' => 'email', 'label' => 'E-mail'],
+                ['key' => 'cpf', 'label' => 'CPF'],
+            ],
+        ],
+        'patients' => [
+            'label' => 'Pacientes',
+            'singular' => 'Paciente',
+            'template' => 'patients',
+            'template_label' => 'Pacientes CSV',
+            'upload_route' => 'implementation.patients.upload',
+            'import_route' => 'implementation.patients.import',
+            'input_name' => 'patients_file',
+            'input_id' => 'patients-file',
+            'default_file' => 'pacientes.csv',
+            'expected_columns' => 'tutor_documento, nome_pet, especie, raca, sexo, nascimento, peso e observacoes',
+            'preview_columns' => [
+                ['key' => 'name', 'label' => 'Nome'],
+                ['key' => 'tutor_name', 'label' => 'Tutor'],
+                ['key' => 'species', 'label' => 'Espécie'],
+                ['key' => 'breed', 'label' => 'Raça'],
+                ['key' => 'birth_date', 'label' => 'Nascimento'],
+                ['key' => 'weight', 'label' => 'Peso'],
+            ],
+        ],
+    ];
+
     private const TEMPLATES = [
         'tutors' => [
             'nome',
@@ -118,7 +162,7 @@ class ImplementationController extends Controller
             'slug' => 'import',
             'title' => 'Importação',
             'short_title' => 'Importação',
-            'description' => 'Confirme a gravação dos Tutores validados na clínica destino.',
+            'description' => 'Confirme a gravação dos registros validados na clínica destino.',
         ],
         8 => [
             'slug' => 'finish',
@@ -130,7 +174,8 @@ class ImplementationController extends Controller
 
     public function __construct(
         private readonly ImplementationWorkflowService $workflow,
-        private readonly TutorCsvImportService $tutorCsvImporter
+        private readonly TutorCsvImportService $tutorCsvImporter,
+        private readonly PatientCsvImportService $patientCsvImporter
     ) {}
 
     public function index(Request $request): View|RedirectResponse
@@ -159,12 +204,21 @@ class ImplementationController extends Controller
         }
 
         $analysis = $this->workflow->analysis();
+        $entityType = isset(self::IMPORTS[$state['entity_type'] ?? null])
+            ? $state['entity_type']
+            : 'tutors';
+        $activeImport = self::IMPORTS[$entityType];
+        $importer = $entityType === 'patients'
+            ? $this->patientCsvImporter
+            : $this->tutorCsvImporter;
 
         return view('implementation.index', [
             'clinics' => $clinics,
             'clinicsCount' => $clinics->count(),
             'selectedClinic' => $selectedClinic,
-            'templates' => ['tutors'],
+            'availableImports' => self::IMPORTS,
+            'entityType' => $entityType,
+            'activeImport' => $activeImport,
             'wizardSteps' => self::WIZARD_STEPS,
             'currentStep' => $currentStep,
             'currentStepData' => self::WIZARD_STEPS[$currentStep],
@@ -178,7 +232,7 @@ class ImplementationController extends Controller
             ),
             'migrationBlocks' => [
                 ['label' => 'Tutores e contatos', 'available' => true],
-                ['label' => 'Pacientes e histórico básico', 'available' => false],
+                ['label' => 'Pacientes e histórico básico', 'available' => true],
                 ['label' => 'Produtos', 'available' => false],
                 ['label' => 'Fornecedores', 'available' => false],
                 ['label' => 'Estoque inicial', 'available' => false],
@@ -196,7 +250,7 @@ class ImplementationController extends Controller
             ],
             'wizardState' => $state,
             'analysis' => $analysis,
-            'mappingDefinitions' => $this->tutorCsvImporter->mappingDefinitions(),
+            'mappingDefinitions' => $importer->mappingDefinitions(),
             'completedSummary' => $state['completed'] ?? null,
         ]);
     }
@@ -245,7 +299,8 @@ class ImplementationController extends Controller
 
         $this->workflow->storeAnalysis(
             $analysis,
-            $file->getClientOriginalName()
+            $file->getClientOriginalName(),
+            'tutors'
         );
 
         $response = redirect()->route('implementation.index', ['step' => 4]);
@@ -264,6 +319,7 @@ class ImplementationController extends Controller
         if (
             $clinic === null
             || $analysis === null
+            || ($state['entity_type'] ?? null) !== 'tutors'
             || ! ($analysis['can_import'] ?? false)
         ) {
             return redirect()
@@ -280,6 +336,8 @@ class ImplementationController extends Controller
         }
 
         $this->workflow->complete([
+            'entity_type' => 'tutors',
+            'entity_label' => self::IMPORTS['tutors']['label'],
             'clinic_name' => $clinic->trade_name,
             'file_name' => $state['file_name'] ?? 'tutores.csv',
             'imported_count' => $result['imported_count'],
@@ -289,6 +347,72 @@ class ImplementationController extends Controller
         return redirect()
             ->route('implementation.index', ['step' => 8])
             ->with('success', 'Importação de tutores concluída com sucesso.');
+    }
+
+    public function uploadPatients(UploadPatientCsvRequest $request): RedirectResponse
+    {
+        $state = $this->workflow->state();
+        $clinic = $this->selectedClinic($request, $state);
+
+        if ($clinic === null || ($state['data_source'] ?? null) !== 'csv') {
+            return redirect()
+                ->route('implementation.index', ['step' => $clinic === null ? 1 : 2])
+                ->with('warning', 'Conclua a configuração da importação antes de enviar o CSV.');
+        }
+
+        $file = $request->file('patients_file');
+        $analysis = $this->patientCsvImporter->analyze($file, $clinic->id);
+
+        $this->workflow->storeAnalysis(
+            $analysis,
+            $file->getClientOriginalName(),
+            'patients'
+        );
+
+        $response = redirect()->route('implementation.index', ['step' => 4]);
+
+        return $analysis['can_import']
+            ? $response->with('success', 'CSV analisado. Confira o mapeamento e a prévia antes de importar.')
+            : $response->with('warning', 'CSV analisado com pendências. Revise os erros encontrados.');
+    }
+
+    public function importPatients(Request $request): RedirectResponse
+    {
+        $state = $this->workflow->state();
+        $clinic = $this->selectedClinic($request, $state);
+        $analysis = $this->workflow->analysis();
+
+        if (
+            $clinic === null
+            || $analysis === null
+            || ($state['entity_type'] ?? null) !== 'patients'
+            || ! ($analysis['can_import'] ?? false)
+        ) {
+            return redirect()
+                ->route('implementation.index', ['step' => 5])
+                ->with('warning', 'Corrija as pendências do arquivo antes de importar.');
+        }
+
+        try {
+            $result = $this->patientCsvImporter->import($analysis, $clinic->id);
+        } catch (DomainException $exception) {
+            return redirect()
+                ->route('implementation.index', ['step' => 5])
+                ->with('error', $exception->getMessage());
+        }
+
+        $this->workflow->complete([
+            'entity_type' => 'patients',
+            'entity_label' => self::IMPORTS['patients']['label'],
+            'clinic_name' => $clinic->trade_name,
+            'file_name' => $state['file_name'] ?? 'pacientes.csv',
+            'imported_count' => $result['imported_count'],
+            'completed_at' => now()->format('d/m/Y H:i'),
+        ]);
+
+        return redirect()
+            ->route('implementation.index', ['step' => 8])
+            ->with('success', 'Importação de pacientes concluída com sucesso.');
     }
 
     public function reset(): RedirectResponse

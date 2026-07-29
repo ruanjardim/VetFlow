@@ -109,7 +109,7 @@
         @case(1)
           <h2>Selecione a clínica destino</h2>
           <p class="muted">
-            Todos os tutores confirmados nesta implantação serão vinculados à clínica escolhida.
+            Todos os registros confirmados nesta implantação serão vinculados à clínica escolhida.
           </p>
 
           @if($clinicsCount > 0)
@@ -148,7 +148,7 @@
         @case(2)
           <h2>Escolha a origem dos dados</h2>
           <p class="muted">
-            A primeira importação funcional usa CSV. Excel será habilitado após este fluxo estar consolidado.
+            Tutores e Pacientes já podem ser importados por CSV. Excel será habilitado após este fluxo estar consolidado.
           </p>
 
           <form method="POST" action="{{ route('implementation.source') }}">
@@ -171,7 +171,7 @@
                     <strong>{{ $sourceLabel }}</strong>
 
                     @if($sourceAvailable)
-                      <small>Disponível agora para importação de Tutores</small>
+                      <small>Disponível agora para Tutores e Pacientes</small>
                     @elseif($sourceValue === 'excel')
                       <small>Próxima origem planejada</small>
                     @else
@@ -189,9 +189,9 @@
           @break
 
         @case(3)
-          <h2>Envie o CSV de Tutores</h2>
+          <h2>Escolha e envie o bloco CSV</h2>
           <p class="muted">
-            Use o template do VetFlow. O arquivo pode ter até 2 MB e 500 registros.
+            Use um template do VetFlow. Cada arquivo pode ter até 2 MB e 500 registros.
           </p>
 
           <div class="implementation-blocks">
@@ -211,58 +211,58 @@
             @endforeach
           </div>
 
-          <div class="panel compact-panel">
-            <div class="panel-body">
-              <h3>1. Baixe o template</h3>
-              <p class="muted">Mantenha os nomes das colunas para que o mapeamento seja automático.</p>
+          @foreach($availableImports as $importKey => $import)
+            <div class="panel compact-panel">
+              <div class="panel-body">
+                <h3>{{ $import['label'] }}</h3>
+                <p class="muted">
+                  Baixe o template e mantenha os nomes das colunas para que o mapeamento seja automático.
+                </p>
 
-              <div class="row-actions">
-                @foreach($templates as $template)
+                <div class="row-actions">
                   <a
                     class="button secondary"
-                    href="{{ route('implementation.templates', $template) }}"
+                    href="{{ route('implementation.templates', $import['template']) }}"
                   >
-                    Tutores CSV
+                    {{ $import['template_label'] }}
                   </a>
-                @endforeach
+                </div>
               </div>
             </div>
-          </div>
 
-          <form
-            class="implementation-upload"
-            method="POST"
-            action="{{ route('implementation.tutors.upload') }}"
-            enctype="multipart/form-data"
-          >
-            @csrf
+            <form
+              class="implementation-upload"
+              method="POST"
+              action="{{ route($import['upload_route']) }}"
+              enctype="multipart/form-data"
+            >
+              @csrf
 
-            <h3>2. Envie o arquivo preenchido</h3>
+              <div class="form-group implementation-form-width">
+                <label for="{{ $import['input_id'] }}">Arquivo de {{ $import['label'] }}</label>
+                <input
+                  id="{{ $import['input_id'] }}"
+                  type="file"
+                  name="{{ $import['input_name'] }}"
+                  accept=".csv,text/csv"
+                  required
+                >
+                <span class="field-hint">
+                  Colunas esperadas: {{ $import['expected_columns'] }}.
+                </span>
+              </div>
 
-            <div class="form-group implementation-form-width">
-              <label for="tutors-file">Arquivo CSV</label>
-              <input
-                id="tutors-file"
-                type="file"
-                name="tutors_file"
-                accept=".csv,text/csv"
-                required
-              >
-              <span class="field-hint">
-                Colunas esperadas: nome, telefone, whatsapp, email, cpf_cnpj, endereco e observacoes.
-              </span>
-            </div>
-
-            <div class="form-actions">
-              <button class="button" type="submit">Analisar arquivo</button>
-            </div>
-          </form>
+              <div class="form-actions">
+                <button class="button" type="submit">Analisar {{ $import['label'] }}</button>
+              </div>
+            </form>
+          @endforeach
           @break
 
         @case(4)
           <h2>Mapeamento automático</h2>
           <p class="muted">
-            Arquivo <strong>{{ $wizardState['file_name'] ?? 'tutores.csv' }}</strong>,
+            Arquivo <strong>{{ $wizardState['file_name'] ?? $activeImport['default_file'] }}</strong>,
             separado por {{ $analysis['delimiter'] ?? 'delimitador não identificado' }}.
           </p>
 
@@ -347,7 +347,7 @@
                 <thead>
                   <tr>
                     <th>Linha</th>
-                    <th>Tutor</th>
+                    <th>{{ $activeImport['singular'] }}</th>
                     <th>Pendências</th>
                   </tr>
                 </thead>
@@ -368,7 +368,7 @@
           @break
 
         @case(6)
-          <h2>Pré-visualização dos Tutores</h2>
+          <h2>Pré-visualização de {{ $activeImport['label'] }}</h2>
           <p class="muted">
             Confira os dados antes da gravação. Até 20 registros são exibidos nesta tela.
           </p>
@@ -378,22 +378,18 @@
               <thead>
                 <tr>
                   <th>Linha</th>
-                  <th>Nome</th>
-                  <th>Telefone</th>
-                  <th>WhatsApp</th>
-                  <th>E-mail</th>
-                  <th>CPF</th>
+                  @foreach($activeImport['preview_columns'] as $column)
+                    <th>{{ $column['label'] }}</th>
+                  @endforeach
                 </tr>
               </thead>
               <tbody>
                 @foreach(array_slice($analysis['rows'] ?? [], 0, 20) as $row)
                   <tr>
                     <td>{{ $row['line'] }}</td>
-                    <td>{{ $row['values']['name'] }}</td>
-                    <td>{{ $row['values']['phone'] }}</td>
-                    <td>{{ $row['values']['phone_secondary'] ?: '—' }}</td>
-                    <td>{{ $row['values']['email'] ?: '—' }}</td>
-                    <td>{{ $row['values']['cpf'] ?: '—' }}</td>
+                    @foreach($activeImport['preview_columns'] as $column)
+                      <td>{{ data_get($row['values'], $column['key']) ?: '—' }}</td>
+                    @endforeach
                   </tr>
                 @endforeach
               </tbody>
@@ -404,7 +400,7 @@
         @case(7)
           <h2>Confirmar importação</h2>
           <p class="muted">
-            Esta ação criará os tutores validados na clínica selecionada.
+            Esta ação criará os registros de {{ $activeImport['label'] }} validados na clínica selecionada.
           </p>
 
           <dl class="implementation-confirmation">
@@ -414,10 +410,10 @@
             </div>
             <div>
               <dt>Arquivo</dt>
-              <dd>{{ $wizardState['file_name'] ?? 'tutores.csv' }}</dd>
+              <dd>{{ $wizardState['file_name'] ?? $activeImport['default_file'] }}</dd>
             </div>
             <div>
-              <dt>Tutores</dt>
+              <dt>{{ $activeImport['label'] }}</dt>
               <dd>{{ $analysis['valid_rows'] ?? 0 }}</dd>
             </div>
           </dl>
@@ -426,10 +422,10 @@
             Confirme somente depois de revisar a prévia. A importação é executada em uma transação.
           </div>
 
-          <form method="POST" action="{{ route('implementation.tutors.import') }}">
+          <form method="POST" action="{{ route($activeImport['import_route']) }}">
             @csrf
 
-            <button class="button" type="submit">Importar Tutores</button>
+            <button class="button" type="submit">Importar {{ $activeImport['label'] }}</button>
           </form>
           @break
 
@@ -437,7 +433,7 @@
           <div class="implementation-finish">
             <span aria-hidden="true">✓</span>
             <h2>Importação concluída</h2>
-            <p>Os Tutores foram adicionados à clínica selecionada.</p>
+            <p>{{ $completedSummary['entity_label'] ?? $activeImport['label'] }} foram adicionados à clínica selecionada.</p>
           </div>
 
           @if($completedSummary)

@@ -17,6 +17,7 @@
         <thead>
           <tr>
             <th>Nome</th>
+            <th>Tutor</th>
             <th>Especie</th>
             <th>Raca</th>
             <th>Peso</th>
@@ -27,6 +28,7 @@
           @forelse($patients as $patient)
             <tr>
               <td>{{ $patient->name }}</td>
+              <td>{{ $patient->tutor?->name ?? 'Sem tutor vinculado' }}</td>
               <td>{{ $patient->species }}</td>
               <td>{{ $patient->breed }}</td>
               <td>{{ $patient->weight }}</td>
@@ -41,7 +43,7 @@
             </tr>
           @empty
             <tr>
-              <td colspan="5" class="muted">Nenhum paciente cadastrado.</td>
+              <td colspan="6" class="muted">Nenhum paciente cadastrado.</td>
             </tr>
           @endforelse
         </tbody>
