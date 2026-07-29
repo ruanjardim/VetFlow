@@ -36,7 +36,10 @@ This project follows the spirit of Keep a Changelog, with one practical adjustme
   collision checks, and audited opening Stock.
 - Assisted initial Stock CSV import by GTIN or SKU with lot, expiration, cost,
   and Inventory balance traceability.
-- Shared CSV analyzer and value normalizer for catalog and Stock data blocks.
+- Assisted Financial CSV import with Portuguese label normalization, optional
+  Supplier resolution, payment-date consistency, and clinic isolation.
+- Shared CSV analyzer and value normalizer for catalog, Stock, and Financial
+  data blocks.
 - Standalone module documentation for Implementation.
 
 ### Changed

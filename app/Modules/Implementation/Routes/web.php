@@ -43,6 +43,12 @@ Route::post('implementation/stock/upload', [ImplementationController::class, 'up
 Route::post('implementation/stock/import', [ImplementationController::class, 'importStock'])
     ->name('implementation.stock.import');
 
+Route::post('implementation/financial/upload', [ImplementationController::class, 'uploadFinancial'])
+    ->name('implementation.financial.upload');
+
+Route::post('implementation/financial/import', [ImplementationController::class, 'importFinancial'])
+    ->name('implementation.financial.import');
+
 Route::delete('implementation', [ImplementationController::class, 'reset'])
     ->name('implementation.reset');
 
