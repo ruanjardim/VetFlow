@@ -3,7 +3,17 @@
 return [
     'enabled' => env('PRODUCT_LOOKUP_ENABLED', true),
     'timeout_seconds' => (int) env('PRODUCT_LOOKUP_TIMEOUT_SECONDS', 4),
+    'connect_timeout_seconds' => (int) env('PRODUCT_LOOKUP_CONNECT_TIMEOUT_SECONDS', 2),
+    'attempts' => (int) env('PRODUCT_LOOKUP_ATTEMPTS', 2),
     'negative_cache_days' => (int) env('PRODUCT_LOOKUP_NEGATIVE_CACHE_DAYS', 7),
+    'max_image_bytes' => (int) env('PRODUCT_LOOKUP_MAX_IMAGE_BYTES', 5 * 1024 * 1024),
+    'image_allowed_hosts' => array_values(array_filter(array_map(
+        'trim',
+        explode(',', (string) env(
+            'PRODUCT_LOOKUP_IMAGE_ALLOWED_HOSTS',
+            'images.openfoodfacts.org,static.openfoodfacts.org,images.openpetfoodfacts.org,static.openpetfoodfacts.org,images.openproductsfacts.org,static.openproductsfacts.org,openfoodfacts-images.s3.eu-west-3.amazonaws.com'
+        ))
+    ))),
     'user_agent' => env('PRODUCT_LOOKUP_USER_AGENT', 'VetFlowCommercial/1.0 (contato@vetflow.local)'),
 
     'providers' => [

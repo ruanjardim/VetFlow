@@ -12,9 +12,7 @@ use Illuminate\Support\Collection;
 
 class PurchaseEntryInsightService
 {
-    public function __construct(private readonly ProductLookupService $lookupService)
-    {
-    }
+    public function __construct(private readonly ProductLookupService $lookupService) {}
 
     public function dashboard(): array
     {
@@ -121,7 +119,8 @@ class PurchaseEntryInsightService
             ];
         }
 
-        $result = $this->lookupService->lookup($normalized);
+        $outcome = $this->lookupService->lookupOutcome($normalized);
+        $result = $outcome->result;
         $createUrl = route('products.create').'?'.http_build_query([
             'gtin' => $normalized,
             'clinic_id' => $clinicId,
@@ -129,12 +128,28 @@ class PurchaseEntryInsightService
             'return_to' => 'purchase',
         ]);
 
+        if ($outcome->unavailable()) {
+            return [
+                'status' => 503,
+                'payload' => [
+                    'found' => false,
+                    'manual_allowed' => true,
+                    'lookup_status' => $outcome->status,
+                    'retryable' => true,
+                    'message' => 'Consulta externa indisponivel agora. Cadastre o produto manualmente para continuar.',
+                    'product_create_url' => $createUrl,
+                ],
+            ];
+        }
+
         if (! $result?->hasUsefulData()) {
             return [
                 'status' => 200,
                 'payload' => [
                     'found' => false,
                     'manual_allowed' => true,
+                    'lookup_status' => $outcome->status,
+                    'cached' => $outcome->cached,
                     'message' => 'Produto nao cadastrado. Cadastre este EAN antes de lancar a compra.',
                     'product_create_url' => $createUrl,
                 ],

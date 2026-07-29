@@ -15,17 +15,15 @@ use InvalidArgumentException;
 
 class NfeXmlImportService
 {
-    public function __construct(private readonly ProductService $productService)
-    {
-    }
+    public function __construct(private readonly ProductService $productService) {}
 
     public function import(
         string $xml,
         bool $createMissingProducts = true,
         bool $createMissingSupplier = true,
-        ?int $clinicId = null
-    ): array
-    {
+        ?int $clinicId = null,
+        ?string $expectedAccessKey = null
+    ): array {
         $document = $this->loadXml($xml);
         $xpath = new DOMXPath($document);
         $infNfe = $this->first($xpath, '//*[local-name()="infNFe"]');
@@ -34,8 +32,22 @@ class NfeXmlImportService
             throw new InvalidArgumentException('XML da NF-e invalido ou sem bloco infNFe.');
         }
 
-        return DB::transaction(function () use ($xpath, $infNfe, $createMissingProducts, $createMissingSupplier, $clinicId) {
+        $itemsCount = $this->nodes($xpath, './/*[local-name()="det"]', $infNfe)->length;
+        $maxItems = max(1, (int) config('nfe_import.max_items', 500));
+
+        if ($itemsCount > $maxItems) {
+            throw new InvalidArgumentException("A NF-e excede o limite de {$maxItems} itens por importacao.");
+        }
+
+        $expectedAccessKey = Gtin::normalize($expectedAccessKey);
+
+        return DB::transaction(function () use ($xpath, $infNfe, $createMissingProducts, $createMissingSupplier, $clinicId, $expectedAccessKey) {
             $invoice = $this->invoicePayload($xpath, $infNfe);
+
+            if ($expectedAccessKey !== null && $invoice['access_key'] !== $expectedAccessKey) {
+                throw new InvalidArgumentException('O XML encontrado nao corresponde a chave de acesso informada.');
+            }
+
             $supplierPayload = $this->supplierPayload($xpath, $infNfe);
             $supplier = $this->resolveSupplier($supplierPayload, $createMissingSupplier, $clinicId);
             $items = $this->itemsPayload($xpath, $infNfe, $supplierPayload, $createMissingProducts, $clinicId);
@@ -67,13 +79,23 @@ class NfeXmlImportService
 
     private function loadXml(string $xml): DOMDocument
     {
+        $maxBytes = max(1, (int) config('nfe_import.max_xml_bytes', 5 * 1024 * 1024));
+
+        if (strlen($xml) > $maxBytes) {
+            throw new InvalidArgumentException('O XML da NF-e excede o limite permitido.');
+        }
+
+        if (preg_match('/<!DOCTYPE|<!ENTITY/i', $xml) === 1) {
+            throw new InvalidArgumentException('XML com declaracao de entidade ou DOCTYPE nao e permitido.');
+        }
+
         $xml = trim(preg_replace('/^\xEF\xBB\xBF/', '', $xml) ?? $xml);
 
         if ($xml === '') {
             throw new InvalidArgumentException('Arquivo XML vazio.');
         }
 
-        $document = new DOMDocument();
+        $document = new DOMDocument;
         $previous = libxml_use_internal_errors(true);
         $loaded = $document->loadXML($xml, LIBXML_NONET | LIBXML_NOERROR | LIBXML_NOWARNING);
         $errors = libxml_get_errors();
@@ -145,8 +167,7 @@ class NfeXmlImportService
         array $supplier,
         bool $createMissingProducts,
         ?int $clinicId
-    ): array
-    {
+    ): array {
         $items = [];
 
         foreach ($this->nodes($xpath, './/*[local-name()="det"]', $infNfe) as $det) {

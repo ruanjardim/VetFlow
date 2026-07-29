@@ -6,10 +6,10 @@ use App\Http\Controllers\Controller;
 use App\Modules\Clinics\Models\Clinic;
 use App\Modules\Products\Models\Product;
 use App\Modules\PurchaseEntries\Exceptions\NfeAccessKeyLookupException;
-use App\Modules\PurchaseEntries\Services\NfeAccessKeyImportService;
-use App\Modules\PurchaseEntries\Services\NfeXmlImportService;
 use App\Modules\PurchaseEntries\Requests\StorePurchaseEntryRequest;
 use App\Modules\PurchaseEntries\Requests\UpdatePurchaseEntryRequest;
+use App\Modules\PurchaseEntries\Services\NfeAccessKeyImportService;
+use App\Modules\PurchaseEntries\Services\NfeXmlImportService;
 use App\Modules\PurchaseEntries\Services\PurchaseEntryInsightService;
 use App\Modules\PurchaseEntries\Services\PurchaseEntryService;
 use App\Modules\Suppliers\Models\Supplier;
@@ -26,9 +26,7 @@ class PurchaseEntryController extends Controller
     public function __construct(
         private readonly PurchaseEntryService $service,
         private readonly PurchaseEntryInsightService $insights
-    )
-    {
-    }
+    ) {}
 
     public function index()
     {
@@ -90,26 +88,30 @@ class PurchaseEntryController extends Controller
     public function importNfeXml(
         Request $request,
         NfeXmlImportService $importer
-    ): JsonResponse
-    {
+    ): JsonResponse {
+        $maxKilobytes = (int) ceil(max(1, (int) config('nfe_import.max_xml_bytes', 5 * 1024 * 1024)) / 1024);
         $validated = $request->validate([
             'clinic_id' => [Rule::requiredIf($request->user()?->clinic_id === null), 'nullable', 'integer', 'exists:clinics,id'],
-            'xml_file' => ['required', 'file', 'max:5120'],
+            'xml_file' => ['required', 'file', 'extensions:xml', 'max:'.$maxKilobytes],
             'create_missing_products' => ['nullable', 'boolean'],
             'create_missing_supplier' => ['nullable', 'boolean'],
         ]);
 
-        $content = file_get_contents($validated['xml_file']->getRealPath());
-
         try {
+            $content = file_get_contents($validated['xml_file']->getRealPath());
+
+            if (! is_string($content)) {
+                throw new InvalidArgumentException('Nao foi possivel ler o arquivo XML enviado.');
+            }
+
             $payload = $importer->import(
-                $content ?: '',
+                $content,
                 $request->boolean('create_missing_products', true),
                 $request->boolean('create_missing_supplier', true),
                 $this->selectedClinicId($request, $validated)
             );
 
-            $this->rememberNfeXmlInKeyCache($payload['invoice']['access_key'] ?? null, $content ?: '');
+            $this->rememberNfeXmlInKeyCache($payload['invoice']['access_key'] ?? null, $content);
 
             return response()->json($payload);
         } catch (InvalidArgumentException $exception) {
@@ -125,7 +127,7 @@ class PurchaseEntryController extends Controller
 
             return response()->json([
                 'found' => false,
-                'message' => 'Nao consegui importar este XML agora: '.$exception->getMessage(),
+                'message' => 'Nao foi possivel importar este XML agora. Revise o arquivo e tente novamente.',
             ], 500);
         }
     }
@@ -152,6 +154,15 @@ class PurchaseEntryController extends Controller
                 'message' => $exception->getMessage(),
             ], 422);
         } catch (NfeAccessKeyLookupException $exception) {
+            $diagnostics = $this->publicNfeDiagnostics($exception->diagnostics());
+            $temporarilyUnavailable = collect($diagnostics)->contains(
+                fn (array $diagnostic) => in_array(
+                    $diagnostic['status'] ?? null,
+                    ['error', 'http_error'],
+                    true
+                )
+            );
+
             Log::error('Falha ao importar NF-e pela chave.', [
                 'message' => $exception->getMessage(),
                 'exception' => $exception::class,
@@ -160,9 +171,12 @@ class PurchaseEntryController extends Controller
 
             return response()->json([
                 'found' => false,
-                'message' => $exception->getMessage(),
-                'diagnostics' => $exception->diagnostics(),
-            ], 404);
+                'retryable' => $temporarilyUnavailable,
+                'message' => $temporarilyUnavailable
+                    ? 'A busca da NF-e pela chave esta temporariamente indisponivel. Importe o XML para continuar.'
+                    : $exception->getMessage(),
+                'diagnostics' => $diagnostics,
+            ], $temporarilyUnavailable ? 503 : 404);
         } catch (Throwable $exception) {
             Log::error('Falha ao importar NF-e pela chave.', [
                 'message' => $exception->getMessage(),
@@ -171,7 +185,8 @@ class PurchaseEntryController extends Controller
 
             return response()->json([
                 'found' => false,
-                'message' => $exception->getMessage(),
+                'retryable' => true,
+                'message' => 'Nao foi possivel buscar esta NF-e agora. Importe o XML para continuar.',
             ], 500);
         }
     }
@@ -245,5 +260,19 @@ class PurchaseEntryController extends Controller
                 'exception' => $exception::class,
             ]);
         }
+    }
+
+    private function publicNfeDiagnostics(array $diagnostics): array
+    {
+        return array_map(
+            fn (array $diagnostic) => array_filter([
+                'source' => $diagnostic['source'] ?? null,
+                'status' => $diagnostic['status'] ?? null,
+                'message' => $diagnostic['message'] ?? null,
+                'http_status' => $diagnostic['http_status'] ?? null,
+                'checked_files' => $diagnostic['checked_files'] ?? null,
+            ], fn ($value) => $value !== null),
+            $diagnostics
+        );
     }
 }

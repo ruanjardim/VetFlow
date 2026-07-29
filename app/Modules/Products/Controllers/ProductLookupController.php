@@ -11,12 +11,25 @@ class ProductLookupController
 {
     public function show(string $gtin, ProductLookupService $lookupService): JsonResponse
     {
-        $result = $lookupService->lookup($gtin);
+        $outcome = $lookupService->lookupOutcome($gtin);
+        $result = $outcome->result;
+
+        if ($outcome->unavailable()) {
+            return response()->json([
+                'found' => false,
+                'manual_allowed' => true,
+                'lookup_status' => $outcome->status,
+                'retryable' => true,
+                'message' => 'As bases externas estao temporariamente indisponiveis. Continue o cadastro manual ou tente novamente.',
+            ], 503);
+        }
 
         if (! $result) {
             return response()->json([
                 'found' => false,
                 'manual_allowed' => true,
+                'lookup_status' => $outcome->status,
+                'cached' => $outcome->cached,
                 'message' => 'Produto nao encontrado nas bases. Preencha os dados e salve para o VetFlow aprender este EAN.',
             ]);
         }

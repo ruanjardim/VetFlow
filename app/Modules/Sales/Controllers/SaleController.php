@@ -228,12 +228,25 @@ class SaleController extends BaseCrudController
             ]);
         }
 
-        $result = $lookupService->lookup($normalized);
+        $outcome = $lookupService->lookupOutcome($normalized);
+        $result = $outcome->result;
+
+        if ($outcome->unavailable()) {
+            return response()->json([
+                'found' => false,
+                'manual_allowed' => true,
+                'lookup_status' => $outcome->status,
+                'retryable' => true,
+                'message' => 'Consulta externa indisponivel agora. Cadastre o produto manualmente para continuar.',
+            ], 503);
+        }
 
         if (! $result?->hasUsefulData()) {
             return response()->json([
                 'found' => false,
                 'manual_allowed' => true,
+                'lookup_status' => $outcome->status,
+                'cached' => $outcome->cached,
                 'message' => 'Produto nao encontrado. Cadastre este produto para usar o codigo no PDV.',
             ]);
         }

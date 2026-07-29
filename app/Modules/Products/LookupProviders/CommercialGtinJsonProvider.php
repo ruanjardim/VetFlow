@@ -4,15 +4,15 @@ namespace App\Modules\Products\LookupProviders;
 
 use App\Modules\Products\Contracts\ProductLookupProviderInterface;
 use App\Modules\Products\Data\ProductLookupResult;
+use App\Modules\Products\Exceptions\ProductLookupProviderException;
 use Illuminate\Http\Client\PendingRequest;
+use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
 use Throwable;
 
 class CommercialGtinJsonProvider implements ProductLookupProviderInterface
 {
-    public function __construct(private readonly array $config)
-    {
-    }
+    public function __construct(private readonly array $config) {}
 
     public function lookup(string $gtin): ?ProductLookupResult
     {
@@ -25,6 +25,7 @@ class CommercialGtinJsonProvider implements ProductLookupProviderInterface
         try {
             $request = Http::acceptJson()
                 ->timeout((int) config('product_lookup.timeout_seconds', 4))
+                ->connectTimeout((int) config('product_lookup.connect_timeout_seconds', 2))
                 ->withHeaders([
                     'User-Agent' => config('product_lookup.user_agent'),
                 ]);
@@ -33,13 +34,25 @@ class CommercialGtinJsonProvider implements ProductLookupProviderInterface
                 $request = $this->authorize($request, (string) $this->config['token']);
             }
 
-            $response = $request->get(rtrim($baseUrl, '/').'/'.rawurlencode($gtin));
+            $response = $this->request($request, rtrim($baseUrl, '/').'/'.rawurlencode($gtin));
 
-            if (! $response->successful()) {
+            if ($response->status() === 404) {
                 return null;
             }
 
-            $payload = $response->json() ?? [];
+            if (! $response->successful()) {
+                throw new ProductLookupProviderException(
+                    'O provedor externo respondeu com erro.',
+                    $response->status()
+                );
+            }
+
+            $payload = $response->json();
+
+            if (! is_array($payload)) {
+                throw new ProductLookupProviderException('O provedor externo retornou uma resposta invalida.');
+            }
+
             $product = data_get($payload, 'product', $payload);
 
             if (! is_array($product)) {
@@ -62,9 +75,38 @@ class CommercialGtinJsonProvider implements ProductLookupProviderInterface
                 ],
                 sourcePayload: $payload
             );
-        } catch (Throwable) {
-            return null;
+        } catch (ProductLookupProviderException $exception) {
+            throw $exception;
+        } catch (Throwable $exception) {
+            throw new ProductLookupProviderException(
+                'Nao foi possivel conectar ao provedor externo.',
+                previous: $exception
+            );
         }
+    }
+
+    private function request(PendingRequest $request, string $url): Response
+    {
+        $attempts = max(1, min(3, (int) config('product_lookup.attempts', 2)));
+        $lastException = null;
+
+        for ($attempt = 1; $attempt <= $attempts; $attempt++) {
+            try {
+                $response = $request->get($url);
+
+                if (! in_array($response->status(), [429, 500, 502, 503, 504], true) || $attempt === $attempts) {
+                    return $response;
+                }
+            } catch (Throwable $exception) {
+                $lastException = $exception;
+
+                if ($attempt === $attempts) {
+                    throw $exception;
+                }
+            }
+        }
+
+        throw $lastException ?? new ProductLookupProviderException('Nao foi possivel consultar o provedor externo.');
     }
 
     private function authorize(PendingRequest $request, string $token): PendingRequest
