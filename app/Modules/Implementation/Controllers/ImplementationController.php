@@ -4,12 +4,19 @@ namespace App\Modules\Implementation\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Modules\Clinics\Models\Clinic;
+use App\Modules\Implementation\Contracts\CsvImportService;
 use App\Modules\Implementation\Requests\SelectClinicRequest;
 use App\Modules\Implementation\Requests\SelectSourceRequest;
 use App\Modules\Implementation\Requests\UploadPatientCsvRequest;
+use App\Modules\Implementation\Requests\UploadProductCsvRequest;
+use App\Modules\Implementation\Requests\UploadStockCsvRequest;
+use App\Modules\Implementation\Requests\UploadSupplierCsvRequest;
 use App\Modules\Implementation\Requests\UploadTutorCsvRequest;
 use App\Modules\Implementation\Services\ImplementationWorkflowService;
 use App\Modules\Implementation\Services\PatientCsvImportService;
+use App\Modules\Implementation\Services\ProductCsvImportService;
+use App\Modules\Implementation\Services\StockCsvImportService;
+use App\Modules\Implementation\Services\SupplierCsvImportService;
 use App\Modules\Implementation\Services\TutorCsvImportService;
 use DomainException;
 use Illuminate\Contracts\View\View;
@@ -17,6 +24,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Http\UploadedFile;
 
 class ImplementationController extends Controller
 {
@@ -58,6 +66,67 @@ class ImplementationController extends Controller
                 ['key' => 'breed', 'label' => 'Raça'],
                 ['key' => 'birth_date', 'label' => 'Nascimento'],
                 ['key' => 'weight', 'label' => 'Peso'],
+            ],
+        ],
+        'suppliers' => [
+            'label' => 'Fornecedores',
+            'singular' => 'Fornecedor',
+            'template' => 'suppliers',
+            'template_label' => 'Fornecedores CSV',
+            'upload_route' => 'implementation.suppliers.upload',
+            'import_route' => 'implementation.suppliers.import',
+            'input_name' => 'suppliers_file',
+            'input_id' => 'suppliers-file',
+            'default_file' => 'fornecedores.csv',
+            'expected_columns' => 'nome, cpf_cnpj, telefone, email, cidade, estado e observacoes',
+            'preview_columns' => [
+                ['key' => 'name', 'label' => 'Nome'],
+                ['key' => 'document', 'label' => 'CPF/CNPJ'],
+                ['key' => 'phone', 'label' => 'Telefone'],
+                ['key' => 'email', 'label' => 'E-mail'],
+                ['key' => 'city', 'label' => 'Cidade'],
+                ['key' => 'state', 'label' => 'UF'],
+            ],
+        ],
+        'products' => [
+            'label' => 'Produtos',
+            'singular' => 'Produto',
+            'template' => 'products',
+            'template_label' => 'Produtos CSV',
+            'upload_route' => 'implementation.products.upload',
+            'import_route' => 'implementation.products.import',
+            'input_name' => 'products_file',
+            'input_id' => 'products-file',
+            'default_file' => 'produtos.csv',
+            'expected_columns' => 'nome, ean_gtin, sku, categoria, fornecedor_documento, custo, preco_venda, estoque_atual e estoque_minimo',
+            'preview_columns' => [
+                ['key' => 'name', 'label' => 'Nome'],
+                ['key' => 'gtin', 'label' => 'EAN/GTIN'],
+                ['key' => 'sku', 'label' => 'SKU'],
+                ['key' => 'supplier_name', 'label' => 'Fornecedor'],
+                ['key' => 'cost_price', 'label' => 'Custo'],
+                ['key' => 'sale_price', 'label' => 'Venda'],
+                ['key' => 'initial_stock', 'label' => 'Estoque inicial'],
+            ],
+        ],
+        'stock' => [
+            'label' => 'Entradas de estoque',
+            'singular' => 'Movimento',
+            'template' => 'stock',
+            'template_label' => 'Estoque CSV',
+            'upload_route' => 'implementation.stock.upload',
+            'import_route' => 'implementation.stock.import',
+            'input_name' => 'stock_file',
+            'input_id' => 'stock-file',
+            'default_file' => 'estoque.csv',
+            'expected_columns' => 'ean_gtin_ou_sku, quantidade, custo_unitario, lote, validade e observacoes',
+            'preview_columns' => [
+                ['key' => 'product_name', 'label' => 'Produto'],
+                ['key' => 'identifier', 'label' => 'EAN/GTIN ou SKU'],
+                ['key' => 'quantity', 'label' => 'Quantidade'],
+                ['key' => 'unit_cost', 'label' => 'Custo unitário'],
+                ['key' => 'lot_number', 'label' => 'Lote'],
+                ['key' => 'expires_at', 'label' => 'Validade'],
             ],
         ],
     ];
@@ -175,7 +244,10 @@ class ImplementationController extends Controller
     public function __construct(
         private readonly ImplementationWorkflowService $workflow,
         private readonly TutorCsvImportService $tutorCsvImporter,
-        private readonly PatientCsvImportService $patientCsvImporter
+        private readonly PatientCsvImportService $patientCsvImporter,
+        private readonly SupplierCsvImportService $supplierCsvImporter,
+        private readonly ProductCsvImportService $productCsvImporter,
+        private readonly StockCsvImportService $stockCsvImporter
     ) {}
 
     public function index(Request $request): View|RedirectResponse
@@ -208,9 +280,7 @@ class ImplementationController extends Controller
             ? $state['entity_type']
             : 'tutors';
         $activeImport = self::IMPORTS[$entityType];
-        $importer = $entityType === 'patients'
-            ? $this->patientCsvImporter
-            : $this->tutorCsvImporter;
+        $importer = $this->importerFor($entityType);
 
         return view('implementation.index', [
             'clinics' => $clinics,
@@ -233,9 +303,9 @@ class ImplementationController extends Controller
             'migrationBlocks' => [
                 ['label' => 'Tutores e contatos', 'available' => true],
                 ['label' => 'Pacientes e histórico básico', 'available' => true],
-                ['label' => 'Produtos', 'available' => false],
-                ['label' => 'Fornecedores', 'available' => false],
-                ['label' => 'Estoque inicial', 'available' => false],
+                ['label' => 'Fornecedores', 'available' => true],
+                ['label' => 'Produtos', 'available' => true],
+                ['label' => 'Estoque inicial', 'available' => true],
                 ['label' => 'Financeiro inicial e contas abertas', 'available' => false],
             ],
             'dataSources' => [
@@ -285,72 +355,59 @@ class ImplementationController extends Controller
 
     public function uploadTutors(UploadTutorCsvRequest $request): RedirectResponse
     {
-        $state = $this->workflow->state();
-        $clinic = $this->selectedClinic($request, $state);
-
-        if ($clinic === null || ($state['data_source'] ?? null) !== 'csv') {
-            return redirect()
-                ->route('implementation.index', ['step' => $clinic === null ? 1 : 2])
-                ->with('warning', 'Conclua a configuração da importação antes de enviar o CSV.');
-        }
-
-        $file = $request->file('tutors_file');
-        $analysis = $this->tutorCsvImporter->analyze($file, $clinic->id);
-
-        $this->workflow->storeAnalysis(
-            $analysis,
-            $file->getClientOriginalName(),
-            'tutors'
-        );
-
-        $response = redirect()->route('implementation.index', ['step' => 4]);
-
-        return $analysis['can_import']
-            ? $response->with('success', 'CSV analisado. Confira o mapeamento e a prévia antes de importar.')
-            : $response->with('warning', 'CSV analisado com pendências. Revise os erros encontrados.');
+        return $this->uploadCsv($request, 'tutors', 'tutors_file');
     }
 
     public function importTutors(Request $request): RedirectResponse
     {
-        $state = $this->workflow->state();
-        $clinic = $this->selectedClinic($request, $state);
-        $analysis = $this->workflow->analysis();
-
-        if (
-            $clinic === null
-            || $analysis === null
-            || ($state['entity_type'] ?? null) !== 'tutors'
-            || ! ($analysis['can_import'] ?? false)
-        ) {
-            return redirect()
-                ->route('implementation.index', ['step' => 5])
-                ->with('warning', 'Corrija as pendências do arquivo antes de importar.');
-        }
-
-        try {
-            $result = $this->tutorCsvImporter->import($analysis, $clinic->id);
-        } catch (DomainException $exception) {
-            return redirect()
-                ->route('implementation.index', ['step' => 5])
-                ->with('error', $exception->getMessage());
-        }
-
-        $this->workflow->complete([
-            'entity_type' => 'tutors',
-            'entity_label' => self::IMPORTS['tutors']['label'],
-            'clinic_name' => $clinic->trade_name,
-            'file_name' => $state['file_name'] ?? 'tutores.csv',
-            'imported_count' => $result['imported_count'],
-            'completed_at' => now()->format('d/m/Y H:i'),
-        ]);
-
-        return redirect()
-            ->route('implementation.index', ['step' => 8])
-            ->with('success', 'Importação de tutores concluída com sucesso.');
+        return $this->importCsv($request, 'tutors');
     }
 
     public function uploadPatients(UploadPatientCsvRequest $request): RedirectResponse
     {
+        return $this->uploadCsv($request, 'patients', 'patients_file');
+    }
+
+    public function importPatients(Request $request): RedirectResponse
+    {
+        return $this->importCsv($request, 'patients');
+    }
+
+    public function uploadSuppliers(UploadSupplierCsvRequest $request): RedirectResponse
+    {
+        return $this->uploadCsv($request, 'suppliers', 'suppliers_file');
+    }
+
+    public function importSuppliers(Request $request): RedirectResponse
+    {
+        return $this->importCsv($request, 'suppliers');
+    }
+
+    public function uploadProducts(UploadProductCsvRequest $request): RedirectResponse
+    {
+        return $this->uploadCsv($request, 'products', 'products_file');
+    }
+
+    public function importProducts(Request $request): RedirectResponse
+    {
+        return $this->importCsv($request, 'products');
+    }
+
+    public function uploadStock(UploadStockCsvRequest $request): RedirectResponse
+    {
+        return $this->uploadCsv($request, 'stock', 'stock_file');
+    }
+
+    public function importStock(Request $request): RedirectResponse
+    {
+        return $this->importCsv($request, 'stock');
+    }
+
+    private function uploadCsv(
+        Request $request,
+        string $entityType,
+        string $inputName
+    ): RedirectResponse {
         $state = $this->workflow->state();
         $clinic = $this->selectedClinic($request, $state);
 
@@ -360,13 +417,21 @@ class ImplementationController extends Controller
                 ->with('warning', 'Conclua a configuração da importação antes de enviar o CSV.');
         }
 
-        $file = $request->file('patients_file');
-        $analysis = $this->patientCsvImporter->analyze($file, $clinic->id);
+        $file = $request->file($inputName);
+
+        if (! $file instanceof UploadedFile) {
+            return redirect()
+                ->route('implementation.index', ['step' => 3])
+                ->with('warning', 'Selecione um arquivo CSV válido para analisar.');
+        }
+
+        $analysis = $this->importerFor($entityType)
+            ->analyze($file, $clinic->id);
 
         $this->workflow->storeAnalysis(
             $analysis,
             $file->getClientOriginalName(),
-            'patients'
+            $entityType
         );
 
         $response = redirect()->route('implementation.index', ['step' => 4]);
@@ -376,8 +441,10 @@ class ImplementationController extends Controller
             : $response->with('warning', 'CSV analisado com pendências. Revise os erros encontrados.');
     }
 
-    public function importPatients(Request $request): RedirectResponse
-    {
+    private function importCsv(
+        Request $request,
+        string $entityType
+    ): RedirectResponse {
         $state = $this->workflow->state();
         $clinic = $this->selectedClinic($request, $state);
         $analysis = $this->workflow->analysis();
@@ -385,7 +452,7 @@ class ImplementationController extends Controller
         if (
             $clinic === null
             || $analysis === null
-            || ($state['entity_type'] ?? null) !== 'patients'
+            || ($state['entity_type'] ?? null) !== $entityType
             || ! ($analysis['can_import'] ?? false)
         ) {
             return redirect()
@@ -394,25 +461,30 @@ class ImplementationController extends Controller
         }
 
         try {
-            $result = $this->patientCsvImporter->import($analysis, $clinic->id);
+            $result = $this->importerFor($entityType)
+                ->import($analysis, $clinic->id);
         } catch (DomainException $exception) {
             return redirect()
                 ->route('implementation.index', ['step' => 5])
                 ->with('error', $exception->getMessage());
         }
 
+        $config = self::IMPORTS[$entityType];
         $this->workflow->complete([
-            'entity_type' => 'patients',
-            'entity_label' => self::IMPORTS['patients']['label'],
+            'entity_type' => $entityType,
+            'entity_label' => $config['label'],
             'clinic_name' => $clinic->trade_name,
-            'file_name' => $state['file_name'] ?? 'pacientes.csv',
+            'file_name' => $state['file_name'] ?? $config['default_file'],
             'imported_count' => $result['imported_count'],
             'completed_at' => now()->format('d/m/Y H:i'),
         ]);
 
         return redirect()
             ->route('implementation.index', ['step' => 8])
-            ->with('success', 'Importação de pacientes concluída com sucesso.');
+            ->with(
+                'success',
+                'Importação de '.mb_strtolower($config['label']).' concluída com sucesso.'
+            );
     }
 
     public function reset(): RedirectResponse
@@ -448,6 +520,17 @@ class ImplementationController extends Controller
         }
 
         return $query;
+    }
+
+    private function importerFor(string $entityType): CsvImportService
+    {
+        return match ($entityType) {
+            'patients' => $this->patientCsvImporter,
+            'suppliers' => $this->supplierCsvImporter,
+            'products' => $this->productCsvImporter,
+            'stock' => $this->stockCsvImporter,
+            default => $this->tutorCsvImporter,
+        };
     }
 
     /**
