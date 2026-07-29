@@ -43,11 +43,16 @@ This project follows the spirit of Keep a Changelog, with one practical adjustme
 - Standalone module documentation for Implementation.
 - Durable, clinic-scoped summaries for successfully completed assisted imports,
   without retaining imported row contents.
+- Assisted Excel `.xlsx` import and templates for Tutors, Patients, Suppliers,
+  Products, initial Stock, and Financial records using the existing validation,
+  transaction, tenant-isolation, and history rules.
 
 ### Changed
 
 - Filled the previously empty engineering process document with the current development workflow.
 - Replaced the database overview with a migration-aligned current model summary.
+- Updated Guzzle and PSR-7 to patched compatible releases after dependency
+  auditing identified redirect, cookie, and proxy-header advisories.
 
 ### Pending
 

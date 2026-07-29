@@ -18,6 +18,7 @@ For the current working state, read [STATUS.md](STATUS.md).
 - Products, inventory, suppliers, purchase entries, and product intelligence.
 - Pet shop services, service orders, sales, payments, and cash register closure.
 - Financial transactions and dashboard services.
+- Assisted CSV and Excel onboarding with durable import history.
 - GTIN/product lookup support and NF-e purchase-entry import services.
 
 ## Stack

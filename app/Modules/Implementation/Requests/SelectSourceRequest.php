@@ -15,7 +15,7 @@ class SelectSourceRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'data_source' => ['required', Rule::in(['csv'])],
+            'data_source' => ['required', Rule::in(['csv', 'excel'])],
         ];
     }
 
@@ -23,7 +23,7 @@ class SelectSourceRequest extends FormRequest
     {
         return [
             'data_source.required' => 'Selecione a origem dos dados.',
-            'data_source.in' => 'Nesta versão, a importação está disponível somente para arquivos CSV.',
+            'data_source.in' => 'Selecione uma origem de dados disponível.',
         ];
     }
 }

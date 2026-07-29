@@ -23,7 +23,8 @@ The local working tree was clean before this documentation pass.
 - Feature tests for authentication, authorization, clinic tenant isolation, initial admin setup, and operational purchase/clinical flows.
 - Existing architecture and audit documentation under `docs/`.
 - Assisted CSV implementation workflow for Tutors, Patients, Suppliers,
-  Products, initial Stock, and Financial records, with a permanent
+  Products, initial Stock, and Financial records, with an equivalent Excel
+  `.xlsx` source and a permanent
   clinic-scoped summary of successful imports.
 
 ## GitHub Scan Summary

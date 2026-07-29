@@ -215,7 +215,7 @@ class FinancialCsvImportService implements CsvImportService
                     $supplier !== null
                     && (int) ($values['supplier_id'] ?? 0) !== (int) $supplier['id']
                 ) {
-                    $errors[] = 'O fornecedor do lançamento foi alterado após a análise do CSV.';
+                    $errors[] = 'O fornecedor do lançamento foi alterado após a análise do arquivo.';
                 }
 
                 if ($errors !== []) {
@@ -457,7 +457,7 @@ class FinancialCsvImportService implements CsvImportService
             ($analysis['clinic_id'] ?? null) !== $clinicId
             || ! ($analysis['can_import'] ?? false)
         ) {
-            throw new DomainException('A análise do CSV não está pronta para importação.');
+            throw new DomainException('A análise do arquivo não está pronta para importação.');
         }
 
         $rows = $analysis['rows'] ?? [];

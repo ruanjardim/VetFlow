@@ -3,6 +3,10 @@
 use App\Modules\Implementation\Controllers\ImplementationController;
 use Illuminate\Support\Facades\Route;
 
+Route::get('implementation/templates/{template}/excel', [ImplementationController::class, 'excelTemplate'])
+    ->where('template', '[a-z-]+')
+    ->name('implementation.templates.excel');
+
 Route::get('implementation/templates/{template}', [ImplementationController::class, 'template'])
     ->where('template', '[a-z-]+')
     ->name('implementation.templates');

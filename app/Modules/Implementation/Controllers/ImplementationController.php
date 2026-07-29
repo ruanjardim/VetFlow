@@ -8,13 +8,10 @@ use App\Modules\Clinics\Models\Clinic;
 use App\Modules\Implementation\Contracts\CsvImportService;
 use App\Modules\Implementation\Requests\SelectClinicRequest;
 use App\Modules\Implementation\Requests\SelectSourceRequest;
-use App\Modules\Implementation\Requests\UploadFinancialCsvRequest;
-use App\Modules\Implementation\Requests\UploadPatientCsvRequest;
-use App\Modules\Implementation\Requests\UploadProductCsvRequest;
-use App\Modules\Implementation\Requests\UploadStockCsvRequest;
-use App\Modules\Implementation\Requests\UploadSupplierCsvRequest;
-use App\Modules\Implementation\Requests\UploadTutorCsvRequest;
+use App\Modules\Implementation\Requests\UploadImplementationFileRequest;
+use App\Modules\Implementation\Services\ExcelTemplateService;
 use App\Modules\Implementation\Services\FinancialCsvImportService;
+use App\Modules\Implementation\Services\ImplementationFileAnalyzer;
 use App\Modules\Implementation\Services\ImplementationImportService;
 use App\Modules\Implementation\Services\ImplementationWorkflowService;
 use App\Modules\Implementation\Services\PatientCsvImportService;
@@ -29,6 +26,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Http\UploadedFile;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ImplementationController extends Controller
 {
@@ -241,7 +239,7 @@ class ImplementationController extends Controller
             'slug' => 'mapping',
             'title' => 'Mapeamento',
             'short_title' => 'Mapeamento',
-            'description' => 'Confira como as colunas do CSV serão gravadas no VetFlow.',
+            'description' => 'Confira como as colunas do arquivo serão gravadas no VetFlow.',
         ],
         5 => [
             'slug' => 'validation',
@@ -277,7 +275,9 @@ class ImplementationController extends Controller
         private readonly ProductCsvImportService $productCsvImporter,
         private readonly StockCsvImportService $stockCsvImporter,
         private readonly FinancialCsvImportService $financialCsvImporter,
-        private readonly ImplementationImportService $implementationImporter
+        private readonly ImplementationImportService $implementationImporter,
+        private readonly ImplementationFileAnalyzer $fileAnalyzer,
+        private readonly ExcelTemplateService $excelTemplates
     ) {}
 
     public function index(Request $request): View|RedirectResponse
@@ -311,6 +311,9 @@ class ImplementationController extends Controller
             : 'tutors';
         $activeImport = self::IMPORTS[$entityType];
         $importer = $this->importerFor($entityType);
+        $dataSource = in_array($state['data_source'] ?? null, ['csv', 'excel'], true)
+            ? $state['data_source']
+            : 'csv';
         /** @var User $user */
         $user = $request->user();
 
@@ -321,6 +324,9 @@ class ImplementationController extends Controller
             'availableImports' => self::IMPORTS,
             'entityType' => $entityType,
             'activeImport' => $activeImport,
+            'dataSource' => $dataSource,
+            'sourceLabel' => $dataSource === 'excel' ? 'Excel' : 'CSV',
+            'defaultFile' => $this->defaultFile($entityType, $dataSource),
             'wizardSteps' => self::WIZARD_STEPS,
             'currentStep' => $currentStep,
             'currentStepData' => self::WIZARD_STEPS[$currentStep],
@@ -379,74 +385,78 @@ class ImplementationController extends Controller
                 ->with('warning', 'Selecione uma clínica disponível antes de continuar.');
         }
 
-        $this->workflow->selectSource($request->validated('data_source'));
+        $dataSource = $request->validated('data_source');
+        $this->workflow->selectSource($dataSource);
 
         return redirect()
             ->route('implementation.index', ['step' => 3])
-            ->with('success', 'Origem CSV selecionada.');
+            ->with(
+                'success',
+                sprintf('Origem %s selecionada.', $dataSource === 'excel' ? 'Excel' : 'CSV')
+            );
     }
 
-    public function uploadTutors(UploadTutorCsvRequest $request): RedirectResponse
+    public function uploadTutors(UploadImplementationFileRequest $request): RedirectResponse
     {
-        return $this->uploadCsv($request, 'tutors', 'tutors_file');
+        return $this->uploadFile($request, 'tutors', 'tutors_file');
     }
 
     public function importTutors(Request $request): RedirectResponse
     {
-        return $this->importCsv($request, 'tutors');
+        return $this->importFile($request, 'tutors');
     }
 
-    public function uploadPatients(UploadPatientCsvRequest $request): RedirectResponse
+    public function uploadPatients(UploadImplementationFileRequest $request): RedirectResponse
     {
-        return $this->uploadCsv($request, 'patients', 'patients_file');
+        return $this->uploadFile($request, 'patients', 'patients_file');
     }
 
     public function importPatients(Request $request): RedirectResponse
     {
-        return $this->importCsv($request, 'patients');
+        return $this->importFile($request, 'patients');
     }
 
-    public function uploadSuppliers(UploadSupplierCsvRequest $request): RedirectResponse
+    public function uploadSuppliers(UploadImplementationFileRequest $request): RedirectResponse
     {
-        return $this->uploadCsv($request, 'suppliers', 'suppliers_file');
+        return $this->uploadFile($request, 'suppliers', 'suppliers_file');
     }
 
     public function importSuppliers(Request $request): RedirectResponse
     {
-        return $this->importCsv($request, 'suppliers');
+        return $this->importFile($request, 'suppliers');
     }
 
-    public function uploadProducts(UploadProductCsvRequest $request): RedirectResponse
+    public function uploadProducts(UploadImplementationFileRequest $request): RedirectResponse
     {
-        return $this->uploadCsv($request, 'products', 'products_file');
+        return $this->uploadFile($request, 'products', 'products_file');
     }
 
     public function importProducts(Request $request): RedirectResponse
     {
-        return $this->importCsv($request, 'products');
+        return $this->importFile($request, 'products');
     }
 
-    public function uploadStock(UploadStockCsvRequest $request): RedirectResponse
+    public function uploadStock(UploadImplementationFileRequest $request): RedirectResponse
     {
-        return $this->uploadCsv($request, 'stock', 'stock_file');
+        return $this->uploadFile($request, 'stock', 'stock_file');
     }
 
     public function importStock(Request $request): RedirectResponse
     {
-        return $this->importCsv($request, 'stock');
+        return $this->importFile($request, 'stock');
     }
 
-    public function uploadFinancial(UploadFinancialCsvRequest $request): RedirectResponse
+    public function uploadFinancial(UploadImplementationFileRequest $request): RedirectResponse
     {
-        return $this->uploadCsv($request, 'financial', 'financial_file');
+        return $this->uploadFile($request, 'financial', 'financial_file');
     }
 
     public function importFinancial(Request $request): RedirectResponse
     {
-        return $this->importCsv($request, 'financial');
+        return $this->importFile($request, 'financial');
     }
 
-    private function uploadCsv(
+    private function uploadFile(
         Request $request,
         string $entityType,
         string $inputName
@@ -454,10 +464,15 @@ class ImplementationController extends Controller
         $state = $this->workflow->state();
         $clinic = $this->selectedClinic($request, $state);
 
-        if ($clinic === null || ($state['data_source'] ?? null) !== 'csv') {
+        $dataSource = $state['data_source'] ?? null;
+
+        if (
+            $clinic === null
+            || ! in_array($dataSource, ['csv', 'excel'], true)
+        ) {
             return redirect()
                 ->route('implementation.index', ['step' => $clinic === null ? 1 : 2])
-                ->with('warning', 'Conclua a configuração da importação antes de enviar o CSV.');
+                ->with('warning', 'Conclua a configuração da importação antes de enviar o arquivo.');
         }
 
         $file = $request->file($inputName);
@@ -465,26 +480,45 @@ class ImplementationController extends Controller
         if (! $file instanceof UploadedFile) {
             return redirect()
                 ->route('implementation.index', ['step' => 3])
-                ->with('warning', 'Selecione um arquivo CSV válido para analisar.');
+                ->with('warning', 'Selecione um arquivo válido para analisar.');
         }
 
-        $analysis = $this->importerFor($entityType)
-            ->analyze($file, $clinic->id);
+        try {
+            $analysis = $this->fileAnalyzer->analyze(
+                $this->importerFor($entityType),
+                $file,
+                $clinic->id,
+                $dataSource
+            );
+        } catch (DomainException $exception) {
+            return redirect()
+                ->route('implementation.index', ['step' => 3])
+                ->with('error', $exception->getMessage());
+        }
 
         $this->workflow->storeAnalysis(
             $analysis,
             $file->getClientOriginalName(),
-            $entityType
+            $entityType,
+            $dataSource
         );
 
         $response = redirect()->route('implementation.index', ['step' => 4]);
 
+        $sourceLabel = $dataSource === 'excel' ? 'Planilha Excel' : 'CSV';
+
         return $analysis['can_import']
-            ? $response->with('success', 'CSV analisado. Confira o mapeamento e a prévia antes de importar.')
-            : $response->with('warning', 'CSV analisado com pendências. Revise os erros encontrados.');
+            ? $response->with(
+                'success',
+                "{$sourceLabel} analisado. Confira o mapeamento e a prévia antes de importar."
+            )
+            : $response->with(
+                'warning',
+                "{$sourceLabel} analisado com pendências. Revise os erros encontrados."
+            );
     }
 
-    private function importCsv(
+    private function importFile(
         Request $request,
         string $entityType
     ): RedirectResponse {
@@ -517,7 +551,7 @@ class ImplementationController extends Controller
                 $entityType,
                 $config['label'],
                 $state['data_source'] ?? 'csv',
-                $state['file_name'] ?? $config['default_file'],
+                $state['file_name'] ?? $this->defaultFile($entityType, $state['data_source'] ?? 'csv'),
                 $completedAt
             );
         } catch (DomainException $exception) {
@@ -530,7 +564,7 @@ class ImplementationController extends Controller
             'entity_type' => $entityType,
             'entity_label' => $config['label'],
             'clinic_name' => $clinic->trade_name,
-            'file_name' => $state['file_name'] ?? $config['default_file'],
+            'file_name' => $state['file_name'] ?? $this->defaultFile($entityType, $state['data_source'] ?? 'csv'),
             'imported_count' => $result['imported_count'],
             'completed_at' => $completedAt->format('d/m/Y H:i'),
         ]);
@@ -566,6 +600,22 @@ class ImplementationController extends Controller
         );
     }
 
+    public function excelTemplate(string $template): StreamedResponse
+    {
+        abort_unless(isset(self::TEMPLATES[$template], self::IMPORTS[$template]), 404);
+
+        return response()->streamDownload(
+            fn () => $this->excelTemplates->write(
+                self::TEMPLATES[$template],
+                self::IMPORTS[$template]['label']
+            ),
+            "vetflow-migracao-{$template}.xlsx",
+            [
+                'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            ]
+        );
+    }
+
     private function accessibleClinics(Request $request): Builder
     {
         $query = Clinic::query()->active();
@@ -588,6 +638,15 @@ class ImplementationController extends Controller
             'financial' => $this->financialCsvImporter,
             default => $this->tutorCsvImporter,
         };
+    }
+
+    private function defaultFile(string $entityType, string $dataSource): string
+    {
+        $csvFile = self::IMPORTS[$entityType]['default_file'];
+
+        return $dataSource === 'excel'
+            ? preg_replace('/\.csv$/', '.xlsx', $csvFile) ?? $csvFile
+            : $csvFile;
     }
 
     /**

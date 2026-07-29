@@ -68,14 +68,16 @@ class ImplementationWorkflowService
     public function storeAnalysis(
         array $analysis,
         string $originalName,
-        string $entityType
+        string $entityType,
+        string $dataSource
     ): void {
         $state = $this->state();
         $this->deleteAnalysis($state);
 
         $path = sprintf(
-            'implementation/%s-csv/%s/%s.json',
+            'implementation/%s-%s/%s/%s.json',
             $entityType,
+            $dataSource,
             Auth::id(),
             Str::uuid()
         );
@@ -85,7 +87,7 @@ class ImplementationWorkflowService
         );
 
         if (! Storage::disk('local')->put($path, $encoded)) {
-            throw new RuntimeException('Não foi possível armazenar a análise temporária do CSV.');
+            throw new RuntimeException('Não foi possível armazenar a análise temporária do arquivo.');
         }
 
         $state['analysis_path'] = $path;
@@ -166,7 +168,7 @@ class ImplementationWorkflowService
             return 1;
         }
 
-        if (($state['data_source'] ?? null) !== 'csv') {
+        if (! in_array($state['data_source'] ?? null, ['csv', 'excel'], true)) {
             return 2;
         }
 

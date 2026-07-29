@@ -99,8 +99,15 @@ class StockCsvImportService implements CsvImportService
     public function import(array $analysis, int $clinicId): array
     {
         $rows = $this->validatedRows($analysis, $clinicId);
+        $implementationSource = ($analysis['data_source'] ?? null) === 'excel'
+            ? 'implementation_excel'
+            : 'implementation_csv';
 
-        return DB::transaction(function () use ($rows, $clinicId): array {
+        return DB::transaction(function () use (
+            $rows,
+            $clinicId,
+            $implementationSource
+        ): array {
             $products = $this->productIndex($clinicId);
             $importedCount = 0;
 
@@ -122,7 +129,7 @@ class StockCsvImportService implements CsvImportService
                     $product !== null
                     && (int) ($values['product_id'] ?? 0) !== (int) $product['id']
                 ) {
-                    $errors[] = 'O produto identificado foi alterado após a análise do CSV.';
+                    $errors[] = 'O produto identificado foi alterado após a análise do arquivo.';
                 }
 
                 if ($errors !== []) {
@@ -140,7 +147,7 @@ class StockCsvImportService implements CsvImportService
                     'occurred_at' => now(),
                     'reason' => 'Estoque inicial importado',
                     'notes' => $values['notes'],
-                    'source' => 'implementation_csv',
+                    'source' => $implementationSource,
                 ]);
 
                 $importedCount++;
@@ -301,7 +308,7 @@ class StockCsvImportService implements CsvImportService
             ($analysis['clinic_id'] ?? null) !== $clinicId
             || ! ($analysis['can_import'] ?? false)
         ) {
-            throw new DomainException('A análise do CSV não está pronta para importação.');
+            throw new DomainException('A análise do arquivo não está pronta para importação.');
         }
 
         $rows = $analysis['rows'] ?? [];
