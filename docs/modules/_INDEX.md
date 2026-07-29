@@ -13,7 +13,7 @@ This index maps the current code modules and the documentation that should event
 | Dashboard | Operational dashboard data and widgets | Documented in [Dashboard](dashboard.md) |
 | Finance | Finance-related area | Pending review; overlaps with Financial |
 | Financial | Financial transactions and payable/receivable flows | Documented in [Financial](financial.md) |
-| Implementation | Assisted onboarding and Tutor CSV import | Documented in [Implementation](implementation.md) |
+| Implementation | Assisted CSV onboarding, six import blocks, and durable import history | Documented in [Implementation](implementation.md) |
 | Inventory | Stock movement and lot/expiration control | Documented in [Inventory](inventory.md) |
 | MedicalRecords | Clinical records area | Pending implementation/doc review |
 | Patients | Pets/patients | Covered in [Clinical Core](clinical-core.md) |

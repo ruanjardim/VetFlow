@@ -41,6 +41,8 @@ This project follows the spirit of Keep a Changelog, with one practical adjustme
 - Shared CSV analyzer and value normalizer for catalog, Stock, and Financial
   data blocks.
 - Standalone module documentation for Implementation.
+- Durable, clinic-scoped summaries for successfully completed assisted imports,
+  without retaining imported row contents.
 
 ### Changed
 
