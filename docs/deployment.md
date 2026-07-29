@@ -6,6 +6,8 @@ deployment concerns without locking the project to one hosting provider.
 ## Required Runtime
 
 - PHP 8.2 or newer.
+- PHP extensions required by the application and Excel reader: DOM, Fileinfo,
+  Filter, LibXML, XMLReader, and ZIP.
 - Composer dependencies installed with optimized autoload.
 - Node/Vite assets built before release.
 - A persistent database, preferably MySQL or MariaDB for production.

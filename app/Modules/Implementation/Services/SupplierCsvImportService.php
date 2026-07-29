@@ -198,7 +198,7 @@ class SupplierCsvImportService implements CsvImportService
             ($analysis['clinic_id'] ?? null) !== $clinicId
             || ! ($analysis['can_import'] ?? false)
         ) {
-            throw new DomainException('A análise do CSV não está pronta para importação.');
+            throw new DomainException('A análise do arquivo não está pronta para importação.');
         }
 
         $rows = $analysis['rows'] ?? [];

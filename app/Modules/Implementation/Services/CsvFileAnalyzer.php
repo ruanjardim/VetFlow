@@ -25,13 +25,13 @@ class CsvFileAnalyzer
         $realPath = $file->getRealPath();
 
         if (! is_string($realPath)) {
-            throw new RuntimeException('Não foi possível localizar o arquivo CSV enviado.');
+            throw new RuntimeException('Não foi possível localizar o arquivo enviado.');
         }
 
         $handle = fopen($realPath, 'rb');
 
         if ($handle === false) {
-            throw new RuntimeException('Não foi possível abrir o arquivo CSV enviado.');
+            throw new RuntimeException('Não foi possível abrir o arquivo enviado.');
         }
 
         try {
@@ -40,7 +40,7 @@ class CsvFileAnalyzer
             if ($firstLine === false) {
                 return $this->emptyAnalysis(
                     $clinicId,
-                    ['O arquivo CSV está vazio.']
+                    ['O arquivo está vazio.']
                 );
             }
 
@@ -52,7 +52,7 @@ class CsvFileAnalyzer
             if ($headerRow === false) {
                 return $this->emptyAnalysis(
                     $clinicId,
-                    ['Não foi possível ler o cabeçalho do arquivo CSV.']
+                    ['Não foi possível ler o cabeçalho do arquivo.']
                 );
             }
 
@@ -106,7 +106,7 @@ class CsvFileAnalyzer
             }
 
             if ($rows === [] && $fileErrors === []) {
-                $fileErrors[] = 'O arquivo CSV não possui registros para importar.';
+                $fileErrors[] = 'O arquivo não possui registros para importar.';
             }
 
             $invalidRows = count(array_filter(

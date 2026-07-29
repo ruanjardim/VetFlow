@@ -135,8 +135,13 @@ class ProductCsvImportService implements CsvImportService
     public function import(array $analysis, int $clinicId): array
     {
         $rows = $this->validatedRows($analysis, $clinicId);
+        $implementationSource = $this->implementationSource($analysis);
 
-        return DB::transaction(function () use ($rows, $clinicId): array {
+        return DB::transaction(function () use (
+            $rows,
+            $clinicId,
+            $implementationSource
+        ): array {
             $suppliers = $this->supplierIndex($clinicId);
             $products = $this->productIdentifierIndex($clinicId);
             $importedCount = 0;
@@ -161,7 +166,7 @@ class ProductCsvImportService implements CsvImportService
                     $supplier !== null
                     && (int) ($values['supplier_id'] ?? 0) !== (int) $supplier['id']
                 ) {
-                    $errors[] = 'O fornecedor do produto foi alterado após a análise do CSV.';
+                    $errors[] = 'O fornecedor do produto foi alterado após a análise do arquivo.';
                 }
 
                 if ($errors !== []) {
@@ -169,7 +174,7 @@ class ProductCsvImportService implements CsvImportService
                 }
 
                 $metadata = [
-                    'source' => 'implementation_csv',
+                    'source' => $implementationSource,
                     'imported_at' => now()->toDateTimeString(),
                 ];
 
@@ -191,7 +196,7 @@ class ProductCsvImportService implements CsvImportService
                     'stock_quantity' => 0,
                     'minimum_stock' => $values['minimum_stock'] ?? 0,
                     'unit' => 'un',
-                    'lookup_source' => 'implementation_csv',
+                    'lookup_source' => $implementationSource,
                     'lookup_metadata' => $metadata,
                     'looked_up_at' => now(),
                     'active' => true,
@@ -208,8 +213,8 @@ class ProductCsvImportService implements CsvImportService
                         'unit_cost' => $values['cost_price'],
                         'occurred_at' => now(),
                         'reason' => 'Estoque inicial importado',
-                        'notes' => 'Saldo criado durante a importação CSV de produtos.',
-                        'source' => 'implementation_csv',
+                        'notes' => 'Saldo criado durante a importação assistida de produtos.',
+                        'source' => $implementationSource,
                     ]);
 
                     $movementCount++;
@@ -497,7 +502,7 @@ class ProductCsvImportService implements CsvImportService
             ($analysis['clinic_id'] ?? null) !== $clinicId
             || ! ($analysis['can_import'] ?? false)
         ) {
-            throw new DomainException('A análise do CSV não está pronta para importação.');
+            throw new DomainException('A análise do arquivo não está pronta para importação.');
         }
 
         $rows = $analysis['rows'] ?? [];
@@ -507,5 +512,15 @@ class ProductCsvImportService implements CsvImportService
         }
 
         return $rows;
+    }
+
+    /**
+     * @param  array<string, mixed>  $analysis
+     */
+    private function implementationSource(array $analysis): string
+    {
+        return ($analysis['data_source'] ?? null) === 'excel'
+            ? 'implementation_excel'
+            : 'implementation_csv';
     }
 }

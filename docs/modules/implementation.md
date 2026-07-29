@@ -6,13 +6,13 @@ Code path: `app/Modules/Implementation`
 
 Guides assisted clinic onboarding and data migration into VetFlow. The current
 flow imports Tutors, Patients, Suppliers, Products, initial Stock, and
-Financial records from standardized CSV files after clinic selection,
+Financial records from standardized CSV or Excel (`.xlsx`) files after clinic selection,
 validation, mapping review, and explicit confirmation.
 
 ## Current Flow
 
 1. Select an active destination clinic.
-2. Select CSV as the data source.
+2. Select CSV or Excel as the data source.
 3. Choose a supported data block, download its template, and upload the
    completed file.
 4. Review the automatic column mapping.
@@ -31,6 +31,26 @@ row counts, and completion time. Imported row contents and validation details
 are not copied into the history.
 
 ## CSV Contract
+
+CSV keeps automatic comma/semicolon delimiter detection and Windows-1252 to
+UTF-8 conversion. All validation and all-or-nothing rules below also apply to
+Excel after the first worksheet is normalized to the same internal tabular
+contract.
+
+## Excel Contract
+
+- Only `.xlsx` is accepted; legacy `.xls` is not supported.
+- Only the first worksheet is analyzed.
+- A workbook can contain up to 500 non-empty records and must be no larger
+  than 2 MB.
+- The internal ZIP structure is limited to 500 entries and 25 MB after
+  decompression before parsing.
+- Excel date cells are normalized to `YYYY-MM-DD`.
+- Formula cells use only the cached value already stored by Excel; VetFlow
+  does not execute formulas.
+- Document, phone, GTIN, and SKU columns should be formatted as Text when
+  leading zeros must be preserved.
+- The downloadable Excel templates use the same headers as the CSV templates.
 
 The Tutors template contains these columns:
 
@@ -136,6 +156,8 @@ tipo,descricao,pessoa_documento,valor,vencimento,status,forma_pagamento,data_pag
 | Class | Role |
 | --- | --- |
 | `ImplementationController` | Coordinates wizard pages and redirects. |
+| `ImplementationFileAnalyzer` | Validates the selected source, safely reads the first XLSX worksheet, and bridges it to the existing import contracts. |
+| `ExcelTemplateService` | Streams standardized `.xlsx` templates for all six blocks. |
 | `ImplementationImportService` | Runs the selected importer and durable audit write in one outer transaction, and scopes recent history queries. |
 | `ImplementationWorkflowService` | Manages session state and private temporary analysis files. |
 | `ImplementationImport` | Represents one successfully completed import summary. |
@@ -148,13 +170,8 @@ tipo,descricao,pessoa_documento,valor,vencimento,status,forma_pagamento,data_pag
 | `StockCsvImportService` | Resolves Products and creates audited Inventory entries. |
 | `FinancialCsvImportService` | Normalizes ledger labels, resolves Suppliers, and imports Financial Transactions. |
 | `SelectClinicRequest` | Restricts the destination clinic to the user's accessible active clinic scope. |
-| `SelectSourceRequest` | Enables only the currently supported CSV source. |
-| `UploadTutorCsvRequest` | Validates extension and upload size. |
-| `UploadPatientCsvRequest` | Validates the Patient CSV extension and upload size. |
-| `UploadSupplierCsvRequest` | Validates the Supplier CSV extension and upload size. |
-| `UploadProductCsvRequest` | Validates the Product CSV extension and upload size. |
-| `UploadStockCsvRequest` | Validates the Stock CSV extension and upload size. |
-| `UploadFinancialCsvRequest` | Validates the Financial CSV extension and upload size. |
+| `SelectSourceRequest` | Enables the supported CSV and Excel sources. |
+| `UploadImplementationFileRequest` | Applies the shared `.csv`/`.xlsx` extension and upload-size rules to all six blocks. |
 
 ## Tenant And Permission Rules
 
@@ -169,6 +186,8 @@ tipo,descricao,pessoa_documento,valor,vencimento,status,forma_pagamento,data_pag
 - Supplier resolution for Financial records is restricted to the selected
   clinic.
 - Product creation and Inventory movements receive the selected `clinic_id`.
+- Product lookup and Inventory source metadata distinguish
+  `implementation_csv` from `implementation_excel`.
 - Every imported Financial Transaction receives the selected `clinic_id`.
 - Temporary analysis is associated with the authenticated user's session.
 - Clinic users can see only import history from their own clinic.
@@ -217,9 +236,13 @@ cross-clinic Supplier isolation.
 after successful confirmation, absence of row payloads, survival after wizard
 reset, clinic-scoped visibility, and no history for blocked imports.
 
+`tests/Feature/ImplementationExcelTest.php` covers all six Excel imports,
+first-worksheet date normalization, `implementation_excel` trace metadata,
+durable history, corrupted workbook blocking, and every Excel template.
+
 ## Intentionally Out Of Scope
 
-- Excel parsing.
+- Legacy `.xls`, multiple worksheet selection, and manual formula evaluation.
 - Manual column mapping.
 - Partial import of valid rows.
 - Failed-attempt history or background processing.

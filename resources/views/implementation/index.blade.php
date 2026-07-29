@@ -198,8 +198,7 @@
         @case(2)
           <h2>Escolha a origem dos dados</h2>
           <p class="muted">
-            Tutores, Pacientes, Fornecedores, Produtos, Estoque e Financeiro já podem ser importados por CSV.
-            Excel será habilitado após este fluxo estar consolidado.
+            Tutores, Pacientes, Fornecedores, Produtos, Estoque e Financeiro podem ser importados por CSV ou Excel.
           </p>
 
           <form method="POST" action="{{ route('implementation.source') }}">
@@ -207,7 +206,7 @@
 
             <div class="implementation-options">
               @foreach($dataSources as $sourceValue => $sourceLabel)
-                @php($sourceAvailable = $sourceValue === 'csv')
+                @php($sourceAvailable = in_array($sourceValue, ['csv', 'excel'], true))
 
                 <label class="implementation-option">
                   <input
@@ -222,9 +221,10 @@
                     <strong>{{ $sourceLabel }}</strong>
 
                     @if($sourceAvailable)
-                      <small>Disponível para os seis blocos da implantação</small>
-                    @elseif($sourceValue === 'excel')
-                      <small>Próxima origem planejada</small>
+                      <small>
+                        {{ $sourceValue === 'excel' ? 'Arquivos .xlsx' : 'Arquivos .csv' }}
+                        para os seis blocos
+                      </small>
                     @else
                       <small>Conector planejado</small>
                     @endif
@@ -240,15 +240,21 @@
           @break
 
         @case(3)
-          <h2>Escolha e envie o bloco CSV</h2>
+          <h2>Escolha e envie o bloco {{ $sourceLabel }}</h2>
           <p class="muted">
             Use um template do VetFlow. Cada arquivo pode ter até 2 MB e 500 registros.
+            @if($dataSource === 'excel')
+              Os dados devem estar na primeira aba da planilha.
+            @endif
           </p>
 
           <div class="alert warning">
             Ordem recomendada: Fornecedores, Produtos e depois Estoque. Se preencher
-            <code>estoque_atual</code> no CSV de Produtos, não repita esse mesmo saldo
-            no CSV de Estoque. Importe o Financeiro por último.
+            <code>estoque_atual</code> no arquivo de Produtos, não repita esse mesmo saldo
+            no arquivo de Estoque. Importe o Financeiro por último.
+            @if($dataSource === 'excel')
+              Formate documentos, telefones e identificadores como Texto quando precisarem manter zeros à esquerda.
+            @endif
           </div>
 
           <div class="implementation-blocks">
@@ -279,9 +285,13 @@
                 <div class="row-actions">
                   <a
                     class="button secondary"
-                    href="{{ route('implementation.templates', $import['template']) }}"
+                    href="{{
+                      $dataSource === 'excel'
+                        ? route('implementation.templates.excel', $import['template'])
+                        : route('implementation.templates', $import['template'])
+                    }}"
                   >
-                    {{ $import['template_label'] }}
+                    {{ $import['label'] }} {{ $sourceLabel }}
                   </a>
                 </div>
               </div>
@@ -296,12 +306,18 @@
               @csrf
 
               <div class="form-group implementation-form-width">
-                <label for="{{ $import['input_id'] }}">Arquivo de {{ $import['label'] }}</label>
+                <label for="{{ $import['input_id'] }}">
+                  Arquivo de {{ $import['label'] }} ({{ $sourceLabel }})
+                </label>
                 <input
                   id="{{ $import['input_id'] }}"
                   type="file"
                   name="{{ $import['input_name'] }}"
-                  accept=".csv,text/csv"
+                  accept="{{
+                    $dataSource === 'excel'
+                      ? '.xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+                      : '.csv,text/csv'
+                  }}"
                   required
                 >
                 <span class="field-hint">
@@ -319,15 +335,19 @@
         @case(4)
           <h2>Mapeamento automático</h2>
           <p class="muted">
-            Arquivo <strong>{{ $wizardState['file_name'] ?? $activeImport['default_file'] }}</strong>,
-            separado por {{ $analysis['delimiter'] ?? 'delimitador não identificado' }}.
+            Arquivo <strong>{{ $wizardState['file_name'] ?? $defaultFile }}</strong>.
+            @if($dataSource === 'excel')
+              Primeira aba lida: <strong>{{ $analysis['worksheet'] ?? 'não identificada' }}</strong>.
+            @else
+              Separado por {{ $analysis['delimiter'] ?? 'delimitador não identificado' }}.
+            @endif
           </p>
 
           <div class="table-wrap implementation-table">
             <table>
               <thead>
                 <tr>
-                  <th>Coluna do CSV</th>
+                  <th>Coluna do arquivo</th>
                   <th>Campo no VetFlow</th>
                   <th>Status</th>
                 </tr>
@@ -393,7 +413,7 @@
               </div>
 
               <a class="button secondary" href="{{ route('implementation.index', ['step' => 3]) }}">
-                Substituir CSV
+                Substituir {{ $sourceLabel }}
               </a>
             </div>
           @endif
@@ -475,7 +495,7 @@
             </div>
             <div>
               <dt>Arquivo</dt>
-              <dd>{{ $wizardState['file_name'] ?? $activeImport['default_file'] }}</dd>
+              <dd>{{ $wizardState['file_name'] ?? $defaultFile }}</dd>
             </div>
             <div>
               <dt>{{ $activeImport['label'] }}</dt>
