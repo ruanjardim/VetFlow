@@ -45,6 +45,7 @@ composer install --no-dev --optimize-autoloader
 npm ci
 npm run build
 php artisan migrate --force
+php artisan db:seed --class=AuthorizationSeeder --force
 php artisan config:cache
 php artisan route:cache
 php artisan view:cache
@@ -62,6 +63,9 @@ Laravel filesystem. In production:
 ## Database
 
 - Run migrations through the deployment pipeline.
+- Run `AuthorizationSeeder` after migrations to synchronize permissions and
+  standard role presets. It is idempotent and should not be replaced by manual
+  role edits.
 - Back up the database before every production migration.
 - Keep `clinic_id` nullable only where the code intentionally supports global
   records or historical migration state.

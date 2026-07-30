@@ -18,7 +18,7 @@ The local working tree was clean before this documentation pass.
 - Modular backend under `app/Modules`.
 - Authentication and password reset flows.
 - Active-user and permission middleware.
-- Clinics, tutors, patients, schedules, appointments, inventory, products, product intelligence, purchase entries, suppliers, pet shop services, service orders, sales, financial, dashboard, and validation modules.
+- Clinics, access management, tutors, patients, schedules, appointments, inventory, products, product intelligence, purchase entries, suppliers, pet shop services, service orders, sales, financial, dashboard, and validation modules.
 - Database migrations for the current operational model.
 - Feature tests for authentication, authorization, clinic tenant isolation, initial admin setup, and operational purchase/clinical flows.
 - Existing architecture and audit documentation under `docs/`.
@@ -28,6 +28,8 @@ The local working tree was clean before this documentation pass.
   clinic-scoped summary of successful imports.
 - Bounded NF-e XML/key intake and resilient external product lookup that keep
   manual operational fallbacks available during provider outages.
+- Clinic-scoped collaborator management with six standard role presets,
+  auditable role changes, and administrator self-lockout protection.
 
 ## GitHub Scan Summary
 
@@ -69,7 +71,7 @@ Those repositories reinforced the same conclusion: the public-facing gap in this
 
 ## Open Documentation Gaps
 
-- Add standalone operational docs for Clinics, Users, Roles, and Permissions.
+- Add a standalone operational doc for Clinics.
 - Add module docs for thin or overlapping areas as their rules stabilize.
 
 ## Next Recommended Documentation Slice

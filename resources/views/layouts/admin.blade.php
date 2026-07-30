@@ -26,6 +26,9 @@
         @can('clinics.manage')
           <a class="{{ request()->routeIs('clinics.*') ? 'is-active' : '' }}" href="{{ route('clinics.index') }}">Clinicas</a>
         @endcan
+        @can('users.manage')
+          <a class="{{ request()->routeIs('access-users.*') ? 'is-active' : '' }}" href="{{ route('access-users.index') }}">Usuarios e acessos</a>
+        @endcan
         @can('implementation.manage')
           <a class="{{ request()->routeIs('implementation.*') ? 'is-active' : '' }}" href="{{ route('implementation.index') }}">Implantacao</a>
         @endcan

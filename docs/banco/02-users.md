@@ -48,10 +48,21 @@ through roles and permissions, while clinic separation is controlled by
   seeding, which prevents accidental lockout in existing local databases.
 - Role links in `user_roles` support soft removal through `deleted_at`.
 - The app checks permissions through middleware, Gates, and menu visibility.
+- Administrators manage collaborators through the `Access` module protected by
+  `users.manage`.
+- Role changes restore existing soft-deleted pivot rows rather than creating
+  duplicate history.
+- An administrator cannot deactivate their own user or remove their own last
+  management-capable role through the access screen.
+
+See [Access](../modules/access.md) for routes, tenant rules, presets, and test
+coverage.
 
 ## Global Users
 
 Global users are not tied to one clinic. They are useful for administration and
 support, but tenant-sensitive actions must still be scoped to a chosen clinic.
 Tests currently cover selected-clinic behavior for purchase entries, sales, and
-NF-e import.
+NF-e import. In the Access module, global administrators can choose the target
+clinic for another user, while clinic administrators are always restricted to
+their own clinic.

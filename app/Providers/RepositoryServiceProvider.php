@@ -2,48 +2,43 @@
 
 namespace App\Providers;
 
-use Illuminate\Support\ServiceProvider;
-
+use App\Modules\Access\Contracts\AccessUserRepositoryInterface;
+use App\Modules\Access\Repositories\AccessUserRepository;
 use App\Modules\Appointments\Contracts\AppointmentRepositoryInterface;
 use App\Modules\Appointments\Repositories\AppointmentRepository;
-
 use App\Modules\Clinics\Contracts\ClinicRepositoryInterface;
 use App\Modules\Clinics\Repositories\ClinicRepository;
-
 use App\Modules\Financial\Contracts\FinancialTransactionRepositoryInterface;
 use App\Modules\Financial\Repositories\FinancialTransactionRepository;
-
 use App\Modules\Inventory\Contracts\InventoryMovementRepositoryInterface;
 use App\Modules\Inventory\Repositories\InventoryMovementRepository;
-
 use App\Modules\Patients\Contracts\PatientRepositoryInterface;
 use App\Modules\Patients\Repositories\PatientRepository;
-
 use App\Modules\PetShopServices\Contracts\PetShopServiceRepositoryInterface;
 use App\Modules\PetShopServices\Repositories\PetShopServiceRepository;
-
 use App\Modules\Products\Contracts\ProductRepositoryInterface;
 use App\Modules\Products\Repositories\ProductRepository;
-
 use App\Modules\Sales\Contracts\SaleRepositoryInterface;
 use App\Modules\Sales\Repositories\SaleRepository;
-
-use App\Modules\ServiceOrders\Contracts\ServiceOrderRepositoryInterface;
-use App\Modules\ServiceOrders\Repositories\ServiceOrderRepository;
-
-use App\Modules\Suppliers\Contracts\SupplierRepositoryInterface;
-use App\Modules\Suppliers\Repositories\SupplierRepository;
-
-use App\Modules\Tutors\Contracts\TutorRepositoryInterface;
-use App\Modules\Tutors\Repositories\TutorRepository;
-
 use App\Modules\Schedules\Contracts\ScheduleRepositoryInterface;
 use App\Modules\Schedules\Repositories\ScheduleRepository;
+use App\Modules\ServiceOrders\Contracts\ServiceOrderRepositoryInterface;
+use App\Modules\ServiceOrders\Repositories\ServiceOrderRepository;
+use App\Modules\Suppliers\Contracts\SupplierRepositoryInterface;
+use App\Modules\Suppliers\Repositories\SupplierRepository;
+use App\Modules\Tutors\Contracts\TutorRepositoryInterface;
+use App\Modules\Tutors\Repositories\TutorRepository;
+use Illuminate\Support\ServiceProvider;
 
 class RepositoryServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
+        $this->app->bind(
+            AccessUserRepositoryInterface::class,
+            AccessUserRepository::class
+        );
+
         $this->app->bind(
             AppointmentRepositoryInterface::class,
             AppointmentRepository::class

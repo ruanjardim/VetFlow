@@ -29,6 +29,12 @@ class PermissionCatalog
                 'description' => 'Permite acessar o roteiro de implantacao e migracao de dados da clinica.',
             ],
             [
+                'slug' => 'users.manage',
+                'name' => 'Gerenciar usuarios e acessos',
+                'group' => 'Administrativo',
+                'description' => 'Permite cadastrar colaboradores e atribuir perfis de acesso.',
+            ],
+            [
                 'slug' => 'tutors.manage',
                 'name' => 'Gerenciar tutores',
                 'group' => 'Atendimento',
@@ -122,12 +128,23 @@ class PermissionCatalog
                 'description' => 'Acesso completo ao VetFlow.',
                 'permissions' => $allPermissions,
             ],
-            'atendimento' => [
-                'name' => 'Atendimento',
-                'description' => 'Acesso aos fluxos de recepcao, agenda, tutores, pacientes e comandas.',
+            'veterinario' => [
+                'name' => 'Veterinario',
+                'description' => 'Acesso aos cadastros e fluxos de atendimento clinico.',
                 'permissions' => [
                     'dashboard.view',
-                    'implementation.manage',
+                    'tutors.manage',
+                    'patients.manage',
+                    'schedules.manage',
+                    'appointments.manage',
+                    'service-orders.manage',
+                ],
+            ],
+            'atendimento' => [
+                'name' => 'Atendente',
+                'description' => 'Acesso aos fluxos de recepcao, agenda, cadastros, comandas e vendas.',
+                'permissions' => [
+                    'dashboard.view',
                     'tutors.manage',
                     'patients.manage',
                     'schedules.manage',
@@ -138,7 +155,7 @@ class PermissionCatalog
                 ],
             ],
             'estoque-compras' => [
-                'name' => 'Estoque e compras',
+                'name' => 'Estoque',
                 'description' => 'Acesso a produtos, estoque, compras, fornecedores e catalogo global.',
                 'permissions' => [
                     'dashboard.view',
@@ -147,6 +164,17 @@ class PermissionCatalog
                     'inventory.manage',
                     'purchase-entries.manage',
                     'suppliers.manage',
+                ],
+            ],
+            'caixa' => [
+                'name' => 'Caixa',
+                'description' => 'Acesso ao atendimento de balcao, comandas e fechamento de vendas.',
+                'permissions' => [
+                    'dashboard.view',
+                    'tutors.manage',
+                    'patients.manage',
+                    'service-orders.manage',
+                    'sales.manage',
                 ],
             ],
             'financeiro' => [

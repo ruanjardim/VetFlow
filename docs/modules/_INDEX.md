@@ -6,6 +6,7 @@ This index maps the current code modules and the documentation that should event
 
 | Module | Purpose | Documentation status |
 | --- | --- | --- |
+| Access | Collaborator records and role preset assignment | Documented in [Access](access.md) |
 | Appointments | Appointment workflows | Covered in [Clinical Core](clinical-core.md) |
 | Clients | Client-related area | Pending module doc |
 | ClinicProducts | Clinic-specific product association | Pending module doc |
@@ -28,13 +29,12 @@ This index maps the current code modules and the documentation that should event
 | ServiceOrders | Service orders and service order items | Covered in [Clinical Core](clinical-core.md) |
 | Suppliers | Supplier management | Documented in [Suppliers](suppliers.md) |
 | Tutors | Tutor/customer records | Covered in [Clinical Core](clinical-core.md) |
-| Users | User records and access foundation | Partially covered in database docs |
+| Users | User records and access foundation | Documented in [Access](access.md) and database docs |
 | Validation | Shared validation services/controllers | Documented in [Validation](validation.md) |
 
 ## Priority For Module Documentation
 
-1. Clinics, Users, Roles, and Permissions as operational docs, beyond database
-   notes.
+1. Clinics as an operational doc beyond database notes.
 2. Reporting documentation.
 3. PetShopServices as a standalone doc if its business rules grow.
 4. Clients, Implementation, and other present-but-thin module areas.
