@@ -48,6 +48,9 @@ This project follows the spirit of Keep a Changelog, with one practical adjustme
   transaction, tenant-isolation, and history rules.
 - Actionable dashboard priorities for overdue finance, low stock, service order
   pickup, pending sales, drafts, and same-day appointments.
+- Operational user access management with clinic isolation, six standard role
+  presets, auditable role-link synchronization, and self-lockout protection.
+- Standalone operational documentation for users, roles, and permissions.
 
 ### Changed
 
