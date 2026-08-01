@@ -1,10 +1,12 @@
 <?php
 
-use Illuminate\Support\Facades\Route;
+use App\Http\Middleware\EnsureUserIsGlobal;
 use App\Modules\Clinics\Controllers\ClinicController;
+use Illuminate\Support\Facades\Route;
 
 Route::prefix('clinics')
     ->name('clinics.')
+    ->middleware(EnsureUserIsGlobal::class)
     ->group(function () {
         Route::get('/', [ClinicController::class, 'index'])
             ->name('index');

@@ -59,6 +59,7 @@ This project follows the spirit of Keep a Changelog, with one practical adjustme
 - Explainable stock replenishment suggestions that combine current balance,
   minimum stock, and the last 180 days of received purchase history, with
   priority, confidence, supplier/cost context, and purchase-entry prefill.
+- Standalone operational documentation for the Clinics tenant registry.
 
 ### Changed
 
@@ -73,9 +74,10 @@ This project follows the spirit of Keep a Changelog, with one practical adjustme
   negative caching, bounded retries, and restricted image downloads.
 - Split dashboard alert summaries between inventory/catalog and financial
   domains, and aligned low-stock counters with active configured products.
+- Restricted clinic-registry routes and navigation to global administrators,
+  even when a clinic-scoped role contains `clinics.manage`.
 
 ### Pending
 
 - Validate the release checklist against the selected staging/production
   target and record a database restore drill.
-- Add standalone operational documentation for Clinics.
