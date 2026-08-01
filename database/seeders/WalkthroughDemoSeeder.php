@@ -17,6 +17,7 @@ use App\Modules\Sales\Models\Sale;
 use App\Modules\Sales\Models\SaleItem;
 use App\Modules\Sales\Models\SalePayment;
 use App\Modules\Tutors\Models\Tutor;
+use App\Support\Demo\WalkthroughDemoFixture;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -24,7 +25,7 @@ use Illuminate\Support\Str;
 
 class WalkthroughDemoSeeder extends Seeder
 {
-    public const DEMO_EMAIL = 'walkthrough@vetflow.local';
+    public const DEMO_EMAIL = WalkthroughDemoFixture::USER_EMAIL;
 
     public const DEMO_PASSWORD = 'VetFlowDemo123!';
 
@@ -45,7 +46,7 @@ class WalkthroughDemoSeeder extends Seeder
     private function seedClinic(): Clinic
     {
         return Clinic::query()->updateOrCreate(
-            ['cnpj' => '12345678000190'],
+            ['cnpj' => WalkthroughDemoFixture::CLINIC_CNPJ],
             [
                 'corporate_name' => 'VetFlow Demo Clinica Veterinaria LTDA',
                 'trade_name' => 'VetFlow Demo Clinic',
@@ -122,7 +123,7 @@ class WalkthroughDemoSeeder extends Seeder
     private function seedTutorJourney(Clinic $clinic): void
     {
         $tutor = Tutor::query()->updateOrCreate(
-            ['email' => 'mariana.demo@vetflow.local'],
+            ['email' => WalkthroughDemoFixture::TUTOR_EMAIL],
             [
                 'clinic_id' => $clinic->id,
                 'name' => 'Mariana Alves',
@@ -139,7 +140,7 @@ class WalkthroughDemoSeeder extends Seeder
         $patient = Patient::query()->updateOrCreate(
             [
                 'clinic_id' => $clinic->id,
-                'name' => 'Luna',
+                'name' => WalkthroughDemoFixture::PATIENT_NAME,
             ],
             [
                 'tutor_id' => $tutor->id,
@@ -155,7 +156,7 @@ class WalkthroughDemoSeeder extends Seeder
         Appointment::query()->updateOrCreate(
             [
                 'clinic_id' => $clinic->id,
-                'title' => 'Consulta de retorno - Luna',
+                'title' => WalkthroughDemoFixture::APPOINTMENT_TITLE,
             ],
             [
                 'patient_id' => $patient->id,
@@ -173,10 +174,10 @@ class WalkthroughDemoSeeder extends Seeder
     private function seedProductIntelligence(Clinic $clinic): array
     {
         $globalFood = GlobalProduct::query()->updateOrCreate(
-            ['gtin' => '7891000100103'],
+            ['gtin' => WalkthroughDemoFixture::GLOBAL_PRODUCT_GTINS[0]],
             [
-                'ean' => '7891000100103',
-                'barcode' => '7891000100103',
+                'ean' => WalkthroughDemoFixture::GLOBAL_PRODUCT_GTINS[0],
+                'barcode' => WalkthroughDemoFixture::GLOBAL_PRODUCT_GTINS[0],
                 'name' => 'Racao Premium Filhotes 3kg',
                 'brand' => 'VetNutrition',
                 'manufacturer' => 'VetNutrition Brasil',
@@ -186,7 +187,7 @@ class WalkthroughDemoSeeder extends Seeder
                 'weight' => '3kg',
                 'unit' => 'un',
                 'species' => 'Canino',
-                'api_source' => 'walkthrough_demo',
+                'api_source' => WalkthroughDemoFixture::SOURCE,
                 'source_confidence' => 94,
                 'status' => GlobalProduct::STATUS_VERIFIED,
                 'metadata' => ['demo' => true],
@@ -197,7 +198,7 @@ class WalkthroughDemoSeeder extends Seeder
         GlobalProductSource::query()->updateOrCreate(
             [
                 'global_product_id' => $globalFood->id,
-                'source_name' => 'walkthrough_demo',
+                'source_name' => WalkthroughDemoFixture::SOURCE,
             ],
             [
                 'source_label' => 'Base demonstrativa',
@@ -210,10 +211,10 @@ class WalkthroughDemoSeeder extends Seeder
         );
 
         $globalMedicine = GlobalProduct::query()->updateOrCreate(
-            ['gtin' => '7891000200209'],
+            ['gtin' => WalkthroughDemoFixture::GLOBAL_PRODUCT_GTINS[1]],
             [
-                'ean' => '7891000200209',
-                'barcode' => '7891000200209',
+                'ean' => WalkthroughDemoFixture::GLOBAL_PRODUCT_GTINS[1],
+                'barcode' => WalkthroughDemoFixture::GLOBAL_PRODUCT_GTINS[1],
                 'name' => 'Vermifugo Pet 10kg',
                 'brand' => 'SaudeVet',
                 'manufacturer' => 'SaudeVet Laboratorios',
@@ -223,7 +224,7 @@ class WalkthroughDemoSeeder extends Seeder
                 'species' => 'Canino',
                 'active_ingredient' => 'Praziquantel demo',
                 'prescription_required' => false,
-                'api_source' => 'walkthrough_demo',
+                'api_source' => WalkthroughDemoFixture::SOURCE,
                 'source_confidence' => 72,
                 'status' => GlobalProduct::STATUS_PENDING,
                 'metadata' => ['demo' => true],
@@ -233,12 +234,12 @@ class WalkthroughDemoSeeder extends Seeder
 
         GlobalProductSuggestion::query()->updateOrCreate(
             [
-                'gtin' => '7891000200209',
+                'gtin' => WalkthroughDemoFixture::GLOBAL_PRODUCT_GTINS[1],
                 'suggestion_type' => 'enrichment',
             ],
             [
                 'suggested_name' => 'Vermifugo Pet 10kg - sugestao de enriquecimento',
-                'source_name' => 'walkthrough_demo',
+                'source_name' => WalkthroughDemoFixture::SOURCE,
                 'status' => GlobalProduct::STATUS_PENDING,
                 'confidence' => 72,
                 'payload' => ['demo' => true],
@@ -248,7 +249,7 @@ class WalkthroughDemoSeeder extends Seeder
         $food = Product::query()->updateOrCreate(
             [
                 'clinic_id' => $clinic->id,
-                'sku' => 'DEMO-RACAO-3KG',
+                'sku' => WalkthroughDemoFixture::PRODUCT_SKUS[0],
             ],
             [
                 'global_product_id' => $globalFood->id,
@@ -256,15 +257,15 @@ class WalkthroughDemoSeeder extends Seeder
                 'category' => 'Alimentos',
                 'brand' => 'VetNutrition',
                 'manufacturer' => 'VetNutrition Brasil',
-                'barcode' => '7891000100103',
-                'gtin' => '7891000100103',
+                'barcode' => WalkthroughDemoFixture::GLOBAL_PRODUCT_GTINS[0],
+                'gtin' => WalkthroughDemoFixture::GLOBAL_PRODUCT_GTINS[0],
                 'description' => 'Item demonstrativo vinculado ao Catalogo Global.',
                 'cost_price' => 62.50,
                 'sale_price' => 99.90,
                 'stock_quantity' => 3,
                 'minimum_stock' => 8,
                 'unit' => 'un',
-                'lookup_source' => 'walkthrough_demo',
+                'lookup_source' => WalkthroughDemoFixture::SOURCE,
                 'lookup_metadata' => ['confidence' => 94],
                 'looked_up_at' => now()->subDay(),
                 'active' => true,
@@ -274,7 +275,7 @@ class WalkthroughDemoSeeder extends Seeder
         $medicine = Product::query()->updateOrCreate(
             [
                 'clinic_id' => $clinic->id,
-                'sku' => 'DEMO-VERM-10KG',
+                'sku' => WalkthroughDemoFixture::PRODUCT_SKUS[1],
             ],
             [
                 'global_product_id' => $globalMedicine->id,
@@ -282,14 +283,14 @@ class WalkthroughDemoSeeder extends Seeder
                 'category' => 'Medicamentos',
                 'brand' => 'SaudeVet',
                 'manufacturer' => 'SaudeVet Laboratorios',
-                'barcode' => '7891000200209',
-                'gtin' => '7891000200209',
+                'barcode' => WalkthroughDemoFixture::GLOBAL_PRODUCT_GTINS[1],
+                'gtin' => WalkthroughDemoFixture::GLOBAL_PRODUCT_GTINS[1],
                 'cost_price' => 18.40,
                 'sale_price' => 34.90,
                 'stock_quantity' => 14,
                 'minimum_stock' => 5,
                 'unit' => 'cx',
-                'lookup_source' => 'walkthrough_demo',
+                'lookup_source' => WalkthroughDemoFixture::SOURCE,
                 'lookup_metadata' => ['confidence' => 72],
                 'looked_up_at' => now()->subDays(3),
                 'active' => true,
@@ -299,7 +300,7 @@ class WalkthroughDemoSeeder extends Seeder
         $shampoo = Product::query()->updateOrCreate(
             [
                 'clinic_id' => $clinic->id,
-                'sku' => 'DEMO-SHAMPOO-500',
+                'sku' => WalkthroughDemoFixture::PRODUCT_SKUS[2],
             ],
             [
                 'name' => 'Shampoo Neutro Pet 500ml',
@@ -351,7 +352,7 @@ class WalkthroughDemoSeeder extends Seeder
                 'balance_after' => $product->stock_quantity,
                 'expires_at' => $expiresAt,
                 'occurred_at' => now()->subHours(5),
-                'source' => 'walkthrough_demo',
+                'source' => WalkthroughDemoFixture::SOURCE,
                 'notes' => $notes,
                 'metadata' => ['demo' => true],
             ]
@@ -363,16 +364,16 @@ class WalkthroughDemoSeeder extends Seeder
      */
     private function seedCommercialFlow(Clinic $clinic, User $user, array $products): void
     {
-        $tutor = Tutor::query()->where('email', 'mariana.demo@vetflow.local')->firstOrFail();
+        $tutor = Tutor::query()->where('email', WalkthroughDemoFixture::TUTOR_EMAIL)->firstOrFail();
         $patient = Patient::query()
             ->where('clinic_id', $clinic->id)
-            ->where('name', 'Luna')
+            ->where('name', WalkthroughDemoFixture::PATIENT_NAME)
             ->firstOrFail();
 
         $financial = FinancialTransaction::query()->updateOrCreate(
             [
                 'clinic_id' => $clinic->id,
-                'reference' => 'DEMO-SALE-0001',
+                'reference' => WalkthroughDemoFixture::FINANCIAL_REFERENCES[0],
             ],
             [
                 'type' => 'income',
@@ -391,7 +392,7 @@ class WalkthroughDemoSeeder extends Seeder
         $sale = Sale::query()->updateOrCreate(
             [
                 'clinic_id' => $clinic->id,
-                'code' => 'DEMO-SALE-0001',
+                'code' => WalkthroughDemoFixture::SALE_CODE,
             ],
             [
                 'tutor_id' => $tutor->id,
@@ -480,7 +481,7 @@ class WalkthroughDemoSeeder extends Seeder
         SalePayment::query()->updateOrCreate(
             [
                 'sale_id' => $sale->id,
-                'reference' => 'DEMO-PAY-0001',
+                'reference' => WalkthroughDemoFixture::SALE_PAYMENT_REFERENCE,
             ],
             [
                 'method' => 'pix',
@@ -496,7 +497,7 @@ class WalkthroughDemoSeeder extends Seeder
         FinancialTransaction::query()->updateOrCreate(
             [
                 'clinic_id' => $clinic->id,
-                'reference' => 'DEMO-EXPENSE-0001',
+                'reference' => WalkthroughDemoFixture::FINANCIAL_REFERENCES[1],
             ],
             [
                 'type' => 'expense',

@@ -99,6 +99,7 @@ php artisan optimize:clear
 - [Roadmap](docs/ROADMAP.md)
 - [CI guide](docs/ci.md)
 - [Deployment guide](docs/deployment.md)
+- [Release checklist](docs/release-checklist.md)
 - [Engineering process](docs/engineering-process.md)
 - [GitHub VetFlow comparison audit](docs/audits/github-vetflow-comparison-2026-07-21.md)
 

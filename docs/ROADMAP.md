@@ -1,6 +1,6 @@
 # VetFlow Roadmap
 
-Updated: 2026-07-21
+Updated: 2026-07-30
 
 This roadmap describes the product direction that should stay visible while VetFlow evolves. It is intentionally high-level and should be revised as implementation priorities change.
 
@@ -27,14 +27,26 @@ The product should feel different from a generic CRUD system by connecting the c
 - Modular Laravel structure that keeps future domains easier to extend.
 - Clear documentation and CI so the repository remains credible and maintainable.
 
-## Near-Term Priorities
+## Completed Near-Term Priorities
 
-1. Keep CI green with backend tests and frontend build.
-2. Add screenshots or a short visual walkthrough for the main screens.
-3. Document Dashboard, Suppliers, and Validation as standalone modules.
-4. Harden product lookup and NF-e flows around unavailable external services.
-5. Improve dashboard insight copy for stock, financial, schedule, and sales signals.
-6. Add release notes when a stable demo or first production pilot is defined.
+- CI covers backend tests and the frontend build.
+- The repository includes a visual walkthrough with fictitious data.
+- Dashboard, Suppliers, Validation, Implementation, and Access have standalone
+  documentation.
+- Product lookup and NF-e intake degrade safely during provider outages.
+- The dashboard presents ordered operational priorities.
+- Six clinic-safe role presets are available through the Access module.
+- Demo fixtures have a controlled local reset/reseed path.
+- A release checklist and automated runtime diagnostic are available.
+
+## Current Near-Term Priorities
+
+1. Choose and validate the staging/production hosting target.
+2. Prove database backup restoration before the first pilot.
+3. Run the release checklist and smoke tests in staging.
+4. Define the first pilot scope, release notes, and support owner.
+5. Add standalone operational documentation for Clinics.
+6. Design smart reorder suggestions from stock and purchase history.
 
 ## Product Milestones
 
@@ -73,4 +85,3 @@ The product should feel different from a generic CRUD system by connecting the c
 - Margin and profitability insights by service/product category.
 - Appointment reminders and follow-up workflows.
 - Audit trail for sensitive operational changes.
-- Role presets for administrator, veterinarian, attendant, stock, cashier, and finance users.

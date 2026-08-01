@@ -13,6 +13,7 @@ This directory contains the working documentation for VetFlow.
 - [Database overview](BANCO_DE_DADOS.md)
 - [Continuous integration](ci.md)
 - [Deployment guide](deployment.md)
+- [Release checklist](release-checklist.md)
 - [Roadmap](ROADMAP.md)
 
 ## Database Notes

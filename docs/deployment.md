@@ -74,6 +74,18 @@ Laravel filesystem. In production:
 
 ## Operational Checks
 
+Run the automated runtime check after migrations and caches are ready:
+
+```bash
+php artisan vetflow:release:check --backup-confirmed
+```
+
+Use `--backup-confirmed` only after an operator has verified that a restorable
+database backup exists for the release. The command also checks the application
+key, production debug/HTTPS settings, database connectivity, pending
+migrations, logging, queue configuration, the `jobs` table when applicable,
+and a temporary write/delete probe on the configured storage disk.
+
 After deployment:
 
 - login as an active administrator;
@@ -83,3 +95,6 @@ After deployment:
 - create a draft sale and confirm it does not apply side effects;
 - create a completed sale and verify stock and finance records;
 - review logs for provider, storage, and mail failures.
+
+Use the complete [release checklist](release-checklist.md) to record the
+pre-release validation, rollback decision, smoke tests, and release evidence.
