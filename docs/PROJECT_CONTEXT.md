@@ -1,6 +1,6 @@
 # VetFlow Project Context
 
-Updated: 2026-07-21
+Updated: 2026-07-30
 
 ## Product
 
@@ -51,8 +51,16 @@ DB_DATABASE=database/database.sqlite
 
 Run setup with Composer, npm, migrations, and the Laravel server as described in the root README.
 
-## Current Documentation Gap
+## Current Delivery Focus
 
-The repository has useful architecture and audit notes, but public-facing documentation was thin before the GitHub comparison pass. Root README/status/changelog and documentation indexes have now been added.
+The repository now includes public project documentation, CI, a visual
+walkthrough, assisted onboarding imports, resilient NF-e/product lookup,
+actionable dashboard priorities, and clinic-scoped collaborator management.
 
-Remaining documentation work should focus on database docs, module docs, deployment, CI, and short user-facing walkthroughs.
+The next delivery focus is the first controlled pilot: select a hosting target,
+prove backup restoration, validate persistent storage and the queue worker,
+execute the release checklist in staging, and define release/support ownership.
+
+The main remaining standalone documentation gap is the operational Clinics
+module. Thin or overlapping modules should receive dedicated documentation as
+their business rules stabilize.

@@ -51,6 +51,11 @@ This project follows the spirit of Keep a Changelog, with one practical adjustme
 - Operational user access management with clinic isolation, six standard role
   presets, auditable role-link synchronization, and self-lockout protection.
 - Standalone operational documentation for users, roles, and permissions.
+- Controlled local walkthrough cleanup/reseed command that preserves unrelated
+  clinic records and is blocked outside local/testing environments.
+- Release-readiness command covering application configuration, database,
+  migrations, logging, queue, storage, and production backup confirmation.
+- Operational release checklist with rollback gates and smoke tests.
 
 ### Changed
 
@@ -68,4 +73,6 @@ This project follows the spirit of Keep a Changelog, with one practical adjustme
 
 ### Pending
 
-- Add standalone operational docs for Clinics, Users, Roles, and Permissions.
+- Validate the release checklist against the selected staging/production
+  target and record a database restore drill.
+- Add standalone operational documentation for Clinics.

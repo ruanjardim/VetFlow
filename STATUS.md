@@ -1,6 +1,6 @@
 # VetFlow Status
 
-Updated: 2026-07-29
+Updated: 2026-07-30
 
 ## Current State
 
@@ -30,6 +30,11 @@ The local working tree was clean before this documentation pass.
   manual operational fallbacks available during provider outages.
 - Clinic-scoped collaborator management with six standard role presets,
   auditable role changes, and administrator self-lockout protection.
+- A local/testing-only walkthrough reset that removes fixed demo fixtures
+  selectively and can recreate them without touching unrelated clinic data.
+- A release-readiness diagnostic for application configuration, database and
+  migrations, logging, queues, storage, and explicit production backup
+  confirmation.
 
 ## GitHub Scan Summary
 
@@ -74,9 +79,13 @@ Those repositories reinforced the same conclusion: the public-facing gap in this
 - Add a standalone operational doc for Clinics.
 - Add module docs for thin or overlapping areas as their rules stabilize.
 
-## Next Recommended Documentation Slice
+## Next Recommended Pilot Slice
 
-1. Run the full test/build suite locally after documentation review.
-2. Commit and push the documentation/CI pass.
-3. Refresh walkthrough screenshots after relevant UI changes.
-4. Keep the public roadmap aligned with implementation and release decisions.
+1. Choose the staging/production hosting target and validate its process
+   controls, persistent storage, and queue worker.
+2. Perform and record a database backup/restore drill in an isolated
+   environment.
+3. Run the release checklist and smoke tests against staging.
+4. Publish release notes when the first pilot scope and support owner are
+   defined.
+5. Add the standalone operational Clinics document.

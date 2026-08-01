@@ -13,6 +13,24 @@ php artisan migrate
 php artisan db:seed --class=WalkthroughDemoSeeder
 ```
 
+To remove only the records identified by the walkthrough fixture:
+
+```bash
+php artisan vetflow:demo:reset
+```
+
+To clean and recreate the walkthrough in one controlled operation:
+
+```bash
+php artisan vetflow:demo:reset --reseed
+```
+
+The command is restricted to `local` and `testing`, asks for confirmation, and
+matches the clinic, user, products, sales, finance, inventory, and intelligence
+fixtures by fixed identifiers. Use `--force` only in automated local tests.
+The clinic itself is preserved, unrelated clinic records are not removed, and
+the walkthrough administrator uses a recoverable soft delete during cleanup.
+
 Demo login:
 
 ```text
@@ -69,4 +87,3 @@ Financial records connect income, expenses, payment status, due dates, and opera
 - All data shown here is fictitious.
 - Screenshots should be refreshed after relevant UI changes.
 - The walkthrough should stay concise; detailed behavior belongs in module docs.
-
