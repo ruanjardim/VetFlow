@@ -1,6 +1,6 @@
 # VetFlow Roadmap
 
-Updated: 2026-07-30
+Updated: 2026-08-01
 
 This roadmap describes the product direction that should stay visible while VetFlow evolves. It is intentionally high-level and should be revised as implementation priorities change.
 
@@ -38,6 +38,8 @@ The product should feel different from a generic CRUD system by connecting the c
 - Six clinic-safe role presets are available through the Access module.
 - Demo fixtures have a controlled local reset/reseed path.
 - A release checklist and automated runtime diagnostic are available.
+- Replenishment suggestions combine current stock, minimum stock, and recent
+  received-purchase history with an explicit confidence level and reason.
 
 ## Current Near-Term Priorities
 
@@ -46,7 +48,8 @@ The product should feel different from a generic CRUD system by connecting the c
 3. Run the release checklist and smoke tests in staging.
 4. Define the first pilot scope, release notes, and support owner.
 5. Add standalone operational documentation for Clinics.
-6. Design smart reorder suggestions from stock and purchase history.
+6. Validate replenishment suggestions with pilot data and tune the history
+   window or quantity rule only when real evidence supports the change.
 
 ## Product Milestones
 
@@ -81,7 +84,7 @@ The product should feel different from a generic CRUD system by connecting the c
 ## Ideas Worth Exploring
 
 - Guided onboarding for a new clinic.
-- Smart reorder suggestions from stock and purchase history.
+- Supplier lead-time and demand signals for future replenishment tuning.
 - Margin and profitability insights by service/product category.
 - Appointment reminders and follow-up workflows.
 - Audit trail for sensitive operational changes.

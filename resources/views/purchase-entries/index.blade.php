@@ -9,7 +9,7 @@
       <p>Compras, recebimentos, lotes e validade dos produtos.</p>
     </div>
     <div class="actions">
-      <a class="button secondary" href="{{ route('purchase-entries.replenishment') }}">Reposicao</a>
+      <a class="button secondary" href="{{ route('purchase-entries.replenishment') }}">Reposicao inteligente</a>
       <a class="button secondary" href="{{ route('suppliers.index') }}">Fornecedores</a>
       <a class="button" href="{{ route('purchase-entries.create') }}">Nova entrada</a>
     </div>
@@ -51,8 +51,8 @@
     <div class="panel">
       <div class="panel-heading">
         <div>
-          <h2>Reposicao sugerida</h2>
-          <p>Produtos abaixo do minimo para entrar na proxima compra.</p>
+          <h2>Reposicao inteligente</h2>
+          <p>Prioridades por saldo, minimo e historico recente de compras recebidas.</p>
         </div>
         <a class="button secondary" href="{{ route('purchase-entries.replenishment') }}">Ver todos</a>
       </div>
@@ -60,6 +60,7 @@
         <table>
           <thead>
             <tr>
+              <th>Prioridade</th>
               <th>Produto</th>
               <th>Saldo</th>
               <th>Sugestao</th>
@@ -68,18 +69,26 @@
           </thead>
           <tbody>
             @forelse($replenishmentItems as $item)
+              @php
+                $priorityBadge = match ($item['priority']) {
+                  'critical' => 'danger',
+                  'high' => 'warning',
+                  default => 'muted-badge',
+                };
+              @endphp
               <tr>
+                <td><span class="badge {{ $priorityBadge }}">{{ $item['priority_label'] }}</span></td>
                 <td>
                   <strong>{{ $item['product']->name }}</strong>
                   <div class="muted">{{ $item['product']->gtin ?: $item['product']->barcode ?: 'Sem EAN' }}</div>
                 </td>
                 <td>{{ number_format((float) $item['stock_quantity'], 3, ',', '.') }} / {{ number_format((float) $item['minimum_stock'], 3, ',', '.') }} {{ $item['unit'] }}</td>
                 <td>{{ number_format((float) $item['suggested_quantity'], 3, ',', '.') }} {{ $item['unit'] }}</td>
-                <td><a class="button secondary" href="{{ $item['scan_url'] }}">Comprar</a></td>
+                <td><a class="button secondary" href="{{ $item['purchase_url'] }}">Revisar compra</a></td>
               </tr>
             @empty
               <tr>
-                <td colspan="4" class="muted">Nenhum produto abaixo do minimo agora.</td>
+                <td colspan="5" class="muted">Nenhum produto abaixo do minimo agora.</td>
               </tr>
             @endforelse
           </tbody>

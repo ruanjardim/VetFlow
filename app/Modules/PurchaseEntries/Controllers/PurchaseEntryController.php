@@ -45,6 +45,7 @@ class PurchaseEntryController extends Controller
             'suppliers' => $this->suppliers(),
             'purchaseInsights' => $this->insights->dashboard(),
             'scanGtin' => $request->query('scan') ?: $request->query('gtin'),
+            'suggestedItem' => $this->replenishmentPrefill($request),
         ]);
     }
 
@@ -231,6 +232,53 @@ class PurchaseEntryController extends Controller
             ->active()
             ->orderBy('name')
             ->get();
+    }
+
+    private function replenishmentPrefill(Request $request): ?array
+    {
+        $productId = $request->integer('replenishment_product');
+
+        if ($productId <= 0) {
+            return null;
+        }
+
+        $product = Product::query()
+            ->with('globalProduct')
+            ->active()
+            ->find($productId);
+
+        if ($product === null) {
+            return null;
+        }
+
+        $suggestion = $this->insights->replenishmentSuggestion($product);
+
+        return [
+            'product_id' => $product->id,
+            'description' => $product->name,
+            'quantity' => $suggestion['suggested_quantity'],
+            'unit_cost' => $suggestion['unit_cost'],
+            'sale_price' => (float) $product->sale_price,
+            'margin_percent' => $this->insights->marginPercent(
+                (float) $suggestion['unit_cost'],
+                (float) $product->sale_price
+            ),
+            'update_sale_price' => false,
+            'minimum_stock_after_entry' => (float) $product->minimum_stock,
+            'barcode_snapshot' => $product->gtin ?: $product->barcode,
+            'intelligence_status' => 'replenishment_suggestion',
+            'intelligence_metadata' => [
+                'source' => 'smart_replenishment',
+                'generated_at' => now()->toDateTimeString(),
+                'confidence' => $suggestion['confidence'],
+                'history_count' => $suggestion['history_count'],
+                'history_window_days' => $suggestion['history_window_days'],
+                'baseline_quantity' => $suggestion['baseline_quantity'],
+                'suggested_quantity' => $suggestion['suggested_quantity'],
+                'uses_purchase_history' => $suggestion['uses_purchase_history'],
+                'reason' => $suggestion['reason'],
+            ],
+        ];
     }
 
     private function selectedClinicId(Request $request, array $validated = []): ?int

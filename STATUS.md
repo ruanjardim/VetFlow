@@ -1,6 +1,6 @@
 # VetFlow Status
 
-Updated: 2026-07-30
+Updated: 2026-08-01
 
 ## Current State
 
@@ -35,6 +35,9 @@ The local working tree was clean before this documentation pass.
 - A release-readiness diagnostic for application configuration, database and
   migrations, logging, queues, storage, and explicit production backup
   confirmation.
+- Explainable replenishment suggestions that prioritize low-stock products,
+  use recent received-purchase batches when the history is sufficient, and
+  prefill a reviewable purchase entry without creating an automatic order.
 
 ## GitHub Scan Summary
 

@@ -17,6 +17,9 @@
     'expires_at' => optional($item->expires_at)->format('Y-m-d'),
     'notes' => $item->notes,
   ])->toArray() ?? [];
+  if ($entry === null && $entryItems === [] && ! empty($suggestedItem)) {
+    $entryItems[] = $suggestedItem;
+  }
   $rows = array_values(old('items', $entryItems));
   $rowCount = max(12, count($rows));
   $financials = $entry?->financialTransactions?->sortBy('installment_number')->values() ?? collect();
@@ -65,9 +68,9 @@
   <div class="field">
     <label for="supplier_id">Fornecedor</label>
     <select id="supplier_id" name="supplier_id">
-      <option value="">Selecione</option>
-      @foreach($suppliers as $supplier)
-        <option value="{{ $supplier->id }}" @selected((int) old('supplier_id', $entry->supplier_id ?? 0) === $supplier->id)>
+        <option value="">Selecione</option>
+        @foreach($suppliers as $supplier)
+          <option value="{{ $supplier->id }}" @selected((int) old('supplier_id', $entry->supplier_id ?? request('supplier_id', 0)) === $supplier->id)>
           {{ $supplier->name }}
         </option>
       @endforeach
