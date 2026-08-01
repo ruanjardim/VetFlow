@@ -37,6 +37,8 @@ The local working tree was clean before this documentation pass.
   confirmation.
 - A standalone operational guide for the global Clinics registry, with an
   explicit global-administrator boundary on clinic management.
+- A provider-specific KingHost staging runbook and a disabled-by-default,
+  token-protected queue cron bridge for low-volume shared-hosting validation.
 - Explainable replenishment suggestions that prioritize low-stock products,
   use recent received-purchase batches when the history is sufficient, and
   prefill a reviewable purchase entry without creating an automatic order.
@@ -85,10 +87,11 @@ Those repositories reinforced the same conclusion: the public-facing gap in this
 
 ## Next Recommended Pilot Slice
 
-1. Choose the staging/production hosting target and validate its process
-   controls, persistent storage, and queue worker.
+1. Confirm the KingHost contract gate and provision the isolated staging
+   environment without real clinic data.
 2. Perform and record a database backup/restore drill in an isolated
    environment.
-3. Run the release checklist and smoke tests against staging.
+3. Validate persistent storage, the bounded queue cron, and the complete
+   release checklist against staging.
 4. Publish release notes when the first pilot scope and support owner are
    defined.

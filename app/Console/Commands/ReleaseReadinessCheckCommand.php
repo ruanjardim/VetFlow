@@ -13,7 +13,7 @@ use Throwable;
 class ReleaseReadinessCheckCommand extends Command
 {
     protected $signature = 'vetflow:release:check
-        {--backup-confirmed : Confirma que existe backup restauravel antes de uma release em producao}';
+        {--backup-confirmed : Confirma que existe backup restauravel antes de uma release em staging/producao}';
 
     protected $description = 'Verifica configuracao, banco, migrations, logs, fila, armazenamento e backup para uma release.';
 
@@ -25,7 +25,7 @@ class ReleaseReadinessCheckCommand extends Command
     public function handle(): int
     {
         $this->checks = [];
-        $production = app()->environment('production');
+        $productionLike = app()->environment(['production', 'staging']);
 
         $this->check(
             'Chave da aplicacao',
@@ -34,34 +34,35 @@ class ReleaseReadinessCheckCommand extends Command
         );
         $this->check(
             'Modo de depuracao',
-            ! $production || ! config('app.debug'),
-            $production && config('app.debug')
-                ? 'APP_DEBUG deve ser false em producao.'
+            ! $productionLike || ! config('app.debug'),
+            $productionLike && config('app.debug')
+                ? 'APP_DEBUG deve ser false em staging/producao.'
                 : 'Configuracao compativel com o ambiente atual.'
         );
         $this->check(
             'URL da aplicacao',
-            ! $production || str_starts_with((string) config('app.url'), 'https://'),
-            $production
+            ! $productionLike || str_starts_with((string) config('app.url'), 'https://'),
+            $productionLike
                 ? (str_starts_with((string) config('app.url'), 'https://')
                     ? 'APP_URL usa HTTPS.'
-                    : 'APP_URL deve usar HTTPS em producao.')
-                : 'HTTPS sera obrigatorio quando APP_ENV=production.'
+                    : 'APP_URL deve usar HTTPS em staging/producao.')
+                : 'HTTPS sera obrigatorio quando APP_ENV=staging/production.'
         );
 
         $this->checkDatabase();
         $this->checkMigrations();
         $this->checkLogging();
-        $this->checkQueue($production);
+        $this->checkQueue($productionLike);
+        $this->checkQueueProcessControl($productionLike);
         $this->checkStorage();
         $this->check(
             'Backup restauravel',
-            ! $production || (bool) $this->option('backup-confirmed'),
-            $production
+            ! $productionLike || (bool) $this->option('backup-confirmed'),
+            $productionLike
                 ? ((bool) $this->option('backup-confirmed')
                     ? 'Confirmado pelo operador para esta release.'
                     : 'Execute novamente com --backup-confirmed depois de validar o backup.')
-                : 'Confirmacao obrigatoria somente em producao.'
+                : 'Confirmacao obrigatoria somente em staging/producao.'
         );
 
         $this->table(
@@ -137,18 +138,18 @@ class ReleaseReadinessCheckCommand extends Command
         );
     }
 
-    private function checkQueue(bool $production): void
+    private function checkQueue(bool $productionLike): void
     {
         try {
             $connection = (string) config('queue.default');
             $configured = $connection !== '' && config("queue.connections.{$connection}") !== null;
-            $valid = $configured && (! $production || $connection !== 'sync');
+            $valid = $configured && (! $productionLike || $connection !== 'sync');
             $detail = $configured
                 ? "Conexao {$connection} configurada."
                 : 'Conexao padrao de fila invalida.';
 
-            if ($production && $connection === 'sync') {
-                $detail = 'A fila sync nao e aceita para o piloto em producao.';
+            if ($productionLike && $connection === 'sync') {
+                $detail = 'A fila sync nao e aceita para o piloto em staging/producao.';
             }
 
             if ($valid && $connection === 'database' && ! Schema::hasTable('jobs')) {
@@ -160,6 +161,66 @@ class ReleaseReadinessCheckCommand extends Command
         } catch (Throwable $exception) {
             $this->check('Fila', false, $exception->getMessage());
         }
+    }
+
+    private function checkQueueProcessControl(bool $productionLike): void
+    {
+        $mode = (string) config('operations.queue.mode', 'worker');
+
+        if (! in_array($mode, ['worker', 'cron'], true)) {
+            $this->check('Processamento da fila', false, 'VETFLOW_QUEUE_MODE deve ser worker ou cron.');
+
+            return;
+        }
+
+        if (! $productionLike) {
+            $this->check(
+                'Processamento da fila',
+                true,
+                "Modo {$mode} sera validado integralmente em staging/producao."
+            );
+
+            return;
+        }
+
+        if ($mode === 'worker') {
+            $this->check(
+                'Processamento da fila',
+                true,
+                'Modo worker configurado; confirme o processo supervisionado no smoke test.'
+            );
+
+            return;
+        }
+
+        $connection = (string) config('queue.default');
+        $enabled = (bool) config('operations.queue.cron.enabled');
+        $token = (string) config('operations.queue.cron.token');
+        $header = (string) config('operations.queue.cron.header');
+        $maxJobs = (int) config('operations.queue.cron.max_jobs');
+        $maxTime = (int) config('operations.queue.cron.max_time');
+        $timeout = (int) config('operations.queue.cron.timeout');
+        $tries = (int) config('operations.queue.cron.tries');
+        $valid = $connection === 'database'
+            && $enabled
+            && mb_strlen($token) >= 32
+            && preg_match('/^[A-Za-z0-9-]+$/', $header) === 1
+            && $maxJobs >= 1
+            && $maxJobs <= 100
+            && $maxTime >= 1
+            && $maxTime <= 50
+            && $timeout >= 1
+            && $timeout < $maxTime
+            && $tries >= 1
+            && $tries <= 10;
+
+        $this->check(
+            'Processamento da fila',
+            $valid,
+            $valid
+                ? 'Cron controlado habilitado com fila database, token e limites seguros.'
+                : 'O modo cron exige fila database, endpoint habilitado, token de 32+ caracteres, header valido e limites seguros.'
+        );
     }
 
     private function checkStorage(): void

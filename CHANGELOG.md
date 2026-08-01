@@ -60,6 +60,10 @@ This project follows the spirit of Keep a Changelog, with one practical adjustme
   minimum stock, and the last 180 days of received purchase history, with
   priority, confidence, supplier/cost context, and purchase-entry prefill.
 - Standalone operational documentation for the Clinics tenant registry.
+- KingHost staging runbook with contract gates, deployment, backup/restore,
+  smoke-test, and rollback procedures.
+- Disabled-by-default authenticated queue cron endpoint and bounded queue-drain
+  command for low-volume shared-hosting staging.
 
 ### Changed
 
@@ -76,8 +80,10 @@ This project follows the spirit of Keep a Changelog, with one practical adjustme
   domains, and aligned low-stock counters with active configured products.
 - Restricted clinic-registry routes and navigation to global administrators,
   even when a clinic-scoped role contains `clinics.manage`.
+- Extended release readiness checks to staging and validated the shared-hosting
+  cron mode, database queue, token length, and execution bounds.
 
 ### Pending
 
-- Validate the release checklist against the selected staging/production
-  target and record a database restore drill.
+- Provision the selected KingHost staging target, validate the release
+  checklist there, and record an isolated database restore drill.

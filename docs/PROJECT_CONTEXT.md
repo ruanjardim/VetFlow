@@ -59,9 +59,12 @@ actionable dashboard priorities, clinic-scoped collaborator management, and
 explainable stock replenishment suggestions based on current stock and recent
 received purchases.
 
-The next delivery focus is the first controlled pilot: select a hosting target,
-prove backup restoration, validate persistent storage and the queue worker,
-execute the release checklist in staging, and define release/support ownership.
+The first staging candidate is KingHost shared Linux hosting, using only
+fictitious data and a bounded authenticated cron bridge because shared hosting
+does not supervise a permanent queue worker. External provisioning remains
+pending. The next delivery focus is to pass the contract gate, prove backup
+restoration, validate persistent storage and queue processing, execute the
+release checklist in staging, and define release/support ownership.
 
 The global Clinics registry now has a standalone operational guide and an
 explicit global-administrator authorization boundary. Thin or overlapping

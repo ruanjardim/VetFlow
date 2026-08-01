@@ -102,8 +102,9 @@ Run the command without `--backup-confirmed` in local or testing environments.
 - Create a draft sale and confirm stock and financial side effects are absent.
 - Complete a small staging sale and verify stock, payment, and financial
   records.
-- Confirm the queue worker consumes a harmless test job or an existing
-  application job.
+- Confirm the queue worker consumes a harmless test job or, for the KingHost
+  staging bridge, that the authenticated cron receives `204` and removes the
+  job from the `jobs` table without creating a `failed_jobs` record.
 - Upload and remove a disposable staging asset using the configured storage
   disk.
 - Review application logs for provider, storage, queue, database, and mail
