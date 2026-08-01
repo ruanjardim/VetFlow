@@ -181,6 +181,22 @@ class ClinicTenantIsolationTest extends TestCase
         ]);
     }
 
+    public function test_clinic_user_cannot_manage_global_clinic_registry_even_with_permission(): void
+    {
+        $clinic = $this->clinic('Clinica Restrita', '00000000000993');
+        $user = $this->clinicUser($clinic);
+        $this->grantPermissions($user, ['dashboard.view', 'clinics.manage']);
+
+        $this->actingAs($user)
+            ->get(route('clinics.index'))
+            ->assertForbidden();
+
+        $this->actingAs($user)
+            ->get(route('dashboard'))
+            ->assertOk()
+            ->assertDontSee(route('clinics.index'));
+    }
+
     public function test_operational_forms_warn_global_user_when_no_clinic_exists(): void
     {
         $user = User::factory()->create([

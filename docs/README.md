@@ -30,6 +30,7 @@ The employee/access note documents the current decision to use `users`,
 ## Modules
 
 - [Module index](modules/_INDEX.md)
+- [Clinics](modules/clinics.md)
 - [Dashboard](modules/dashboard.md)
 - [Products](modules/products.md)
 - [Product Intelligence](modules/product-intelligence.md)

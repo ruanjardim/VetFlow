@@ -23,9 +23,11 @@
         @can('dashboard.view')
           <a class="{{ request()->routeIs('dashboard') ? 'is-active' : '' }}" href="{{ route('dashboard') }}">Dashboard</a>
         @endcan
-        @can('clinics.manage')
-          <a class="{{ request()->routeIs('clinics.*') ? 'is-active' : '' }}" href="{{ route('clinics.index') }}">Clinicas</a>
-        @endcan
+        @if(auth()->user()?->clinic_id === null)
+          @can('clinics.manage')
+            <a class="{{ request()->routeIs('clinics.*') ? 'is-active' : '' }}" href="{{ route('clinics.index') }}">Clinicas</a>
+          @endcan
+        @endif
         @can('users.manage')
           <a class="{{ request()->routeIs('access-users.*') ? 'is-active' : '' }}" href="{{ route('access-users.index') }}">Usuarios e acessos</a>
         @endcan

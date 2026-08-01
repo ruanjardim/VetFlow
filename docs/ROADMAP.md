@@ -38,6 +38,8 @@ The product should feel different from a generic CRUD system by connecting the c
 - Six clinic-safe role presets are available through the Access module.
 - Demo fixtures have a controlled local reset/reseed path.
 - A release checklist and automated runtime diagnostic are available.
+- Clinics have a standalone operational guide and a global-administrator
+  authorization boundary.
 - Replenishment suggestions combine current stock, minimum stock, and recent
   received-purchase history with an explicit confidence level and reason.
 
@@ -47,8 +49,7 @@ The product should feel different from a generic CRUD system by connecting the c
 2. Prove database backup restoration before the first pilot.
 3. Run the release checklist and smoke tests in staging.
 4. Define the first pilot scope, release notes, and support owner.
-5. Add standalone operational documentation for Clinics.
-6. Validate replenishment suggestions with pilot data and tune the history
+5. Validate replenishment suggestions with pilot data and tune the history
    window or quantity rule only when real evidence supports the change.
 
 ## Product Milestones

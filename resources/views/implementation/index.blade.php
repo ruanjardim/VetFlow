@@ -21,9 +21,13 @@
         </form>
       @endif
 
-      <a class="button secondary" href="{{ route('clinics.index') }}">
-        Clínicas
-      </a>
+      @if(auth()->user()?->clinic_id === null)
+        @can('clinics.manage')
+          <a class="button secondary" href="{{ route('clinics.index') }}">
+            Clínicas
+          </a>
+        @endcan
+      @endif
     </div>
   </header>
 

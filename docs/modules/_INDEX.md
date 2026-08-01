@@ -10,7 +10,7 @@ This index maps the current code modules and the documentation that should event
 | Appointments | Appointment workflows | Covered in [Clinical Core](clinical-core.md) |
 | Clients | Client-related area | Pending module doc |
 | ClinicProducts | Clinic-specific product association | Pending module doc |
-| Clinics | Clinic administration and tenant foundation | Partially covered in database docs |
+| Clinics | Clinic administration and tenant foundation | Documented in [Clinics](clinics.md) |
 | Dashboard | Operational dashboard data and widgets | Documented in [Dashboard](dashboard.md) |
 | Finance | Finance-related area | Pending review; overlaps with Financial |
 | Financial | Financial transactions and payable/receivable flows | Documented in [Financial](financial.md) |
@@ -34,10 +34,9 @@ This index maps the current code modules and the documentation that should event
 
 ## Priority For Module Documentation
 
-1. Clinics as an operational doc beyond database notes.
-2. Reporting documentation.
-3. PetShopServices as a standalone doc if its business rules grow.
-4. Clients, Implementation, and other present-but-thin module areas.
+1. Reporting documentation.
+2. PetShopServices as a standalone doc if its business rules grow.
+3. Clients and other present-but-thin module areas.
 
 ## Suggested Module Doc Template
 

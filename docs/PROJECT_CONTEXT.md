@@ -63,6 +63,7 @@ The next delivery focus is the first controlled pilot: select a hosting target,
 prove backup restoration, validate persistent storage and the queue worker,
 execute the release checklist in staging, and define release/support ownership.
 
-The main remaining standalone documentation gap is the operational Clinics
-module. Thin or overlapping modules should receive dedicated documentation as
-their business rules stabilize.
+The global Clinics registry now has a standalone operational guide and an
+explicit global-administrator authorization boundary. Thin or overlapping
+modules should receive dedicated documentation as their business rules
+stabilize.

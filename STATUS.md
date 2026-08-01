@@ -35,6 +35,8 @@ The local working tree was clean before this documentation pass.
 - A release-readiness diagnostic for application configuration, database and
   migrations, logging, queues, storage, and explicit production backup
   confirmation.
+- A standalone operational guide for the global Clinics registry, with an
+  explicit global-administrator boundary on clinic management.
 - Explainable replenishment suggestions that prioritize low-stock products,
   use recent received-purchase batches when the history is sufficient, and
   prefill a reviewable purchase entry without creating an automatic order.
@@ -79,7 +81,6 @@ Those repositories reinforced the same conclusion: the public-facing gap in this
 
 ## Open Documentation Gaps
 
-- Add a standalone operational doc for Clinics.
 - Add module docs for thin or overlapping areas as their rules stabilize.
 
 ## Next Recommended Pilot Slice
@@ -91,4 +92,3 @@ Those repositories reinforced the same conclusion: the public-facing gap in this
 3. Run the release checklist and smoke tests against staging.
 4. Publish release notes when the first pilot scope and support owner are
    defined.
-5. Add the standalone operational Clinics document.
