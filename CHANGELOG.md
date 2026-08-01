@@ -56,6 +56,9 @@ This project follows the spirit of Keep a Changelog, with one practical adjustme
 - Release-readiness command covering application configuration, database,
   migrations, logging, queue, storage, and production backup confirmation.
 - Operational release checklist with rollback gates and smoke tests.
+- Explainable stock replenishment suggestions that combine current balance,
+  minimum stock, and the last 180 days of received purchase history, with
+  priority, confidence, supplier/cost context, and purchase-entry prefill.
 
 ### Changed
 

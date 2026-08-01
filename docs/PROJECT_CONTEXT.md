@@ -1,6 +1,6 @@
 # VetFlow Project Context
 
-Updated: 2026-07-30
+Updated: 2026-08-01
 
 ## Product
 
@@ -55,7 +55,9 @@ Run setup with Composer, npm, migrations, and the Laravel server as described in
 
 The repository now includes public project documentation, CI, a visual
 walkthrough, assisted onboarding imports, resilient NF-e/product lookup,
-actionable dashboard priorities, and clinic-scoped collaborator management.
+actionable dashboard priorities, clinic-scoped collaborator management, and
+explainable stock replenishment suggestions based on current stock and recent
+received purchases.
 
 The next delivery focus is the first controlled pilot: select a hosting target,
 prove backup restoration, validate persistent storage and the queue worker,

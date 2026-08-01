@@ -19,6 +19,9 @@ payables in the financial ledger.
 - Import NF-e XML and use cached XML by access key.
 - Keep XML upload available as the operational fallback when the optional
   access-key integration is unavailable.
+- Prioritize low-stock products with explainable replenishment suggestions.
+- Prefill a purchase entry from a suggestion while keeping the final quantity,
+  supplier, cost, and save decision under operator control.
 
 ## Key Classes
 
@@ -27,6 +30,7 @@ payables in the financial ledger.
 | `PurchaseEntryController` | Web and import endpoints. |
 | `PurchaseEntryService` | Purchase orchestration, stock entry, and payables. |
 | `PurchaseEntryInsightService` | Purchase/product insight support. |
+| `ReplenishmentSuggestionService` | Reorder priority, history, confidence, and quantity calculation. |
 | `NfeXmlImportService` | Parses NF-e XML payloads. |
 | `NfeAccessKeyImportService` | Reuses cached XML by access key. |
 | `PurchaseEntry` / `PurchaseEntryItem` | Purchase data models. |
@@ -49,6 +53,26 @@ payables in the financial ledger.
   then reapplies the current state.
 - Deleting a purchase entry releases inventory and payables before soft deletion.
 - Installment amounts are split by cents to keep totals balanced.
+
+## Replenishment Suggestions
+
+The replenishment screen includes active products whose configured stock is at
+or below their minimum. The first explainable rule set is:
+
+- the baseline quantity raises projected stock to twice the configured minimum;
+- only `received` purchase entries from the last 180 days count as history;
+- drafts, cancelled entries, soft-deleted entries, and older purchases do not
+  influence the result;
+- at least two received batches are required before the average historical
+  batch can increase the baseline quantity;
+- the most recent received cost and supplier are shown as review context;
+- confidence is low with zero or one batch, medium with two, and high with three
+  or more batches;
+- out-of-stock products are shown before the remaining low-stock products.
+
+The result is a suggestion, not a purchase order. Opening the purchase entry
+prefills the product, suggested quantity, reference cost, supplier, and the
+calculation metadata, but the operator must review and explicitly save it.
 
 ## Tenant Rules
 
@@ -84,4 +108,5 @@ Protected by `purchase-entries.manage`.
 
 ## Tests
 
-Relevant coverage is present in `tests/Feature/PurchaseAndClinicalFlowTest.php`.
+Relevant coverage is present in `tests/Feature/PurchaseAndClinicalFlowTest.php`
+and `tests/Feature/ReplenishmentSuggestionTest.php`.

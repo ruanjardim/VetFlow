@@ -12,11 +12,15 @@ use Illuminate\Support\Collection;
 
 class PurchaseEntryInsightService
 {
-    public function __construct(private readonly ProductLookupService $lookupService) {}
+    public function __construct(
+        private readonly ProductLookupService $lookupService,
+        private readonly ReplenishmentSuggestionService $replenishmentSuggestions
+    ) {}
 
     public function dashboard(): array
     {
-        $replenishment = $this->replenishmentProducts(8);
+        $allReplenishment = $this->replenishmentSuggestions->suggestions();
+        $replenishment = $allReplenishment->take(8)->values();
         $monthTotal = PurchaseEntry::query()
             ->where('status', 'received')
             ->whereBetween('purchased_at', [now()->startOfMonth(), now()->endOfMonth()])
@@ -44,8 +48,8 @@ class PurchaseEntryInsightService
                 'month_total' => (float) $monthTotal,
                 'pending_payables' => (float) $pendingPayables,
                 'overdue_payables' => (float) $overduePayables,
-                'replenishment_items' => $this->replenishmentProducts()->count(),
-                'estimated_replenishment_cost' => (float) $this->replenishmentProducts()
+                'replenishment_items' => $allReplenishment->count(),
+                'estimated_replenishment_cost' => (float) $allReplenishment
                     ->sum(fn (array $item) => $item['estimated_cost']),
             ],
             'replenishment' => $replenishment,
@@ -56,18 +60,27 @@ class PurchaseEntryInsightService
 
     public function replenishmentData(): array
     {
+        $items = $this->replenishmentSuggestions->suggestions();
+
         return [
-            'items' => $this->replenishmentProducts(),
+            'items' => $items,
             'stats' => [
-                'products' => $this->replenishmentProducts()->count(),
-                'estimated_cost' => (float) $this->replenishmentProducts()->sum(fn (array $item) => $item['estimated_cost']),
-                'critical' => $this->replenishmentProducts()
-                    ->filter(fn (array $item) => (float) $item['stock_quantity'] <= 0)
+                'products' => $items->count(),
+                'estimated_cost' => (float) $items->sum(fn (array $item) => $item['estimated_cost']),
+                'critical' => $items
+                    ->where('priority', 'critical')
                     ->count(),
-                'below_minimum' => $this->replenishmentProducts()
-                    ->filter(fn (array $item) => (float) $item['stock_quantity'] > 0)
+                'below_minimum' => $items
+                    ->where('priority', '!=', 'critical')
+                    ->count(),
+                'history_based' => $items
+                    ->where('uses_purchase_history', true)
+                    ->count(),
+                'without_history' => $items
+                    ->where('history_count', 0)
                     ->count(),
             ],
+            'historyWindowDays' => ReplenishmentSuggestionService::HISTORY_WINDOW_DAYS,
         ];
     }
 
@@ -175,7 +188,8 @@ class PurchaseEntryInsightService
 
     public function purchaseItemPayload(Product $product, ?string $fallbackGtin = null): array
     {
-        $suggestedQuantity = $this->suggestedQuantity($product);
+        $suggestion = $this->replenishmentSuggestion($product);
+        $suggestedQuantity = $suggestion['suggested_quantity'];
         $unitCost = (float) $product->cost_price;
         $salePrice = (float) $product->sale_price;
 
@@ -196,19 +210,20 @@ class PurchaseEntryInsightService
             'margin_percent' => $this->marginPercent($unitCost, $salePrice),
             'global_product_id' => $product->global_product_id,
             'global_status' => $product->globalProduct?->status,
+            'replenishment_confidence' => $suggestion['confidence'],
+            'replenishment_history_count' => $suggestion['history_count'],
+            'replenishment_reason' => $suggestion['reason'],
         ];
     }
 
     public function suggestedQuantity(Product $product): float
     {
-        $minimum = (float) $product->minimum_stock;
-        $stock = (float) $product->stock_quantity;
+        return (float) $this->replenishmentSuggestion($product)['suggested_quantity'];
+    }
 
-        if ($minimum <= 0) {
-            return 1;
-        }
-
-        return max(1, round(($minimum * 2) - $stock, 3));
+    public function replenishmentSuggestion(Product $product): array
+    {
+        return $this->replenishmentSuggestions->suggestionFor($product);
     }
 
     public function suggestedSalePrice(float $unitCost, float $currentSalePrice = 0): float
@@ -231,41 +246,6 @@ class PurchaseEntryInsightService
         }
 
         return round((($salePrice - $unitCost) / $salePrice) * 100, 2);
-    }
-
-    private function replenishmentProducts(?int $limit = null): Collection
-    {
-        $query = Product::query()
-            ->with('globalProduct')
-            ->active()
-            ->where('minimum_stock', '>', 0)
-            ->whereColumn('stock_quantity', '<=', 'minimum_stock')
-            ->orderBy('stock_quantity')
-            ->orderBy('name');
-
-        if ($limit) {
-            $query->limit($limit);
-        }
-
-        return $query
-            ->get()
-            ->map(function (Product $product) {
-                $suggestedQuantity = $this->suggestedQuantity($product);
-                $unitCost = (float) $product->cost_price;
-
-                return [
-                    'product' => $product,
-                    'stock_quantity' => (float) $product->stock_quantity,
-                    'minimum_stock' => (float) $product->minimum_stock,
-                    'suggested_quantity' => $suggestedQuantity,
-                    'unit' => $product->unit ?: 'un',
-                    'unit_cost' => $unitCost,
-                    'estimated_cost' => round($suggestedQuantity * $unitCost, 2),
-                    'scan_url' => route('purchase-entries.create', [
-                        'scan' => $product->gtin ?: $product->barcode,
-                    ]),
-                ];
-            });
     }
 
     private function topSuppliers(): Collection
