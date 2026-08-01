@@ -9,13 +9,17 @@
   @else
     <link rel="stylesheet" href="{{ route('assets.css', ['v' => filemtime(resource_path('css/app.css'))]) }}">
   @endif
+  @stack('head')
 </head>
 <body>
-  <main class="auth-shell">
-    <section class="auth-card">
+  <main class="auth-shell @yield('auth-shell-class')">
+    <section class="auth-card @yield('auth-card-class')">
       <div class="auth-brand">
-        <strong>VetFlow</strong>
-        <span>ERP veterinario seguro</span>
+        <span class="auth-brand-mark" aria-hidden="true">VF</span>
+        <span class="auth-brand-copy">
+          <strong>VetFlow</strong>
+          <span>Gestão veterinária inteligente</span>
+        </span>
       </div>
 
       @if(session('status'))
@@ -32,6 +36,12 @@
 
       @yield('content')
     </section>
+
+    @hasSection('auth-visual')
+      <aside class="auth-visual" aria-label="Imagem institucional VetFlow">
+        @yield('auth-visual')
+      </aside>
+    @endif
   </main>
 </body>
 </html>

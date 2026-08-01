@@ -24,7 +24,8 @@ class AuthenticationTest extends TestCase
     {
         $this->get(route('login'))
             ->assertOk()
-            ->assertSee('Acesse o VetFlow');
+            ->assertSee('Acesse o VetFlow')
+            ->assertSee('images/auth-malinois-square.webp');
     }
 
     public function test_active_user_can_authenticate(): void
