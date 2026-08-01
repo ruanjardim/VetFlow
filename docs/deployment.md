@@ -3,6 +3,9 @@
 This is a production-readiness guide for VetFlow. It documents the intended
 deployment concerns without locking the project to one hosting provider.
 
+Provider-specific staging instructions live in the
+[KingHost staging runbook](deployment/kinghost-staging.md).
+
 ## Required Runtime
 
 - PHP 8.2 or newer.
@@ -12,7 +15,8 @@ deployment concerns without locking the project to one hosting provider.
 - Node/Vite assets built before release.
 - A persistent database, preferably MySQL or MariaDB for production.
 - A persistent storage disk for uploaded product images and future documents.
-- A queue worker if queued jobs are enabled beyond the local database queue.
+- A queue worker, or the explicitly bounded staging cron bridge documented for
+  a provider that cannot supervise a permanent worker.
 
 ## Environment
 
@@ -28,6 +32,7 @@ CACHE_STORE=database
 QUEUE_CONNECTION=database
 FILESYSTEM_DISK=local
 VETFLOW_SEED_DEMO_USER=false
+VETFLOW_QUEUE_MODE=worker
 ```
 
 Generate a real `APP_KEY` during provisioning:
@@ -95,6 +100,10 @@ After deployment:
 - create a draft sale and confirm it does not apply side effects;
 - create a completed sale and verify stock and finance records;
 - review logs for provider, storage, and mail failures.
+
+When `VETFLOW_QUEUE_MODE=cron`, the runtime check also requires the database
+queue, an enabled operational endpoint, a token of at least 32 characters, and
+execution limits below the hosting request timeout.
 
 Use the complete [release checklist](release-checklist.md) to record the
 pre-release validation, rollback decision, smoke tests, and release evidence.

@@ -42,10 +42,13 @@ The product should feel different from a generic CRUD system by connecting the c
   authorization boundary.
 - Replenishment suggestions combine current stock, minimum stock, and recent
   received-purchase history with an explicit confidence level and reason.
+- The selected KingHost staging candidate has a provider-specific runbook and
+  a bounded, token-protected queue cron bridge that remains disabled by default.
 
 ## Current Near-Term Priorities
 
-1. Choose and validate the staging/production hosting target.
+1. Pass the KingHost contract gate, provision staging, and validate the
+   selected hosting target without real clinic data.
 2. Prove database backup restoration before the first pilot.
 3. Run the release checklist and smoke tests in staging.
 4. Define the first pilot scope, release notes, and support owner.
