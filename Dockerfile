@@ -1,4 +1,18 @@
-﻿FROM serversideup/php:8.2-fpm-nginx-alpine
+﻿FROM node:22-alpine AS frontend
+
+WORKDIR /app
+
+COPY package.json package-lock.json ./
+RUN npm ci
+
+COPY resources ./resources
+COPY public ./public
+COPY vite.config.js ./
+
+RUN npm run build
+
+
+FROM serversideup/php:8.2-fpm-nginx-alpine
 
 USER root
 
@@ -10,29 +24,37 @@ RUN install-php-extensions \
 
 WORKDIR /var/www/html
 
-COPY --chown=www-data:www-data . .
+COPY composer.json composer.lock ./
 
 RUN composer install \
     --no-dev \
     --no-interaction \
     --no-progress \
     --prefer-dist \
-    --optimize-autoloader
+    --optimize-autoloader \
+    --no-scripts
 
-RUN npm ci && npm run build && rm -rf node_modules
+COPY . .
 
-RUN mkdir -p \
-    storage/framework/cache \
-    storage/framework/sessions \
-    storage/framework/views \
-    storage/logs \
-    bootstrap/cache \
+COPY --from=frontend /app/public/build ./public/build
+
+RUN composer dump-autoload --optimize \
+    && mkdir -p \
+        storage/framework/cache \
+        storage/framework/sessions \
+        storage/framework/views \
+        storage/logs \
+        bootstrap/cache \
     && chown -R www-data:www-data storage bootstrap/cache \
     && chmod -R 775 storage bootstrap/cache
 
 USER www-data
 
 ENV PHP_OPCACHE_ENABLE=1
-ENV AUTORUN_ENABLED=false
+ENV AUTORUN_ENABLED=true
+ENV AUTORUN_LARAVEL_MIGRATION=true
+ENV AUTORUN_LARAVEL_MIGRATION_ISOLATION=true
+ENV AUTORUN_LARAVEL_MIGRATION_SEED=false
+ENV AUTORUN_LARAVEL_STORAGE_LINK=true
 
-CMD ["sh", "/var/www/html/docker/start.sh"]
+EXPOSE 8080
