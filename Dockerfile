@@ -87,6 +87,7 @@ RUN apk add --no-cache --virtual .build-deps \
 
 WORKDIR /var/www/html
 
+COPY --chown=www-data:www-data composer.json composer.lock ./
 COPY --chown=www-data:www-data app ./app
 COPY --chown=www-data:www-data bootstrap ./bootstrap
 COPY --chown=www-data:www-data config ./config
