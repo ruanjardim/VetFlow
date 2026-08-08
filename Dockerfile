@@ -20,6 +20,10 @@ RUN apk add --no-cache --virtual .build-deps \
         libzip-dev \
         oniguruma-dev \
         postgresql-dev \
+    && apk add --no-cache \
+        icu-libs \
+        libpq \
+        libzip \
     && docker-php-ext-install -j"$(nproc)" \
         bcmath \
         intl \
