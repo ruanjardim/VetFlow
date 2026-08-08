@@ -14,6 +14,7 @@ This directory contains the working documentation for VetFlow.
 - [Continuous integration](ci.md)
 - [Deployment guide](deployment.md)
 - [KingHost staging runbook](deployment/kinghost-staging.md)
+- [Render demonstration deployment](deploy/render.md)
 - [Release checklist](release-checklist.md)
 - [Roadmap](ROADMAP.md)
 
