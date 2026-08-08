@@ -69,8 +69,8 @@ O `Dockerfile` usa build multiestágio: Node 22 gera os assets do Vite e PHP
 contém `node_modules`, `vendor` local, `.env`, testes ou documentos.
 
 Antes de iniciar Nginx e PHP-FPM, `docker/start.sh` valida `APP_KEY` e a
-conexão PostgreSQL configurada, limpa caches, descobre pacotes, executa
-`php artisan migrate --force`, cria o link de storage e recompila os caches de
+conexão PostgreSQL configurada, executa `php artisan migrate --force` antes de
+limpar caches, descobre pacotes, cria o link de storage e recompila os caches de
 configuração, rotas e views. Ele nunca executa `migrate:fresh`, `db:wipe`,
 `migrate:reset`, seeders genéricos nem seeders de demonstração.
 

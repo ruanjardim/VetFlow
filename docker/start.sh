@@ -33,9 +33,9 @@ fi
 
 : "${PORT:=8080}"
 
+php artisan migrate --force
 php artisan optimize:clear
 php artisan package:discover --ansi --no-interaction
-php artisan migrate --force
 php artisan storage:link
 php artisan config:cache
 php artisan route:cache
