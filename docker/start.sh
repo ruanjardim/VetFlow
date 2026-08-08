@@ -1,16 +1,25 @@
 #!/bin/sh
 set -e
 
-required_variables='APP_KEY DB_CONNECTION DB_HOST DB_PORT DB_DATABASE DB_USERNAME DB_PASSWORD'
+require_variable() {
+    variable="$1"
+    value="$(printenv "$variable" 2>/dev/null || true)"
 
-for required_variable in $required_variables; do
-    eval "required_value=\${$required_variable:-}"
-
-    if [ -z "$required_value" ]; then
-        echo "VetFlow startup failed: $required_variable must be configured." >&2
+    if [ -z "$value" ]; then
+        echo "VetFlow startup failed: $variable must be configured." >&2
         exit 1
     fi
+}
+
+for variable in APP_KEY DB_CONNECTION; do
+    require_variable "$variable"
 done
+
+if [ -z "${DB_URL:-${DATABASE_URL:-}}" ]; then
+    for variable in DB_HOST DB_PORT DB_DATABASE DB_USERNAME DB_PASSWORD; do
+        require_variable "$variable"
+    done
+fi
 
 if [ "$DB_CONNECTION" != 'pgsql' ]; then
     echo 'VetFlow startup failed: DB_CONNECTION must be pgsql on Render.' >&2
