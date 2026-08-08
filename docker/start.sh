@@ -34,6 +34,21 @@ fi
 : "${PORT:=8080}"
 
 php artisan migrate --force
+
+if [ "${VETFLOW_BOOTSTRAP_ADMIN:-false}" = 'true' ]; then
+    for variable in VETFLOW_BOOTSTRAP_ADMIN_NAME VETFLOW_BOOTSTRAP_ADMIN_EMAIL VETFLOW_BOOTSTRAP_ADMIN_PASSWORD; do
+        require_variable "$variable"
+    done
+
+    php artisan vetflow:admin:create \
+        --name="$VETFLOW_BOOTSTRAP_ADMIN_NAME" \
+        --email="$VETFLOW_BOOTSTRAP_ADMIN_EMAIL" \
+        --password="$VETFLOW_BOOTSTRAP_ADMIN_PASSWORD" \
+        --no-interaction
+
+    echo 'VetFlow administrator bootstrap completed.'
+fi
+
 php artisan optimize:clear
 php artisan package:discover --ansi --no-interaction
 php artisan storage:link

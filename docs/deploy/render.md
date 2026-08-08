@@ -101,6 +101,24 @@ jobs; se isso mudar, crie um Worker/cron separado antes de depender de fila.
 5. Rode, no Shell do Render após confirmar backup restaurável em ambiente pago,
    `php artisan vetflow:release:check --backup-confirmed`.
 
+### Bootstrap inicial sem Shell
+
+Instâncias Free não oferecem Shell. Para criar somente o primeiro administrador
+em uma demonstração, defina temporariamente estas variáveis secretas no Render
+e faça um deploy manual:
+
+```text
+VETFLOW_BOOTSTRAP_ADMIN=true
+VETFLOW_BOOTSTRAP_ADMIN_NAME=Administrador VetFlow
+VETFLOW_BOOTSTRAP_ADMIN_EMAIL=admin@example.com
+VETFLOW_BOOTSTRAP_ADMIN_PASSWORD=<senha-com-pelo-menos-10-caracteres>
+```
+
+O script de inicialização executa `vetflow:admin:create`, que cria ou atualiza
+o usuário e o perfil administrador. Depois de confirmar o login, remova as
+quatro variáveis imediatamente. Nunca use uma senha conhecida ou dados reais
+nesse ambiente de demonstração.
+
 ## Storage e limites do plano Free
 
 O disco local de Web Services do Render é efêmero: uploads, imagens de produto,
