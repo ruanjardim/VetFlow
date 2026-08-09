@@ -491,14 +491,67 @@ button.danger {
   z-index: 2;
 }
 
-.auth-visual > img {
+.auth-visual-slideshow {
+  inset: 0;
+  position: absolute;
+}
+
+.auth-visual-slide {
+  animation: auth-visual-cycle 10s ease-in-out infinite;
   height: 100%;
   inset: 0;
+  opacity: 0;
   object-fit: cover;
   object-position: center center;
   position: absolute;
   width: 100%;
   z-index: 1;
+}
+
+.auth-visual-slide:nth-child(1) {
+  animation-delay: -0.5s;
+}
+
+.auth-visual-slide:nth-child(2) {
+  animation-delay: 1.5s;
+}
+
+.auth-visual-slide:nth-child(3) {
+  animation-delay: 3.5s;
+}
+
+.auth-visual-slide:nth-child(4) {
+  animation-delay: 5.5s;
+}
+
+.auth-visual-slide:nth-child(5) {
+  animation-delay: 7.5s;
+}
+
+@keyframes auth-visual-cycle {
+  0% {
+    opacity: 0;
+  }
+
+  5%,
+  20% {
+    opacity: 1;
+  }
+
+  25%,
+  100% {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .auth-visual-slide {
+    animation: none;
+  }
+
+  .auth-visual-slide:first-child {
+    opacity: 1;
+  }
 }
 
 .panel {
@@ -1917,7 +1970,7 @@ textarea {
     min-height: 440px;
   }
 
-  .auth-visual > img {
+  .auth-visual-slide {
     object-position: center;
   }
 }
