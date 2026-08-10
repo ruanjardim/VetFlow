@@ -34,6 +34,11 @@ reference.
 The Patient screens expose the Tutor relationship, and the repository loads it
 with the Patient list to avoid repeated queries.
 
+Species remains an open field so clinics can register animals beyond dogs and
+cats. The form suggests common veterinary groups such as Canino, Felino,
+Equino, Bovino, Ave, and Répteis, while allowing any other value when needed.
+Patient edits apply the same tutor and clinic validation as patient creation.
+
 ## Tables
 
 - `tutors`

@@ -19,7 +19,13 @@
   </div>
   <div class="field">
     <label for="species">Especie</label>
-    <input id="species" name="species" value="{{ old('species', $patient->species ?? '') }}">
+    <input id="species" name="species" list="species-suggestions" value="{{ old('species', $patient->species ?? '') }}">
+    <datalist id="species-suggestions">
+      @foreach(['Canino', 'Felino', 'Equino', 'Bovino', 'Caprino', 'Ovino', 'Suíno', 'Coelho', 'Roedor', 'Ave', 'Répteis', 'Peixe', 'Silvestre', 'Exótico'] as $suggestedSpecies)
+        <option value="{{ $suggestedSpecies }}">
+      @endforeach
+    </datalist>
+    <div class="field-hint">Escolha uma sugestão ou digite outra espécie.</div>
   </div>
   <div class="field">
     <label for="breed">Raca</label>
