@@ -33,6 +33,9 @@
               <td>{{ $patient->breed }}</td>
               <td>{{ $patient->weight }}</td>
               <td>
+                @can('vaccinations.manage')
+                  <a class="button secondary" href="{{ route('vaccinations.create', ['patient_id' => $patient->id]) }}">Vacinas</a>
+                @endcan
                 <a class="button secondary" href="{{ route('patients.edit', $patient->id) }}">Editar</a>
                 <form class="inline" action="{{ route('patients.destroy', $patient->id) }}" method="POST">
                   @csrf

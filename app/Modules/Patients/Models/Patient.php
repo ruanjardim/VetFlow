@@ -5,6 +5,7 @@ namespace App\Modules\Patients\Models;
 use App\Models\Concerns\BelongsToClinicTenant;
 use App\Modules\MedicalRecords\Models\MedicalRecord;
 use App\Modules\Tutors\Models\Tutor;
+use App\Modules\Vaccinations\Models\Vaccination;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -32,5 +33,10 @@ class Patient extends Model
     public function medicalRecords(): HasMany
     {
         return $this->hasMany(MedicalRecord::class);
+    }
+
+    public function vaccinations(): HasMany
+    {
+        return $this->hasMany(Vaccination::class);
     }
 }

@@ -30,6 +30,8 @@ use App\Modules\Suppliers\Contracts\SupplierRepositoryInterface;
 use App\Modules\Suppliers\Repositories\SupplierRepository;
 use App\Modules\Tutors\Contracts\TutorRepositoryInterface;
 use App\Modules\Tutors\Repositories\TutorRepository;
+use App\Modules\Vaccinations\Contracts\VaccinationRepositoryInterface;
+use App\Modules\Vaccinations\Repositories\VaccinationRepository;
 use Illuminate\Support\ServiceProvider;
 
 class RepositoryServiceProvider extends ServiceProvider
@@ -99,6 +101,11 @@ class RepositoryServiceProvider extends ServiceProvider
         $this->app->bind(
             TutorRepositoryInterface::class,
             TutorRepository::class
+        );
+
+        $this->app->bind(
+            VaccinationRepositoryInterface::class,
+            VaccinationRepository::class
         );
 
         $this->app->bind(

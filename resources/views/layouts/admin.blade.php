@@ -49,6 +49,9 @@
         @can('medical-records.manage')
           <a class="{{ request()->routeIs('medical-records.*') ? 'is-active' : '' }}" href="{{ route('medical-records.index') }}">Prontuários</a>
         @endcan
+        @can('vaccinations.manage')
+          <a class="{{ request()->routeIs('vaccinations.*') ? 'is-active' : '' }}" href="{{ route('vaccinations.index') }}">Vacinação</a>
+        @endcan
         @can('petshop-services.manage')
           <a class="{{ request()->routeIs('petshop-services.*') ? 'is-active' : '' }}" href="{{ route('petshop-services.index') }}">Servicos PetShop</a>
         @endcan

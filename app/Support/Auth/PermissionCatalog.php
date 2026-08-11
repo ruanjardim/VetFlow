@@ -65,6 +65,12 @@ class PermissionCatalog
                 'description' => 'Permite registrar e consultar prontuários clínicos.',
             ],
             [
+                'slug' => 'vaccinations.manage',
+                'name' => 'Gerenciar vacinação',
+                'group' => 'Atendimento',
+                'description' => 'Permite registrar e acompanhar a carteira de vacinação.',
+            ],
+            [
                 'slug' => 'petshop-services.manage',
                 'name' => 'Gerenciar servicos PetShop',
                 'group' => 'Operacao',
@@ -144,6 +150,7 @@ class PermissionCatalog
                     'schedules.manage',
                     'appointments.manage',
                     'medical-records.manage',
+                    'vaccinations.manage',
                     'service-orders.manage',
                 ],
             ],

@@ -107,6 +107,7 @@ Route::middleware(['auth', EnsureUserIsActive::class])->group(function () {
         'service-orders.manage' => app_path('Modules/ServiceOrders/Routes/web.php'),
         'suppliers.manage' => app_path('Modules/Suppliers/Routes/web.php'),
         'tutors.manage' => app_path('Modules/Tutors/Routes/web.php'),
+        'vaccinations.manage' => app_path('Modules/Vaccinations/Routes/web.php'),
     ];
 
     foreach ($moduleRoutes as $permission => $routeFile) {
