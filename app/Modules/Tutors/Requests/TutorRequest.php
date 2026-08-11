@@ -110,9 +110,9 @@ class TutorRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'name.required' => 'Informe o nome do tutor.',
+            'name.required' => 'Informe o nome do responsável.',
 
-            'cpf.unique' => 'Já existe um tutor cadastrado com este CPF.',
+            'cpf.unique' => 'Já existe um responsável cadastrado com este CPF.',
 
             'email.email' => 'Informe um e-mail válido.',
 

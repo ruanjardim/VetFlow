@@ -17,7 +17,7 @@
         <thead>
           <tr>
             <th>Codigo</th>
-            <th>Tutor</th>
+            <th>Responsável</th>
             <th>Pet</th>
             <th>Status</th>
             <th>Abertura</th>

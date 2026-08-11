@@ -45,7 +45,7 @@
     <input id="closed_at" name="closed_at" type="datetime-local" value="{{ old('closed_at', isset($order) && $order?->closed_at ? $order->closed_at->format('Y-m-d\TH:i') : '') }}">
   </div>
   <div class="field">
-    <label for="tutor_id">Tutor</label>
+    <label for="tutor_id">Responsável</label>
     <select id="tutor_id" name="tutor_id">
       <option value="">Selecione</option>
       @foreach($tutors as $tutor)

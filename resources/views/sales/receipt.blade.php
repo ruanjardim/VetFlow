@@ -56,7 +56,7 @@
           <strong>{{ $sale->clinic?->trade_name ?? $sale->clinic?->corporate_name ?? '-' }}</strong>
         </div>
         <div>
-          <span>Tutor</span>
+          <span>Responsável</span>
           <strong>{{ $sale->tutor?->name ?? '-' }}</strong>
         </div>
         <div>

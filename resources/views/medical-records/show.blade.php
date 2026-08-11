@@ -21,7 +21,7 @@
         <input value="{{ $medicalRecord->patient?->name }}" disabled>
       </div>
       <div class="field">
-        <label>Tutor</label>
+        <label>Responsável</label>
         <input value="{{ $medicalRecord->patient?->tutor?->name ?? $medicalRecord->appointment?->tutor?->name ?? '-' }}" disabled>
       </div>
       <div class="field">

@@ -119,8 +119,8 @@ class ImplementationTutorCsvTest extends TestCase
 
         $this->get(route('implementation.index', ['step' => 5]))
             ->assertOk()
-            ->assertSee('Informe o nome do tutor.')
-            ->assertSee('Informe o telefone principal do tutor.')
+            ->assertSee('Informe o nome do responsável.')
+            ->assertSee('Informe o telefone principal do responsável.')
             ->assertSee('Informe um e-mail válido.')
             ->assertSee('O CPF informado é inválido.')
             ->assertSee('Substituir CSV');

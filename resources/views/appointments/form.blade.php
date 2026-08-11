@@ -19,7 +19,7 @@
     </select>
   </div>
   <div class="field">
-    <label for="tutor_id">Tutor</label>
+    <label for="tutor_id">Responsável</label>
     <select id="tutor_id" name="tutor_id">
       <option value="">Selecione</option>
       @foreach($tutors ?? [] as $tutor)

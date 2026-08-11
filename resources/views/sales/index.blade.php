@@ -36,7 +36,7 @@
         <thead>
           <tr>
             <th>Codigo</th>
-            <th>Tutor</th>
+            <th>Responsável</th>
             <th>Pet</th>
             <th>Comanda</th>
             <th>Status</th>

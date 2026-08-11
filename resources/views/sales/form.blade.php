@@ -87,7 +87,7 @@
       <option value="">Venda direta</option>
       @foreach($serviceOrders as $serviceOrder)
         <option value="{{ $serviceOrder->id }}" @selected((int) old('service_order_id', $sale->service_order_id ?? 0) === $serviceOrder->id)>
-          {{ $serviceOrder->code }} - {{ $serviceOrder->tutor?->name ?? 'Sem tutor' }} / {{ $serviceOrder->patient?->name ?? 'Sem pet' }} - R$ {{ number_format((float) $serviceOrder->total, 2, ',', '.') }}
+          {{ $serviceOrder->code }} - {{ $serviceOrder->tutor?->name ?? 'Sem responsável' }} / {{ $serviceOrder->patient?->name ?? 'Sem pet' }} - R$ {{ number_format((float) $serviceOrder->total, 2, ',', '.') }}
         </option>
       @endforeach
     </select>
@@ -104,7 +104,7 @@
     </div>
   @endif
   <div class="field">
-    <label for="tutor_id">Tutor</label>
+    <label for="tutor_id">Responsável</label>
     <select id="tutor_id" name="tutor_id">
       <option value="">Selecione</option>
       @foreach($tutors as $tutor)

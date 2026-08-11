@@ -16,7 +16,7 @@
       <strong>{{ $stats['patients'] ?? 0 }}</strong>
     </div>
     <div class="stat">
-      <span>Tutores</span>
+      <span>Responsáveis</span>
       <strong>{{ $stats['tutors'] ?? 0 }}</strong>
     </div>
     <div class="stat">
@@ -455,7 +455,7 @@
           <h2>Atalhos</h2>
           <div class="actions">
             <a class="button" href="{{ route('appointments.create') }}">Nova consulta</a>
-            <a class="button secondary" href="{{ route('tutores.create') }}">Novo tutor</a>
+            <a class="button secondary" href="{{ route('tutores.create') }}">Novo responsável</a>
             <a class="button secondary" href="{{ route('products.create') }}">Novo produto</a>
             <a class="button secondary" href="{{ route('petshop-services.create') }}">Novo servico</a>
             <a class="button secondary" href="{{ route('service-orders.create') }}">Nova comanda</a>

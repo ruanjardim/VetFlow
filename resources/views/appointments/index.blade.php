@@ -19,7 +19,7 @@
             <th>Titulo</th>
             <th>Data</th>
             <th>Paciente</th>
-            <th>Tutor</th>
+            <th>Responsável</th>
             <th>Status</th>
             <th>Acoes</th>
           </tr>

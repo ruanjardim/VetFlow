@@ -17,7 +17,7 @@
         <thead>
           <tr>
             <th>Nome</th>
-            <th>Tutor</th>
+            <th>Responsável</th>
             <th>Especie</th>
             <th>Raca</th>
             <th>Peso</th>
@@ -28,7 +28,7 @@
           @forelse($patients as $patient)
             <tr>
               <td>{{ $patient->name }}</td>
-              <td>{{ $patient->tutor?->name ?? 'Sem tutor vinculado' }}</td>
+              <td>{{ $patient->tutor?->name ?? 'Sem responsável vinculado' }}</td>
               <td>{{ $patient->species }}</td>
               <td>{{ $patient->breed }}</td>
               <td>{{ $patient->weight }}</td>

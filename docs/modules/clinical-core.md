@@ -16,6 +16,13 @@ Code paths:
 Groups the customer, pet, scheduling, appointment, service catalog, and service
 order flows that connect clinic operations to sales and finance.
 
+## Interface Terminology
+
+The interface calls the person linked to a patient **Responsável**. The existing
+`Tutor` model, `tutors` table, `tutor_id` fields, and routes remain unchanged to
+preserve compatibility with current records, imports, CPF validation, and CEP
+lookup behavior.
+
 ## Main Responsibilities
 
 - Register tutors/customers.

@@ -38,8 +38,8 @@ class StorePatientRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'tutor_id.required' => 'Selecione o tutor responsável.',
-            'tutor_id.exists' => 'O tutor selecionado não está disponível para esta clínica.',
+            'tutor_id.required' => 'Selecione o responsável.',
+            'tutor_id.exists' => 'O responsável selecionado não está disponível para esta clínica.',
             'name.required' => 'Informe o nome do paciente.',
             'name.max' => 'O nome deve ter no máximo 255 caracteres.',
             'birth_date.date' => 'Informe uma data de nascimento válida.',

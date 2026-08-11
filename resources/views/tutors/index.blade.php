@@ -1,14 +1,14 @@
 @extends('layouts.admin')
 
-@section('title', 'Tutores - VetFlow')
+@section('title', 'Responsáveis - VetFlow')
 
 @section('content')
   <header class="topbar">
     <div>
-      <h1>Tutores</h1>
-      <p>Responsaveis pelos pacientes.</p>
+      <h1>Responsáveis</h1>
+      <p>Pessoas responsáveis pelos pacientes.</p>
     </div>
-    <a class="button" href="{{ route('tutores.create') }}">Novo tutor</a>
+    <a class="button" href="{{ route('tutores.create') }}">Novo responsável</a>
   </header>
 
   <div class="panel">
@@ -35,13 +35,13 @@
                 <form class="inline" action="{{ route('tutores.destroy', $tutor->id) }}" method="POST">
                   @csrf
                   @method('DELETE')
-                  <button class="danger" type="submit" data-confirm="Remover este tutor?">Excluir</button>
+                  <button class="danger" type="submit" data-confirm="Remover este responsável?">Excluir</button>
                 </form>
               </td>
             </tr>
           @empty
             <tr>
-              <td colspan="5" class="muted">Nenhum tutor cadastrado.</td>
+              <td colspan="5" class="muted">Nenhum responsável cadastrado.</td>
             </tr>
           @endforelse
         </tbody>

@@ -9,7 +9,7 @@ class DashboardActivityService
         return [
             [
                 'icon' => 'bi-person-plus',
-                'title' => 'Novo tutor cadastrado',
+                'title' => 'Novo responsável cadastrado',
                 'description' => 'Cadastro realizado com sucesso.',
                 'time' => 'Agora',
             ],

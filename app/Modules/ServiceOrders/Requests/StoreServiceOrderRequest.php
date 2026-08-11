@@ -43,7 +43,7 @@ class StoreServiceOrderRequest extends FormRequest
         return [
             'status.required' => 'Informe o status da comanda.',
             'status.in' => 'Informe um status valido para a comanda.',
-            'tutor_id.exists' => 'O tutor informado nao foi encontrado.',
+            'tutor_id.exists' => 'O responsável informado nao foi encontrado.',
             'patient_id.exists' => 'O paciente informado nao foi encontrado.',
             'items.*.product_id.exists' => 'Um dos produtos informados nao foi encontrado.',
             'items.*.petshop_service_id.exists' => 'Um dos servicos informados nao foi encontrado.',

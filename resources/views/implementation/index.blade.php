@@ -202,7 +202,7 @@
         @case(2)
           <h2>Escolha a origem dos dados</h2>
           <p class="muted">
-            Tutores, Pacientes, Fornecedores, Produtos, Estoque e Financeiro podem ser importados por CSV ou Excel.
+            Responsáveis, Pacientes, Fornecedores, Produtos, Estoque e Financeiro podem ser importados por CSV ou Excel.
           </p>
 
           <form method="POST" action="{{ route('implementation.source') }}">

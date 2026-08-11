@@ -24,7 +24,7 @@ class PatientCsvImportService implements CsvImportService
         'tutor_documento' => [
             'field' => 'tutor_document',
             'source_label' => 'tutor_documento',
-            'target_label' => 'CPF do tutor responsável',
+            'target_label' => 'CPF do responsável',
         ],
         'nome_pet' => [
             'field' => 'name',
@@ -155,7 +155,7 @@ class PatientCsvImportService implements CsvImportService
                     : null;
 
                 if ($values['tutor_document'] !== null && $tutor === null) {
-                    $rowErrors[] = 'Nenhum tutor com este CPF foi encontrado na clínica selecionada.';
+                    $rowErrors[] = 'Nenhum responsável com este CPF foi encontrado na clínica selecionada.';
                 }
 
                 $values['tutor_id'] = $tutor?->id;
@@ -230,7 +230,7 @@ class PatientCsvImportService implements CsvImportService
                     ->first();
 
                 if ($tutor === null) {
-                    $errors[] = 'O tutor responsável não está mais disponível para esta clínica.';
+                    $errors[] = 'O responsável não está mais disponível para esta clínica.';
                 }
 
                 if ($errors !== []) {
@@ -358,7 +358,7 @@ class PatientCsvImportService implements CsvImportService
                 'notes' => ['nullable', 'string', 'max:5000'],
             ],
             [
-                'tutor_document.required' => 'Informe o CPF do tutor responsável.',
+                'tutor_document.required' => 'Informe o CPF do responsável.',
                 'name.required' => 'Informe o nome do paciente.',
                 'name.max' => 'O nome deve ter no máximo 255 caracteres.',
                 'species.max' => 'A espécie deve ter no máximo 255 caracteres.',

@@ -1,8 +1,8 @@
 <div class="form-grid">
   <div class="field full">
-    <label for="tutor_id">Tutor responsável</label>
+    <label for="tutor_id">Responsável</label>
     <select id="tutor_id" name="tutor_id" required>
-      <option value="">Selecione o tutor</option>
+      <option value="">Selecione o responsável</option>
       @foreach($tutors as $tutor)
         <option
           value="{{ $tutor->id }}"

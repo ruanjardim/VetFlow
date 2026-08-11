@@ -32,10 +32,10 @@ class ImplementationController extends Controller
 {
     private const IMPORTS = [
         'tutors' => [
-            'label' => 'Tutores',
-            'singular' => 'Tutor',
+            'label' => 'Responsáveis',
+            'singular' => 'Responsável',
             'template' => 'tutors',
-            'template_label' => 'Tutores CSV',
+            'template_label' => 'Responsáveis CSV',
             'upload_route' => 'implementation.tutors.upload',
             'import_route' => 'implementation.tutors.import',
             'input_name' => 'tutors_file',
@@ -63,7 +63,7 @@ class ImplementationController extends Controller
             'expected_columns' => 'tutor_documento, nome_pet, especie, raca, sexo, nascimento, peso e observacoes',
             'preview_columns' => [
                 ['key' => 'name', 'label' => 'Nome'],
-                ['key' => 'tutor_name', 'label' => 'Tutor'],
+                ['key' => 'tutor_name', 'label' => 'Responsável'],
                 ['key' => 'species', 'label' => 'Espécie'],
                 ['key' => 'breed', 'label' => 'Raça'],
                 ['key' => 'birth_date', 'label' => 'Nascimento'],
@@ -339,7 +339,7 @@ class ImplementationController extends Controller
                 ($currentStep / count(self::WIZARD_STEPS)) * 100
             ),
             'migrationBlocks' => [
-                ['label' => 'Tutores e contatos', 'available' => true],
+                ['label' => 'Responsáveis e contatos', 'available' => true],
                 ['label' => 'Pacientes e histórico básico', 'available' => true],
                 ['label' => 'Fornecedores', 'available' => true],
                 ['label' => 'Produtos', 'available' => true],

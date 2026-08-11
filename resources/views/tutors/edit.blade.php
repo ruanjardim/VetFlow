@@ -1,11 +1,11 @@
 @extends('layouts.admin')
 
-@section('title', 'Editar tutor - VetFlow')
+@section('title', 'Editar responsável - VetFlow')
 
 @section('content')
   <header class="topbar">
     <div>
-      <h1>Editar tutor</h1>
+      <h1>Editar responsável</h1>
       <p>{{ $item->name }}</p>
     </div>
   </header>

@@ -56,9 +56,9 @@ class StoreTutorRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'name.required' => 'Informe o nome do tutor.',
-            'phone.required' => 'Informe o telefone principal do tutor.',
-            'cpf.unique' => 'Já existe um tutor cadastrado com este CPF.',
+            'name.required' => 'Informe o nome do responsável.',
+            'phone.required' => 'Informe o telefone principal do responsável.',
+            'cpf.unique' => 'Já existe um responsável cadastrado com este CPF.',
             'email.email' => 'Informe um e-mail válido.',
         ];
     }

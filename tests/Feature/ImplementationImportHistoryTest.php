@@ -46,7 +46,7 @@ class ImplementationImportHistoryTest extends TestCase
         $this->assertSame('Clínica Central', $history->clinic_name);
         $this->assertSame($user->name, $history->user_name);
         $this->assertSame('tutors', $history->entity_type);
-        $this->assertSame('Tutores', $history->entity_label);
+        $this->assertSame('Responsáveis', $history->entity_label);
         $this->assertSame('csv', $history->data_source);
         $this->assertSame('implantacao-tutores.csv', $history->file_name);
         $this->assertSame(1, $history->total_rows);
