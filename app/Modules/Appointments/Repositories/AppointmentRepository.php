@@ -18,7 +18,7 @@ class AppointmentRepository extends BaseRepository implements AppointmentReposit
     public function paginate(int $perPage = 15): LengthAwarePaginator
     {
         return $this->query()
-            ->with(['patient', 'tutor'])
+            ->with(['patient', 'tutor', 'medicalRecord'])
             ->latest('scheduled_at')
             ->paginate($perPage);
     }
@@ -26,7 +26,7 @@ class AppointmentRepository extends BaseRepository implements AppointmentReposit
     public function findOrFail(int $id): Model
     {
         return $this->query()
-            ->with(['patient', 'tutor'])
+            ->with(['patient', 'tutor', 'medicalRecord'])
             ->findOrFail($id);
     }
 }

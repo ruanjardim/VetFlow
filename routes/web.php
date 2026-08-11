@@ -97,6 +97,7 @@ Route::middleware(['auth', EnsureUserIsActive::class])->group(function () {
         'implementation.manage' => app_path('Modules/Implementation/Routes/web.php'),
         'financial.manage' => app_path('Modules/Financial/Routes/web.php'),
         'inventory.manage' => app_path('Modules/Inventory/Routes/web.php'),
+        'medical-records.manage' => app_path('Modules/MedicalRecords/Routes/web.php'),
         'patients.manage' => app_path('Modules/Patients/Routes/web.php'),
         'petshop-services.manage' => app_path('Modules/PetShopServices/Routes/web.php'),
         'products.manage' => app_path('Modules/Products/Routes/web.php'),

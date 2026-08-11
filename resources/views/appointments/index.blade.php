@@ -33,6 +33,15 @@
               <td>{{ $appointment->tutor?->name ?? '-' }}</td>
               <td>{{ $appointment->status }}</td>
               <td>
+                @can('medical-records.manage')
+                  @if($appointment->patient)
+                    @if($appointment->medicalRecord)
+                      <a class="button secondary" href="{{ route('medical-records.show', $appointment->medicalRecord->id) }}">Prontuário</a>
+                    @else
+                      <a class="button secondary" href="{{ route('medical-records.create', ['appointment_id' => $appointment->id, 'patient_id' => $appointment->patient_id]) }}">Prontuário</a>
+                    @endif
+                  @endif
+                @endcan
                 <a class="button secondary" href="{{ route('appointments.edit', $appointment->id) }}">Editar</a>
                 <form class="inline" action="{{ route('appointments.destroy', $appointment->id) }}" method="POST">
                   @csrf

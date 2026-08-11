@@ -3,9 +3,11 @@
 namespace App\Modules\Patients\Models;
 
 use App\Models\Concerns\BelongsToClinicTenant;
+use App\Modules\MedicalRecords\Models\MedicalRecord;
 use App\Modules\Tutors\Models\Tutor;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Patient extends Model
@@ -25,5 +27,10 @@ class Patient extends Model
     public function tutor(): BelongsTo
     {
         return $this->belongsTo(Tutor::class);
+    }
+
+    public function medicalRecords(): HasMany
+    {
+        return $this->hasMany(MedicalRecord::class);
     }
 }

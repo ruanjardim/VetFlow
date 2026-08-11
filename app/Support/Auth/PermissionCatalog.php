@@ -59,6 +59,12 @@ class PermissionCatalog
                 'description' => 'Permite acessar consultas e atendimentos clinicos.',
             ],
             [
+                'slug' => 'medical-records.manage',
+                'name' => 'Gerenciar prontuários',
+                'group' => 'Atendimento',
+                'description' => 'Permite registrar e consultar prontuários clínicos.',
+            ],
+            [
                 'slug' => 'petshop-services.manage',
                 'name' => 'Gerenciar servicos PetShop',
                 'group' => 'Operacao',
@@ -137,6 +143,7 @@ class PermissionCatalog
                     'patients.manage',
                     'schedules.manage',
                     'appointments.manage',
+                    'medical-records.manage',
                     'service-orders.manage',
                 ],
             ],

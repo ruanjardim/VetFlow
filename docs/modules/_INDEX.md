@@ -16,7 +16,7 @@ This index maps the current code modules and the documentation that should event
 | Financial | Financial transactions and payable/receivable flows | Documented in [Financial](financial.md) |
 | Implementation | Assisted CSV/Excel onboarding, six import blocks, and durable import history | Documented in [Implementation](implementation.md) |
 | Inventory | Stock movement and lot/expiration control | Documented in [Inventory](inventory.md) |
-| MedicalRecords | Clinical records area | Pending implementation/doc review |
+| MedicalRecords | Clinical records linked to appointments | Documented in [Medical Records](medical-records.md) |
 | Patients | Pets/patients | Covered in [Clinical Core](clinical-core.md) |
 | Pets | Pet-related area | Pending review; overlaps with Patients |
 | PetShopServices | Pet shop service catalog | Covered in [Clinical Core](clinical-core.md) |

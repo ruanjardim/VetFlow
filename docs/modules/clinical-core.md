@@ -6,6 +6,7 @@ Code paths:
 - `app/Modules/Patients`
 - `app/Modules/Schedules`
 - `app/Modules/Appointments`
+- `app/Modules/MedicalRecords`
 - `app/Modules/PetShopServices`
 - `app/Modules/ServiceOrders`
 
@@ -19,6 +20,7 @@ order flows that connect clinic operations to sales and finance.
 - Register tutors/customers.
 - Register patients/pets linked to tutors and clinics.
 - Manage schedules and appointments.
+- Register clinical records linked to appointments and patients.
 - Maintain the pet shop service catalog.
 - Build service orders with product and service items.
 - Convert service orders into billable sales when appropriate.
@@ -45,6 +47,7 @@ Patient edits apply the same tutor and clinic validation as patient creation.
 - `patients`
 - `schedules`
 - `appointments`
+- `medical_records`
 - `petshop_services`
 - `service_orders`
 - `service_order_items`
@@ -77,6 +80,7 @@ Relevant permission slugs:
 - `patients.manage`
 - `schedules.manage`
 - `appointments.manage`
+- `medical-records.manage`
 - `petshop-services.manage`
 - `service-orders.manage`
 
