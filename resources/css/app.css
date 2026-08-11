@@ -1982,3 +1982,174 @@ textarea {
     gap: 10px;
   }
 }
+
+.agenda-toolbar {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  justify-content: space-between;
+  margin-bottom: 18px;
+}
+
+.agenda-navigation,
+.agenda-views {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.agenda-calendar {
+  border: 1px solid #dbe4ee;
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+.agenda-weekdays,
+.agenda-days {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+}
+
+.agenda-weekdays {
+  background: #eff6ff;
+  border-bottom: 1px solid #dbe4ee;
+  color: #475569;
+  font-size: 12px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.agenda-weekdays span {
+  padding: 10px 6px;
+}
+
+.agenda-day {
+  background: #fff;
+  border-right: 1px solid #e2e8f0;
+  min-height: 210px;
+  padding: 10px;
+}
+
+.agenda-day:last-child {
+  border-right: 0;
+}
+
+.agenda-month .agenda-day {
+  border-bottom: 1px solid #e2e8f0;
+  min-height: 150px;
+}
+
+.agenda-day.is-today {
+  background: #f0f9ff;
+}
+
+.agenda-day.is-outside-month {
+  background: #f8fafc;
+  color: #94a3b8;
+}
+
+.agenda-day header {
+  align-items: baseline;
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.agenda-day header span {
+  color: #64748b;
+  font-size: 11px;
+}
+
+.agenda-events {
+  display: grid;
+  gap: 7px;
+}
+
+.agenda-event {
+  background: #eff6ff;
+  border-left: 3px solid #2563eb;
+  border-radius: 8px;
+  color: #1e3a5f;
+  display: grid;
+  gap: 2px;
+  padding: 8px;
+  text-decoration: none;
+}
+
+.agenda-event:hover {
+  filter: brightness(.97);
+}
+
+.agenda-event.is-appointment {
+  background: #f5f3ff;
+  border-left-color: #7c3aed;
+  color: #4c1d95;
+}
+
+.agenda-event-meta,
+.agenda-event small {
+  font-size: 11px;
+}
+
+.agenda-empty {
+  font-size: 12px;
+}
+
+.agenda-day .agenda-event strong {
+  font-size: 13px;
+}
+
+.agenda-day .agenda-event small {
+  color: #64748b;
+}
+
+.agenda-day {
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.agenda-month .agenda-days {
+  grid-auto-rows: 1fr;
+}
+
+.agenda-day:nth-child(7n) {
+  border-right: 0;
+}
+
+.agenda-day:nth-last-child(-n + 7) {
+  border-bottom: 0;
+}
+
+.agenda-day .agenda-empty {
+  display: none;
+}
+
+.agenda-day:first-child:last-child .agenda-empty {
+  display: inline;
+}
+
+.agenda-day:first-child:last-child {
+  min-height: 300px;
+}
+
+@media (max-width: 980px) {
+  .agenda-weekdays,
+  .agenda-days {
+    min-width: 760px;
+  }
+
+  .agenda-calendar {
+    overflow-x: auto;
+  }
+}
+
+@media (max-width: 640px) {
+  .agenda-toolbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .agenda-toolbar > strong {
+    text-align: center;
+  }
+}

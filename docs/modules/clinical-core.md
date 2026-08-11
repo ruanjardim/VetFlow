@@ -21,6 +21,7 @@ order flows that connect clinic operations to sales and finance.
 - Register tutors/customers.
 - Register patients/pets linked to tutors and clinics.
 - Manage schedules and appointments.
+- View schedules and appointments together in day, week, and month views.
 - Register clinical records linked to appointments and patients.
 - Track vaccination schedules and applications by patient.
 - Maintain the pet shop service catalog.
@@ -74,6 +75,13 @@ service order as finished.
 Clinical records are tenant-scoped through `clinic_id`. Tests cover rejection of
 tutors, patients, products, and services from another clinic. Patient creation
 also verifies that the selected Tutor belongs to the destination clinic.
+
+## Visual Agenda
+
+The Agenda screen combines existing `schedules` and `appointments` without
+duplicating them. It supports day, week, and month navigation and keeps the
+same tenant scope as the source records. Selecting an event opens its existing
+edit screen.
 
 ## Permissions
 
