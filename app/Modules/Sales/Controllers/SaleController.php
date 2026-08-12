@@ -9,6 +9,7 @@ use App\Modules\PetShopServices\Models\PetShopService;
 use App\Modules\Products\Models\Product;
 use App\Modules\Products\Services\ProductLookupService;
 use App\Modules\Products\Support\Gtin;
+use App\Modules\Sales\Requests\StoreSalePaymentRequest;
 use App\Modules\Sales\Requests\StoreSaleRequest;
 use App\Modules\Sales\Requests\UpdateSaleRequest;
 use App\Modules\Sales\Services\SaleService;
@@ -95,6 +96,15 @@ class SaleController extends BaseCrudController
         return view("{$this->viewPath}.receipt", [
             'sale' => $sale,
         ]);
+    }
+
+    public function storePayment(StoreSalePaymentRequest $request, int $id)
+    {
+        $this->service->addPayment($id, $request->validated());
+
+        return redirect()
+            ->route('sales.edit', $id)
+            ->with('success', 'Recebimento registrado com sucesso.');
     }
 
     public function cancel(Request $request, int $id)

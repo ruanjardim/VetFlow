@@ -363,6 +363,73 @@ class SaleService extends BaseService
         });
     }
 
+    public function addPayment(int $id, array $data): Sale
+    {
+        return DB::transaction(function () use ($id, $data) {
+            /** @var Sale $sale */
+            $sale = Sale::query()
+                ->with(['items', 'payments', 'financialTransaction'])
+                ->findOrFail($id);
+
+            if ($sale->status !== 'completed' || (float) $sale->return_total > 0) {
+                throw ValidationException::withMessages([
+                    'sale' => 'Registre recebimentos apenas para vendas concluidas sem devolucoes.',
+                ]);
+            }
+
+            $outstanding = round(max(0, (float) $sale->total - (float) $sale->paid_total), 2);
+            $amount = round((float) $data['amount'], 2);
+
+            if ($outstanding <= 0) {
+                throw ValidationException::withMessages([
+                    'sale' => 'Esta venda ja esta totalmente quitada.',
+                ]);
+            }
+
+            if ($amount > $outstanding) {
+                throw ValidationException::withMessages([
+                    'amount' => 'O recebimento nao pode ser maior que o saldo pendente de R$ '.number_format($outstanding, 2, ',', '.').'.',
+                ]);
+            }
+
+            $payment = $sale->payments()->create([
+                'method' => $data['method'],
+                'amount' => $amount,
+                'installments' => max(1, (int) ($data['installments'] ?? 1)),
+                'card_brand' => $data['card_brand'] ?? null,
+                'acquirer' => $data['acquirer'] ?? null,
+                'paid_at' => $data['paid_at'] ?? now(),
+                'reference' => $data['reference'] ?? null,
+                'transaction_reference' => $data['transaction_reference'] ?? $data['reference'] ?? null,
+                'status' => 'paid',
+                'notes' => $data['notes'] ?? null,
+            ]);
+
+            $this->recalculateTotals($sale->refresh());
+
+            $sale = $sale->refresh()->load('financialTransaction');
+            $this->syncFinancialTransactionPaymentStatus($sale, $payment->paid_at);
+
+            $this->recordSaleEvent(
+                $sale,
+                'payment_received',
+                null,
+                null,
+                $amount,
+                'Recebimento registrado',
+                null,
+                [
+                    'payment_id' => $payment->id,
+                    'method' => $payment->method,
+                    'reference' => $payment->reference,
+                ],
+                false
+            );
+
+            return $sale->refresh();
+        });
+    }
+
     public function cashierSummary(?string $from = null, ?string $to = null): array
     {
         [$start, $end] = $this->cashierRange($from, $to);
@@ -649,16 +716,18 @@ class SaleService extends BaseService
                 continue;
             }
 
+            $status = $payment['status'] ?? 'paid';
+
             $sale->payments()->create([
                 'method' => $method,
                 'amount' => $amount,
                 'installments' => max(1, (int) ($payment['installments'] ?? 1)),
                 'card_brand' => $payment['card_brand'] ?? null,
                 'acquirer' => $payment['acquirer'] ?? null,
-                'paid_at' => $payment['paid_at'] ?? now(),
+                'paid_at' => $status === 'paid' ? ($payment['paid_at'] ?? now()) : null,
                 'reference' => $payment['reference'] ?? null,
                 'transaction_reference' => $payment['transaction_reference'] ?? $payment['reference'] ?? null,
-                'status' => $payment['status'] ?? 'paid',
+                'status' => $status,
                 'notes' => $payment['notes'] ?? null,
             ]);
         }
@@ -672,7 +741,9 @@ class SaleService extends BaseService
         $discount = (float) ($sale->discount_total ?? 0);
         $additions = (float) ($sale->additions_total ?? 0);
         $total = max(0, $subtotal + $additions - $discount);
-        $paid = (float) $sale->payments->sum('amount');
+        $paid = (float) $sale->payments
+            ->filter(fn (SalePayment $payment) => ($payment->status ?? 'paid') === 'paid')
+            ->sum('amount');
         $itemCostTotal = (float) $sale->items->sum(fn ($item) => (float) $item->cost_unit_price * (float) $item->quantity);
         $grossProfit = round($total - $itemCostTotal, 2);
 
@@ -752,6 +823,22 @@ class SaleService extends BaseService
         }
 
         $this->recordSaleEvent($sale, 'completed', null, null, (float) $sale->total, 'Venda concluida');
+    }
+
+    private function syncFinancialTransactionPaymentStatus(Sale $sale, mixed $paidAt): void
+    {
+        $financialTransaction = $sale->financialTransaction;
+
+        if (! $financialTransaction) {
+            return;
+        }
+
+        $isPaid = $sale->payment_status === 'paid';
+
+        $financialTransaction->update([
+            'status' => $isPaid ? 'paid' : 'pending',
+            'paid_at' => $isPaid ? $paidAt : null,
+        ]);
     }
 
     private function applyStockMovements(Sale $sale): void

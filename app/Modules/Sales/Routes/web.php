@@ -16,6 +16,10 @@ Route::get('sales/cashier/close', [SaleController::class, 'cashierClose'])
 Route::post('sales/cashier/close', [SaleController::class, 'storeCashierClose'])
     ->name('sales.cashier.close.store');
 
+Route::post('sales/{sale}/payments', [SaleController::class, 'storePayment'])
+    ->whereNumber('sale')
+    ->name('sales.payments.store');
+
 Route::get('sales/{sale}/receipt', [SaleController::class, 'receipt'])
     ->whereNumber('sale')
     ->name('sales.receipt');

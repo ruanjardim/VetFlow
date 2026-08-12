@@ -14,6 +14,7 @@ financial income, returns, refunds, cancellations, and sale event history.
   gross profit, and margin.
 - Snapshot product/service fields into sale items.
 - Register payment methods and card/acquirer references.
+- Register later receipts for completed sales that remain pending or partial.
 - Apply stock exits when a sale is completed.
 - Create financial income when a sale is completed.
 - Finish linked service orders after completed sales.
@@ -55,6 +56,11 @@ financial income, returns, refunds, cancellations, and sale event history.
   cancelling the original income record.
 - Cashier summary uses completed sales, paid payments, refunds, change, and
   pending totals for the selected period.
+- Pending, cancelled, and refunded payment rows never compose the amount paid
+  on a sale or the cash received by the cashier.
+- Later receipts are recorded as separate paid payment rows and keep an event
+  in the sale history. The linked financial income becomes paid only when the
+  sale balance is fully settled.
 
 ## Status Concepts
 

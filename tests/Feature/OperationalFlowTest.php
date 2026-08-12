@@ -76,6 +76,82 @@ class OperationalFlowTest extends TestCase
         $this->assertEquals(50.0, (float) $financialTransaction->amount);
     }
 
+    public function test_pending_payment_only_counts_after_a_later_receipt_is_registered(): void
+    {
+        $clinic = $this->clinic('Clinica Recebimentos', '00000000000202');
+        $product = $this->product($clinic, 'Antiparasitario', stock: 5, costPrice: 12, salePrice: 50);
+        $user = $this->userForClinic($clinic, ['sales.manage']);
+
+        $this->actingAs($user)->post(route('sales.store'), [
+            'status' => 'completed',
+            'items' => [
+                [
+                    'type' => 'product',
+                    'product_id' => $product->id,
+                    'description' => 'Antiparasitario',
+                    'quantity' => '1',
+                    'unit_price' => '50',
+                ],
+            ],
+            'payments' => [
+                [
+                    'method' => 'pix',
+                    'amount' => '50',
+                    'status' => 'pending',
+                ],
+            ],
+        ])->assertRedirect(route('sales.index'));
+
+        $sale = Sale::query()->with(['payments', 'financialTransaction'])->firstOrFail();
+
+        $this->assertSame('pending', $sale->payment_status);
+        $this->assertEquals(0.0, (float) $sale->paid_total);
+        $this->assertNull($sale->payments->first()->paid_at);
+        $this->assertSame('pending', $sale->financialTransaction->status);
+
+        $summary = app(SaleService::class)->cashierSummary(today()->toDateString(), today()->toDateString());
+
+        $this->assertEquals(0.0, (float) $summary['stats']['received']);
+        $this->assertEquals(50.0, (float) $summary['stats']['pending']);
+
+        $this->post(route('sales.payments.store', $sale->id), [
+            'method' => 'pix',
+            'amount' => '20,00',
+            'reference' => 'PIX-PARCIAL-1',
+        ])->assertRedirect(route('sales.edit', $sale->id));
+
+        $sale->refresh()->load(['payments', 'financialTransaction']);
+
+        $this->assertSame('partial', $sale->payment_status);
+        $this->assertEquals(20.0, (float) $sale->paid_total);
+        $this->assertSame('pending', $sale->financialTransaction->status);
+        $this->assertSame(1, $sale->payments->where('status', 'paid')->count());
+        $this->assertDatabaseHas('sale_events', [
+            'sale_id' => $sale->id,
+            'event_type' => 'payment_received',
+            'amount' => 20,
+        ]);
+
+        $this->post(route('sales.payments.store', $sale->id), [
+            'method' => 'cash',
+            'amount' => '30',
+            'reference' => 'CAIXA-1',
+        ])->assertRedirect(route('sales.edit', $sale->id));
+
+        $sale->refresh()->load(['payments', 'financialTransaction']);
+
+        $this->assertSame('paid', $sale->payment_status);
+        $this->assertEquals(50.0, (float) $sale->paid_total);
+        $this->assertSame('paid', $sale->financialTransaction->status);
+        $this->assertNotNull($sale->financialTransaction->paid_at);
+
+        $summary = app(SaleService::class)->cashierSummary(today()->toDateString(), today()->toDateString());
+
+        $this->assertEquals(50.0, (float) $summary['stats']['received']);
+        $this->assertEquals(30.0, (float) $summary['stats']['cash_received']);
+        $this->assertEquals(0.0, (float) $summary['stats']['pending']);
+    }
+
     public function test_global_user_sale_keeps_financial_record_inside_selected_clinic(): void
     {
         $clinic = $this->clinic('Clinica Venda Global A', '00000000000261');
