@@ -26,6 +26,7 @@ This index maps the current code modules and the documentation that should event
 | PurchaseEntries | Purchase entry and NF-e import flows | Documented in [Purchase Entries](purchase-entries.md) |
 | Reports | Reporting area | Pending implementation/doc review |
 | Sales | Sales, sale items, payments, returns, cash register support | Documented in [Sales](sales.md) |
+| Commissions | Seller commission rules and period previews | Documented in [Commissions](commissions.md) |
 | Schedules | Scheduling base | Covered in [Clinical Core](clinical-core.md) |
 | ServiceOrders | Service orders and service order items | Covered in [Clinical Core](clinical-core.md) |
 | Suppliers | Supplier management | Documented in [Suppliers](suppliers.md) |

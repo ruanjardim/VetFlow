@@ -80,6 +80,9 @@
         @can('financial.manage')
           <a class="{{ request()->routeIs('financial-transactions.*') ? 'is-active' : '' }}" href="{{ route('financial-transactions.index') }}">Financeiro</a>
         @endcan
+        @can('commissions.manage')
+          <a class="{{ request()->routeIs('commissions.*') ? 'is-active' : '' }}" href="{{ route('commissions.index') }}">Comissoes</a>
+        @endcan
       </nav>
     </aside>
 

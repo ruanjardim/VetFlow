@@ -124,6 +124,12 @@ class PermissionCatalog
                 'group' => 'Financeiro',
                 'description' => 'Permite acessar contas, fluxo de caixa, baixas e cancelamentos.',
             ],
+            [
+                'slug' => 'commissions.manage',
+                'name' => 'Gerenciar comissoes',
+                'group' => 'Financeiro',
+                'description' => 'Permite configurar regras e consultar previas de comissoes.',
+            ],
         ];
     }
 
@@ -200,6 +206,7 @@ class PermissionCatalog
                     'purchase-entries.manage',
                     'suppliers.manage',
                     'financial.manage',
+                    'commissions.manage',
                 ],
             ],
         ];

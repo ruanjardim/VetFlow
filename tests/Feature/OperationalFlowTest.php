@@ -6,6 +6,8 @@ use App\Models\Permission;
 use App\Models\Role;
 use App\Models\User;
 use App\Modules\Clinics\Models\Clinic;
+use App\Modules\Commissions\Models\CommissionRule;
+use App\Modules\Commissions\Services\CommissionService;
 use App\Modules\Financial\Models\FinancialTransaction;
 use App\Modules\Inventory\Models\InventoryMovement;
 use App\Modules\Products\Models\Product;
@@ -209,6 +211,98 @@ class OperationalFlowTest extends TestCase
         $this->assertEquals(10.0, (float) $performance[$sellerB->id]['received']);
         $this->assertEquals(20.0, (float) $performance[$sellerB->id]['pending']);
         $this->assertEquals(20.0, (float) $performance[$sellerB->id]['gross_profit']);
+    }
+
+    public function test_commission_preview_uses_paid_sales_and_partial_receipts_according_to_each_rule(): void
+    {
+        $clinic = $this->clinic('Clinica Comissoes', '00000000000204');
+        $product = $this->product($clinic, 'Produto comissao', stock: 10, costPrice: 60, salePrice: 100);
+        $administrator = $this->userForClinic($clinic, ['sales.manage', 'commissions.manage']);
+        $sellerA = $this->userForClinic($clinic, ['sales.manage']);
+        $sellerB = $this->userForClinic($clinic, ['sales.manage']);
+
+        $this->actingAs($sellerA)->post(route('sales.store'), [
+            'status' => 'completed',
+            'items' => [[
+                'type' => 'product',
+                'product_id' => $product->id,
+                'description' => 'Produto comissao',
+                'quantity' => '1',
+                'unit_price' => '100',
+            ]],
+            'payments' => [[
+                'method' => 'pix',
+                'amount' => '100',
+            ]],
+        ])->assertRedirect(route('sales.index'));
+
+        $this->actingAs($sellerB)->post(route('sales.store'), [
+            'status' => 'completed',
+            'items' => [[
+                'type' => 'product',
+                'product_id' => $product->id,
+                'description' => 'Produto comissao',
+                'quantity' => '1',
+                'unit_price' => '100',
+            ]],
+            'payments' => [[
+                'method' => 'pix',
+                'amount' => '100',
+                'status' => 'pending',
+            ]],
+        ])->assertRedirect(route('sales.index'));
+
+        $pendingSale = Sale::query()->where('seller_user_id', $sellerB->id)->firstOrFail();
+
+        $this->actingAs($sellerB)->post(route('sales.payments.store', $pendingSale->id), [
+            'method' => 'pix',
+            'amount' => '50',
+            'paid_at' => now()->format('Y-m-d\\TH:i'),
+        ])->assertRedirect(route('sales.edit', $pendingSale->id));
+
+        $this->actingAs($administrator)->post(route('commissions.store'), [
+            'seller_user_id' => $sellerA->id,
+            'name' => 'Margem vendedor A',
+            'percentage' => '10,00',
+            'basis' => 'gross_profit',
+            'recognition' => 'sale_date',
+            'requires_paid' => '1',
+            'starts_on' => today()->toDateString(),
+            'active' => '1',
+        ])->assertRedirect(route('commissions.index'));
+
+        $this->post(route('commissions.store'), [
+            'seller_user_id' => $sellerB->id,
+            'name' => 'Recebimentos vendedor B',
+            'percentage' => '10',
+            'basis' => 'sold_total',
+            'recognition' => 'receipt_date',
+            'requires_paid' => '0',
+            'starts_on' => today()->toDateString(),
+            'active' => '1',
+        ])->assertRedirect(route('commissions.index'));
+
+        $preview = app(CommissionService::class)->preview(today()->toDateString(), today()->toDateString());
+        $rows = $preview['rules']->keyBy(fn (array $row) => $row['rule']->seller_user_id);
+
+        $this->assertEquals(40.0, (float) $rows[$sellerA->id]['base_amount']);
+        $this->assertEquals(4.0, (float) $rows[$sellerA->id]['commission_amount']);
+        $this->assertEquals(50.0, (float) $rows[$sellerB->id]['base_amount']);
+        $this->assertEquals(5.0, (float) $rows[$sellerB->id]['commission_amount']);
+        $this->assertSame(2, $preview['summary']['rules_count']);
+
+        $this->post(route('commissions.store'), [
+            'seller_user_id' => $sellerA->id,
+            'name' => 'Regra concorrente',
+            'percentage' => '5',
+            'basis' => 'sold_total',
+            'recognition' => 'sale_date',
+            'requires_paid' => '1',
+            'starts_on' => today()->toDateString(),
+            'active' => '1',
+        ])->assertSessionHasErrors('starts_on');
+
+        $this->assertSame(2, CommissionRule::query()->count());
     }
 
     public function test_global_user_sale_keeps_financial_record_inside_selected_clinic(): void

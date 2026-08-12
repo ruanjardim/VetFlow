@@ -8,6 +8,8 @@ use App\Modules\Appointments\Contracts\AppointmentRepositoryInterface;
 use App\Modules\Appointments\Repositories\AppointmentRepository;
 use App\Modules\Clinics\Contracts\ClinicRepositoryInterface;
 use App\Modules\Clinics\Repositories\ClinicRepository;
+use App\Modules\Commissions\Contracts\CommissionRuleRepositoryInterface;
+use App\Modules\Commissions\Repositories\CommissionRuleRepository;
 use App\Modules\Financial\Contracts\FinancialTransactionRepositoryInterface;
 use App\Modules\Financial\Repositories\FinancialTransactionRepository;
 use App\Modules\Inventory\Contracts\InventoryMovementRepositoryInterface;
@@ -51,6 +53,11 @@ class RepositoryServiceProvider extends ServiceProvider
         $this->app->bind(
             ClinicRepositoryInterface::class,
             ClinicRepository::class
+        );
+
+        $this->app->bind(
+            CommissionRuleRepositoryInterface::class,
+            CommissionRuleRepository::class
         );
 
         $this->app->bind(
