@@ -62,6 +62,22 @@ class ClinicalPilotFlowTest extends TestCase
 
         $patient = Patient::query()->firstOrFail();
 
+        $this->get(route('schedules.create', [
+            'patient_id' => $patient->id,
+            'tutor_id' => $responsible->id,
+        ]))
+            ->assertOk()
+            ->assertViewHas('preselectedPatientId', $patient->id)
+            ->assertViewHas('preselectedTutorId', $responsible->id);
+
+        $this->get(route('appointments.create', [
+            'patient_id' => $patient->id,
+            'tutor_id' => $responsible->id,
+        ]))
+            ->assertOk()
+            ->assertViewHas('preselectedPatientId', $patient->id)
+            ->assertViewHas('preselectedTutorId', $responsible->id);
+
         $this->post(route('schedules.store'), [
             'patient_id' => $patient->id,
             'tutor_id' => $responsible->id,

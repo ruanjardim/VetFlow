@@ -6,7 +6,7 @@
   <header class="topbar">
     <div>
       <h1>Pacientes</h1>
-      <p>Pets cadastrados para atendimento.</p>
+      <p>Cadastre o pet e siga para a agenda ou para a consulta.</p>
     </div>
     <a class="button" href="{{ route('patients.create') }}">Novo paciente</a>
   </header>
@@ -18,8 +18,8 @@
           <tr>
             <th>Nome</th>
             <th>Responsável</th>
-            <th>Especie</th>
-            <th>Raca</th>
+            <th>Espécie</th>
+            <th>Raça</th>
             <th>Peso</th>
             <th>Acoes</th>
           </tr>
@@ -33,6 +33,12 @@
               <td>{{ $patient->breed }}</td>
               <td>{{ $patient->weight }}</td>
               <td>
+                @can('schedules.manage')
+                  <a class="button secondary" href="{{ route('schedules.create', ['patient_id' => $patient->id, 'tutor_id' => $patient->tutor_id]) }}">Agendar</a>
+                @endcan
+                @can('appointments.manage')
+                  <a class="button secondary" href="{{ route('appointments.create', ['patient_id' => $patient->id, 'tutor_id' => $patient->tutor_id]) }}">Consulta</a>
+                @endcan
                 @can('vaccinations.manage')
                   <a class="button secondary" href="{{ route('vaccinations.create', ['patient_id' => $patient->id]) }}">Vacinas</a>
                 @endcan

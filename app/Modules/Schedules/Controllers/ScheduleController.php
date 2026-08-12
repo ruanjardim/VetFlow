@@ -55,6 +55,8 @@ class ScheduleController extends BaseCrudController
         return [
             'patients' => Patient::query()->orderBy('name')->get(),
             'tutors' => Tutor::query()->orderBy('name')->get(),
+            'preselectedPatientId' => (int) request()->query('patient_id'),
+            'preselectedTutorId' => (int) request()->query('tutor_id'),
         ];
     }
 }

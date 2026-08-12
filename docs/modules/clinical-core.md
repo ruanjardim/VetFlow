@@ -51,6 +51,13 @@ cats. The form suggests common veterinary groups such as Canino, Felino,
 Equino, Bovino, Ave, and Répteis, while allowing any other value when needed.
 Patient edits apply the same tutor and clinic validation as patient creation.
 
+The Patient form groups the existing fields into identification and initial
+clinical reference sections; it does not add or alter database columns. From
+the patient list, permitted users can start a schedule or appointment with the
+patient and linked responsible person preselected. Changing the patient in
+either form updates the selected responsible person as a convenience only; the
+existing tenant validation remains authoritative.
+
 ## Tables
 
 - `tutors`
