@@ -152,6 +152,65 @@ class OperationalFlowTest extends TestCase
         $this->assertEquals(0.0, (float) $summary['stats']['pending']);
     }
 
+    public function test_cashier_summary_groups_sales_and_receipts_by_seller(): void
+    {
+        $clinic = $this->clinic('Clinica Operadores', '00000000000203');
+        $product = $this->product($clinic, 'Servico com operador', stock: 10, costPrice: 10, salePrice: 30);
+        $sellerA = $this->userForClinic($clinic, ['sales.manage']);
+        $sellerB = $this->userForClinic($clinic, ['sales.manage']);
+
+        $this->actingAs($sellerA)->post(route('sales.store'), [
+            'status' => 'completed',
+            'items' => [[
+                'type' => 'product',
+                'product_id' => $product->id,
+                'description' => 'Servico com operador',
+                'quantity' => '1',
+                'unit_price' => '30',
+            ]],
+            'payments' => [[
+                'method' => 'pix',
+                'amount' => '30',
+            ]],
+        ])->assertRedirect(route('sales.index'));
+
+        $this->actingAs($sellerB)->post(route('sales.store'), [
+            'status' => 'completed',
+            'items' => [[
+                'type' => 'product',
+                'product_id' => $product->id,
+                'description' => 'Servico com operador',
+                'quantity' => '1',
+                'unit_price' => '30',
+            ]],
+            'payments' => [[
+                'method' => 'pix',
+                'amount' => '30',
+                'status' => 'pending',
+            ]],
+        ])->assertRedirect(route('sales.index'));
+
+        $saleB = Sale::query()->where('seller_user_id', $sellerB->id)->firstOrFail();
+
+        $this->actingAs($sellerB)->post(route('sales.payments.store', $saleB->id), [
+            'method' => 'cash',
+            'amount' => '10',
+        ])->assertRedirect(route('sales.edit', $saleB->id));
+
+        $summary = app(SaleService::class)->cashierSummary(today()->toDateString(), today()->toDateString());
+        $performance = collect($summary['seller_performance'])->keyBy('seller_user_id');
+
+        $this->assertEquals(30.0, (float) $performance[$sellerA->id]['sold_total']);
+        $this->assertEquals(30.0, (float) $performance[$sellerA->id]['received']);
+        $this->assertEquals(0.0, (float) $performance[$sellerA->id]['pending']);
+        $this->assertEquals(20.0, (float) $performance[$sellerA->id]['gross_profit']);
+
+        $this->assertEquals(30.0, (float) $performance[$sellerB->id]['sold_total']);
+        $this->assertEquals(10.0, (float) $performance[$sellerB->id]['received']);
+        $this->assertEquals(20.0, (float) $performance[$sellerB->id]['pending']);
+        $this->assertEquals(20.0, (float) $performance[$sellerB->id]['gross_profit']);
+    }
+
     public function test_global_user_sale_keeps_financial_record_inside_selected_clinic(): void
     {
         $clinic = $this->clinic('Clinica Venda Global A', '00000000000261');

@@ -21,6 +21,8 @@ financial income, returns, refunds, cancellations, and sale event history.
 - Cancel sales and reverse stock/financial effects.
 - Process partial/full returns and refunds.
 - Generate cashier summaries and closure records.
+- Group sales, receipts, balances, and gross margin by the operator responsible
+  for each sale.
 
 ## Key Classes
 
@@ -58,6 +60,9 @@ financial income, returns, refunds, cancellations, and sale event history.
   pending totals for the selected period.
 - Pending, cancelled, and refunded payment rows never compose the amount paid
   on a sale or the cash received by the cashier.
+- The cashier report exposes operator performance for operational review. It is
+  not a commission calculation: commission rates, eligibility, and settlement
+  rules must be configured in a future dedicated step.
 - Later receipts are recorded as separate paid payment rows and keep an event
   in the sale history. The linked financial income becomes paid only when the
   sale balance is fully settled.

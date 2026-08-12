@@ -435,14 +435,14 @@ class SaleService extends BaseService
         [$start, $end] = $this->cashierRange($from, $to);
 
         $sales = Sale::query()
-            ->with(['items', 'payments', 'tutor', 'patient', 'serviceOrder'])
+            ->with(['items', 'payments', 'tutor', 'patient', 'serviceOrder', 'seller'])
             ->where('status', 'completed')
             ->whereBetween('sold_at', [$start, $end])
             ->latest('sold_at')
             ->get();
 
         $payments = SalePayment::query()
-            ->with('sale')
+            ->with('sale.seller')
             ->whereBetween('paid_at', [$start, $end])
             ->whereHas('sale', fn ($query) => $query->where('status', 'completed'))
             ->where('status', 'paid')
@@ -509,6 +509,7 @@ class SaleService extends BaseService
                 'average_ticket' => $sales->count() > 0 ? $total / $sales->count() : 0,
             ],
             'payments_by_method' => $this->paymentsByMethod($payments),
+            'seller_performance' => $this->sellerPerformance($sales, $payments),
             'recent_sales' => $sales->take(20)->values(),
             'open_sales' => $openSales,
             'top_items' => $this->topSoldItems($sales),
@@ -1123,6 +1124,49 @@ class SaleService extends BaseService
                 'count' => $items->count(),
             ])
             ->sortByDesc('amount')
+            ->values()
+            ->all();
+    }
+
+    private function sellerPerformance($sales, $payments): array
+    {
+        $salesBySeller = $sales->groupBy(
+            fn (Sale $sale) => $sale->seller_user_id ?: 'unassigned'
+        );
+        $paymentsBySeller = $payments->groupBy(
+            fn (SalePayment $payment) => $payment->sale?->seller_user_id ?: 'unassigned'
+        );
+
+        return $salesBySeller
+            ->keys()
+            ->merge($paymentsBySeller->keys())
+            ->unique()
+            ->map(function ($sellerKey) use ($salesBySeller, $paymentsBySeller) {
+                $sellerSales = $salesBySeller->get($sellerKey, collect());
+                $sellerPayments = $paymentsBySeller->get($sellerKey, collect());
+                $seller = $sellerSales->first()?->seller
+                    ?? $sellerPayments->first()?->sale?->seller;
+                $soldTotal = $sellerSales->sum(fn (Sale $sale) => (float) $sale->total);
+                $grossProfit = $sellerSales->sum(fn (Sale $sale) => (float) $sale->gross_profit_total);
+
+                return [
+                    'seller_user_id' => $sellerKey === 'unassigned' ? null : (int) $sellerKey,
+                    'seller_name' => $seller?->name ?? 'Sem operador informado',
+                    'sales_count' => $sellerSales->count(),
+                    'sold_total' => $soldTotal,
+                    'received' => $sellerPayments->sum(
+                        fn (SalePayment $payment) => (float) $payment->amount
+                    ),
+                    'pending' => $sellerSales->sum(
+                        fn (Sale $sale) => max(0, (float) $sale->total - (float) $sale->paid_total)
+                    ),
+                    'gross_profit' => $grossProfit,
+                    'gross_margin_percent' => $soldTotal > 0
+                        ? round(($grossProfit / $soldTotal) * 100, 2)
+                        : null,
+                ];
+            })
+            ->sortByDesc(fn (array $seller) => max($seller['sold_total'], $seller['received']))
             ->values()
             ->all();
     }

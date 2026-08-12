@@ -288,6 +288,50 @@
   <div class="panel nested-panel">
     <div class="panel-heading">
       <div>
+        <h2>Desempenho por operador</h2>
+        <p>Base para acompanhar vendas e recebimentos antes de configurar regras de comissao.</p>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Operador</th>
+            <th>Vendas</th>
+            <th>Vendido</th>
+            <th>Recebido no periodo</th>
+            <th>Pendente nas vendas</th>
+            <th>Margem bruta</th>
+          </tr>
+        </thead>
+        <tbody>
+          @forelse($summary['seller_performance'] as $seller)
+            <tr>
+              <td><strong>{{ $seller['seller_name'] }}</strong></td>
+              <td>{{ $seller['sales_count'] }}</td>
+              <td>{{ $money($seller['sold_total']) }}</td>
+              <td>{{ $money($seller['received']) }}</td>
+              <td>{{ $money($seller['pending']) }}</td>
+              <td>
+                {{ $money($seller['gross_profit']) }}
+                @if($seller['gross_margin_percent'] !== null)
+                  <div class="muted">{{ number_format($seller['gross_margin_percent'], 2, ',', '.') }}%</div>
+                @endif
+              </td>
+            </tr>
+          @empty
+            <tr>
+              <td colspan="6" class="muted">Nenhuma venda ou recebimento no periodo.</td>
+            </tr>
+          @endforelse
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="panel nested-panel">
+    <div class="panel-heading">
+      <div>
         <h2>Fechamentos recentes</h2>
         <p>Conferencias de caixa salvas.</p>
       </div>
