@@ -776,11 +776,21 @@ form.inline {
   display: inline;
 }
 
-.form-grid {
-  display: grid;
-  gap: 14px;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-}
+  .form-grid {
+    display: grid;
+    gap: 14px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .form-section + .form-section {
+    border-top: 1px solid #e2e8f0;
+    margin-top: 24px;
+    padding-top: 24px;
+  }
+
+  .form-section .panel-heading {
+    margin-bottom: 16px;
+  }
 
 .filter-grid {
   align-items: end;

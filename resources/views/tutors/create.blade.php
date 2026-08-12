@@ -12,7 +12,7 @@
 
   <div class="panel">
     <div class="panel-body">
-      <form method="POST" action="{{ route('tutores.store') }}">
+      <form method="POST" action="{{ route('tutores.store') }}" data-tutor-form>
         @csrf
         @include('tutors.form', ['tutor' => null])
       </form>

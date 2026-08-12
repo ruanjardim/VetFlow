@@ -2285,4 +2285,174 @@ document.addEventListener('DOMContentLoaded', () => {
 
     updatePurchaseTotals();
   }
+
+  const tutorForm = document.querySelector('[data-tutor-form]');
+
+  if (tutorForm) {
+    const digits = (value) => String(value || '').replace(/\D+/g, '');
+    const cpfInput = tutorForm.querySelector('[data-tutor-cpf]');
+    const cpfStatus = tutorForm.querySelector('[data-tutor-cpf-status]');
+    const cepInput = tutorForm.querySelector('[data-tutor-cep]');
+    const cepStatus = tutorForm.querySelector('[data-tutor-cep-status]');
+    let cepLookupTimer = null;
+    let cepLookupController = null;
+
+    const setTutorLookupStatus = (element, message, state = '') => {
+      if (!element) {
+        return;
+      }
+
+      element.textContent = message;
+      element.classList.remove('is-success', 'is-warning', 'is-error');
+
+      if (state) {
+        element.classList.add(`is-${state}`);
+      }
+    };
+
+    const formatCpf = (value) => {
+      const valueDigits = digits(value).slice(0, 11);
+
+      return valueDigits
+        .replace(/(\d{3})(\d)/, '$1.$2')
+        .replace(/(\d{3})(\d)/, '$1.$2')
+        .replace(/(\d{3})(\d{1,2})$/, '$1-$2');
+    };
+
+    const isValidCpf = (value) => {
+      const valueDigits = digits(value);
+
+      if (valueDigits.length !== 11 || /^(\d)\1{10}$/.test(valueDigits)) {
+        return false;
+      }
+
+      const digitAt = (position) => {
+        let sum = 0;
+
+        for (let index = 0; index < position - 1; index += 1) {
+          sum += Number(valueDigits[index]) * (position - index);
+        }
+
+        const remainder = (sum * 10) % 11;
+
+        return remainder === 10 ? 0 : remainder;
+      };
+
+      return digitAt(10) === Number(valueDigits[9]) && digitAt(11) === Number(valueDigits[10]);
+    };
+
+    const formatPhone = (value) => {
+      const valueDigits = digits(value).slice(0, 11);
+
+      if (valueDigits.length <= 2) {
+        return valueDigits;
+      }
+
+      if (valueDigits.length <= 6) {
+        return valueDigits.replace(/(\d{2})(\d+)/, '($1) $2');
+      }
+
+      if (valueDigits.length <= 10) {
+        return valueDigits.replace(/(\d{2})(\d{4})(\d+)/, '($1) $2-$3');
+      }
+
+      return valueDigits.replace(/(\d{2})(\d{5})(\d+)/, '($1) $2-$3');
+    };
+
+    const formatCep = (value) => {
+      const valueDigits = digits(value).slice(0, 8);
+
+      return valueDigits.replace(/(\d{5})(\d+)/, '$1-$2');
+    };
+
+    const fillAddress = (address) => {
+      const fields = {
+        street: address.logradouro,
+        district: address.bairro,
+        city: address.localidade,
+        state: address.uf,
+      };
+
+      Object.entries(fields).forEach(([field, value]) => {
+        const input = tutorForm.querySelector(`#${field}`);
+
+        if (input && value) {
+          input.value = value;
+        }
+      });
+    };
+
+    const lookupCep = async () => {
+      const cep = digits(cepInput?.value);
+
+      if (cep.length !== 8) {
+        setTutorLookupStatus(cepStatus, cep ? 'Informe os 8 dígitos do CEP.' : '', cep ? 'warning' : '');
+        return;
+      }
+
+      cepLookupController?.abort();
+      cepLookupController = new AbortController();
+      setTutorLookupStatus(cepStatus, 'Buscando endereço pelo CEP...');
+
+      try {
+        const response = await fetch(`https://viacep.com.br/ws/${cep}/json/`, {
+          signal: cepLookupController.signal,
+        });
+
+        if (!response.ok) {
+          throw new Error('CEP lookup failed');
+        }
+
+        const address = await response.json();
+
+        if (address.erro) {
+          setTutorLookupStatus(cepStatus, 'CEP não encontrado. Preencha o endereço manualmente.', 'warning');
+          return;
+        }
+
+        fillAddress(address);
+        setTutorLookupStatus(cepStatus, 'Endereço preenchido. Revise número e complemento.', 'success');
+        tutorForm.querySelector('#number')?.focus();
+      } catch (error) {
+        if (error.name !== 'AbortError') {
+          setTutorLookupStatus(cepStatus, 'Não foi possível buscar o CEP agora. Preencha manualmente.', 'warning');
+        }
+      }
+    };
+
+    if (cpfInput) {
+      cpfInput.value = formatCpf(cpfInput.value);
+      cpfInput.addEventListener('input', () => {
+        cpfInput.value = formatCpf(cpfInput.value);
+        const valueDigits = digits(cpfInput.value);
+        const valid = isValidCpf(valueDigits);
+
+        setTutorLookupStatus(
+          cpfStatus,
+          valueDigits.length === 11 ? (valid ? 'CPF válido.' : 'CPF inválido.') : '',
+          valueDigits.length === 11 ? (valid ? 'success' : 'error') : ''
+        );
+      });
+    }
+
+    tutorForm.querySelectorAll('[data-tutor-phone]').forEach((input) => {
+      input.value = formatPhone(input.value);
+      input.addEventListener('input', () => {
+        input.value = formatPhone(input.value);
+      });
+    });
+
+    if (cepInput) {
+      cepInput.value = formatCep(cepInput.value);
+      cepInput.addEventListener('input', () => {
+        cepInput.value = formatCep(cepInput.value);
+        window.clearTimeout(cepLookupTimer);
+
+        if (digits(cepInput.value).length === 8) {
+          cepLookupTimer = window.setTimeout(lookupCep, 450);
+        }
+      });
+      cepInput.addEventListener('blur', lookupCep);
+    }
+  }
 });

@@ -19,8 +19,9 @@
             <th>Nome</th>
             <th>Telefone</th>
             <th>E-mail</th>
+            <th>Localidade</th>
             <th>Status</th>
-            <th>Acoes</th>
+            <th>Ações</th>
           </tr>
         </thead>
         <tbody>
@@ -28,7 +29,8 @@
             <tr>
               <td>{{ $tutor->name }}</td>
               <td>{{ $tutor->phone }}</td>
-              <td>{{ $tutor->email }}</td>
+              <td>{{ $tutor->email ?: '-' }}</td>
+              <td>{{ collect([$tutor->city, $tutor->state])->filter()->implode(' / ') ?: '-' }}</td>
               <td>{{ $tutor->active ? 'Ativo' : 'Inativo' }}</td>
               <td>
                 <a class="button secondary" href="{{ route('tutores.edit', $tutor->id) }}">Editar</a>
@@ -41,7 +43,7 @@
             </tr>
           @empty
             <tr>
-              <td colspan="5" class="muted">Nenhum responsável cadastrado.</td>
+              <td colspan="6" class="muted">Nenhum responsável cadastrado.</td>
             </tr>
           @endforelse
         </tbody>

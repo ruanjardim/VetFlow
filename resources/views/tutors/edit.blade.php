@@ -12,7 +12,7 @@
 
   <div class="panel">
     <div class="panel-body">
-      <form method="POST" action="{{ route('tutores.update', $item->id) }}">
+      <form method="POST" action="{{ route('tutores.update', $item->id) }}" data-tutor-form>
         @csrf
         @method('PUT')
         @include('tutors.form', ['tutor' => $item])

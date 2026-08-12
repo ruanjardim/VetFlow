@@ -30,7 +30,7 @@ This index maps the current code modules and the documentation that should event
 | Schedules | Scheduling base | Covered in [Clinical Core](clinical-core.md) |
 | ServiceOrders | Service orders and service order items | Covered in [Clinical Core](clinical-core.md) |
 | Suppliers | Supplier management | Documented in [Suppliers](suppliers.md) |
-| Tutors | Tutor/customer records | Covered in [Clinical Core](clinical-core.md) |
+| Tutors | Responsible person records for patients | Documented in [Responsáveis](tutors.md) |
 | Users | User records and access foundation | Documented in [Access](access.md) and database docs |
 | Validation | Shared validation services/controllers | Documented in [Validation](validation.md) |
 
