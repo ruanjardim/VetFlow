@@ -138,6 +138,7 @@
           <tr>
             <th>Produto</th>
             <th>Tipo</th>
+            <th>Origem</th>
             <th>Quantidade</th>
             <th>Custo unitario</th>
             <th>Lote</th>
@@ -162,6 +163,21 @@
                   Ajuste
                 @endif
               </td>
+              <td>
+                @if(in_array($movement->source, ['sale', 'sale_return', 'sale_cancellation'], true) && $movement->sale)
+                  <a href="{{ route('sales.edit', $movement->sale_id) }}">
+                    {{ $movement->source === 'sale' ? 'Venda' : 'Devolucao de venda' }} {{ $movement->sale->code }}
+                  </a>
+                @elseif($movement->source === 'purchase_entry' && $movement->purchaseEntry)
+                  <a href="{{ route('purchase-entries.edit', $movement->purchase_entry_id) }}">
+                    Entrada {{ $movement->purchaseEntry->code }}
+                  </a>
+                @elseif($movement->source === 'implementation_csv')
+                  Implantacao por planilha
+                @else
+                  Lancamento manual
+                @endif
+              </td>
               <td>{{ number_format((float) $movement->quantity, 3, ',', '.') }}</td>
               <td>R$ {{ number_format((float) $movement->unit_cost, 2, ',', '.') }}</td>
               <td>{{ $movement->lot_number ?: '-' }}</td>
@@ -169,17 +185,21 @@
               <td>{{ number_format((float) $movement->balance_after, 3, ',', '.') }}</td>
               <td>{{ optional($movement->occurred_at)->format('d/m/Y H:i') }}</td>
               <td>
-                <a class="button secondary" href="{{ route('inventory-movements.edit', $movement->id) }}">Editar</a>
-                <form class="inline" action="{{ route('inventory-movements.destroy', $movement->id) }}" method="POST">
-                  @csrf
-                  @method('DELETE')
-                  <button class="danger" type="submit" data-confirm="Remover esta movimentacao? O saldo do produto sera recalculado.">Excluir</button>
-                </form>
+                @if($movement->isSystemManaged())
+                  <span class="badge muted-badge">Gerada automaticamente</span>
+                @else
+                  <a class="button secondary" href="{{ route('inventory-movements.edit', $movement->id) }}">Editar</a>
+                  <form class="inline" action="{{ route('inventory-movements.destroy', $movement->id) }}" method="POST">
+                    @csrf
+                    @method('DELETE')
+                    <button class="danger" type="submit" data-confirm="Remover esta movimentacao? O saldo do produto sera recalculado.">Excluir</button>
+                  </form>
+                @endif
               </td>
             </tr>
           @empty
             <tr>
-              <td colspan="9" class="muted">Nenhuma movimentacao de estoque cadastrada.</td>
+              <td colspan="10" class="muted">Nenhuma movimentacao de estoque cadastrada.</td>
             </tr>
           @endforelse
         </tbody>

@@ -700,6 +700,52 @@ class OperationalFlowTest extends TestCase
         );
     }
 
+    public function test_inventory_movements_created_by_sales_cannot_be_changed_from_stock_screen(): void
+    {
+        $clinic = $this->clinic('Clinica Rastreabilidade Estoque', '00000000000223');
+        $product = $this->product($clinic, 'Medicamento rastreado', stock: 5, costPrice: 10, salePrice: 30);
+        $user = $this->userForClinic($clinic, ['inventory.manage', 'sales.manage']);
+
+        $this->actingAs($user)->post(route('sales.store'), [
+            'status' => 'completed',
+            'items' => [[
+                'type' => 'product',
+                'product_id' => $product->id,
+                'description' => $product->name,
+                'quantity' => '1',
+                'unit_price' => '30',
+            ]],
+            'payments' => [[
+                'method' => 'pix',
+                'amount' => '30',
+                'installments' => 1,
+            ]],
+        ])->assertRedirect(route('sales.index'));
+
+        $movement = InventoryMovement::query()
+            ->where('product_id', $product->id)
+            ->where('source', 'sale')
+            ->firstOrFail();
+
+        $this->get(route('inventory-movements.edit', $movement->id))
+            ->assertRedirect(route('inventory-movements.index'))
+            ->assertSessionHas('error');
+
+        $this->patch(route('inventory-movements.update', $movement->id), [
+            'product_id' => $product->id,
+            'type' => 'entry',
+            'quantity' => '5',
+        ])->assertRedirect(route('inventory-movements.index'))
+            ->assertSessionHas('error');
+
+        $this->delete(route('inventory-movements.destroy', $movement->id))
+            ->assertRedirect(route('inventory-movements.index'))
+            ->assertSessionHas('error');
+
+        $this->assertSame('exit', $movement->fresh()->type);
+        $this->assertEquals(4.0, (float) $product->fresh()->stock_quantity);
+    }
+
     public function test_financial_transactions_are_created_and_updated_only_inside_current_clinic(): void
     {
         $clinicA = $this->clinic('Clinica Operacional F', '00000000000231');

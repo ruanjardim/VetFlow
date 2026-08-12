@@ -66,4 +66,14 @@ class InventoryMovement extends Model
     {
         return $this->belongsTo(PurchaseEntryItem::class);
     }
+
+    public function isSystemManaged(): bool
+    {
+        return in_array($this->source, [
+            'purchase_entry',
+            'sale',
+            'sale_return',
+            'sale_cancellation',
+        ], true);
+    }
 }
