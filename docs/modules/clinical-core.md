@@ -108,3 +108,9 @@ Relevant permission slugs:
 Relevant coverage is present in
 `tests/Feature/PurchaseAndClinicalFlowTest.php` and
 `tests/Feature/PatientTutorFoundationTest.php`.
+
+`tests/Feature/ClinicalPilotFlowTest.php` validates the complete clinic flow
+through the same application routes used by the interface: Responsavel,
+Patient, Schedule, Appointment, Medical Record, and Vaccination. It confirms
+that every resulting record remains linked to the same clinic, patient, and
+responsible person.
