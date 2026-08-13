@@ -12,6 +12,7 @@ use App\Modules\Products\Support\Gtin;
 use App\Modules\Sales\Requests\StoreSalePaymentRequest;
 use App\Modules\Sales\Requests\StoreSaleRequest;
 use App\Modules\Sales\Requests\UpdateSaleRequest;
+use App\Modules\Sales\Services\SaleProfitabilityService;
 use App\Modules\Sales\Services\SaleService;
 use App\Modules\ServiceOrders\Models\ServiceOrder;
 use App\Modules\Tutors\Models\Tutor;
@@ -48,6 +49,24 @@ class SaleController extends BaseCrudController
                 $request->query('from'),
                 $request->query('to')
             ),
+        ]);
+    }
+
+    public function profitability(Request $request, SaleProfitabilityService $profitability)
+    {
+        $validated = $request->validate([
+            'from' => ['nullable', 'date'],
+            'to' => ['nullable', 'date', 'after_or_equal:from'],
+            'type' => ['nullable', 'string', Rule::in(array_merge(['all'], array_keys(SaleProfitabilityService::TYPE_LABELS)))],
+        ]);
+
+        return view("{$this->viewPath}.profitability", [
+            'summary' => $profitability->summary(
+                $validated['from'] ?? null,
+                $validated['to'] ?? null,
+                $validated['type'] ?? 'all'
+            ),
+            'typeLabels' => SaleProfitabilityService::TYPE_LABELS,
         ]);
     }
 

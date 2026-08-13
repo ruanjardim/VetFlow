@@ -10,10 +10,12 @@ use App\Modules\Commissions\Models\CommissionRule;
 use App\Modules\Commissions\Services\CommissionService;
 use App\Modules\Financial\Models\FinancialTransaction;
 use App\Modules\Inventory\Models\InventoryMovement;
+use App\Modules\PetShopServices\Models\PetShopService;
 use App\Modules\Products\Models\Product;
 use App\Modules\Sales\Models\CashRegisterClosure;
 use App\Modules\Sales\Models\Sale;
 use App\Modules\Sales\Models\SaleEvent;
+use App\Modules\Sales\Services\SaleProfitabilityService;
 use App\Modules\Sales\Services\SaleService;
 use App\Modules\Suppliers\Models\Supplier;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -362,6 +364,128 @@ class OperationalFlowTest extends TestCase
         $this->assertCount(1, $summaryB['closures']);
         $this->assertSame($clinicB->id, (int) $summaryB['closures']->first()->clinic_id);
         $this->assertSame('Fechamento B', $summaryB['closures']->first()->notes);
+    }
+
+    public function test_profitability_report_uses_sale_snapshots_and_adjusts_partial_returns(): void
+    {
+        $clinic = $this->clinic('Clinica Rentabilidade', '00000000000209');
+        $product = $this->product($clinic, 'Racao rentavel', stock: 10, costPrice: 10, salePrice: 30);
+        $service = PetShopService::query()->create([
+            'clinic_id' => $clinic->id,
+            'name' => 'Banho rentavel',
+            'category' => 'Banho e tosa',
+            'base_price' => 40,
+            'active' => true,
+        ]);
+        $user = $this->userForClinic($clinic, ['sales.manage']);
+
+        $this->actingAs($user)->post(route('sales.store'), [
+            'status' => 'completed',
+            'discount_total' => '10',
+            'items' => [
+                [
+                    'type' => 'product',
+                    'product_id' => $product->id,
+                    'description' => $product->name,
+                    'quantity' => '2',
+                    'unit_price' => '30',
+                ],
+                [
+                    'type' => 'service',
+                    'petshop_service_id' => $service->id,
+                    'description' => $service->name,
+                    'quantity' => '1',
+                    'unit_price' => '40',
+                ],
+            ],
+            'payments' => [[
+                'method' => 'pix',
+                'amount' => '90',
+            ]],
+        ])->assertRedirect(route('sales.index'));
+
+        $sale = Sale::query()->with('items')->firstOrFail();
+        $productItem = $sale->items->firstWhere('type', 'product');
+
+        $this->post(route('sales.returns.store', $sale->id), [
+            'reason' => 'Devolucao para validar margem',
+            'refund_method' => 'pix',
+            'refund_amount' => '30',
+            'items' => [
+                $productItem->id => ['quantity' => '1'],
+            ],
+        ])->assertRedirect(route('sales.edit', $sale->id));
+
+        $summary = app(SaleProfitabilityService::class)->summary(
+            today()->toDateString(),
+            today()->toDateString()
+        );
+        $items = $summary['items']->keyBy('description');
+        $types = $summary['by_type']->keyBy('type');
+
+        $this->assertSame(1, $summary['stats']['sales_count']);
+        $this->assertEquals(90.0, (float) $summary['stats']['gross_revenue']);
+        $this->assertEquals(30.0, (float) $summary['stats']['returns']);
+        $this->assertEquals(60.0, (float) $summary['stats']['net_revenue']);
+        $this->assertEquals(10.0, (float) $summary['stats']['cost']);
+        $this->assertEquals(50.0, (float) $summary['stats']['gross_profit']);
+        $this->assertEquals(83.33, (float) $summary['stats']['gross_margin_percent']);
+
+        $this->assertEquals(24.0, (float) $items['Racao rentavel']['net_revenue']);
+        $this->assertEquals(10.0, (float) $items['Racao rentavel']['cost']);
+        $this->assertEquals(14.0, (float) $items['Racao rentavel']['gross_profit']);
+        $this->assertEquals(36.0, (float) $items['Banho rentavel']['gross_profit']);
+        $this->assertEquals(14.0, (float) $types['product']['gross_profit']);
+        $this->assertEquals(36.0, (float) $types['service']['gross_profit']);
+
+        $this->get(route('sales.profitability', [
+            'from' => today()->toDateString(),
+            'to' => today()->toDateString(),
+            'type' => 'service',
+        ]))
+            ->assertOk()
+            ->assertSee('Rentabilidade das vendas')
+            ->assertSee('Banho rentavel')
+            ->assertDontSee('Racao rentavel');
+    }
+
+    public function test_profitability_report_requires_sales_permission_and_is_isolated_by_clinic(): void
+    {
+        $clinicA = $this->clinic('Clinica Margem A', '00000000000210');
+        $clinicB = $this->clinic('Clinica Margem B', '00000000000211');
+        $productA = $this->product($clinicA, 'Produto margem A', stock: 5, costPrice: 10, salePrice: 30);
+        $productB = $this->product($clinicB, 'Produto margem B', stock: 5, costPrice: 20, salePrice: 60);
+        $userA = $this->userForClinic($clinicA, ['sales.manage']);
+        $userB = $this->userForClinic($clinicB, ['sales.manage']);
+        $userWithoutPermission = $this->userForClinic($clinicA, []);
+
+        foreach ([[$userA, $productA], [$userB, $productB]] as [$user, $product]) {
+            $this->actingAs($user)->post(route('sales.store'), [
+                'status' => 'completed',
+                'items' => [[
+                    'type' => 'product',
+                    'product_id' => $product->id,
+                    'description' => $product->name,
+                    'quantity' => '1',
+                    'unit_price' => (string) $product->sale_price,
+                ]],
+                'payments' => [[
+                    'method' => 'cash',
+                    'amount' => (string) $product->sale_price,
+                ]],
+            ])->assertRedirect(route('sales.index'));
+        }
+
+        $this->actingAs($userA);
+        $summary = app(SaleProfitabilityService::class)->summary();
+
+        $this->assertSame(1, $summary['stats']['sales_count']);
+        $this->assertSame(['Produto margem A'], $summary['items']->pluck('description')->all());
+        $this->assertEquals(30.0, (float) $summary['stats']['net_revenue']);
+
+        $this->actingAs($userWithoutPermission)
+            ->get(route('sales.profitability'))
+            ->assertForbidden();
     }
 
     public function test_commission_preview_uses_paid_sales_and_partial_receipts_according_to_each_rule(): void

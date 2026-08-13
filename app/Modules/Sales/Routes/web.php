@@ -10,6 +10,9 @@ Route::get('sales/product-lookup/{gtin}', [SaleController::class, 'lookupProduct
 Route::get('sales/cashier', [SaleController::class, 'cashier'])
     ->name('sales.cashier');
 
+Route::get('sales/profitability', [SaleController::class, 'profitability'])
+    ->name('sales.profitability');
+
 Route::get('sales/cashier/close', [SaleController::class, 'cashierClose'])
     ->name('sales.cashier.close');
 

@@ -23,6 +23,8 @@ financial income, returns, refunds, cancellations, and sale event history.
 - Generate cashier summaries and closure records.
 - Group sales, receipts, balances, and gross margin by the operator responsible
   for each sale.
+- Present realized gross profitability by period, item type, category, and
+  catalog item.
 
 ## Key Classes
 
@@ -30,6 +32,7 @@ financial income, returns, refunds, cancellations, and sale event history.
 | --- | --- |
 | `SaleController` | Web sales, cancellation, returns, cashier, and closure flows. |
 | `SaleService` | Sale orchestration and side effects. |
+| `SaleProfitabilityService` | Return-adjusted gross profitability reporting. |
 | `SaleRepository` | Data access. |
 | `Sale`, `SaleItem`, `SalePayment`, `SaleEvent` | Sale domain models. |
 | `CashRegisterClosure` | Cashier closure model. |
@@ -70,6 +73,17 @@ financial income, returns, refunds, cancellations, and sale event history.
 - Later receipts are recorded as separate paid payment rows and keep an event
   in the sale history. The linked financial income becomes paid only when the
   sale balance is fully settled.
+- The profitability report uses the price and cost snapshots stored on sale
+  items. Sale-level discounts and additions are allocated proportionally among
+  the items, and returned quantities remove both their revenue and product
+  cost from the realized result.
+- Profitability is gross and operational: taxes, general expenses, and
+  commissions are not deducted. Services and custom lines do not currently
+  carry a cost snapshot, while products with a zero cost are highlighted for
+  review.
+- Historical periods reflect returns registered later because the report
+  presents the current realized outcome of the sales that originated in the
+  selected period.
 
 ## Status Concepts
 

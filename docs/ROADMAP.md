@@ -44,6 +44,9 @@ The product should feel different from a generic CRUD system by connecting the c
   received-purchase history with an explicit confidence level and reason.
 - The selected KingHost staging candidate has a provider-specific runbook and
   a bounded, token-protected queue cron bridge that remains disabled by default.
+- Sales expose realized gross profitability by item type, category, and item,
+  adjusted for discounts and returns while preserving historical cost
+  snapshots.
 
 ## Current Near-Term Priorities
 
@@ -89,6 +92,5 @@ The product should feel different from a generic CRUD system by connecting the c
 
 - Guided onboarding for a new clinic.
 - Supplier lead-time and demand signals for future replenishment tuning.
-- Margin and profitability insights by service/product category.
 - Appointment reminders and follow-up workflows.
 - Audit trail for sensitive operational changes.

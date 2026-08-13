@@ -64,6 +64,9 @@ This project follows the spirit of Keep a Changelog, with one practical adjustme
   smoke-test, and rollback procedures.
 - Disabled-by-default authenticated queue cron endpoint and bounded queue-drain
   command for low-volume shared-hosting staging.
+- Sales profitability report with period and item-type filters, proportional
+  sale-discount allocation, return-adjusted revenue and cost, category/item
+  breakdowns, and missing-cost or negative-margin alerts.
 
 ### Changed
 

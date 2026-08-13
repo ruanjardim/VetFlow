@@ -16,6 +16,7 @@
       <p>Resumo operacional do PDV em {{ $period['label'] }}.</p>
     </div>
     <div class="actions">
+      <a class="button secondary" href="{{ route('sales.profitability', ['from' => $period['from'], 'to' => $period['to']]) }}">Rentabilidade</a>
       <a class="button" href="{{ route('sales.cashier.close', ['from' => $period['from'], 'to' => $period['to']]) }}">Fechar caixa</a>
       <a class="button secondary" href="{{ route('sales.index') }}">Ver vendas</a>
       <a class="button" href="{{ route('sales.create') }}">Nova venda</a>
