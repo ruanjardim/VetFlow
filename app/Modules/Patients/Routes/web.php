@@ -12,6 +12,10 @@ Route::get('catalog/breeds', [PatientCatalogController::class, 'breeds'])
     ->name('patient-catalog.breeds');
 Route::post('catalog/breeds', [PatientCatalogController::class, 'storeBreed'])
     ->name('patient-catalog.breeds.store');
+Route::get('catalog/coats', [PatientCatalogController::class, 'coats'])
+    ->name('patient-catalog.coats');
+Route::post('catalog/coats', [PatientCatalogController::class, 'storeCoat'])
+    ->name('patient-catalog.coats.store');
 Route::get('catalog/specialties', [PatientCatalogController::class, 'specialties'])
     ->name('patient-catalog.specialties');
 Route::put('catalog/specialties', [PatientCatalogController::class, 'updateSpecialties'])

@@ -9,6 +9,7 @@
       <a class="button secondary" href="{{ route('patients.index') }}">← Voltar</a>
       <a class="button secondary" href="{{ route('patient-catalog.specialties', array_filter(['clinic_id' => $selectedClinicId])) }}">Minhas espécies de atuação</a>
       <a class="button secondary" href="{{ route('patient-catalog.breeds', array_filter(['clinic_id' => $selectedClinicId])) }}">Ver raças</a>
+      <a class="button secondary" href="{{ route('patient-catalog.coats', array_filter(['clinic_id' => $selectedClinicId])) }}">Ver pelagens</a>
     </div>
   </header>
 
@@ -22,10 +23,10 @@
   <div class="content-grid catalog-layout">
     <div class="panel">
       <div class="panel-heading"><div><h2>Catálogo disponível</h2><p>{{ $speciesRows->count() }} espécies no seu perfil de atuação.</p></div></div>
-      <div class="table-wrap"><table><thead><tr><th>Espécie</th><th>Grupo</th><th>Origem</th><th>Raças/variedades</th></tr></thead><tbody>
+      <div class="table-wrap"><table><thead><tr><th>Espécie</th><th>Grupo</th><th>Origem</th><th>Raças/variedades</th><th>Pelagens/padrões</th></tr></thead><tbody>
         @forelse($speciesRows as $species)
-          <tr><td><strong>{{ $species->name }}</strong></td><td>{{ $categories[$species->category] ?? $species->category }}</td><td><span class="badge {{ $species->system ? 'muted-badge' : 'success' }}">{{ $species->system ? 'Padrão VetFlow' : 'Da clínica' }}</span></td><td><a href="{{ route('patient-catalog.breeds', array_filter(['clinic_id' => $selectedClinicId, 'species_id' => $species->id])) }}">{{ $species->breeds_count }} cadastradas</a></td></tr>
-        @empty<tr><td colspan="4" class="muted">Nenhuma espécie disponível. Revise suas espécies de atuação.</td></tr>@endforelse
+          <tr><td><strong>{{ $species->name }}</strong></td><td>{{ $categories[$species->category] ?? $species->category }}</td><td><span class="badge {{ $species->system ? 'muted-badge' : 'success' }}">{{ $species->system ? 'Padrão VetFlow' : 'Da clínica' }}</span></td><td><a href="{{ route('patient-catalog.breeds', array_filter(['clinic_id' => $selectedClinicId, 'species_id' => $species->id])) }}">{{ $species->breeds_count }} cadastradas</a></td><td><a href="{{ route('patient-catalog.coats', array_filter(['clinic_id' => $selectedClinicId, 'species_id' => $species->id])) }}">{{ $species->coats_count }} cadastradas</a></td></tr>
+        @empty<tr><td colspan="5" class="muted">Nenhuma espécie disponível. Revise suas espécies de atuação.</td></tr>@endforelse
       </tbody></table></div>
     </div>
 

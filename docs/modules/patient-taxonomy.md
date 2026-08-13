@@ -1,15 +1,16 @@
-# Patient Species And Breeds
+# Patient Species, Breeds, And Coats
 
 Code paths:
 
 - `app/Modules/Patients`
 - `resources/views/patients/catalog`
 - `database/migrations/2026_08_13_010000_create_patient_taxonomy_tables.php`
+- `database/migrations/2026_08_13_030000_create_patient_coat_catalog.php`
 
 ## Purpose
 
 Provides an extensible clinical catalog for patient species, breeds, varieties,
-and lineages without limiting VetFlow to dogs and cats. The initial catalog
+lineages, coats, plumage, coloration, and morphs without limiting VetFlow to dogs and cats. The initial catalog
 covers companion animals, birds, reptiles and amphibians, aquatic animals,
 large animals, and broader wildlife classifications.
 
@@ -19,32 +20,34 @@ specific entry when the standard options do not cover the animal.
 
 ## Standard And Clinic Catalogs
 
-`animal_species` and `animal_breeds` distinguish two origins:
+`animal_species`, `animal_breeds`, and `animal_coats` distinguish two origins:
 
 - system entries, shared by all clinics and maintained by VetFlow;
 - clinic entries, visible and reusable only inside the clinic that created
   them.
 
-Species are grouped by area and breeds belong to one species. The patient form
-filters the breed list after the species is selected, preventing a breed from
-being linked to an unrelated species.
+Species are grouped by area; breeds and coats belong to one species. The patient
+form filters both lists as soon as the species changes, preventing a breed or
+coat from being linked to an unrelated species. The coat label is intentionally
+inclusive: clinics can use it for coat, plumage, coloration, pattern, or morph.
 
 ## The Other Option
 
-The last option in both selectors allows the operator to enter a new species or
-breed. VetFlow never stores the literal value `Other` in the patient. It creates
+The last option in all three selectors allows the operator to enter a new
+species, breed, or coat. VetFlow never stores the literal value `Other` in the patient. It creates
 a normalized clinic catalog entry and links the patient to it, so the same
 choice is available on the next registration.
 
 The standalone `Cadastros` menu also exposes screens for reviewing the standard
-catalog and adding clinic-specific species or breeds in advance.
+catalog and adding clinic-specific species, breeds, or coats in advance.
 
 ## Compatibility
 
 The existing `patients.species` and `patients.breed` text columns remain in
-place for reports, integrations, imports, and historical compatibility. New
-foreign keys (`animal_species_id` and `animal_breed_id`) add structure while the
-service synchronizes the text snapshots.
+place for reports, integrations, imports, and historical compatibility. The
+coat catalog adds a `patients.coat` text snapshot. Foreign keys
+(`animal_species_id`, `animal_breed_id`, and `animal_coat_id`) provide structure
+while the service synchronizes the readable snapshots.
 
 The migration links recognized legacy values to the standard catalog. An
 unrecognized legacy value appears as a prefilled custom option when edited, so
@@ -57,6 +60,8 @@ or create catalog entries using the same rules.
 - `POST /catalog/species` creates a clinic species.
 - `GET /catalog/breeds` lists breeds for a selected species.
 - `POST /catalog/breeds` creates a clinic breed or variety.
+- `GET /catalog/coats` lists coats and patterns for a selected species.
+- `POST /catalog/coats` creates a clinic coat or pattern.
 
 All routes use the existing `patients.manage` permission. Clinic users can see
 system entries and their own clinic entries. Global users choose the clinic
@@ -76,9 +81,11 @@ are rendered.
 
 - exotic and nontraditional species in the standard catalog;
 - species-to-breed selection and patient snapshots;
+- species-to-coat selection and patient snapshots;
 - reusable clinic entries created through `Other`;
 - cross-clinic rejection and catalog isolation;
-- expandable menu rendering and active-group behavior.
+- automatic species filtering, search, back navigation, expandable menu
+  rendering, and active-group behavior.
 
 Existing patient and implementation import tests protect compatibility with the
 previous text-based input path.

@@ -30,6 +30,11 @@ class AnimalSpecies extends Model
         return $this->hasMany(AnimalBreed::class)->orderBy('name');
     }
 
+    public function coats(): HasMany
+    {
+        return $this->hasMany(AnimalCoat::class)->orderBy('name');
+    }
+
     public function preferredByUsers(): BelongsToMany
     {
         return $this->belongsToMany(User::class, 'user_animal_species')->withTimestamps();

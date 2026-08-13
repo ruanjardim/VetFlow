@@ -7,6 +7,7 @@ use App\Models\Role;
 use App\Models\User;
 use App\Modules\Clinics\Models\Clinic;
 use App\Modules\Patients\Models\AnimalBreed;
+use App\Modules\Patients\Models\AnimalCoat;
 use App\Modules\Patients\Models\AnimalSpecies;
 use App\Modules\Patients\Models\Patient;
 use App\Modules\Tutors\Models\Tutor;
@@ -262,6 +263,134 @@ class PatientTaxonomyFlowTest extends TestCase
             'user_id' => $user->id,
             'animal_species_id' => $custom->id,
         ]);
+    }
+
+    public function test_standard_coat_catalog_is_filtered_by_species_and_saved_on_patient(): void
+    {
+        $clinic = $this->clinic('Clínica Pelagens', '00000000000409');
+        $tutor = $this->tutor($clinic, 'Responsável Pelagens');
+        $user = $this->userForClinic($clinic);
+        $canine = AnimalSpecies::query()->where('name', 'Canino')->firstOrFail();
+        $black = AnimalCoat::query()
+            ->where('animal_species_id', $canine->id)
+            ->where('name', 'Preto')
+            ->firstOrFail();
+
+        $this->actingAs($user)
+            ->get(route('patients.create'))
+            ->assertOk()
+            ->assertSee('Pelagem, plumagem ou padrão')
+            ->assertSee('Outra pelagem ou padrão — cadastrar')
+            ->assertSee('data-species-id="'.$canine->id.'"', false);
+
+        $this->post(route('patients.store'), [
+            'tutor_id' => $tutor->id,
+            'name' => 'Ônix',
+            'species_choice' => (string) $canine->id,
+            'coat_choice' => (string) $black->id,
+        ])->assertRedirect(route('patients.index'))->assertSessionDoesntHaveErrors();
+
+        $patient = Patient::query()->where('name', 'Ônix')->firstOrFail();
+
+        $this->assertSame($black->id, (int) $patient->animal_coat_id);
+        $this->assertSame('Preto', $patient->coat);
+    }
+
+    public function test_other_coat_creates_a_reusable_clinic_entry(): void
+    {
+        $clinic = $this->clinic('Clínica Padrão Próprio', '00000000000410');
+        $tutor = $this->tutor($clinic, 'Responsável Padrão');
+        $user = $this->userForClinic($clinic);
+        $serpent = AnimalSpecies::query()->where('name', 'Serpente')->firstOrFail();
+
+        $this->actingAs($user)->post(route('patients.store'), [
+            'tutor_id' => $tutor->id,
+            'name' => 'Naja',
+            'species_choice' => (string) $serpent->id,
+            'coat_choice' => 'other',
+            'new_coat' => 'Padrão exclusivo da clínica',
+        ])->assertSessionDoesntHaveErrors();
+
+        $coat = AnimalCoat::query()
+            ->where('clinic_id', $clinic->id)
+            ->where('name', 'Padrão exclusivo da clínica')
+            ->firstOrFail();
+        $patient = Patient::query()->where('name', 'Naja')->firstOrFail();
+
+        $this->assertFalse($coat->system);
+        $this->assertSame($serpent->id, (int) $coat->animal_species_id);
+        $this->assertSame($coat->id, (int) $patient->animal_coat_id);
+
+        $this->get(route('patients.create'))
+            ->assertOk()
+            ->assertSee('Padrão exclusivo da clínica');
+
+        $this->post(route('patients.store'), [
+            'tutor_id' => $tutor->id,
+            'name' => 'Cobra dois',
+            'species_choice' => (string) $serpent->id,
+            'coat_choice' => (string) $coat->id,
+        ])->assertSessionDoesntHaveErrors();
+
+        $this->assertSame(1, AnimalCoat::query()
+            ->where('clinic_id', $clinic->id)
+            ->where('normalized_name', 'padrao exclusivo da clinica')
+            ->count());
+    }
+
+    public function test_coat_from_another_species_or_clinic_is_rejected(): void
+    {
+        $clinicA = $this->clinic('Clínica Pelagem A', '00000000000411');
+        $clinicB = $this->clinic('Clínica Pelagem B', '00000000000412');
+        $tutorB = $this->tutor($clinicB, 'Responsável Pelagem B');
+        $userA = $this->userForClinic($clinicA);
+        $userB = $this->userForClinic($clinicB);
+        $canine = AnimalSpecies::query()->where('name', 'Canino')->firstOrFail();
+        $feline = AnimalSpecies::query()->where('name', 'Felino')->firstOrFail();
+
+        $this->actingAs($userA)->post(route('patient-catalog.coats.store'), [
+            'animal_species_id' => $canine->id,
+            'name' => 'Exclusiva A',
+        ])->assertSessionDoesntHaveErrors();
+
+        $coatA = AnimalCoat::query()->where('clinic_id', $clinicA->id)->firstOrFail();
+
+        $this->actingAs($userB)->post(route('patients.store'), [
+            'tutor_id' => $tutorB->id,
+            'name' => 'Paciente bloqueado por clínica',
+            'species_choice' => (string) $canine->id,
+            'coat_choice' => (string) $coatA->id,
+        ])->assertSessionHasErrors('coat_choice');
+
+        $canineCoat = AnimalCoat::query()->where('animal_species_id', $canine->id)->firstOrFail();
+
+        $this->post(route('patients.store'), [
+            'tutor_id' => $tutorB->id,
+            'name' => 'Paciente bloqueado por espécie',
+            'species_choice' => (string) $feline->id,
+            'coat_choice' => (string) $canineCoat->id,
+        ])->assertSessionHasErrors('coat_choice');
+
+        $this->assertDatabaseMissing('patients', ['name' => 'Paciente bloqueado por clínica']);
+        $this->assertDatabaseMissing('patients', ['name' => 'Paciente bloqueado por espécie']);
+    }
+
+    public function test_coat_catalog_has_automatic_selection_search_and_back_navigation(): void
+    {
+        $clinic = $this->clinic('Clínica Catálogo Pelagem', '00000000000413');
+        $user = $this->userForClinic($clinic);
+        $feline = AnimalSpecies::query()->where('name', 'Felino')->firstOrFail();
+
+        $this->actingAs($user)
+            ->get(route('patient-catalog.coats', ['species_id' => $feline->id]))
+            ->assertOk()
+            ->assertSee('Pelagens e padrões')
+            ->assertSee('data-catalog-auto-submit', false)
+            ->assertSee('data-auto-submit-select', false)
+            ->assertSee('data-catalog-search', false)
+            ->assertSee('← Voltar')
+            ->assertSee('Escaminha (tortie)')
+            ->assertSee('<noscript>', false);
     }
 
     private function clinic(string $name, string $cnpj): Clinic

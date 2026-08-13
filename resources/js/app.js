@@ -13,10 +13,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const tutorSelect = patientForm.querySelector('#tutor_id');
     const speciesSelect = patientForm.querySelector('[data-patient-species]');
     const breedSelect = patientForm.querySelector('[data-patient-breed]');
+    const coatSelect = patientForm.querySelector('[data-patient-coat]');
     const newSpeciesField = patientForm.querySelector('[data-new-species-field]');
     const newBreedField = patientForm.querySelector('[data-new-breed-field]');
+    const newCoatField = patientForm.querySelector('[data-new-coat-field]');
     const newSpeciesInput = patientForm.querySelector('#new_species');
     const newBreedInput = patientForm.querySelector('#new_breed');
+    const newCoatInput = patientForm.querySelector('#new_coat');
 
     const selectedClinicId = () => tutorSelect?.selectedOptions?.[0]?.dataset.clinicId || '';
 
@@ -46,8 +49,21 @@ document.addEventListener('DOMContentLoaded', () => {
         breedSelect.value = '';
       }
 
+      coatSelect?.querySelectorAll('option[data-species-id]').forEach((option) => {
+        const sameSpecies = option.dataset.speciesId === speciesSelect?.value;
+        const sameClinic = !option.dataset.clinicId || !clinicId || option.dataset.clinicId === clinicId;
+        const available = sameSpecies && sameClinic;
+        option.hidden = !available;
+        option.disabled = !available;
+      });
+
+      if (coatSelect?.selectedOptions?.[0]?.disabled) {
+        coatSelect.value = '';
+      }
+
       const customSpecies = speciesSelect?.value === 'other';
       const customBreed = customSpecies || breedSelect?.value === 'other';
+      const customCoat = customSpecies || coatSelect?.value === 'other';
 
       if (newSpeciesField) {
         newSpeciesField.hidden = !customSpecies;
@@ -65,8 +81,20 @@ document.addEventListener('DOMContentLoaded', () => {
         newBreedInput.required = breedSelect?.value === 'other';
       }
 
+      if (newCoatField) {
+        newCoatField.hidden = !customCoat;
+      }
+
+      if (newCoatInput) {
+        newCoatInput.required = coatSelect?.value === 'other';
+      }
+
       if (breedSelect) {
         breedSelect.disabled = !speciesSelect?.value;
+      }
+
+      if (coatSelect) {
+        coatSelect.disabled = !speciesSelect?.value;
       }
     };
 
@@ -76,9 +104,14 @@ document.addEventListener('DOMContentLoaded', () => {
         breedSelect.value = '';
       }
 
+      if (coatSelect) {
+        coatSelect.value = '';
+      }
+
       updateTaxonomyFields();
     });
     breedSelect?.addEventListener('change', updateTaxonomyFields);
+    coatSelect?.addEventListener('change', updateTaxonomyFields);
     updateTaxonomyFields();
   }
 

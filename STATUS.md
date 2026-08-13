@@ -45,9 +45,10 @@ The local working tree was clean before this documentation pass.
 - An assisted appointment reminder queue that prepares WhatsApp contact and
   records operator-confirmed outcomes, status changes, and an auditable contact
   history without claiming automatic delivery.
-- A permission-aware expandable sidebar and a structured species/breed catalog
-  for companion, exotic, wildlife, aquatic, and large-animal patients, with
-  reusable clinic-specific entries when the standard catalog is insufficient.
+- A permission-aware expandable sidebar and a structured species, breed, and
+  coat/pattern catalog for companion, exotic, wildlife, aquatic, and
+  large-animal patients, with reusable clinic-specific entries when the
+  standard catalog is insufficient.
 
 ## GitHub Scan Summary
 

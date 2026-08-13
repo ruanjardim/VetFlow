@@ -40,6 +40,11 @@ class Patient extends Model
         return $this->belongsTo(AnimalBreed::class, 'animal_breed_id');
     }
 
+    public function animalCoat(): BelongsTo
+    {
+        return $this->belongsTo(AnimalCoat::class, 'animal_coat_id');
+    }
+
     public function medicalRecords(): HasMany
     {
         return $this->hasMany(MedicalRecord::class);

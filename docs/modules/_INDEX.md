@@ -18,7 +18,7 @@ This index maps the current code modules and the documentation that should event
 | Inventory | Stock movement and lot/expiration control | Documented in [Inventory](inventory.md) |
 | MedicalRecords | Clinical records linked to appointments | Documented in [Medical Records](medical-records.md) |
 | Vaccinations | Patient vaccination schedules and applications | Documented in [Vaccinations](vaccinations.md) |
-| Patients | Pets/patients with extensible species and breed taxonomy | Documented in [Patient Species And Breeds](patient-taxonomy.md) and [Clinical Core](clinical-core.md) |
+| Patients | Pets/patients with extensible species, breed, and coat taxonomy | Documented in [Patient Taxonomy](patient-taxonomy.md) and [Clinical Core](clinical-core.md) |
 | Pets | Pet-related area | Pending review; overlaps with Patients |
 | PetShopServices | Pet shop service catalog | Covered in [Clinical Core](clinical-core.md) |
 | ProductIntelligence | Global product data, suggestions, GTIN intelligence | Documented in [Product Intelligence](product-intelligence.md) |

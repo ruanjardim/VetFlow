@@ -74,6 +74,27 @@
       <div class="field-hint">Use também para linhagens ou variedades não listadas.</div>
     </div>
     <div class="field">
+      @php($selectedCoatChoice = (string) old('coat_choice', $taxonomySelection['coat'] ?? ''))
+      <label for="coat_choice">Pelagem, plumagem ou padrão</label>
+      <select id="coat_choice" name="coat_choice" data-patient-coat>
+        <option value="">Selecione após escolher a espécie</option>
+        @foreach($speciesCatalog as $speciesOption)
+          @foreach($speciesOption->coats as $coatOption)
+            <option value="{{ $coatOption->id }}" data-species-id="{{ $speciesOption->id }}" data-clinic-id="{{ $coatOption->clinic_id }}" @selected($selectedCoatChoice === (string) $coatOption->id)>
+              {{ $coatOption->name }}{{ $coatOption->system ? '' : ' — cadastro da clínica' }}
+            </option>
+          @endforeach
+        @endforeach
+        <option value="other" @selected($selectedCoatChoice === 'other')>Outra pelagem ou padrão — cadastrar</option>
+      </select>
+      <div class="field-hint">A lista muda automaticamente conforme a espécie.</div>
+    </div>
+    <div class="field" data-new-coat-field @if($selectedCoatChoice !== 'other' && $selectedSpeciesChoice !== 'other') hidden @endif>
+      <label for="new_coat">Nome da nova pelagem ou padrão</label>
+      <input id="new_coat" name="new_coat" value="{{ old('new_coat', $taxonomySelection['new_coat'] ?? '') }}" maxlength="120" autocomplete="off">
+      <div class="field-hint">Use também para coloração, morfo ou padrão não listado.</div>
+    </div>
+    <div class="field">
       <label for="gender">Sexo</label>
       <input id="gender" name="gender" list="gender-suggestions" value="{{ old('gender', $patient->gender ?? '') }}" maxlength="50">
       <datalist id="gender-suggestions">

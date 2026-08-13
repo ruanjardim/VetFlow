@@ -76,6 +76,9 @@ This project follows the spirit of Keep a Changelog, with one practical adjustme
 - Extensible species and breed catalog for companion, exotic, wildlife, aquatic,
   and large-animal care, with clinic-owned `Other` entries and structured
   patient links that preserve legacy text snapshots.
+- Species-aware coat and pattern catalog covering coats, plumage, coloration,
+  and morphs, with automatic form filtering, clinic-owned `Other` entries,
+  structured patient links, search, and catalog navigation.
 
 ### Changed
 

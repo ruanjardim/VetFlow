@@ -122,6 +122,53 @@ class PatientCatalogController
             ->with('success', 'Raça ou variedade adicionada ao catálogo da clínica.');
     }
 
+    public function coats(Request $request)
+    {
+        $clinicId = $this->selectedClinicId($request);
+        $speciesRows = $this->taxonomy->managementSpecies($clinicId);
+        $selectedSpeciesId = (int) $request->query('species_id', $speciesRows->first()?->id);
+        $selectedSpecies = $speciesRows->firstWhere('id', $selectedSpeciesId);
+
+        if (! $selectedSpecies && $speciesRows->isNotEmpty()) {
+            $selectedSpecies = $speciesRows->first();
+            $selectedSpeciesId = (int) $selectedSpecies->id;
+        }
+
+        return view('patients.catalog.coats', [
+            'speciesRows' => $speciesRows,
+            'selectedSpecies' => $selectedSpecies,
+            'coatRows' => $selectedSpecies
+                ? $this->taxonomy->managementCoats($selectedSpeciesId, $clinicId)
+                : collect(),
+            'clinics' => $this->availableClinics(),
+            'selectedClinicId' => $clinicId,
+            'requiresClinic' => $this->tenant->isGlobal(),
+        ]);
+    }
+
+    public function storeCoat(Request $request)
+    {
+        $validated = $request->validate([
+            'animal_species_id' => ['required', 'integer'],
+            'name' => ['required', 'string', 'max:120'],
+            'clinic_id' => ['nullable', 'integer', Rule::exists('clinics', 'id')->where('active', true)],
+        ]);
+        $clinicId = $this->targetClinicId($validated);
+
+        $this->taxonomy->createCustomCoat(
+            (int) $validated['animal_species_id'],
+            $validated['name'],
+            $clinicId
+        );
+
+        return redirect()
+            ->route('patient-catalog.coats', array_filter([
+                'clinic_id' => $clinicId,
+                'species_id' => $validated['animal_species_id'],
+            ]))
+            ->with('success', 'Pelagem ou padrão adicionado ao catálogo da clínica.');
+    }
+
     private function selectedClinicId(Request $request): ?int
     {
         if (! $this->tenant->isGlobal()) {
