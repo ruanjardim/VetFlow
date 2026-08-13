@@ -342,9 +342,10 @@
         <thead>
           <tr>
             <th>Periodo</th>
-            <th>Esperado</th>
-            <th>Contado</th>
-            <th>Diferenca</th>
+            <th>Total esperado</th>
+            <th>Total conferido</th>
+            <th>Diferenca total</th>
+            <th>Por forma</th>
             <th>Status</th>
             <th>Fechado em</th>
           </tr>
@@ -353,9 +354,24 @@
           @forelse($summary['closures'] as $closure)
             <tr>
               <td>{{ $closure->period_from->format('d/m/Y') }} a {{ $closure->period_to->format('d/m/Y') }}</td>
-              <td>{{ $money($closure->expected_cash) }}</td>
-              <td>{{ $money($closure->counted_cash) }}</td>
-              <td>{{ $money($closure->cash_difference) }}</td>
+              <td>{{ $money($closure->expected_total) }}</td>
+              <td>{{ $money($closure->counted_total) }}</td>
+              <td>{{ $money($closure->total_difference) }}</td>
+              <td>
+                @forelse(data_get($closure->metadata, 'payment_reconciliation', []) as $method)
+                  @if(abs((float) ($method['expected'] ?? 0)) >= 0.01 || abs((float) ($method['counted'] ?? 0)) >= 0.01 || abs((float) ($method['difference'] ?? 0)) >= 0.01)
+                    <div>
+                      <strong>{{ $method['label'] ?? $method['method'] }}:</strong>
+                      {{ $money($method['counted'] ?? 0) }}
+                      @if(abs((float) ($method['difference'] ?? 0)) >= 0.01)
+                        <span class="badge warning">{{ $money($method['difference']) }}</span>
+                      @endif
+                    </div>
+                  @endif
+                @empty
+                  <span class="muted">Fechamento anterior</span>
+                @endforelse
+              </td>
               <td>
                 @if($closure->status === 'balanced')
                   <span class="badge success">Conferido</span>
@@ -367,7 +383,7 @@
             </tr>
           @empty
             <tr>
-              <td colspan="6" class="muted">Nenhum fechamento registrado ainda.</td>
+              <td colspan="7" class="muted">Nenhum fechamento registrado ainda.</td>
             </tr>
           @endforelse
         </tbody>

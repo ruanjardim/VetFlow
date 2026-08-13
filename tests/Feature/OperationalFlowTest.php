@@ -11,6 +11,7 @@ use App\Modules\Commissions\Services\CommissionService;
 use App\Modules\Financial\Models\FinancialTransaction;
 use App\Modules\Inventory\Models\InventoryMovement;
 use App\Modules\Products\Models\Product;
+use App\Modules\Sales\Models\CashRegisterClosure;
 use App\Modules\Sales\Models\Sale;
 use App\Modules\Sales\Models\SaleEvent;
 use App\Modules\Sales\Services\SaleService;
@@ -211,6 +212,156 @@ class OperationalFlowTest extends TestCase
         $this->assertEquals(10.0, (float) $performance[$sellerB->id]['received']);
         $this->assertEquals(20.0, (float) $performance[$sellerB->id]['pending']);
         $this->assertEquals(20.0, (float) $performance[$sellerB->id]['gross_profit']);
+    }
+
+    public function test_cashier_closure_reconciles_each_payment_method_after_change_and_refunds(): void
+    {
+        $clinic = $this->clinic('Clinica Conferencia', '00000000000205');
+        $cashProduct = $this->product($clinic, 'Produto dinheiro', stock: 5, costPrice: 10, salePrice: 50);
+        $pixProduct = $this->product($clinic, 'Produto pix', stock: 5, costPrice: 10, salePrice: 40);
+        $user = $this->userForClinic($clinic, ['sales.manage']);
+
+        $this->actingAs($user)->post(route('sales.store'), [
+            'status' => 'completed',
+            'items' => [[
+                'type' => 'product',
+                'product_id' => $cashProduct->id,
+                'description' => 'Produto dinheiro',
+                'quantity' => '1',
+                'unit_price' => '50',
+            ]],
+            'payments' => [[
+                'method' => 'cash',
+                'amount' => '60',
+            ]],
+        ])->assertRedirect(route('sales.index'));
+
+        $this->post(route('sales.store'), [
+            'status' => 'completed',
+            'items' => [[
+                'type' => 'product',
+                'product_id' => $pixProduct->id,
+                'description' => 'Produto pix',
+                'quantity' => '2',
+                'unit_price' => '40',
+            ]],
+            'payments' => [[
+                'method' => 'pix',
+                'amount' => '80',
+            ]],
+        ])->assertRedirect(route('sales.index'));
+
+        $pixSale = Sale::query()
+            ->with('items')
+            ->where('total', 80)
+            ->firstOrFail();
+
+        $this->post(route('sales.returns.store', $pixSale->id), [
+            'reason' => 'Estorno parcial no Pix',
+            'refund_method' => 'pix',
+            'refund_amount' => '10',
+            'items' => [
+                $pixSale->items->first()->id => ['quantity' => '1'],
+            ],
+        ])->assertRedirect(route('sales.edit', $pixSale->id));
+
+        $summary = app(SaleService::class)->cashierSummary(today()->toDateString(), today()->toDateString());
+        $methods = collect($summary['payment_reconciliation'])->keyBy('method');
+
+        $this->assertEquals(50.0, (float) $methods['cash']['expected']);
+        $this->assertEquals(60.0, (float) $methods['cash']['received']);
+        $this->assertEquals(10.0, (float) $methods['cash']['change']);
+        $this->assertEquals(70.0, (float) $methods['pix']['expected']);
+        $this->assertEquals(10.0, (float) $methods['pix']['refunds']);
+        $this->assertEquals(120.0, (float) $summary['stats']['reconciled_total']);
+
+        $this->post(route('sales.cashier.close.store'), [
+            'period_from' => today()->toDateString(),
+            'period_to' => today()->toDateString(),
+            'counted_methods' => [
+                'cash' => '48,00',
+                'pix' => '70,00',
+                'debit_card' => '0',
+                'credit_card' => '0',
+                'transfer' => '0',
+                'other' => '0',
+            ],
+            'notes' => 'Diferenca de dinheiro conferida.',
+        ])
+            ->assertRedirect(route('sales.cashier', [
+                'from' => today()->toDateString(),
+                'to' => today()->toDateString(),
+            ]))
+            ->assertSessionDoesntHaveErrors();
+
+        $closure = CashRegisterClosure::query()->firstOrFail();
+        $closureMethods = collect($closure->metadata['payment_reconciliation'])->keyBy('method');
+
+        $this->assertSame($clinic->id, (int) $closure->clinic_id);
+        $this->assertSame($user->id, (int) $closure->closed_by_user_id);
+        $this->assertSame('difference', $closure->status);
+        $this->assertEquals(120.0, (float) $closure->expected_total);
+        $this->assertEquals(118.0, (float) $closure->counted_total);
+        $this->assertEquals(-2.0, (float) $closure->total_difference);
+        $this->assertEquals(-2.0, (float) $closureMethods['cash']['difference']);
+        $this->assertEquals(0.0, (float) $closureMethods['pix']['difference']);
+        $this->assertSame('by_method', $closure->metadata['reconciliation_source']);
+    }
+
+    public function test_cashier_closure_requires_sales_permission(): void
+    {
+        $clinic = $this->clinic('Clinica Sem Caixa', '00000000000206');
+        $user = $this->userForClinic($clinic, []);
+
+        $this->actingAs($user)
+            ->get(route('sales.cashier.close'))
+            ->assertForbidden();
+
+        $this->post(route('sales.cashier.close.store'), [
+            'counted_methods' => ['cash' => '0'],
+        ])->assertForbidden();
+
+        $this->assertDatabaseCount('cash_register_closures', 0);
+    }
+
+    public function test_cashier_closure_history_is_isolated_by_clinic(): void
+    {
+        $clinicA = $this->clinic('Clinica Fechamento A', '00000000000207');
+        $clinicB = $this->clinic('Clinica Fechamento B', '00000000000208');
+        $userA = $this->userForClinic($clinicA, ['sales.manage']);
+        $userB = $this->userForClinic($clinicB, ['sales.manage']);
+        $emptyConference = [
+            'cash' => '0',
+            'pix' => '0',
+            'debit_card' => '0',
+            'credit_card' => '0',
+            'transfer' => '0',
+            'other' => '0',
+        ];
+
+        $this->actingAs($userA)->post(route('sales.cashier.close.store'), [
+            'counted_methods' => $emptyConference,
+            'notes' => 'Fechamento A',
+        ])->assertSessionDoesntHaveErrors();
+
+        $this->actingAs($userB)->post(route('sales.cashier.close.store'), [
+            'counted_methods' => $emptyConference,
+            'notes' => 'Fechamento B',
+        ])->assertSessionDoesntHaveErrors();
+
+        $this->actingAs($userA);
+        $summaryA = app(SaleService::class)->cashierSummary();
+
+        $this->assertCount(1, $summaryA['closures']);
+        $this->assertSame($clinicA->id, (int) $summaryA['closures']->first()->clinic_id);
+        $this->assertSame('Fechamento A', $summaryA['closures']->first()->notes);
+
+        $this->actingAs($userB);
+        $summaryB = app(SaleService::class)->cashierSummary();
+
+        $this->assertCount(1, $summaryB['closures']);
+        $this->assertSame($clinicB->id, (int) $summaryB['closures']->first()->clinic_id);
+        $this->assertSame('Fechamento B', $summaryB['closures']->first()->notes);
     }
 
     public function test_commission_preview_uses_paid_sales_and_partial_receipts_according_to_each_rule(): void

@@ -66,17 +66,35 @@ class SaleController extends BaseCrudController
         $payload = $request->all();
         $payload['counted_cash'] = $this->normalizeDecimal($payload['counted_cash'] ?? null);
         $payload['counted_total'] = $this->normalizeDecimal($payload['counted_total'] ?? null);
+
+        if (isset($payload['counted_methods']) && is_array($payload['counted_methods'])) {
+            $payload['counted_methods'] = array_map(
+                fn ($value) => $this->normalizeDecimal($value),
+                $payload['counted_methods']
+            );
+        }
+
         $request->merge($payload);
 
-        $validated = $request->validate([
+        $paymentMethodKeys = implode(',', array_keys(SaleService::PAYMENT_METHOD_LABELS));
+
+        $rules = [
             'period_from' => ['nullable', 'date'],
             'period_to' => ['nullable', 'date'],
             'clinic_id' => ['nullable', 'integer', 'exists:clinics,id'],
             'unit_id' => ['nullable', 'integer'],
-            'counted_cash' => ['required', 'numeric', 'min:0'],
+            'counted_methods' => ['required_without:counted_cash', 'array:'.$paymentMethodKeys, 'min:1'],
+            'counted_methods.*' => ['required', 'numeric', 'min:0'],
+            'counted_cash' => ['required_without:counted_methods', 'nullable', 'numeric', 'min:0'],
             'counted_total' => ['nullable', 'numeric', 'min:0'],
             'notes' => ['nullable', 'string'],
-        ]);
+        ];
+
+        foreach (array_keys(SaleService::PAYMENT_METHOD_LABELS) as $method) {
+            $rules['counted_methods.'.$method] = ['required_with:counted_methods', 'numeric', 'min:0'];
+        }
+
+        $validated = $request->validate($rules);
 
         $this->service->closeCashier($validated);
 

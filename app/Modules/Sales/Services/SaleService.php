@@ -23,6 +23,15 @@ use Illuminate\Validation\ValidationException;
 
 class SaleService extends BaseService
 {
+    public const PAYMENT_METHOD_LABELS = [
+        'cash' => 'Dinheiro',
+        'pix' => 'Pix',
+        'debit_card' => 'Cartao debito',
+        'credit_card' => 'Cartao credito',
+        'transfer' => 'Transferencia',
+        'other' => 'Outro',
+    ];
+
     public function __construct(
         SaleRepositoryInterface $repository,
         private readonly InventoryMovementService $inventoryMovementService,
@@ -479,6 +488,8 @@ class SaleService extends BaseService
         $refunds = $refundEvents->sum(fn (SaleEvent $event) => (float) $event->amount);
         $change = $sales->sum(fn (Sale $sale) => (float) $sale->change_total);
         $pending = $sales->sum(fn (Sale $sale) => max(0, (float) $sale->total - (float) $sale->paid_total));
+        $paymentReconciliation = $this->paymentReconciliation($payments, $refundEvents, $change);
+        $reconciledTotal = collect($paymentReconciliation)->sum('expected');
 
         return [
             'period' => [
@@ -505,10 +516,12 @@ class SaleService extends BaseService
                 'non_cash_received' => max(0, $received - $cashReceived),
                 'change' => $change,
                 'cash_drawer' => max(0, $cashReceived - $change - $cashRefunds),
+                'reconciled_total' => $reconciledTotal,
                 'pending' => $pending,
                 'average_ticket' => $sales->count() > 0 ? $total / $sales->count() : 0,
             ],
             'payments_by_method' => $this->paymentsByMethod($payments),
+            'payment_reconciliation' => $paymentReconciliation,
             'seller_performance' => $this->sellerPerformance($sales, $payments),
             'recent_sales' => $sales->take(20)->values(),
             'open_sales' => $openSales,
@@ -530,11 +543,31 @@ class SaleService extends BaseService
             $periodFrom = Carbon::parse($period['from'])->startOfDay();
             $periodTo = Carbon::parse($period['to'])->endOfDay();
             $expectedCash = round((float) $stats['cash_drawer'], 2);
-            $expectedTotal = round((float) $stats['net_received'], 2);
-            $countedCash = round((float) ($data['counted_cash'] ?? 0), 2);
-            $countedTotal = round((float) ($data['counted_total'] ?? $expectedTotal), 2);
+            $expectedTotal = round((float) $stats['reconciled_total'], 2);
+            $hasMethodReconciliation = isset($data['counted_methods']) && is_array($data['counted_methods']);
+            $methodReconciliation = collect($summary['payment_reconciliation'])
+                ->map(function (array $method) use ($data, $hasMethodReconciliation) {
+                    $counted = $hasMethodReconciliation
+                        ? (float) ($data['counted_methods'][$method['method']] ?? 0)
+                        : ($method['method'] === 'cash'
+                            ? (float) ($data['counted_cash'] ?? 0)
+                            : (float) $method['expected']);
+
+                    return array_merge($method, [
+                        'counted' => round($counted, 2),
+                        'difference' => round($counted - (float) $method['expected'], 2),
+                    ]);
+                })
+                ->values()
+                ->all();
+            $countedCash = round((float) collect($methodReconciliation)->firstWhere('method', 'cash')['counted'], 2);
+            $countedTotal = $hasMethodReconciliation
+                ? round((float) collect($methodReconciliation)->sum('counted'), 2)
+                : round((float) ($data['counted_total'] ?? $expectedTotal), 2);
             $cashDifference = round($countedCash - $expectedCash, 2);
             $totalDifference = round($countedTotal - $expectedTotal, 2);
+            $methodsBalanced = collect($methodReconciliation)
+                ->every(fn (array $method) => abs((float) $method['difference']) < 0.01);
 
             return CashRegisterClosure::query()->create([
                 'clinic_id' => $data['clinic_id'] ?? null,
@@ -549,7 +582,9 @@ class SaleService extends BaseService
                 'expected_total' => $expectedTotal,
                 'counted_total' => $countedTotal,
                 'total_difference' => $totalDifference,
-                'status' => abs($cashDifference) < 0.01 && abs($totalDifference) < 0.01
+                'status' => abs($cashDifference) < 0.01
+                    && abs($totalDifference) < 0.01
+                    && (! $hasMethodReconciliation || $methodsBalanced)
                     ? 'balanced'
                     : 'difference',
                 'notes' => $data['notes'] ?? null,
@@ -561,6 +596,9 @@ class SaleService extends BaseService
                     'cash_received' => $stats['cash_received'],
                     'cash_refunds' => $stats['cash_refunds'],
                     'change' => $stats['change'],
+                    'payment_reconciliation_version' => 1,
+                    'payment_reconciliation' => $methodReconciliation,
+                    'reconciliation_source' => $hasMethodReconciliation ? 'by_method' : 'legacy_totals',
                 ],
             ]);
         });
@@ -1128,6 +1166,34 @@ class SaleService extends BaseService
             ->all();
     }
 
+    private function paymentReconciliation($payments, $refundEvents, float $change): array
+    {
+        $receivedByMethod = $payments
+            ->groupBy('method')
+            ->map(fn ($items) => round((float) $items->sum('amount'), 2));
+        $refundsByMethod = $refundEvents
+            ->groupBy(fn (SaleEvent $event) => $event->metadata['refund_method'] ?? 'other')
+            ->map(fn ($items) => round((float) $items->sum('amount'), 2));
+
+        return collect(self::PAYMENT_METHOD_LABELS)
+            ->map(function (string $label, string $method) use ($receivedByMethod, $refundsByMethod, $change) {
+                $received = (float) $receivedByMethod->get($method, 0);
+                $refunds = (float) $refundsByMethod->get($method, 0);
+                $cashChange = $method === 'cash' ? $change : 0;
+
+                return [
+                    'method' => $method,
+                    'label' => $label,
+                    'received' => round($received, 2),
+                    'refunds' => round($refunds, 2),
+                    'change' => round($cashChange, 2),
+                    'expected' => round(max(0, $received - $refunds - $cashChange), 2),
+                ];
+            })
+            ->values()
+            ->all();
+    }
+
     private function sellerPerformance($sales, $payments): array
     {
         $salesBySeller = $sales->groupBy(
@@ -1190,13 +1256,6 @@ class SaleService extends BaseService
 
     private function paymentMethodLabel(string $method): string
     {
-        return match ($method) {
-            'cash' => 'Dinheiro',
-            'pix' => 'Pix',
-            'debit_card' => 'Cartao debito',
-            'credit_card' => 'Cartao credito',
-            'transfer' => 'Transferencia',
-            default => 'Outro',
-        };
+        return self::PAYMENT_METHOD_LABELS[$method] ?? 'Outro';
     }
 }

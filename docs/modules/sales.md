@@ -58,6 +58,10 @@ financial income, returns, refunds, cancellations, and sale event history.
   cancelling the original income record.
 - Cashier summary uses completed sales, paid payments, refunds, change, and
   pending totals for the selected period.
+- Cashier closure reconciles each supported payment method separately. The
+  expected value deducts refunds recorded in that method and, for cash, also
+  deducts change. Expected, counted, and difference values are preserved in
+  closure metadata so existing closure columns and records remain compatible.
 - Pending, cancelled, and refunded payment rows never compose the amount paid
   on a sale or the cash received by the cashier.
 - The cashier report exposes operator performance for operational review. It is
