@@ -1,6 +1,6 @@
 # VetFlow Roadmap
 
-Updated: 2026-08-01
+Updated: 2026-08-12
 
 This roadmap describes the product direction that should stay visible while VetFlow evolves. It is intentionally high-level and should be revised as implementation priorities change.
 
@@ -47,6 +47,9 @@ The product should feel different from a generic CRUD system by connecting the c
 - Sales expose realized gross profitability by item type, category, and item,
   adjusted for discounts and returns while preserving historical cost
   snapshots.
+- Appointments have an assisted reminder queue with prepared WhatsApp contact,
+  explicit operator-recorded outcomes, status synchronization, and a
+  clinic-scoped audit history.
 
 ## Current Near-Term Priorities
 
@@ -92,5 +95,4 @@ The product should feel different from a generic CRUD system by connecting the c
 
 - Guided onboarding for a new clinic.
 - Supplier lead-time and demand signals for future replenishment tuning.
-- Appointment reminders and follow-up workflows.
 - Audit trail for sensitive operational changes.

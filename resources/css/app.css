@@ -1438,6 +1438,48 @@ textarea {
   max-width: 920px;
 }
 
+.appointment-reminders-table {
+  min-width: 1180px;
+}
+
+.reminder-contact {
+  min-width: 210px;
+}
+
+.reminder-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-width: 260px;
+}
+
+.reminder-details {
+  margin-top: 10px;
+}
+
+.reminder-details summary {
+  color: #0f766e;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.reminder-form {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(2, minmax(150px, 1fr));
+  margin-top: 8px;
+  min-width: 420px;
+  padding: 12px;
+}
+
+.reminder-form .full {
+  grid-column: 1 / -1;
+}
+
 .receipt-header {
   align-items: flex-start;
   border-bottom: 1px solid #e2e8f0;

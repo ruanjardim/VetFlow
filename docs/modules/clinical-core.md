@@ -28,6 +28,8 @@ lookup behavior.
 - Register tutors/customers.
 - Register patients/pets linked to tutors and clinics.
 - Manage schedules and appointments.
+- Prepare appointment reminders, record contact outcomes, and retain their
+  clinic-scoped history.
 - View schedules and appointments together in day, week, and month views.
 - Register clinical records linked to appointments and patients.
 - Track vaccination schedules and applications by patient.
@@ -64,6 +66,7 @@ existing tenant validation remains authoritative.
 - `patients`
 - `schedules`
 - `appointments`
+- `appointment_reminders`
 - `medical_records`
 - `vaccinations`
 - `petshop_services`
@@ -97,6 +100,19 @@ duplicating them. It supports day, week, and month navigation and keeps the
 same tenant scope as the source records. Selecting an event opens its existing
 edit screen.
 
+## Appointment Reminders
+
+The reminder queue presents scheduled and confirmed appointments for today and
+the next two days by default. It can prepare a WhatsApp message, but the operator
+remains responsible for reviewing and sending the contact. Each actual attempt
+is recorded with its channel, outcome, destination snapshot, notes, timestamp,
+and recording user.
+
+A confirmed outcome updates a scheduled appointment to `confirmed`; a cancelled
+outcome updates it to `cancelled` and removes it from the active queue without
+deleting the contact history. The complete workflow is documented in
+[Appointment Reminders](appointment-reminders.md).
+
 ## Permissions
 
 Relevant permission slugs:
@@ -121,3 +137,7 @@ through the same application routes used by the interface: Responsavel,
 Patient, Schedule, Appointment, Medical Record, and Vaccination. It confirms
 that every resulting record remains linked to the same clinic, patient, and
 responsible person.
+
+`tests/Feature/AppointmentReminderFlowTest.php` covers reminder preparation,
+outcome side effects, audit history, channel validation, permissions, and
+cross-clinic isolation.

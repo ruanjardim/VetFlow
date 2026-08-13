@@ -67,6 +67,9 @@ This project follows the spirit of Keep a Changelog, with one practical adjustme
 - Sales profitability report with period and item-type filters, proportional
   sale-discount allocation, return-adjusted revenue and cost, category/item
   breakdowns, and missing-cost or negative-margin alerts.
+- Assisted appointment reminder queue with prepared WhatsApp messages, contact
+  outcome tracking, appointment confirmation/cancellation synchronization,
+  destination snapshots, and clinic-scoped audit history.
 
 ### Changed
 

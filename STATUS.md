@@ -1,6 +1,6 @@
 # VetFlow Status
 
-Updated: 2026-08-01
+Updated: 2026-08-12
 
 ## Current State
 
@@ -42,6 +42,9 @@ The local working tree was clean before this documentation pass.
 - Explainable replenishment suggestions that prioritize low-stock products,
   use recent received-purchase batches when the history is sufficient, and
   prefill a reviewable purchase entry without creating an automatic order.
+- An assisted appointment reminder queue that prepares WhatsApp contact and
+  records operator-confirmed outcomes, status changes, and an auditable contact
+  history without claiming automatic delivery.
 
 ## GitHub Scan Summary
 
