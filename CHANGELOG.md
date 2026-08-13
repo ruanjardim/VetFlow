@@ -70,6 +70,12 @@ This project follows the spirit of Keep a Changelog, with one practical adjustme
 - Assisted appointment reminder queue with prepared WhatsApp messages, contact
   outcome tracking, appointment confirmation/cancellation synchronization,
   destination snapshots, and clinic-scoped audit history.
+- Expandable permission-aware sidebar navigation grouped by clinical care,
+  agenda, sales and services, stock and purchasing, finance, catalogs, and
+  administration.
+- Extensible species and breed catalog for companion, exotic, wildlife, aquatic,
+  and large-animal care, with clinic-owned `Other` entries and structured
+  patient links that preserve legacy text snapshots.
 
 ### Changed
 

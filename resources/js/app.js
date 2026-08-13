@@ -7,6 +7,81 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
+  const patientForm = document.querySelector('[data-patient-form]');
+
+  if (patientForm) {
+    const tutorSelect = patientForm.querySelector('#tutor_id');
+    const speciesSelect = patientForm.querySelector('[data-patient-species]');
+    const breedSelect = patientForm.querySelector('[data-patient-breed]');
+    const newSpeciesField = patientForm.querySelector('[data-new-species-field]');
+    const newBreedField = patientForm.querySelector('[data-new-breed-field]');
+    const newSpeciesInput = patientForm.querySelector('#new_species');
+    const newBreedInput = patientForm.querySelector('#new_breed');
+
+    const selectedClinicId = () => tutorSelect?.selectedOptions?.[0]?.dataset.clinicId || '';
+
+    const updateTaxonomyFields = () => {
+      const clinicId = selectedClinicId();
+      const speciesId = speciesSelect?.value || '';
+
+      speciesSelect?.querySelectorAll('option[data-clinic-id]').forEach((option) => {
+        const available = !option.dataset.clinicId || !clinicId || option.dataset.clinicId === clinicId;
+        option.hidden = !available;
+        option.disabled = !available;
+      });
+
+      if (speciesSelect?.selectedOptions?.[0]?.disabled) {
+        speciesSelect.value = '';
+      }
+
+      breedSelect?.querySelectorAll('option[data-species-id]').forEach((option) => {
+        const sameSpecies = option.dataset.speciesId === speciesSelect?.value;
+        const sameClinic = !option.dataset.clinicId || !clinicId || option.dataset.clinicId === clinicId;
+        const available = sameSpecies && sameClinic;
+        option.hidden = !available;
+        option.disabled = !available;
+      });
+
+      if (breedSelect?.selectedOptions?.[0]?.disabled) {
+        breedSelect.value = '';
+      }
+
+      const customSpecies = speciesSelect?.value === 'other';
+      const customBreed = customSpecies || breedSelect?.value === 'other';
+
+      if (newSpeciesField) {
+        newSpeciesField.hidden = !customSpecies;
+      }
+
+      if (newSpeciesInput) {
+        newSpeciesInput.required = customSpecies;
+      }
+
+      if (newBreedField) {
+        newBreedField.hidden = !customBreed;
+      }
+
+      if (newBreedInput) {
+        newBreedInput.required = breedSelect?.value === 'other';
+      }
+
+      if (breedSelect) {
+        breedSelect.disabled = !speciesSelect?.value;
+      }
+    };
+
+    tutorSelect?.addEventListener('change', updateTaxonomyFields);
+    speciesSelect?.addEventListener('change', () => {
+      if (breedSelect) {
+        breedSelect.value = '';
+      }
+
+      updateTaxonomyFields();
+    });
+    breedSelect?.addEventListener('change', updateTaxonomyFields);
+    updateTaxonomyFields();
+  }
+
   const normalizeBarcode = (value) => value.replace(/\D+/g, '');
 
   const setLookupStatus = (status, message, state = '') => {

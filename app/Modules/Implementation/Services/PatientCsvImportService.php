@@ -6,6 +6,7 @@ use App\Core\Support\DocumentNormalizer;
 use App\Core\Validation\Rules\ValidCpf;
 use App\Modules\Implementation\Contracts\CsvImportService;
 use App\Modules\Patients\Models\Patient;
+use App\Modules\Patients\Services\PatientTaxonomyService;
 use App\Modules\Tutors\Models\Tutor;
 use DateTimeImmutable;
 use DomainException;
@@ -62,6 +63,10 @@ class PatientCsvImportService implements CsvImportService
             'target_label' => 'Observações',
         ],
     ];
+
+    public function __construct(private readonly PatientTaxonomyService $taxonomy)
+    {
+    }
 
     /**
      * @return array<int, array<string, string>>
@@ -237,12 +242,19 @@ class PatientCsvImportService implements CsvImportService
                     throw new DomainException(implode(' ', array_unique($errors)));
                 }
 
+                $taxonomy = $this->taxonomy->applyToPatientData([
+                    'species' => $values['species'],
+                    'breed' => $values['breed'],
+                ], $clinicId);
+
                 Patient::query()->create([
                     'clinic_id' => $clinicId,
                     'tutor_id' => $tutor->id,
                     'name' => $values['name'],
-                    'species' => $values['species'],
-                    'breed' => $values['breed'],
+                    'animal_species_id' => $taxonomy['animal_species_id'],
+                    'species' => $taxonomy['species'],
+                    'animal_breed_id' => $taxonomy['animal_breed_id'],
+                    'breed' => $taxonomy['breed'],
                     'gender' => $values['gender'],
                     'birth_date' => $values['birth_date'],
                     'weight' => $values['weight'],

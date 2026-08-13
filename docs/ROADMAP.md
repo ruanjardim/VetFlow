@@ -1,6 +1,6 @@
 # VetFlow Roadmap
 
-Updated: 2026-08-12
+Updated: 2026-08-13
 
 This roadmap describes the product direction that should stay visible while VetFlow evolves. It is intentionally high-level and should be revised as implementation priorities change.
 
@@ -50,6 +50,9 @@ The product should feel different from a generic CRUD system by connecting the c
 - Appointments have an assisted reminder queue with prepared WhatsApp contact,
   explicit operator-recorded outcomes, status synchronization, and a
   clinic-scoped audit history.
+- Navigation is grouped into permission-aware expandable modules, and patient
+  registration uses an extensible species and breed catalog that supports
+  exotic, wildlife, aquatic, and large-animal practices.
 
 ## Current Near-Term Priorities
 

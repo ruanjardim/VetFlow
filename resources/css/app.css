@@ -41,7 +41,11 @@ textarea {
 .sidebar {
   background: #17202b;
   color: #f8fafc;
+  max-height: 100vh;
+  overflow-y: auto;
   padding: 24px 18px;
+  position: sticky;
+  top: 0;
 }
 
 .brand {
@@ -74,6 +78,69 @@ textarea {
 .nav a.is-active {
   background: #243244;
   color: #ffffff;
+}
+
+.nav-group {
+  border-radius: 8px;
+}
+
+.nav-group summary {
+  align-items: center;
+  border-radius: 8px;
+  color: #dbe3ed;
+  cursor: pointer;
+  display: flex;
+  font-size: 14px;
+  font-weight: 700;
+  justify-content: space-between;
+  list-style: none;
+  padding: 10px 12px;
+  user-select: none;
+}
+
+.nav-group summary::-webkit-details-marker {
+  display: none;
+}
+
+.nav-group summary:hover,
+.nav-group[open] > summary {
+  background: #202d3d;
+  color: #ffffff;
+}
+
+.nav-chevron {
+  color: #94a3b8;
+  font-size: 18px;
+  line-height: 1;
+  transform: rotate(-90deg);
+  transition: transform 160ms ease;
+}
+
+.nav-group[open] .nav-chevron {
+  transform: rotate(0deg);
+}
+
+.nav-submenu {
+  border-left: 1px solid #344357;
+  display: grid;
+  gap: 3px;
+  margin: 4px 0 8px 12px;
+  padding-left: 8px;
+}
+
+.nav-submenu a {
+  font-size: 13px;
+  padding: 8px 10px;
+}
+
+.catalog-layout {
+  grid-template-columns: minmax(0, 2fr) minmax(280px, 0.8fr);
+}
+
+.catalog-create-card {
+  align-self: start;
+  position: sticky;
+  top: 20px;
 }
 
 .main {
@@ -1938,6 +2005,7 @@ textarea {
   }
 
   .sidebar {
+    max-height: none;
     position: static;
   }
 

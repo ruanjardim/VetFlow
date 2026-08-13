@@ -26,7 +26,11 @@ class StorePatientRequest extends FormRequest
         return [
             'tutor_id' => ['required', 'integer', $tutorExists],
             'name' => ['required', 'string', 'max:255'],
+            'species_choice' => ['nullable', 'string', 'max:30'],
+            'new_species' => ['nullable', 'string', 'max:120'],
             'species' => ['nullable', 'string', 'max:255'],
+            'breed_choice' => ['nullable', 'string', 'max:30'],
+            'new_breed' => ['nullable', 'string', 'max:120'],
             'breed' => ['nullable', 'string', 'max:255'],
             'gender' => ['nullable', 'string', 'max:50'],
             'birth_date' => ['nullable', 'date', 'before_or_equal:today'],

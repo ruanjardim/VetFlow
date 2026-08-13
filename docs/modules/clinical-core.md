@@ -48,22 +48,27 @@ reference.
 The Patient screens expose the Tutor relationship, and the repository loads it
 with the Patient list to avoid repeated queries.
 
-Species remains an open field so clinics can register animals beyond dogs and
-cats. The form suggests common veterinary groups such as Canino, Felino,
-Equino, Bovino, Ave, and Répteis, while allowing any other value when needed.
-Patient edits apply the same tutor and clinic validation as patient creation.
+Species and breeds use an extensible catalog that covers companion animals,
+birds, reptiles and amphibians, aquatic animals, large animals, and wildlife
+classifications. Standard entries are shared, while custom entries remain
+scoped to the clinic that created them. The `Other` option creates a reusable
+entry instead of storing a generic label. The legacy text snapshots remain for
+compatibility with existing records and integrations. See
+[Patient Species And Breeds](patient-taxonomy.md).
 
-The Patient form groups the existing fields into identification and initial
-clinical reference sections; it does not add or alter database columns. From
-the patient list, permitted users can start a schedule or appointment with the
-patient and linked responsible person preselected. Changing the patient in
-either form updates the selected responsible person as a convenience only; the
-existing tenant validation remains authoritative.
+The Patient form groups identification, structured species/breed references,
+and initial clinical data. From the patient list, permitted users can start a
+schedule or appointment with the patient and linked responsible person
+preselected. Changing the patient in either form updates the selected
+responsible person as a convenience only; the existing tenant validation
+remains authoritative.
 
 ## Tables
 
 - `tutors`
 - `patients`
+- `animal_species`
+- `animal_breeds`
 - `schedules`
 - `appointments`
 - `appointment_reminders`
@@ -131,6 +136,10 @@ Relevant permission slugs:
 Relevant coverage is present in
 `tests/Feature/PurchaseAndClinicalFlowTest.php` and
 `tests/Feature/PatientTutorFoundationTest.php`.
+
+`tests/Feature/PatientTaxonomyFlowTest.php` validates the standard and custom
+catalogs, species-to-breed relationships, legacy-compatible snapshots,
+expandable navigation, and cross-clinic isolation.
 
 `tests/Feature/ClinicalPilotFlowTest.php` validates the complete clinic flow
 through the same application routes used by the interface: Responsavel,

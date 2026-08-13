@@ -12,7 +12,7 @@
 
   <div class="panel">
     <div class="panel-body">
-      <form method="POST" action="{{ route('patients.store') }}">
+      <form method="POST" action="{{ route('patients.store') }}" data-patient-form>
         @csrf
         @include('patients.form', ['patient' => null])
       </form>

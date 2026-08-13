@@ -6,12 +6,15 @@ use App\Core\Base\BaseCrudController;
 use App\Modules\Patients\Requests\StorePatientRequest;
 use App\Modules\Patients\Requests\UpdatePatientRequest;
 use App\Modules\Patients\Services\PatientService;
+use App\Modules\Patients\Services\PatientTaxonomyService;
 use App\Modules\Tutors\Models\Tutor;
 
 class PatientController extends BaseCrudController
 {
-    public function __construct(PatientService $service)
-    {
+    public function __construct(
+        PatientService $service,
+        private readonly PatientTaxonomyService $taxonomy
+    ) {
         $this->service = $service;
         $this->viewPath = 'patients';
         $this->routeName = 'patients';
@@ -20,17 +23,16 @@ class PatientController extends BaseCrudController
 
     public function create()
     {
-        return view('patients.create', [
-            'tutors' => $this->availableTutors(),
-        ]);
+        return view('patients.create', $this->formData());
     }
 
     public function edit(int $id)
     {
-        return view('patients.edit', [
-            'item' => $this->service->findOrFail($id),
-            'tutors' => $this->availableTutors(),
-        ]);
+        $patient = $this->service->findOrFail($id);
+
+        return view('patients.edit', array_merge($this->formData($patient), [
+            'item' => $patient,
+        ]));
     }
 
     protected function storeRequest(): string
@@ -48,5 +50,15 @@ class PatientController extends BaseCrudController
         return Tutor::query()
             ->orderBy('name')
             ->get();
+    }
+
+    private function formData(?object $patient = null): array
+    {
+        return [
+            'tutors' => $this->availableTutors(),
+            'speciesCatalog' => $this->taxonomy->formCatalog(),
+            'speciesCategories' => PatientTaxonomyService::CATEGORY_LABELS,
+            'taxonomySelection' => $this->taxonomy->selectedIds($patient),
+        ];
     }
 }
