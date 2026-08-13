@@ -3,6 +3,7 @@
 namespace App\Modules\Patients\Models;
 
 use App\Models\User;
+use App\Modules\MedicalRecords\Models\AnimalPathology;
 use App\Modules\Clinics\Models\Clinic;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -38,5 +39,15 @@ class AnimalSpecies extends Model
     public function preferredByUsers(): BelongsToMany
     {
         return $this->belongsToMany(User::class, 'user_animal_species')->withTimestamps();
+    }
+
+    public function pathologies(): BelongsToMany
+    {
+        return $this->belongsToMany(
+            AnimalPathology::class,
+            'animal_pathology_species',
+            'animal_species_id',
+            'animal_pathology_id'
+        );
     }
 }

@@ -5,13 +5,18 @@ namespace App\Modules\MedicalRecords\Services;
 use App\Core\Base\BaseService;
 use App\Modules\Appointments\Models\Appointment;
 use App\Modules\MedicalRecords\Contracts\MedicalRecordRepositoryInterface;
+use App\Modules\MedicalRecords\Models\MedicalRecord;
+use App\Modules\Patients\Models\Patient;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 class MedicalRecordService extends BaseService
 {
-    public function __construct(MedicalRecordRepositoryInterface $repository)
-    {
+    public function __construct(
+        MedicalRecordRepositoryInterface $repository,
+        private readonly PathologyCatalogService $pathologies
+    ) {
         $this->repository = $repository;
     }
 
@@ -25,9 +30,50 @@ class MedicalRecordService extends BaseService
             ]);
         }
 
-        $data['clinic_id'] = $appointment->clinic_id;
-        $data['created_by'] = auth()->id();
+        $patient = Patient::query()->findOrFail($data['patient_id']);
+        $clinicId = (int) $appointment->clinic_id;
+        $creatorId = auth()->id();
 
-        return parent::create($data);
+        return DB::transaction(function () use ($data, $patient, $clinicId, $creatorId): Model {
+            $pathologyIds = $this->pathologies->resolveForRecord(
+                $data['pathology_ids'] ?? [],
+                $data['new_pathology'] ?? null,
+                $patient,
+                $clinicId
+            );
+
+            unset($data['pathology_ids'], $data['new_pathology']);
+            $data['clinic_id'] = $clinicId;
+            $data['created_by'] = $creatorId;
+
+            /** @var MedicalRecord $medicalRecord */
+            $medicalRecord = parent::create($data);
+            $medicalRecord->pathologies()->sync($pathologyIds);
+
+            return $medicalRecord;
+        });
+    }
+
+    public function update(int $id, array $data): Model
+    {
+        /** @var MedicalRecord $medicalRecord */
+        $medicalRecord = $this->repository->findOrFail($id);
+        $patient = $medicalRecord->patient()->firstOrFail();
+        $clinicId = (int) $medicalRecord->clinic_id;
+
+        return DB::transaction(function () use ($medicalRecord, $patient, $clinicId, $data): Model {
+            $pathologyIds = $this->pathologies->resolveForRecord(
+                $data['pathology_ids'] ?? [],
+                $data['new_pathology'] ?? null,
+                $patient,
+                $clinicId
+            );
+
+            unset($data['pathology_ids'], $data['new_pathology']);
+            $this->repository->update($medicalRecord, $data);
+            $medicalRecord->pathologies()->sync($pathologyIds);
+
+            return $medicalRecord->refresh()->load('pathologies');
+        });
     }
 }

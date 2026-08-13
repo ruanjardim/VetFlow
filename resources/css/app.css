@@ -149,6 +149,28 @@ textarea {
   gap: 6px;
 }
 
+.catalog-reference-note {
+  color: #64748b;
+  font-size: 12px;
+  margin: 14px 2px 0;
+}
+
+.pathology-picker {
+  border: 1px solid #dbe3ee;
+  border-radius: 8px;
+  padding: 14px;
+}
+
+.pathology-picker select[multiple] {
+  min-height: 210px;
+}
+
+.pathology-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 .specialty-section {
   border-top: 1px solid #e2e8f0;
   margin-top: 22px;

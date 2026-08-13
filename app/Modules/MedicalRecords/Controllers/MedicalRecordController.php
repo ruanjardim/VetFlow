@@ -8,12 +8,17 @@ use App\Modules\MedicalRecords\Models\MedicalRecord;
 use App\Modules\MedicalRecords\Requests\StoreMedicalRecordRequest;
 use App\Modules\MedicalRecords\Requests\UpdateMedicalRecordRequest;
 use App\Modules\MedicalRecords\Services\MedicalRecordService;
+use App\Modules\MedicalRecords\Services\PathologyCatalogService;
 use App\Modules\Patients\Models\Patient;
+use App\Support\Tenancy\TenantContext;
 
 class MedicalRecordController extends BaseCrudController
 {
-    public function __construct(MedicalRecordService $service)
-    {
+    public function __construct(
+        MedicalRecordService $service,
+        private readonly PathologyCatalogService $pathologies,
+        private readonly TenantContext $tenant
+    ) {
         $this->service = $service;
         $this->viewPath = 'medical-records';
         $this->routeName = 'medical-records';
@@ -22,8 +27,10 @@ class MedicalRecordController extends BaseCrudController
 
     public function create()
     {
-        return view("{$this->viewPath}.create", array_merge($this->formData(), [
-            'preselectedAppointmentId' => (int) request()->query('appointment_id'),
+        $preselectedAppointmentId = (int) request()->query('appointment_id');
+
+        return view("{$this->viewPath}.create", array_merge($this->formData(null, $preselectedAppointmentId), [
+            'preselectedAppointmentId' => $preselectedAppointmentId,
             'preselectedPatientId' => (int) request()->query('patient_id'),
         ]));
     }
@@ -54,7 +61,7 @@ class MedicalRecordController extends BaseCrudController
         return UpdateMedicalRecordRequest::class;
     }
 
-    private function formData(?MedicalRecord $medicalRecord = null): array
+    private function formData(?MedicalRecord $medicalRecord = null, ?int $preselectedAppointmentId = null): array
     {
         $appointments = Appointment::query()
             ->with(['patient', 'tutor'])
@@ -70,9 +77,24 @@ class MedicalRecordController extends BaseCrudController
             ->latest('scheduled_at')
             ->get();
 
+        $catalogClinicId = $this->tenant->clinicId();
+
+        if ($catalogClinicId === null && $medicalRecord?->clinic_id) {
+            $catalogClinicId = (int) $medicalRecord->clinic_id;
+        }
+
+        if ($catalogClinicId === null && $preselectedAppointmentId) {
+            $catalogClinicId = (int) $appointments->firstWhere('id', $preselectedAppointmentId)?->clinic_id ?: null;
+        }
+
         return [
             'appointments' => $appointments,
-            'patients' => Patient::query()->orderBy('name')->get(),
+            'patients' => Patient::query()->with('animalSpecies')->orderBy('name')->get(),
+            'pathologyRows' => $this->pathologies->formCatalog($catalogClinicId),
+            'selectedPathologyIds' => old(
+                'pathology_ids',
+                $medicalRecord?->pathologies?->pluck('id')->all() ?? []
+            ),
         ];
     }
 }

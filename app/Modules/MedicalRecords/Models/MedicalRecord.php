@@ -8,6 +8,7 @@ use App\Modules\Appointments\Models\Appointment;
 use App\Modules\Patients\Models\Patient;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class MedicalRecord extends Model
@@ -38,5 +39,15 @@ class MedicalRecord extends Model
     public function createdBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
+    }
+
+    public function pathologies(): BelongsToMany
+    {
+        return $this->belongsToMany(
+            AnimalPathology::class,
+            'medical_record_pathology',
+            'medical_record_id',
+            'animal_pathology_id'
+        )->withTimestamps()->orderBy('normalized_name');
     }
 }

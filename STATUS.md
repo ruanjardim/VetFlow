@@ -49,6 +49,9 @@ The local working tree was clean before this documentation pass.
   coat/pattern catalog for companion, exotic, wildlife, aquatic, and
   large-animal patients, with reusable clinic-specific entries when the
   standard catalog is insufficient.
+- A searchable, species-aware pathology catalog with shared standard terms,
+  clinic-owned additions, and structured medical-record links that preserve
+  the existing free-text diagnosis.
 
 ## GitHub Scan Summary
 

@@ -18,7 +18,7 @@ class MedicalRecordRepository extends BaseRepository implements MedicalRecordRep
     public function paginate(int $perPage = 15): LengthAwarePaginator
     {
         return $this->query()
-            ->with(['appointment', 'patient', 'createdBy'])
+            ->with(['appointment', 'patient', 'createdBy', 'pathologies'])
             ->latest('examined_at')
             ->paginate($perPage);
     }
@@ -26,7 +26,7 @@ class MedicalRecordRepository extends BaseRepository implements MedicalRecordRep
     public function findOrFail(int $id): Model
     {
         return $this->query()
-            ->with(['appointment.tutor', 'patient.tutor', 'createdBy'])
+            ->with(['appointment.tutor', 'patient.tutor', 'patient.animalSpecies', 'createdBy', 'pathologies.species'])
             ->findOrFail($id);
     }
 }

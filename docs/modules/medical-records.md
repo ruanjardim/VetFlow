@@ -27,10 +27,36 @@ and the user who created the record.
 - Weight, temperature, heart rate, respiratory rate, and hydration.
 - Chief complaint, anamnesis, clinical findings, diagnosis, treatment plan,
   prescription notes, and additional notes.
+- One or more structured pathologies selected from the catalog, while the
+  free-text diagnosis remains available for hypotheses, differentials, and
+  clinical context.
+
+## Pathology Catalog
+
+`Cadastros > Patologias` exposes an accent-insensitive alphabetical catalog
+that can be searched and filtered by species. Standard entries are shared by
+all clinics; a clinic can also create a reusable private entry and relate it to
+one or more species. An entry without species links is considered compatible
+with every patient.
+
+The medical-record form filters the visible choices as soon as its appointment
+or patient determines the species. `Outra patologia` creates a normalized
+clinic entry, links it to the patient's species when known, and selects it on
+the current record. The service rejects entries belonging to another clinic or
+incompatible with the patient's species.
+
+The initial standard dataset covers companion animals, equids, ruminants,
+swine, birds, reptiles, small mammals, and aquatic animals. Its sanitary naming
+is informed by the MAPA compulsory animal-disease list and the WOAH listed
+diseases. It supports consistent recording and does not replace veterinary
+clinical judgment or regulatory notification duties.
 
 ## Tables
 
 - `medical_records`
+- `animal_pathologies`
+- `animal_pathology_species`
+- `medical_record_pathology`
 
 ## Permission
 
@@ -42,6 +68,6 @@ clinical-sensitive information.
 
 ## Intentionally Out Of Scope
 
-This first version does not generate formal prescriptions, manage vaccines,
-store laboratory exams, or control hospitalization. These are separate
-clinical flows to be planned after the record foundation is validated.
+The structured catalog does not calculate or suggest a diagnosis. This version
+also does not generate formal prescriptions, store laboratory exams, or control
+hospitalization. These are separate clinical flows.

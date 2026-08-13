@@ -96,17 +96,24 @@
           </details>
         @endcanany
 
-        @can('patients.manage')
-          <details class="nav-group" @if(request()->routeIs('patient-catalog.*')) open @endif>
+        @canany(['patients.manage', 'medical-records.manage'])
+          <details class="nav-group" @if(request()->routeIs('patient-catalog.*', 'pathology-catalog.*')) open @endif>
             <summary><span>Cadastros</span><span class="nav-chevron">⌄</span></summary>
             <div class="nav-submenu">
-              <a class="{{ request()->routeIs('patient-catalog.species') ? 'is-active' : '' }}" href="{{ route('patient-catalog.species') }}">Espécies</a>
-              <a class="{{ request()->routeIs('patient-catalog.breeds') ? 'is-active' : '' }}" href="{{ route('patient-catalog.breeds') }}">Raças e variedades</a>
-              <a class="{{ request()->routeIs('patient-catalog.coats') ? 'is-active' : '' }}" href="{{ route('patient-catalog.coats') }}">Pelagens e padrões</a>
-              <a class="{{ request()->routeIs('patient-catalog.specialties') ? 'is-active' : '' }}" href="{{ route('patient-catalog.specialties') }}">Minhas espécies de atuação</a>
+              @can('patients.manage')
+                <a class="{{ request()->routeIs('patient-catalog.species') ? 'is-active' : '' }}" href="{{ route('patient-catalog.species') }}">Espécies</a>
+                <a class="{{ request()->routeIs('patient-catalog.breeds') ? 'is-active' : '' }}" href="{{ route('patient-catalog.breeds') }}">Raças e variedades</a>
+                <a class="{{ request()->routeIs('patient-catalog.coats') ? 'is-active' : '' }}" href="{{ route('patient-catalog.coats') }}">Pelagens e padrões</a>
+              @endcan
+              @can('medical-records.manage')
+                <a class="{{ request()->routeIs('pathology-catalog.*') ? 'is-active' : '' }}" href="{{ route('pathology-catalog.index') }}">Patologias</a>
+              @endcan
+              @can('patients.manage')
+                <a class="{{ request()->routeIs('patient-catalog.specialties') ? 'is-active' : '' }}" href="{{ route('patient-catalog.specialties') }}">Minhas espécies de atuação</a>
+              @endcan
             </div>
           </details>
-        @endcan
+        @endcanany
 
         @canany(['clinics.manage', 'users.manage', 'implementation.manage'])
           <details class="nav-group" @if(request()->routeIs('clinics.*', 'access-users.*', 'implementation.*')) open @endif>

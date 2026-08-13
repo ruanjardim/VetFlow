@@ -14,7 +14,7 @@
       <select id="appointment_id" name="appointment_id" required>
         <option value="">Selecione</option>
         @foreach($appointments as $appointment)
-          <option value="{{ $appointment->id }}" data-patient-id="{{ $appointment->patient_id }}" @selected((int) old('appointment_id', $preselectedAppointmentId ?? 0) === $appointment->id)>
+          <option value="{{ $appointment->id }}" data-patient-id="{{ $appointment->patient_id }}" data-species-id="{{ $appointment->patient?->animal_species_id }}" @selected((int) old('appointment_id', $preselectedAppointmentId ?? 0) === $appointment->id)>
             {{ $appointment->title }} — {{ optional($appointment->scheduled_at)->format('d/m/Y H:i') }} ({{ $appointment->patient?->name }})
           </option>
         @endforeach
@@ -25,7 +25,7 @@
       <select id="patient_id" name="patient_id" required>
         <option value="">Selecione</option>
         @foreach($patients as $patient)
-          <option value="{{ $patient->id }}" @selected((int) old('patient_id', $preselectedPatientId ?? 0) === $patient->id)>{{ $patient->name }}</option>
+          <option value="{{ $patient->id }}" data-species-id="{{ $patient->animal_species_id }}" @selected((int) old('patient_id', $preselectedPatientId ?? 0) === $patient->id)>{{ $patient->name }}</option>
         @endforeach
       </select>
     </div>
@@ -68,8 +68,29 @@
     <textarea id="clinical_findings" name="clinical_findings">{{ old('clinical_findings', $medicalRecord->clinical_findings ?? '') }}</textarea>
   </div>
   <div class="field full">
+    <div class="pathology-picker" data-pathology-picker data-fixed-species-id="{{ isset($medicalRecord) ? $medicalRecord->patient?->animal_species_id : '' }}">
+      <label for="pathology-search">Patologias padronizadas</label>
+      <input id="pathology-search" type="search" placeholder="Busque pelo nome da patologia" data-pathology-search>
+      <select id="pathology_ids" name="pathology_ids[]" multiple size="9" data-pathology-select>
+        @foreach($pathologyRows as $pathology)
+          <option
+            value="{{ $pathology->id }}"
+            data-species-ids="{{ $pathology->species->pluck('id')->join(',') }}"
+            @selected(in_array($pathology->id, array_map('intval', (array) $selectedPathologyIds)))
+          >{{ $pathology->name }}{{ $pathology->system ? '' : ' — da clínica' }}</option>
+        @endforeach
+      </select>
+      <small>Selecione uma ou mais opções. A lista acompanha a espécie do paciente e os itens gerais aparecem para todos.</small>
+      <div class="field" data-new-pathology-field>
+        <label for="new_pathology">Outra patologia</label>
+        <input id="new_pathology" name="new_pathology" value="{{ old('new_pathology') }}" maxlength="160" placeholder="Digite para cadastrar e reutilizar na clínica">
+      </div>
+    </div>
+  </div>
+  <div class="field full">
     <label for="diagnosis">Diagnóstico</label>
     <textarea id="diagnosis" name="diagnosis">{{ old('diagnosis', $medicalRecord->diagnosis ?? '') }}</textarea>
+    <small>Campo livre preservado para hipótese diagnóstica, diferenciais e contexto clínico.</small>
   </div>
   <div class="field full">
     <label for="treatment_plan">Plano terapêutico</label>

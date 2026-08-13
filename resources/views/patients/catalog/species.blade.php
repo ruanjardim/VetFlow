@@ -10,6 +10,7 @@
       <a class="button secondary" href="{{ route('patient-catalog.specialties', array_filter(['clinic_id' => $selectedClinicId])) }}">Minhas espécies de atuação</a>
       <a class="button secondary" href="{{ route('patient-catalog.breeds', array_filter(['clinic_id' => $selectedClinicId])) }}">Ver raças</a>
       <a class="button secondary" href="{{ route('patient-catalog.coats', array_filter(['clinic_id' => $selectedClinicId])) }}">Ver pelagens</a>
+      @can('medical-records.manage')<a class="button secondary" href="{{ route('pathology-catalog.index', array_filter(['clinic_id' => $selectedClinicId])) }}">Ver patologias</a>@endcan
     </div>
   </header>
 

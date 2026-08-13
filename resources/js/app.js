@@ -168,6 +168,51 @@ document.addEventListener('DOMContentLoaded', () => {
     updateCount();
   });
 
+  document.querySelectorAll('[data-pathology-picker]').forEach((picker) => {
+    const select = picker.querySelector('[data-pathology-select]');
+    const search = picker.querySelector('[data-pathology-search]');
+    const appointmentSelect = document.getElementById('appointment_id');
+    const patientSelect = document.getElementById('patient_id');
+
+    if (!select) {
+      return;
+    }
+
+    const currentSpeciesId = () => {
+      if (picker.dataset.fixedSpeciesId) {
+        return picker.dataset.fixedSpeciesId;
+      }
+
+      return appointmentSelect?.selectedOptions?.[0]?.dataset.speciesId
+        || patientSelect?.selectedOptions?.[0]?.dataset.speciesId
+        || '';
+    };
+
+    const refresh = () => {
+      const speciesId = currentSpeciesId();
+      const query = (search?.value || '').trim().toLocaleLowerCase('pt-BR');
+
+      select.querySelectorAll('option').forEach((option) => {
+        const speciesIds = (option.dataset.speciesIds || '').split(',').filter(Boolean);
+        const matchesSpecies = !speciesId || speciesIds.length === 0 || speciesIds.includes(speciesId);
+        const matchesSearch = !query || option.textContent.toLocaleLowerCase('pt-BR').includes(query);
+        const visible = matchesSpecies && matchesSearch;
+
+        option.hidden = !visible;
+        option.disabled = !visible;
+
+        if (!matchesSpecies && option.selected) {
+          option.selected = false;
+        }
+      });
+    };
+
+    search?.addEventListener('input', refresh);
+    appointmentSelect?.addEventListener('change', refresh);
+    patientSelect?.addEventListener('change', refresh);
+    refresh();
+  });
+
   const normalizeBarcode = (value) => value.replace(/\D+/g, '');
 
   const setLookupStatus = (status, message, state = '') => {

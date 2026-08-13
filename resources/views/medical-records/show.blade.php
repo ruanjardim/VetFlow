@@ -49,6 +49,18 @@
   <section class="panel">
     <h2>Registro clínico</h2>
     <div class="form-grid">
+      <div class="field full">
+        <label>Patologias padronizadas</label>
+        @if($medicalRecord->pathologies->isNotEmpty())
+          <div class="pathology-list">
+            @foreach($medicalRecord->pathologies as $pathology)
+              <span class="badge {{ $pathology->system ? 'muted-badge' : 'success' }}">{{ $pathology->name }}</span>
+            @endforeach
+          </div>
+        @else
+          <div class="panel"><span class="muted">Nenhuma patologia padronizada vinculada.</span></div>
+        @endif
+      </div>
       @foreach([
         'Queixa principal' => $medicalRecord->chief_complaint,
         'Anamnese' => $medicalRecord->anamnesis,

@@ -79,6 +79,10 @@ This project follows the spirit of Keep a Changelog, with one practical adjustme
 - Species-aware coat and pattern catalog covering coats, plumage, coloration,
   and morphs, with automatic form filtering, clinic-owned `Other` entries,
   structured patient links, search, and catalog navigation.
+- Searchable pathology catalog for companion, production, exotic, wildlife,
+  and aquatic species, with clinic-owned additions, automatic species
+  filtering, tenant-safe medical-record links, and preservation of the
+  free-text diagnosis.
 
 ### Changed
 
