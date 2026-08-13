@@ -5,23 +5,27 @@
 @section('content')
   <header class="topbar">
     <div><h1>Espécies</h1><p>Catálogo clínico compartilhado e opções próprias da clínica.</p></div>
-    <div class="actions"><a class="button secondary" href="{{ route('patient-catalog.breeds', array_filter(['clinic_id' => $selectedClinicId])) }}">Ver raças</a><a class="button secondary" href="{{ route('patients.index') }}">Pacientes</a></div>
+    <div class="actions">
+      <a class="button secondary" href="{{ route('patients.index') }}">← Voltar</a>
+      <a class="button secondary" href="{{ route('patient-catalog.specialties', array_filter(['clinic_id' => $selectedClinicId])) }}">Minhas espécies de atuação</a>
+      <a class="button secondary" href="{{ route('patient-catalog.breeds', array_filter(['clinic_id' => $selectedClinicId])) }}">Ver raças</a>
+    </div>
   </header>
 
   @if($requiresClinic)
-    <div class="panel"><div class="panel-body"><form method="GET" action="{{ route('patient-catalog.species') }}" class="form-grid">
-      <div class="field"><label for="catalog-clinic">Clínica para personalização</label><select id="catalog-clinic" name="clinic_id"><option value="">Somente catálogo padrão</option>@foreach($clinics as $clinic)<option value="{{ $clinic->id }}" @selected((string) $selectedClinicId === (string) $clinic->id)>{{ $clinic->trade_name ?: $clinic->corporate_name }}</option>@endforeach</select></div>
-      <div class="field full"><button type="submit">Abrir catálogo</button></div>
+    <div class="panel"><div class="panel-body"><form method="GET" action="{{ route('patient-catalog.species') }}" class="form-grid" data-catalog-auto-submit>
+      <div class="field"><label for="catalog-clinic">Clínica para personalização</label><select id="catalog-clinic" name="clinic_id" data-auto-submit-select><option value="">Somente catálogo padrão</option>@foreach($clinics as $clinic)<option value="{{ $clinic->id }}" @selected((string) $selectedClinicId === (string) $clinic->id)>{{ $clinic->trade_name ?: $clinic->corporate_name }}</option>@endforeach</select></div>
+      <noscript><div class="field full"><button type="submit">Abrir catálogo</button></div></noscript>
     </form></div></div>
   @endif
 
   <div class="content-grid catalog-layout">
     <div class="panel">
-      <div class="panel-heading"><div><h2>Catálogo disponível</h2><p>{{ $speciesRows->count() }} espécies organizadas por área.</p></div></div>
+      <div class="panel-heading"><div><h2>Catálogo disponível</h2><p>{{ $speciesRows->count() }} espécies no seu perfil de atuação.</p></div></div>
       <div class="table-wrap"><table><thead><tr><th>Espécie</th><th>Grupo</th><th>Origem</th><th>Raças/variedades</th></tr></thead><tbody>
         @forelse($speciesRows as $species)
           <tr><td><strong>{{ $species->name }}</strong></td><td>{{ $categories[$species->category] ?? $species->category }}</td><td><span class="badge {{ $species->system ? 'muted-badge' : 'success' }}">{{ $species->system ? 'Padrão VetFlow' : 'Da clínica' }}</span></td><td><a href="{{ route('patient-catalog.breeds', array_filter(['clinic_id' => $selectedClinicId, 'species_id' => $species->id])) }}">{{ $species->breeds_count }} cadastradas</a></td></tr>
-        @empty<tr><td colspan="4" class="muted">Nenhuma espécie disponível.</td></tr>@endforelse
+        @empty<tr><td colspan="4" class="muted">Nenhuma espécie disponível. Revise suas espécies de atuação.</td></tr>@endforelse
       </tbody></table></div>
     </div>
 

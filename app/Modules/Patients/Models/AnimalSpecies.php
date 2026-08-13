@@ -2,9 +2,11 @@
 
 namespace App\Modules\Patients\Models;
 
+use App\Models\User;
 use App\Modules\Clinics\Models\Clinic;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class AnimalSpecies extends Model
@@ -26,5 +28,10 @@ class AnimalSpecies extends Model
     public function breeds(): HasMany
     {
         return $this->hasMany(AnimalBreed::class)->orderBy('name');
+    }
+
+    public function preferredByUsers(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'user_animal_species')->withTimestamps();
     }
 }

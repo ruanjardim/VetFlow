@@ -7,6 +7,7 @@ use App\Modules\Patients\Models\AnimalSpecies;
 use App\Support\Tenancy\TenantContext;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
@@ -23,7 +24,7 @@ class PatientTaxonomyService
 
     public function __construct(private readonly TenantContext $tenant) {}
 
-    public function formCatalog(): Collection
+    public function formCatalog(?int $includeSpeciesId = null): Collection
     {
         $clinicId = $this->tenant->clinicId();
 
@@ -34,6 +35,8 @@ class PatientTaxonomyService
                 $visible->whereNull('clinic_id')->orWhere('clinic_id', $clinicId);
             });
         }
+
+        $this->applyCurrentUserPreferences($query, $includeSpeciesId);
 
         return $query
             ->with(['clinic', 'breeds' => function ($query) use ($clinicId): void {
@@ -51,11 +54,17 @@ class PatientTaxonomyService
             ->get();
     }
 
-    public function managementSpecies(?int $clinicId = null): Collection
+    public function managementSpecies(?int $clinicId = null, bool $respectPreferences = true): Collection
     {
         $effectiveClinicId = $this->tenant->clinicId() ?? $clinicId;
 
-        return $this->visibleSpeciesQuery($effectiveClinicId)
+        $query = $this->visibleSpeciesQuery($effectiveClinicId);
+
+        if ($respectPreferences) {
+            $this->applyCurrentUserPreferences($query);
+        }
+
+        return $query
             ->with('clinic')
             ->withCount(['breeds' => function ($query) use ($effectiveClinicId): void {
                 if ($effectiveClinicId !== null) {
@@ -69,6 +78,58 @@ class PatientTaxonomyService
             ->orderBy('category')
             ->orderBy('name')
             ->get();
+    }
+
+    public function specialtySpecies(?int $clinicId = null): Collection
+    {
+        return $this->managementSpecies($clinicId, false);
+    }
+
+    /** @return array<int, int> */
+    public function selectedSpecialtyIds(): array
+    {
+        $user = Auth::user();
+
+        if (! $user) {
+            return [];
+        }
+
+        return $user->animalSpeciesPreferences()
+            ->pluck('animal_species.id')
+            ->map(fn ($id): int => (int) $id)
+            ->all();
+    }
+
+    /** @param array<int, int|string> $speciesIds */
+    public function updateSpecialties(array $speciesIds, ?int $clinicId = null): void
+    {
+        $user = Auth::user();
+
+        if (! $user) {
+            throw ValidationException::withMessages([
+                'species_ids' => 'Usuário não autenticado.',
+            ]);
+        }
+
+        $ids = collect($speciesIds)
+            ->map(fn ($id): int => (int) $id)
+            ->filter(fn (int $id): bool => $id > 0)
+            ->unique()
+            ->values();
+
+        $effectiveClinicId = $this->tenant->clinicId() ?? $clinicId;
+        $visibleCount = $this->visibleSpeciesQuery($effectiveClinicId)
+            ->whereIn('id', $ids)
+            ->where('active', true)
+            ->count();
+
+        if ($visibleCount !== $ids->count()) {
+            throw ValidationException::withMessages([
+                'species_ids' => 'Uma das espécies selecionadas não está disponível para este perfil.',
+            ]);
+        }
+
+        $user->animalSpeciesPreferences()->sync($ids->all());
     }
 
     public function managementBreeds(int $speciesId, ?int $clinicId = null): Collection
@@ -157,7 +218,7 @@ class PatientTaxonomyService
             ]);
         }
 
-        return AnimalSpecies::query()->create([
+        $species = AnimalSpecies::query()->create([
             'clinic_id' => $clinicId,
             'name' => Str::of($name)->squish()->value(),
             'normalized_name' => $normalized,
@@ -167,6 +228,10 @@ class PatientTaxonomyService
             'system' => false,
             'active' => true,
         ]);
+
+        Auth::user()?->animalSpeciesPreferences()->syncWithoutDetaching([$species->id]);
+
+        return $species;
     }
 
     public function createCustomBreed(int $speciesId, string $name, int $clinicId): AnimalBreed
@@ -341,6 +406,21 @@ class PatientTaxonomyService
                 },
                 fn (Builder $query) => $query->whereNull('clinic_id')
             );
+    }
+
+    private function applyCurrentUserPreferences(Builder $query, ?int $includeSpeciesId = null): void
+    {
+        $preferenceIds = $this->selectedSpecialtyIds();
+
+        if ($preferenceIds === []) {
+            return;
+        }
+
+        if ($includeSpeciesId) {
+            $preferenceIds[] = $includeSpeciesId;
+        }
+
+        $query->whereIn('animal_species.id', array_values(array_unique($preferenceIds)));
     }
 
     private function normalize(string $value): string

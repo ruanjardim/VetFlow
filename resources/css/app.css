@@ -143,6 +143,76 @@ textarea {
   top: 20px;
 }
 
+.catalog-search {
+  border-top: 1px solid #e2e8f0;
+  display: grid;
+  gap: 6px;
+}
+
+.specialty-section {
+  border-top: 1px solid #e2e8f0;
+  margin-top: 22px;
+  padding-top: 18px;
+}
+
+.specialty-section h3 {
+  margin: 0 0 12px;
+}
+
+.specialty-grid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+}
+
+.specialty-option {
+  align-items: flex-start;
+  background: #ffffff;
+  border: 1px solid #dbe3ee;
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  gap: 10px;
+  min-height: 64px;
+  padding: 12px;
+}
+
+.specialty-option:has(input:checked) {
+  background: #f0fdfa;
+  border-color: #0f766e;
+}
+
+.specialty-option input {
+  accent-color: #0f766e;
+  flex: 0 0 auto;
+  margin-top: 3px;
+  min-height: 0;
+}
+
+.specialty-option span {
+  display: grid;
+  gap: 2px;
+}
+
+.specialty-option small {
+  color: #64748b;
+}
+
+.specialty-actions {
+  align-items: center;
+  border-top: 1px solid #e2e8f0;
+  display: flex;
+  gap: 16px;
+  justify-content: space-between;
+  margin-top: 22px;
+  padding-top: 18px;
+}
+
+.specialty-actions span {
+  color: #475569;
+  font-weight: 700;
+}
+
 .main {
   min-width: 0;
   padding: 28px;

@@ -56,7 +56,9 @@ class PatientController extends BaseCrudController
     {
         return [
             'tutors' => $this->availableTutors(),
-            'speciesCatalog' => $this->taxonomy->formCatalog(),
+            'speciesCatalog' => $this->taxonomy->formCatalog(
+                $patient?->animal_species_id ? (int) $patient->animal_species_id : null
+            ),
             'speciesCategories' => PatientTaxonomyService::CATEGORY_LABELS,
             'taxonomySelection' => $this->taxonomy->selectedIds($patient),
         ];

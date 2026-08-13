@@ -29,6 +29,36 @@ class PatientCatalogController
         ]);
     }
 
+    public function specialties(Request $request)
+    {
+        $clinicId = $this->selectedClinicId($request);
+
+        return view('patients.catalog.specialties', [
+            'speciesRows' => $this->taxonomy->specialtySpecies($clinicId),
+            'selectedSpeciesIds' => $this->taxonomy->selectedSpecialtyIds(),
+            'categories' => PatientTaxonomyService::CATEGORY_LABELS,
+            'clinics' => $this->availableClinics(),
+            'selectedClinicId' => $clinicId,
+            'requiresClinic' => $this->tenant->isGlobal(),
+        ]);
+    }
+
+    public function updateSpecialties(Request $request)
+    {
+        $validated = $request->validate([
+            'species_ids' => ['nullable', 'array'],
+            'species_ids.*' => ['integer'],
+            'clinic_id' => ['nullable', 'integer', Rule::exists('clinics', 'id')->where('active', true)],
+        ]);
+        $clinicId = $this->selectedClinicId($request);
+
+        $this->taxonomy->updateSpecialties($validated['species_ids'] ?? [], $clinicId);
+
+        return redirect()
+            ->route('patient-catalog.specialties', array_filter(['clinic_id' => $clinicId]))
+            ->with('success', 'Espécies de atuação atualizadas. O catálogo já foi personalizado para você.');
+    }
+
     public function storeSpecies(Request $request)
     {
         $validated = $request->validate([

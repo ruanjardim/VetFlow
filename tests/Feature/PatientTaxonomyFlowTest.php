@@ -150,6 +150,120 @@ class PatientTaxonomyFlowTest extends TestCase
         );
     }
 
+    public function test_reference_catalog_is_expanded_for_requested_species(): void
+    {
+        $expectedMinimums = [
+            'Canino' => 340,
+            'Felino' => 70,
+            'Serpente' => 45,
+            'Equino' => 45,
+            'Bovino' => 45,
+            'Suíno' => 25,
+        ];
+
+        foreach ($expectedMinimums as $speciesName => $minimum) {
+            $species = AnimalSpecies::query()->whereNull('clinic_id')->where('name', $speciesName)->firstOrFail();
+
+            $this->assertGreaterThanOrEqual(
+                $minimum,
+                AnimalBreed::query()->where('animal_species_id', $species->id)->whereNull('clinic_id')->count(),
+                "Catálogo insuficiente para {$speciesName}."
+            );
+        }
+
+        $canine = AnimalSpecies::query()->where('name', 'Canino')->firstOrFail();
+        $this->assertDatabaseHas('animal_breeds', [
+            'animal_species_id' => $canine->id,
+            'name' => 'Australian Shepherd',
+            'reference_source' => 'FCI/CBKC',
+        ]);
+
+        $serpent = AnimalSpecies::query()->where('name', 'Serpente')->firstOrFail();
+        $this->assertDatabaseHas('animal_breeds', [
+            'animal_species_id' => $serpent->id,
+            'name' => 'Jiboia (Boa constrictor)',
+            'reference_source' => 'Reptile Database/IBAMA',
+        ]);
+    }
+
+    public function test_user_can_limit_and_expand_personal_species_of_practice(): void
+    {
+        $clinic = $this->clinic('Clínica Especialidades', '00000000000406');
+        $user = $this->userForClinic($clinic);
+        $canine = AnimalSpecies::query()->where('name', 'Canino')->firstOrFail();
+        $feline = AnimalSpecies::query()->where('name', 'Felino')->firstOrFail();
+        $equine = AnimalSpecies::query()->where('name', 'Equino')->firstOrFail();
+
+        $this->actingAs($user)
+            ->put(route('patient-catalog.specialties.update'), [
+                'species_ids' => [$canine->id, $feline->id],
+            ])
+            ->assertRedirect(route('patient-catalog.specialties', ['clinic_id' => $clinic->id]))
+            ->assertSessionDoesntHaveErrors();
+
+        $this->assertDatabaseHas('user_animal_species', ['user_id' => $user->id, 'animal_species_id' => $canine->id]);
+        $this->assertDatabaseHas('user_animal_species', ['user_id' => $user->id, 'animal_species_id' => $feline->id]);
+        $this->assertDatabaseMissing('user_animal_species', ['user_id' => $user->id, 'animal_species_id' => $equine->id]);
+
+        $this->get(route('patient-catalog.species'))
+            ->assertOk()
+            ->assertSee('Canino')
+            ->assertSee('Felino')
+            ->assertDontSee('Equino');
+
+        $this->get(route('patients.create'))
+            ->assertOk()
+            ->assertSee('Canino')
+            ->assertSee('Felino')
+            ->assertDontSee('Equino');
+
+        $this->put(route('patient-catalog.specialties.update'), [
+            'species_ids' => [$canine->id, $feline->id, $equine->id],
+        ])->assertSessionDoesntHaveErrors();
+
+        $this->get(route('patients.create'))->assertOk()->assertSee('Equino');
+    }
+
+    public function test_breed_catalog_uses_automatic_selection_and_back_navigation(): void
+    {
+        $clinic = $this->clinic('Clínica Catálogo Dinâmico', '00000000000407');
+        $user = $this->userForClinic($clinic);
+        $feline = AnimalSpecies::query()->where('name', 'Felino')->firstOrFail();
+
+        $this->actingAs($user)
+            ->get(route('patient-catalog.breeds', ['species_id' => $feline->id]))
+            ->assertOk()
+            ->assertSee('data-catalog-auto-submit', false)
+            ->assertSee('data-auto-submit-select', false)
+            ->assertSee('← Voltar')
+            ->assertSee('TICA/FIFe')
+            ->assertSee('Maine Coon')
+            ->assertSee('<noscript>', false);
+    }
+
+    public function test_new_custom_species_is_added_to_current_user_preferences(): void
+    {
+        $clinic = $this->clinic('Clínica Nova Atuação', '00000000000408');
+        $user = $this->userForClinic($clinic);
+        $canine = AnimalSpecies::query()->where('name', 'Canino')->firstOrFail();
+
+        $this->actingAs($user)->put(route('patient-catalog.specialties.update'), [
+            'species_ids' => [$canine->id],
+        ])->assertSessionDoesntHaveErrors();
+
+        $this->post(route('patient-catalog.species.store'), [
+            'name' => 'Tenreque africano',
+            'category' => 'Silvestres e outros',
+        ])->assertSessionDoesntHaveErrors();
+
+        $custom = AnimalSpecies::query()->where('clinic_id', $clinic->id)->where('name', 'Tenreque africano')->firstOrFail();
+
+        $this->assertDatabaseHas('user_animal_species', [
+            'user_id' => $user->id,
+            'animal_species_id' => $custom->id,
+        ]);
+    }
+
     private function clinic(string $name, string $cnpj): Clinic
     {
         return Clinic::query()->create([

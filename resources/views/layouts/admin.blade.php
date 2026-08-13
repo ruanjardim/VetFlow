@@ -102,6 +102,7 @@
             <div class="nav-submenu">
               <a class="{{ request()->routeIs('patient-catalog.species') ? 'is-active' : '' }}" href="{{ route('patient-catalog.species') }}">Espécies</a>
               <a class="{{ request()->routeIs('patient-catalog.breeds') ? 'is-active' : '' }}" href="{{ route('patient-catalog.breeds') }}">Raças e variedades</a>
+              <a class="{{ request()->routeIs('patient-catalog.specialties') ? 'is-active' : '' }}" href="{{ route('patient-catalog.specialties') }}">Minhas espécies de atuação</a>
             </div>
           </details>
         @endcan

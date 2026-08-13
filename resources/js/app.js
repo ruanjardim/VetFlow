@@ -82,6 +82,40 @@ document.addEventListener('DOMContentLoaded', () => {
     updateTaxonomyFields();
   }
 
+  document.querySelectorAll('[data-catalog-auto-submit]').forEach((form) => {
+    form.querySelectorAll('[data-auto-submit-select]').forEach((select) => {
+      select.addEventListener('change', () => form.requestSubmit());
+    });
+  });
+
+  document.querySelectorAll('[data-catalog-search]').forEach((search) => {
+    const table = search.closest('.panel')?.querySelector('[data-catalog-table]');
+    const rows = Array.from(table?.querySelectorAll('[data-catalog-row]') || []);
+
+    search.addEventListener('input', () => {
+      const query = search.value.trim().toLocaleLowerCase('pt-BR');
+
+      rows.forEach((row) => {
+        row.hidden = Boolean(query) && !row.textContent.toLocaleLowerCase('pt-BR').includes(query);
+      });
+    });
+  });
+
+  document.querySelectorAll('[data-specialty-form]').forEach((form) => {
+    const boxes = Array.from(form.querySelectorAll('input[name="species_ids[]"]'));
+    const count = form.querySelector('[data-specialty-count]');
+
+    const updateCount = () => {
+      const selected = boxes.filter((box) => box.checked).length;
+      count.textContent = selected
+        ? `${selected} espécie${selected === 1 ? '' : 's'} selecionada${selected === 1 ? '' : 's'}`
+        : 'Sem filtro: todas as espécies serão exibidas';
+    };
+
+    boxes.forEach((box) => box.addEventListener('change', updateCount));
+    updateCount();
+  });
+
   const normalizeBarcode = (value) => value.replace(/\D+/g, '');
 
   const setLookupStatus = (status, message, state = '') => {
