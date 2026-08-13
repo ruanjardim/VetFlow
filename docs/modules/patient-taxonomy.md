@@ -40,6 +40,8 @@ choice is available on the next registration.
 
 The standalone `Cadastros` menu also exposes screens for reviewing the standard
 catalog and adding clinic-specific species, breeds, or coats in advance.
+Administrative species lists and the species selectors used by breeds and coats
+follow one accent-insensitive alphabetical order, independent of clinical group.
 
 ## Compatibility
 
@@ -74,6 +76,10 @@ Atendimento clínico, Agenda, Vendas e serviços, Estoque e compras, Financeiro,
 Cadastros, and Administração. A group automatically opens when one of its child
 routes is active, and permissions continue to determine which groups and links
 are rendered.
+
+Catalog back links return to the last VetFlow page visited. When a catalog is
+opened directly and no internal navigation history exists, the link uses a safe
+module fallback instead.
 
 ## Tests
 

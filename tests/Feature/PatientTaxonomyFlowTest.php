@@ -393,6 +393,44 @@ class PatientTaxonomyFlowTest extends TestCase
             ->assertSee('<noscript>', false);
     }
 
+    public function test_catalog_species_lists_and_selectors_use_global_alphabetical_order(): void
+    {
+        $clinic = $this->clinic('Clínica Ordem Alfabética', '00000000000414');
+        $user = $this->userForClinic($clinic);
+
+        $this->actingAs($user)
+            ->get(route('patient-catalog.species'))
+            ->assertOk()
+            ->assertSeeInOrder(['Agapornis', 'Canino', 'Peixe']);
+
+        $this->get(route('patient-catalog.breeds'))
+            ->assertOk()
+            ->assertSeeInOrder(['Agapornis', 'Canino', 'Peixe']);
+
+        $this->get(route('patient-catalog.coats'))
+            ->assertOk()
+            ->assertSeeInOrder(['Agapornis', 'Canino', 'Peixe']);
+    }
+
+    public function test_catalog_back_links_use_history_with_safe_fallbacks(): void
+    {
+        $clinic = $this->clinic('Clínica Histórico', '00000000000415');
+        $user = $this->userForClinic($clinic);
+
+        $this->actingAs($user)
+            ->get(route('patient-catalog.species'))
+            ->assertOk()
+            ->assertSee('data-history-back', false)
+            ->assertSee('href="'.route('patients.index').'"', false);
+
+        foreach (['patient-catalog.breeds', 'patient-catalog.coats', 'patient-catalog.specialties'] as $routeName) {
+            $this->get(route($routeName))
+                ->assertOk()
+                ->assertSee('data-history-back', false)
+                ->assertSee('href="'.route('patient-catalog.species').'"', false);
+        }
+    }
+
     private function clinic(string $name, string $cnpj): Clinic
     {
         return Clinic::query()->create([

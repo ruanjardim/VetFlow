@@ -7,6 +7,25 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
+  document.querySelectorAll('[data-history-back]').forEach((link) => {
+    link.addEventListener('click', (event) => {
+      let previousPageIsVetFlow = false;
+
+      if (document.referrer) {
+        try {
+          previousPageIsVetFlow = new URL(document.referrer).origin === window.location.origin;
+        } catch {
+          previousPageIsVetFlow = false;
+        }
+      }
+
+      if (previousPageIsVetFlow && window.history.length > 1) {
+        event.preventDefault();
+        window.history.back();
+      }
+    });
+  });
+
   const patientForm = document.querySelector('[data-patient-form]');
 
   if (patientForm) {

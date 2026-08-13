@@ -82,6 +82,9 @@ This project follows the spirit of Keep a Changelog, with one practical adjustme
 
 ### Changed
 
+- Patient taxonomy administration now uses global accent-insensitive
+  alphabetical ordering and history-aware back navigation with safe fallbacks.
+
 - Filled the previously empty engineering process document with the current development workflow.
 - Replaced the database overview with a migration-aligned current model summary.
 - Updated Guzzle and PSR-7 to patched compatible releases after dependency

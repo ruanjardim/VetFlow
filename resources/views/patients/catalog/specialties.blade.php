@@ -5,7 +5,7 @@
 @section('content')
   <header class="topbar">
     <div><h1>Minhas espécies de atuação</h1><p>Personalize o catálogo exibido no seu dia a dia clínico.</p></div>
-    <div class="actions"><a class="button secondary" href="{{ route('patient-catalog.species', array_filter(['clinic_id' => $selectedClinicId])) }}">← Voltar</a></div>
+    <div class="actions"><a class="button secondary" href="{{ route('patient-catalog.species', array_filter(['clinic_id' => $selectedClinicId])) }}" data-history-back>← Voltar</a></div>
   </header>
 
   @if($requiresClinic)

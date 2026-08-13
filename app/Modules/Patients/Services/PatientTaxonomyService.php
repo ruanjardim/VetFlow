@@ -46,8 +46,7 @@ class PatientTaxonomyService
                 'coats' => fn ($query) => $this->applyCatalogVisibility($query, $clinicId),
             ])
             ->where('active', true)
-            ->orderBy('category')
-            ->orderBy('name')
+            ->orderBy('normalized_name')
             ->get();
     }
 
@@ -67,8 +66,7 @@ class PatientTaxonomyService
                 'breeds' => fn ($query) => $this->applyCatalogVisibility($query, $effectiveClinicId, false),
                 'coats' => fn ($query) => $this->applyCatalogVisibility($query, $effectiveClinicId, false),
             ])
-            ->orderBy('category')
-            ->orderBy('name')
+            ->orderBy('normalized_name')
             ->get();
     }
 
@@ -135,7 +133,7 @@ class PatientTaxonomyService
         $this->applyCatalogVisibility($query, $effectiveClinicId, false);
 
         return $query
-            ->orderBy('name')
+            ->orderBy('normalized_name')
             ->get();
     }
 
@@ -150,7 +148,7 @@ class PatientTaxonomyService
         $this->applyCatalogVisibility($query, $effectiveClinicId, false);
 
         return $query
-            ->orderBy('name')
+            ->orderBy('normalized_name')
             ->get();
     }
 

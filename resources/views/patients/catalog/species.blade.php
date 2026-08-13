@@ -6,7 +6,7 @@
   <header class="topbar">
     <div><h1>Espécies</h1><p>Catálogo clínico compartilhado e opções próprias da clínica.</p></div>
     <div class="actions">
-      <a class="button secondary" href="{{ route('patients.index') }}">← Voltar</a>
+      <a class="button secondary" href="{{ route('patients.index') }}" data-history-back>← Voltar</a>
       <a class="button secondary" href="{{ route('patient-catalog.specialties', array_filter(['clinic_id' => $selectedClinicId])) }}">Minhas espécies de atuação</a>
       <a class="button secondary" href="{{ route('patient-catalog.breeds', array_filter(['clinic_id' => $selectedClinicId])) }}">Ver raças</a>
       <a class="button secondary" href="{{ route('patient-catalog.coats', array_filter(['clinic_id' => $selectedClinicId])) }}">Ver pelagens</a>

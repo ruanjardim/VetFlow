@@ -6,7 +6,7 @@
   <header class="topbar">
     <div><h1>Pelagens e padrões</h1><p>Pelagem, plumagem, coloração ou morfo vinculado à espécie correta.</p></div>
     <div class="actions">
-      <a class="button secondary" href="{{ route('patient-catalog.species', array_filter(['clinic_id' => $selectedClinicId])) }}">← Voltar</a>
+      <a class="button secondary" href="{{ route('patient-catalog.species', array_filter(['clinic_id' => $selectedClinicId])) }}" data-history-back>← Voltar</a>
       <a class="button secondary" href="{{ route('patients.index') }}">Pacientes</a>
     </div>
   </header>

@@ -27,12 +27,12 @@ class AnimalSpecies extends Model
 
     public function breeds(): HasMany
     {
-        return $this->hasMany(AnimalBreed::class)->orderBy('name');
+        return $this->hasMany(AnimalBreed::class)->orderBy('normalized_name');
     }
 
     public function coats(): HasMany
     {
-        return $this->hasMany(AnimalCoat::class)->orderBy('name');
+        return $this->hasMany(AnimalCoat::class)->orderBy('normalized_name');
     }
 
     public function preferredByUsers(): BelongsToMany
