@@ -804,6 +804,73 @@ class OperationalFlowTest extends TestCase
         );
     }
 
+    public function test_sale_generated_income_is_managed_only_from_the_sale_flow(): void
+    {
+        $clinic = $this->clinic('Clinica Financeiro PDV', '00000000000233');
+        $product = $this->product($clinic, 'Produto recebido depois', stock: 4, costPrice: 20, salePrice: 60);
+        $user = $this->userForClinic($clinic, ['sales.manage', 'financial.manage']);
+
+        $this->actingAs($user)->post(route('sales.store'), [
+            'status' => 'completed',
+            'items' => [[
+                'type' => 'product',
+                'product_id' => $product->id,
+                'description' => 'Produto recebido depois',
+                'quantity' => '1',
+                'unit_price' => '60',
+            ]],
+            'payments' => [[
+                'method' => 'pix',
+                'amount' => '60',
+                'status' => 'pending',
+            ]],
+        ])->assertRedirect(route('sales.index'));
+
+        $sale = Sale::query()->with('financialTransaction')->firstOrFail();
+        $transaction = $sale->financialTransaction;
+
+        $this->assertNotNull($transaction);
+
+        $this->get(route('financial-transactions.index'))
+            ->assertOk()
+            ->assertSee('Gerenciado pela venda '.$sale->code.'.')
+            ->assertSee(route('sales.edit', $sale->id));
+
+        $this->get(route('financial-transactions.edit', $transaction->id))
+            ->assertRedirect(route('sales.edit', $sale->id))
+            ->assertSessionHas('error');
+
+        $this->from(route('financial-transactions.index'))
+            ->patch(route('financial-transactions.update', $transaction->id), [
+                'type' => 'income',
+                'description' => 'Tentativa de ajuste indevido',
+                'amount' => '60',
+                'status' => 'paid',
+            ])
+            ->assertRedirect(route('financial-transactions.index'))
+            ->assertSessionHasErrors('transaction');
+
+        $this->from(route('financial-transactions.index'))
+            ->patch(route('financial-transactions.pay', $transaction->id))
+            ->assertRedirect(route('financial-transactions.index'))
+            ->assertSessionHasErrors('transaction');
+
+        $this->from(route('financial-transactions.index'))
+            ->patch(route('financial-transactions.cancel', $transaction->id))
+            ->assertRedirect(route('financial-transactions.index'))
+            ->assertSessionHasErrors('transaction');
+
+        $this->from(route('financial-transactions.index'))
+            ->delete(route('financial-transactions.destroy', $transaction->id))
+            ->assertRedirect(route('financial-transactions.index'))
+            ->assertSessionHasErrors('transaction');
+
+        $transaction->refresh();
+        $this->assertSame('pending', $transaction->status);
+        $this->assertNull($transaction->paid_at);
+        $this->assertNull($transaction->deleted_at);
+    }
+
     private function clinic(string $name, string $cnpj): Clinic
     {
         return Clinic::query()->create([

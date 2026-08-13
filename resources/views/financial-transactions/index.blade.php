@@ -78,6 +78,9 @@
                 @if((int) $transaction->installment_total > 1)
                   <div class="muted">Parcela {{ $transaction->installment_number }}/{{ $transaction->installment_total }}</div>
                 @endif
+                @if($transaction->sale)
+                  <div class="muted">Gerenciado pela venda {{ $transaction->sale->code }}.</div>
+                @endif
               </td>
               <td>{{ $typeLabel }}</td>
               <td>{{ $transaction->supplier?->name ?: '-' }}</td>
@@ -99,8 +102,12 @@
               </td>
               <td><span class="badge {{ $statusBadge }}">{{ $statusLabel }}</span></td>
               <td>
-                <a class="button secondary" href="{{ route('financial-transactions.edit', $transaction->id) }}">Editar</a>
-                @if($transaction->status !== 'paid' && $transaction->status !== 'cancelled')
+                @if($transaction->sale)
+                  <a class="button secondary" href="{{ route('sales.edit', $transaction->sale->id) }}">Abrir venda</a>
+                @else
+                  <a class="button secondary" href="{{ route('financial-transactions.edit', $transaction->id) }}">Editar</a>
+                @endif
+                @if(! $transaction->sale && $transaction->status !== 'paid' && $transaction->status !== 'cancelled')
                   <form class="inline" action="{{ route('financial-transactions.pay', $transaction->id) }}" method="POST">
                     @csrf
                     @method('PATCH')
@@ -112,11 +119,13 @@
                     <button class="secondary" type="submit" data-confirm="Cancelar este lancamento?">Cancelar</button>
                   </form>
                 @endif
-                <form class="inline" action="{{ route('financial-transactions.destroy', $transaction->id) }}" method="POST">
-                  @csrf
-                  @method('DELETE')
-                  <button class="danger" type="submit" data-confirm="Remover este lancamento?">Excluir</button>
-                </form>
+                @if(! $transaction->sale)
+                  <form class="inline" action="{{ route('financial-transactions.destroy', $transaction->id) }}" method="POST">
+                    @csrf
+                    @method('DELETE')
+                    <button class="danger" type="submit" data-confirm="Remover este lancamento?">Excluir</button>
+                  </form>
+                @endif
               </td>
             </tr>
           @empty
