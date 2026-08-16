@@ -77,7 +77,7 @@ remains authoritative.
 - `medical_records`
 - `animal_pathologies`
 - `animal_pathology_species`
-- `medical_record_pathologies`
+- `medical_record_pathology`
 - `animal_exams`
 - `animal_exam_species`
 - `medical_record_exams`
