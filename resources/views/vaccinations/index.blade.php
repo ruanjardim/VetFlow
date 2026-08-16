@@ -8,7 +8,7 @@
       <h1>Vacinação</h1>
       <p>Carteira de vacinação e próximas doses dos pacientes.</p>
     </div>
-    <a class="button" href="{{ route('vaccinations.create') }}">Nova vacina</a>
+    <div class="actions"><a class="button secondary" href="{{ route('vaccine-catalog.index') }}">Catálogo de vacinas</a><a class="button" href="{{ route('vaccinations.create') }}">Nova vacina</a></div>
   </header>
 
   <div class="panel">

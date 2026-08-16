@@ -18,7 +18,7 @@ class VaccinationRepository extends BaseRepository implements VaccinationReposit
     public function paginate(int $perPage = 15): LengthAwarePaginator
     {
         return $this->query()
-            ->with(['patient', 'medicalRecord'])
+            ->with(['patient', 'medicalRecord', 'vaccine'])
             ->orderBy('status')
             ->orderBy('scheduled_for')
             ->paginate($perPage);
@@ -26,6 +26,6 @@ class VaccinationRepository extends BaseRepository implements VaccinationReposit
 
     public function findOrFail(int $id): Model
     {
-        return $this->query()->with(['patient', 'medicalRecord'])->findOrFail($id);
+        return $this->query()->with(['patient', 'medicalRecord', 'vaccine'])->findOrFail($id);
     }
 }

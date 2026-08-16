@@ -6,6 +6,7 @@ use App\Models\User;
 use App\Modules\MedicalRecords\Models\AnimalExam;
 use App\Modules\MedicalRecords\Models\AnimalPathology;
 use App\Modules\Clinics\Models\Clinic;
+use App\Modules\Vaccinations\Models\AnimalVaccine;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -59,6 +60,16 @@ class AnimalSpecies extends Model
             'animal_exam_species',
             'animal_species_id',
             'animal_exam_id'
+        );
+    }
+
+    public function vaccines(): BelongsToMany
+    {
+        return $this->belongsToMany(
+            AnimalVaccine::class,
+            'animal_vaccine_species',
+            'animal_species_id',
+            'animal_vaccine_id'
         );
     }
 }

@@ -34,7 +34,8 @@ lookup behavior.
 - Register clinical records linked to appointments and patients.
 - Maintain clinic-scoped pathology and exam catalogs, with optional species
   compatibility, and register the selected items in clinical records.
-- Track vaccination schedules and applications by patient.
+- Track vaccination schedules and applications by patient, using an optional
+  species-aware catalog and clinic-configured protocol fields.
 - Maintain the pet shop service catalog.
 - Build service orders with product and service items.
 - Convert service orders into billable sales when appropriate.
@@ -81,6 +82,8 @@ remains authoritative.
 - `animal_exams`
 - `animal_exam_species`
 - `medical_record_exams`
+- `animal_vaccines`
+- `animal_vaccine_species`
 - `vaccinations`
 - `petshop_services`
 - `service_orders`
@@ -160,6 +163,9 @@ clinical notes already stored in a medical record. A pathology or exam without
 species restrictions is available to every species. Results, laboratory
 attributes, units, and reference ranges are intentionally outside this first
 exam-request delivery because those rules require a defined laboratory workflow.
+
+The vaccine catalog stores only clinic-configured operational protocol values.
+It does not encode or prescribe clinical vaccination schedules.
 
 `tests/Feature/AppointmentReminderFlowTest.php` covers reminder preparation,
 outcome side effects, audit history, channel validation, permissions, and

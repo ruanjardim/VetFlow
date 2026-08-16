@@ -2492,6 +2492,78 @@ document.addEventListener('DOMContentLoaded', () => {
     updatePurchaseTotals();
   }
 
+  const vaccinationForm = document.querySelector('[data-vaccination-form]');
+
+  if (vaccinationForm) {
+    const patientSelect = vaccinationForm.querySelector('[data-vaccination-patient]');
+    const vaccineSelect = vaccinationForm.querySelector('[data-vaccine-select]');
+    const vaccineNameInput = vaccinationForm.querySelector('[data-vaccine-name-input]');
+    const scheduledForInput = vaccinationForm.querySelector('[data-vaccination-scheduled]');
+    const appliedAtInput = vaccinationForm.querySelector('[data-vaccination-applied]');
+    const nextDueInput = vaccinationForm.querySelector('[data-vaccination-next-due]');
+
+    const addDaysToDate = (value, days) => {
+      const dateValue = String(value || '').slice(0, 10);
+
+      if (! /^\d{4}-\d{2}-\d{2}$/.test(dateValue)) {
+        return '';
+      }
+
+      const [year, month, day] = dateValue.split('-').map(Number);
+      const date = new Date(year, month - 1, day);
+      date.setDate(date.getDate() + Number(days));
+
+      return [date.getFullYear(), String(date.getMonth() + 1).padStart(2, '0'), String(date.getDate()).padStart(2, '0')].join('-');
+    };
+
+    const refreshVaccineOptions = () => {
+      const selectedPatient = patientSelect?.options[patientSelect.selectedIndex];
+      const speciesId = selectedPatient?.dataset.speciesId || '';
+
+      [...(vaccineSelect?.options || [])].forEach((option) => {
+        if (! option.value) {
+          return;
+        }
+
+        const speciesIds = String(option.dataset.speciesIds || '').split(',').filter(Boolean);
+        option.hidden = speciesId !== '' && speciesIds.length > 0 && ! speciesIds.includes(speciesId);
+      });
+    };
+
+    const suggestNextDue = () => {
+      const selectedVaccine = vaccineSelect?.options[vaccineSelect.selectedIndex];
+      const intervalDays = Number(selectedVaccine?.dataset.recommendedIntervalDays || 0);
+
+      if (! intervalDays || ! nextDueInput || (nextDueInput.value && nextDueInput.dataset.suggested !== 'true')) {
+        return;
+      }
+
+      const suggested = addDaysToDate(appliedAtInput?.value || scheduledForInput?.value, intervalDays);
+
+      if (suggested) {
+        nextDueInput.value = suggested;
+        nextDueInput.dataset.suggested = 'true';
+      }
+    };
+
+    patientSelect?.addEventListener('change', refreshVaccineOptions);
+    vaccineSelect?.addEventListener('change', () => {
+      const selectedVaccine = vaccineSelect.options[vaccineSelect.selectedIndex];
+
+      if (selectedVaccine?.value && vaccineNameInput) {
+        vaccineNameInput.value = selectedVaccine.dataset.vaccineName || '';
+      }
+
+      suggestNextDue();
+    });
+    scheduledForInput?.addEventListener('change', suggestNextDue);
+    appliedAtInput?.addEventListener('change', suggestNextDue);
+    nextDueInput?.addEventListener('input', () => {
+      delete nextDueInput.dataset.suggested;
+    });
+    refreshVaccineOptions();
+  }
+
   const tutorForm = document.querySelector('[data-tutor-form]');
 
   if (tutorForm) {

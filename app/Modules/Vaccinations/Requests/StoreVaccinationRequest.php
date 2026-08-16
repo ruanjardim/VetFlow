@@ -22,7 +22,8 @@ class StoreVaccinationRequest extends FormRequest
         return [
             'patient_id' => ['required', 'integer', $this->existsInCurrentClinic('patients')],
             'medical_record_id' => ['nullable', 'integer', $this->existsInCurrentClinic('medical_records')],
-            'vaccine_name' => ['required', 'string', 'max:255'],
+            'animal_vaccine_id' => ['nullable', 'integer'],
+            'vaccine_name' => ['required_without:animal_vaccine_id', 'nullable', 'string', 'max:255'],
             'manufacturer' => ['nullable', 'string', 'max:255'],
             'batch_number' => ['nullable', 'string', 'max:255'],
             'status' => ['required', Rule::in(['scheduled', 'applied', 'skipped'])],

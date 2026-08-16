@@ -96,8 +96,8 @@
           </details>
         @endcanany
 
-        @canany(['patients.manage', 'medical-records.manage'])
-          <details class="nav-group" @if(request()->routeIs('patient-catalog.*', 'pathology-catalog.*', 'exam-catalog.*')) open @endif>
+        @canany(['patients.manage', 'medical-records.manage', 'vaccinations.manage'])
+          <details class="nav-group" @if(request()->routeIs('patient-catalog.*', 'pathology-catalog.*', 'exam-catalog.*', 'vaccine-catalog.*')) open @endif>
             <summary><span>Cadastros</span><span class="nav-chevron">⌄</span></summary>
             <div class="nav-submenu">
               @can('patients.manage')
@@ -109,6 +109,7 @@
                 <a class="{{ request()->routeIs('pathology-catalog.*') ? 'is-active' : '' }}" href="{{ route('pathology-catalog.index') }}">Patologias</a>
                 <a class="{{ request()->routeIs('exam-catalog.*') ? 'is-active' : '' }}" href="{{ route('exam-catalog.index') }}">Exames</a>
               @endcan
+              @can('vaccinations.manage')<a class="{{ request()->routeIs('vaccine-catalog.*') ? 'is-active' : '' }}" href="{{ route('vaccine-catalog.index') }}">Vacinas</a>@endcan
               @can('patients.manage')
                 <a class="{{ request()->routeIs('patient-catalog.specialties') ? 'is-active' : '' }}" href="{{ route('patient-catalog.specialties') }}">Minhas espécies de atuação</a>
               @endcan

@@ -7,8 +7,10 @@ use App\Models\Role;
 use App\Models\User;
 use App\Modules\Clinics\Models\Clinic;
 use App\Modules\MedicalRecords\Models\MedicalRecord;
+use App\Modules\Patients\Models\AnimalSpecies;
 use App\Modules\Patients\Models\Patient;
 use App\Modules\Tutors\Models\Tutor;
+use App\Modules\Vaccinations\Models\AnimalVaccine;
 use App\Modules\Vaccinations\Models\Vaccination;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -102,6 +104,73 @@ class VaccinationFlowTest extends TestCase
         $this->assertDatabaseCount('vaccinations', 0);
     }
 
+    public function test_clinic_catalog_vaccine_suggests_a_configured_next_dose(): void
+    {
+        $clinic = $this->clinic('Clínica Protocolo', '00000000000921');
+        $tutor = $this->tutor($clinic, 'Tutor Protocolo');
+        $canine = AnimalSpecies::query()->where('normalized_name', 'canino')->firstOrFail();
+        $patient = $this->patient($clinic, $tutor, 'Paciente Protocolo', $canine);
+        $user = $this->userForClinic($clinic, ['vaccinations.manage']);
+
+        $this->actingAs($user)
+            ->post(route('vaccine-catalog.store'), [
+                'name' => 'Protocolo de teste da clínica',
+                'recommended_doses' => 2,
+                'recommended_interval_days' => 28,
+                'species_ids' => [$canine->id],
+            ])
+            ->assertRedirect()
+            ->assertSessionDoesntHaveErrors();
+
+        $vaccine = AnimalVaccine::query()->where('name', 'Protocolo de teste da clínica')->firstOrFail();
+
+        $this->post(route('vaccinations.store'), [
+            'patient_id' => $patient->id,
+            'animal_vaccine_id' => $vaccine->id,
+            'status' => 'scheduled',
+            'scheduled_for' => '2026-08-15',
+        ])
+            ->assertRedirect(route('vaccinations.index'))
+            ->assertSessionDoesntHaveErrors();
+
+        $vaccination = Vaccination::query()->firstOrFail();
+
+        $this->assertSame($vaccine->id, (int) $vaccination->animal_vaccine_id);
+        $this->assertSame('Protocolo de teste da clínica', $vaccination->vaccine_name);
+        $this->assertSame('2026-09-12', $vaccination->next_due_at?->toDateString());
+    }
+
+    public function test_vaccination_rejects_catalog_vaccine_for_another_species(): void
+    {
+        $clinic = $this->clinic('Clínica Espécie', '00000000000931');
+        $tutor = $this->tutor($clinic, 'Tutor Espécie');
+        $feline = AnimalSpecies::query()->where('normalized_name', 'felino')->firstOrFail();
+        $canine = AnimalSpecies::query()->where('normalized_name', 'canino')->firstOrFail();
+        $patient = $this->patient($clinic, $tutor, 'Paciente Felino', $feline);
+        $user = $this->userForClinic($clinic, ['vaccinations.manage']);
+        $vaccine = AnimalVaccine::query()->create([
+            'clinic_id' => $clinic->id,
+            'name' => 'Vacina canina da clínica',
+            'normalized_name' => 'vacina canina da clinica',
+            'system' => false,
+            'active' => true,
+        ]);
+        $vaccine->species()->attach($canine->id);
+
+        $this->actingAs($user)
+            ->from(route('vaccinations.create'))
+            ->post(route('vaccinations.store'), [
+                'patient_id' => $patient->id,
+                'animal_vaccine_id' => $vaccine->id,
+                'status' => 'scheduled',
+                'scheduled_for' => '2026-08-15',
+            ])
+            ->assertRedirect(route('vaccinations.create'))
+            ->assertSessionHasErrors('animal_vaccine_id');
+
+        $this->assertDatabaseCount('vaccinations', 0);
+    }
+
     private function clinic(string $name, string $cnpj): Clinic
     {
         return Clinic::query()->create(['corporate_name' => $name, 'trade_name' => $name, 'cnpj' => $cnpj, 'active' => true]);
@@ -127,9 +196,15 @@ class VaccinationFlowTest extends TestCase
         return Tutor::query()->create(['clinic_id' => $clinic->id, 'name' => $name, 'phone' => '21999990000', 'active' => true]);
     }
 
-    private function patient(Clinic $clinic, Tutor $tutor, string $name): Patient
+    private function patient(Clinic $clinic, Tutor $tutor, string $name, ?AnimalSpecies $species = null): Patient
     {
-        return Patient::query()->create(['clinic_id' => $clinic->id, 'tutor_id' => $tutor->id, 'name' => $name, 'species' => 'Canino']);
+        return Patient::query()->create([
+            'clinic_id' => $clinic->id,
+            'tutor_id' => $tutor->id,
+            'name' => $name,
+            'animal_species_id' => $species?->id,
+            'species' => $species?->name ?? 'Canino',
+        ]);
     }
 
     private function medicalRecord(Clinic $clinic, Patient $patient, string $diagnosis): MedicalRecord

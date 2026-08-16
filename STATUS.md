@@ -1,6 +1,6 @@
 # VetFlow Status
 
-Updated: 2026-08-13
+Updated: 2026-08-16
 
 ## Current State
 
@@ -49,9 +49,12 @@ The local working tree was clean before this documentation pass.
   coat/pattern catalog for companion, exotic, wildlife, aquatic, and
   large-animal patients, with reusable clinic-specific entries when the
   standard catalog is insufficient.
-- A searchable, species-aware pathology catalog with shared standard terms,
-  clinic-owned additions, and structured medical-record links that preserve
-  the existing free-text diagnosis.
+- Searchable, species-aware pathology and exam catalogs with shared standard
+  terms, clinic-owned additions, and structured medical-record links that
+  preserve the existing free-text diagnosis.
+- A vaccine catalog with shared standard options, clinic-owned entries,
+  species compatibility, and optional clinic-configured dose/interval fields
+  that only suggest a next date instead of imposing a clinical protocol.
 
 ## GitHub Scan Summary
 
