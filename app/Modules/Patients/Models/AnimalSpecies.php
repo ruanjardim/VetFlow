@@ -3,6 +3,7 @@
 namespace App\Modules\Patients\Models;
 
 use App\Models\User;
+use App\Modules\MedicalRecords\Models\AnimalExam;
 use App\Modules\MedicalRecords\Models\AnimalPathology;
 use App\Modules\Clinics\Models\Clinic;
 use Illuminate\Database\Eloquent\Model;
@@ -48,6 +49,16 @@ class AnimalSpecies extends Model
             'animal_pathology_species',
             'animal_species_id',
             'animal_pathology_id'
+        );
+    }
+
+    public function exams(): BelongsToMany
+    {
+        return $this->belongsToMany(
+            AnimalExam::class,
+            'animal_exam_species',
+            'animal_species_id',
+            'animal_exam_id'
         );
     }
 }

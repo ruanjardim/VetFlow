@@ -30,6 +30,9 @@ and the user who created the record.
 - One or more structured pathologies selected from the catalog, while the
   free-text diagnosis remains available for hypotheses, differentials, and
   clinical context.
+- One or more structured exam requests selected from the catalog. This first
+  delivery records the request only; it does not fabricate laboratory results,
+  attributes, units, or reference ranges.
 
 ## Pathology Catalog
 
@@ -51,12 +54,24 @@ is informed by the MAPA compulsory animal-disease list and the WOAH listed
 diseases. It supports consistent recording and does not replace veterinary
 clinical judgment or regulatory notification duties.
 
+## Exam Catalog
+
+`Cadastros > Exames` follows the same clinic and species visibility rules as
+the pathology catalog. Standard entries cover common laboratory and imaging
+requests; a clinic can add a reusable private exam and optionally restrict it
+to one or more species. The medical-record form stores a name snapshot for
+each selected request, preserving the clinical history if the catalog changes
+later.
+
 ## Tables
 
 - `medical_records`
 - `animal_pathologies`
 - `animal_pathology_species`
 - `medical_record_pathology`
+- `animal_exams`
+- `animal_exam_species`
+- `medical_record_exams`
 
 ## Permission
 
@@ -69,5 +84,5 @@ clinical-sensitive information.
 ## Intentionally Out Of Scope
 
 The structured catalog does not calculate or suggest a diagnosis. This version
-also does not generate formal prescriptions, store laboratory exams, or control
-hospitalization. These are separate clinical flows.
+also does not generate formal prescriptions, store laboratory results, or
+control hospitalization. These are separate clinical flows.

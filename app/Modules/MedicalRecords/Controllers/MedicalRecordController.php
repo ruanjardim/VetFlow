@@ -8,6 +8,7 @@ use App\Modules\MedicalRecords\Models\MedicalRecord;
 use App\Modules\MedicalRecords\Requests\StoreMedicalRecordRequest;
 use App\Modules\MedicalRecords\Requests\UpdateMedicalRecordRequest;
 use App\Modules\MedicalRecords\Services\MedicalRecordService;
+use App\Modules\MedicalRecords\Services\ExamCatalogService;
 use App\Modules\MedicalRecords\Services\PathologyCatalogService;
 use App\Modules\Patients\Models\Patient;
 use App\Support\Tenancy\TenantContext;
@@ -17,6 +18,7 @@ class MedicalRecordController extends BaseCrudController
     public function __construct(
         MedicalRecordService $service,
         private readonly PathologyCatalogService $pathologies,
+        private readonly ExamCatalogService $exams,
         private readonly TenantContext $tenant
     ) {
         $this->service = $service;
@@ -91,9 +93,14 @@ class MedicalRecordController extends BaseCrudController
             'appointments' => $appointments,
             'patients' => Patient::query()->with('animalSpecies')->orderBy('name')->get(),
             'pathologyRows' => $this->pathologies->formCatalog($catalogClinicId),
+            'examRows' => $this->exams->formCatalog($catalogClinicId),
             'selectedPathologyIds' => old(
                 'pathology_ids',
                 $medicalRecord?->pathologies?->pluck('id')->all() ?? []
+            ),
+            'selectedExamIds' => old(
+                'exam_ids',
+                $medicalRecord?->examRequests?->pluck('animal_exam_id')->all() ?? []
             ),
         ];
     }

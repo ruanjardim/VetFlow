@@ -9,6 +9,7 @@ use App\Modules\Patients\Models\Patient;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class MedicalRecord extends Model
@@ -49,5 +50,10 @@ class MedicalRecord extends Model
             'medical_record_id',
             'animal_pathology_id'
         )->withTimestamps()->orderBy('normalized_name');
+    }
+
+    public function examRequests(): HasMany
+    {
+        return $this->hasMany(MedicalRecordExam::class)->latest();
     }
 }

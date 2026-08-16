@@ -168,9 +168,9 @@ document.addEventListener('DOMContentLoaded', () => {
     updateCount();
   });
 
-  document.querySelectorAll('[data-pathology-picker]').forEach((picker) => {
-    const select = picker.querySelector('[data-pathology-select]');
-    const search = picker.querySelector('[data-pathology-search]');
+  document.querySelectorAll('[data-pathology-picker], [data-exam-picker]').forEach((picker) => {
+    const select = picker.querySelector('[data-pathology-select], [data-exam-select]');
+    const search = picker.querySelector('[data-pathology-search], [data-exam-search]');
     const appointmentSelect = document.getElementById('appointment_id');
     const patientSelect = document.getElementById('patient_id');
 

@@ -77,4 +77,17 @@
       @endforeach
     </div>
   </section>
+
+  <section class="panel">
+    <h2>Exames solicitados</h2>
+    @if($medicalRecord->examRequests->isNotEmpty())
+      <div class="table-wrap"><table><thead><tr><th>Exame</th><th>Solicitado em</th></tr></thead><tbody>
+        @foreach($medicalRecord->examRequests as $examRequest)
+          <tr><td>{{ $examRequest->exam_name }}</td><td>{{ optional($examRequest->created_at)->format('d/m/Y H:i') }}</td></tr>
+        @endforeach
+      </tbody></table></div>
+    @else
+      <p class="muted">Nenhum exame estruturado foi solicitado neste prontuário.</p>
+    @endif
+  </section>
 @endsection

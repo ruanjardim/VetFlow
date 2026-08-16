@@ -5,6 +5,7 @@ namespace App\Modules\MedicalRecords\Services;
 use App\Core\Base\BaseService;
 use App\Modules\Appointments\Models\Appointment;
 use App\Modules\MedicalRecords\Contracts\MedicalRecordRepositoryInterface;
+use App\Modules\MedicalRecords\Models\AnimalExam;
 use App\Modules\MedicalRecords\Models\MedicalRecord;
 use App\Modules\Patients\Models\Patient;
 use Illuminate\Database\Eloquent\Model;
@@ -15,7 +16,8 @@ class MedicalRecordService extends BaseService
 {
     public function __construct(
         MedicalRecordRepositoryInterface $repository,
-        private readonly PathologyCatalogService $pathologies
+        private readonly PathologyCatalogService $pathologies,
+        private readonly ExamCatalogService $exams
     ) {
         $this->repository = $repository;
     }
@@ -41,14 +43,20 @@ class MedicalRecordService extends BaseService
                 $patient,
                 $clinicId
             );
+            $examIds = $this->exams->resolveForRecord(
+                $data['exam_ids'] ?? [],
+                $patient,
+                $clinicId
+            );
 
-            unset($data['pathology_ids'], $data['new_pathology']);
+            unset($data['pathology_ids'], $data['new_pathology'], $data['exam_ids']);
             $data['clinic_id'] = $clinicId;
             $data['created_by'] = $creatorId;
 
             /** @var MedicalRecord $medicalRecord */
             $medicalRecord = parent::create($data);
             $medicalRecord->pathologies()->sync($pathologyIds);
+            $this->syncExamRequests($medicalRecord, $examIds);
 
             return $medicalRecord;
         });
@@ -68,12 +76,42 @@ class MedicalRecordService extends BaseService
                 $patient,
                 $clinicId
             );
+            $examIds = $this->exams->resolveForRecord(
+                $data['exam_ids'] ?? [],
+                $patient,
+                $clinicId
+            );
 
-            unset($data['pathology_ids'], $data['new_pathology']);
+            unset($data['pathology_ids'], $data['new_pathology'], $data['exam_ids']);
             $this->repository->update($medicalRecord, $data);
             $medicalRecord->pathologies()->sync($pathologyIds);
+            $this->syncExamRequests($medicalRecord, $examIds);
 
-            return $medicalRecord->refresh()->load('pathologies');
+            return $medicalRecord->refresh()->load(['pathologies', 'examRequests.exam']);
         });
+    }
+
+    /** @param array<int, int> $examIds */
+    private function syncExamRequests(MedicalRecord $medicalRecord, array $examIds): void
+    {
+        $medicalRecord->examRequests()->delete();
+
+        if ($examIds === []) {
+            return;
+        }
+
+        $exams = AnimalExam::query()
+            ->whereIn('id', $examIds)
+            ->get()
+            ->keyBy('id');
+
+        $medicalRecord->examRequests()->createMany(
+            collect($examIds)
+                ->map(fn (int $examId): array => [
+                    'animal_exam_id' => $examId,
+                    'exam_name' => $exams->get($examId)->name,
+                ])
+                ->all()
+        );
     }
 }

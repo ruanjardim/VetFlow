@@ -30,6 +30,8 @@ class UpdateMedicalRecordRequest extends FormRequest
             'respiratory_rate' => ['nullable', 'integer', 'between:1,300'],
             'hydration' => ['nullable', 'string', 'max:255'],
             'notes' => ['nullable', 'string'],
+            'exam_ids' => ['nullable', 'array'],
+            'exam_ids.*' => ['integer', 'distinct'],
         ];
     }
 }

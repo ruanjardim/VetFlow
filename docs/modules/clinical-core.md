@@ -32,6 +32,8 @@ lookup behavior.
   clinic-scoped history.
 - View schedules and appointments together in day, week, and month views.
 - Register clinical records linked to appointments and patients.
+- Maintain clinic-scoped pathology and exam catalogs, with optional species
+  compatibility, and register the selected items in clinical records.
 - Track vaccination schedules and applications by patient.
 - Maintain the pet shop service catalog.
 - Build service orders with product and service items.
@@ -73,6 +75,12 @@ remains authoritative.
 - `appointments`
 - `appointment_reminders`
 - `medical_records`
+- `animal_pathologies`
+- `animal_pathology_species`
+- `medical_record_pathologies`
+- `animal_exams`
+- `animal_exam_species`
+- `medical_record_exams`
 - `vaccinations`
 - `petshop_services`
 - `service_orders`
@@ -146,6 +154,12 @@ through the same application routes used by the interface: Responsavel,
 Patient, Schedule, Appointment, Medical Record, and Vaccination. It confirms
 that every resulting record remains linked to the same clinic, patient, and
 responsible person.
+
+Clinical catalogs complement, rather than replace, the free-text diagnosis and
+clinical notes already stored in a medical record. A pathology or exam without
+species restrictions is available to every species. Results, laboratory
+attributes, units, and reference ranges are intentionally outside this first
+exam-request delivery because those rules require a defined laboratory workflow.
 
 `tests/Feature/AppointmentReminderFlowTest.php` covers reminder preparation,
 outcome side effects, audit history, channel validation, permissions, and
