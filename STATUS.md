@@ -55,6 +55,9 @@ The local working tree was clean before this documentation pass.
 - A vaccine catalog with shared standard options, clinic-owned entries,
   species compatibility, and optional clinic-configured dose/interval fields
   that only suggest a next date instead of imposing a clinical protocol.
+- A permission-aware patient clinical profile that consolidates the existing
+  registration, consultation, medical-record, and vaccination history without
+  changing the underlying operational records.
 
 ## GitHub Scan Summary
 

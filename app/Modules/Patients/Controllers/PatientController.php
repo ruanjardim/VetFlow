@@ -5,6 +5,7 @@ namespace App\Modules\Patients\Controllers;
 use App\Core\Base\BaseCrudController;
 use App\Modules\Patients\Requests\StorePatientRequest;
 use App\Modules\Patients\Requests\UpdatePatientRequest;
+use App\Modules\Patients\Services\PatientClinicalProfileService;
 use App\Modules\Patients\Services\PatientService;
 use App\Modules\Patients\Services\PatientTaxonomyService;
 use App\Modules\Tutors\Models\Tutor;
@@ -13,7 +14,8 @@ class PatientController extends BaseCrudController
 {
     public function __construct(
         PatientService $service,
-        private readonly PatientTaxonomyService $taxonomy
+        private readonly PatientTaxonomyService $taxonomy,
+        private readonly PatientClinicalProfileService $profile
     ) {
         $this->service = $service;
         $this->viewPath = 'patients';
@@ -32,6 +34,17 @@ class PatientController extends BaseCrudController
 
         return view('patients.edit', array_merge($this->formData($patient), [
             'item' => $patient,
+        ]));
+    }
+
+    public function show(int $id)
+    {
+        $user = auth()->user();
+
+        return view('patients.show', $this->profile->forPatient($id, [
+            'appointments' => $user?->can('appointments.manage') ?? false,
+            'medicalRecords' => $user?->can('medical-records.manage') ?? false,
+            'vaccinations' => $user?->can('vaccinations.manage') ?? false,
         ]));
     }
 

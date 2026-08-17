@@ -22,5 +22,4 @@ Route::put('catalog/specialties', [PatientCatalogController::class, 'updateSpeci
     ->name('patient-catalog.specialties.update');
 
 Route::resource('patients', PatientController::class)
-    ->except(['show'])
     ->names('patients');

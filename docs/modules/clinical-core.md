@@ -51,6 +51,15 @@ reference.
 The Patient screens expose the Tutor relationship, and the repository loads it
 with the Patient list to avoid repeated queries.
 
+## Patient Clinical Profile
+
+`Pacientes > Ficha` consolidates the selected patient's identification,
+consultations, medical records, and vaccination card in a read-only view. It
+does not duplicate or modify any clinical record. Each section is only loaded
+and displayed when the signed-in user also has the corresponding module
+permission, so a collaborator with patient registration access alone cannot
+read medical records or vaccination history.
+
 Species and breeds use an extensible catalog that covers companion animals,
 birds, reptiles and amphibians, aquatic animals, large animals, and wildlife
 classifications. Standard entries are shared, while custom entries remain

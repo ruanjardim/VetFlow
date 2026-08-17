@@ -3,6 +3,7 @@
 namespace App\Modules\Patients\Models;
 
 use App\Models\Concerns\BelongsToClinicTenant;
+use App\Modules\Appointments\Models\Appointment;
 use App\Modules\MedicalRecords\Models\MedicalRecord;
 use App\Modules\Tutors\Models\Tutor;
 use App\Modules\Vaccinations\Models\Vaccination;
@@ -48,6 +49,11 @@ class Patient extends Model
     public function medicalRecords(): HasMany
     {
         return $this->hasMany(MedicalRecord::class);
+    }
+
+    public function appointments(): HasMany
+    {
+        return $this->hasMany(Appointment::class);
     }
 
     public function vaccinations(): HasMany

@@ -33,6 +33,7 @@
               <td>{{ $patient->breed }}</td>
               <td>{{ $patient->weight }}</td>
               <td>
+                <a class="button secondary" href="{{ route('patients.show', $patient->id) }}">Ficha</a>
                 @can('schedules.manage')
                   <a class="button secondary" href="{{ route('schedules.create', ['patient_id' => $patient->id, 'tutor_id' => $patient->tutor_id]) }}">Agendar</a>
                 @endcan
