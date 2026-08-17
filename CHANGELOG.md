@@ -83,6 +83,9 @@ This project follows the spirit of Keep a Changelog, with one practical adjustme
   and aquatic species, with clinic-owned additions, automatic species
   filtering, tenant-safe medical-record links, and preservation of the
   free-text diagnosis.
+- Clinic-scoped hospitalization workflow for admissions, discharge records,
+  accommodation, operational follow-up, and patient-profile history without
+  altering the original medical record.
 
 ### Changed
 

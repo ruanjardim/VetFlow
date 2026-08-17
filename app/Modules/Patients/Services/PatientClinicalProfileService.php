@@ -12,7 +12,7 @@ class PatientClinicalProfileService
     }
 
     /**
-     * @param  array{appointments: bool, medicalRecords: bool, vaccinations: bool}  $visibility
+     * @param  array{appointments: bool, medicalRecords: bool, vaccinations: bool, hospitalizations: bool}  $visibility
      * @return array<string, mixed>
      */
     public function forPatient(int $patientId, array $visibility): array
@@ -45,6 +45,14 @@ class PatientClinicalProfileService
                 ->get()
             : new Collection();
 
-        return compact('patient', 'appointments', 'medicalRecords', 'vaccinations', 'visibility');
+        $hospitalizations = $visibility['hospitalizations']
+            ? $patient->hospitalizations()
+                ->with(['medicalRecord', 'admittedBy'])
+                ->latest('admitted_at')
+                ->limit(10)
+                ->get()
+            : new Collection();
+
+        return compact('patient', 'appointments', 'medicalRecords', 'vaccinations', 'hospitalizations', 'visibility');
     }
 }

@@ -14,6 +14,8 @@ use App\Modules\Financial\Contracts\FinancialTransactionRepositoryInterface;
 use App\Modules\Financial\Repositories\FinancialTransactionRepository;
 use App\Modules\Inventory\Contracts\InventoryMovementRepositoryInterface;
 use App\Modules\Inventory\Repositories\InventoryMovementRepository;
+use App\Modules\Hospitalizations\Contracts\HospitalizationRepositoryInterface;
+use App\Modules\Hospitalizations\Repositories\HospitalizationRepository;
 use App\Modules\MedicalRecords\Contracts\MedicalRecordRepositoryInterface;
 use App\Modules\MedicalRecords\Repositories\MedicalRecordRepository;
 use App\Modules\Patients\Contracts\PatientRepositoryInterface;
@@ -68,6 +70,11 @@ class RepositoryServiceProvider extends ServiceProvider
         $this->app->bind(
             InventoryMovementRepositoryInterface::class,
             InventoryMovementRepository::class
+        );
+
+        $this->app->bind(
+            HospitalizationRepositoryInterface::class,
+            HospitalizationRepository::class
         );
 
         $this->app->bind(

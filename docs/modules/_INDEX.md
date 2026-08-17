@@ -16,6 +16,7 @@ This index maps the current code modules and the documentation that should event
 | Financial | Financial transactions and payable/receivable flows | Documented in [Financial](financial.md) |
 | Implementation | Assisted CSV/Excel onboarding, six import blocks, and durable import history | Documented in [Implementation](implementation.md) |
 | Inventory | Stock movement and lot/expiration control | Documented in [Inventory](inventory.md) |
+| Hospitalizations | Patient admission, operational follow-up, and discharge record | Documented in [Hospitalizations](hospitalizations.md) |
 | MedicalRecords | Clinical records linked to appointments | Documented in [Medical Records](medical-records.md) |
 | Vaccinations | Patient vaccination schedules and applications | Documented in [Vaccinations](vaccinations.md) |
 | Patients | Pets/patients with extensible species, breed, and coat taxonomy | Documented in [Patient Taxonomy](patient-taxonomy.md) and [Clinical Core](clinical-core.md) |

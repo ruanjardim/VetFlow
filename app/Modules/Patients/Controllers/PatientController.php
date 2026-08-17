@@ -45,6 +45,7 @@ class PatientController extends BaseCrudController
             'appointments' => $user?->can('appointments.manage') ?? false,
             'medicalRecords' => $user?->can('medical-records.manage') ?? false,
             'vaccinations' => $user?->can('vaccinations.manage') ?? false,
+            'hospitalizations' => $user?->can('hospitalizations.manage') ?? false,
         ]));
     }
 

@@ -4,6 +4,7 @@ namespace App\Modules\Patients\Models;
 
 use App\Models\Concerns\BelongsToClinicTenant;
 use App\Modules\Appointments\Models\Appointment;
+use App\Modules\Hospitalizations\Models\Hospitalization;
 use App\Modules\MedicalRecords\Models\MedicalRecord;
 use App\Modules\Tutors\Models\Tutor;
 use App\Modules\Vaccinations\Models\Vaccination;
@@ -59,5 +60,10 @@ class Patient extends Model
     public function vaccinations(): HasMany
     {
         return $this->hasMany(Vaccination::class);
+    }
+
+    public function hospitalizations(): HasMany
+    {
+        return $this->hasMany(Hospitalization::class);
     }
 }

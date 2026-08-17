@@ -1,6 +1,6 @@
 # VetFlow Status
 
-Updated: 2026-08-16
+Updated: 2026-08-17
 
 ## Current State
 
@@ -58,6 +58,9 @@ The local working tree was clean before this documentation pass.
 - A permission-aware patient clinical profile that consolidates the existing
   registration, consultation, medical-record, and vaccination history without
   changing the underlying operational records.
+- A clinic-scoped hospitalization workflow for patient admissions, operational
+  follow-up, discharge registration, and patient-profile history without
+  duplicating or changing medical records.
 
 ## GitHub Scan Summary
 

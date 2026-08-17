@@ -2564,6 +2564,30 @@ document.addEventListener('DOMContentLoaded', () => {
     refreshVaccineOptions();
   }
 
+  const hospitalizationForm = document.querySelector('[data-hospitalization-form]');
+
+  if (hospitalizationForm) {
+    const patientSelect = hospitalizationForm.querySelector('[data-hospitalization-patient]');
+    const medicalRecordSelect = hospitalizationForm.querySelector('[data-hospitalization-medical-record]');
+
+    const refreshMedicalRecords = () => {
+      const patientId = patientSelect?.value || hospitalizationForm.querySelector('input[name="patient_id"]')?.value || '';
+
+      medicalRecordSelect?.querySelectorAll('option[data-patient-id]').forEach((option) => {
+        const available = !patientId || option.dataset.patientId === patientId;
+        option.hidden = !available;
+        option.disabled = !available;
+
+        if (!available && option.selected) {
+          medicalRecordSelect.value = '';
+        }
+      });
+    };
+
+    patientSelect?.addEventListener('change', refreshMedicalRecords);
+    refreshMedicalRecords();
+  }
+
   const tutorForm = document.querySelector('[data-tutor-form]');
 
   if (tutorForm) {

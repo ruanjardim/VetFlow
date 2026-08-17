@@ -42,6 +42,7 @@ The employee/access note documents the current decision to use `users`,
 - [Sales](modules/sales.md)
 - [Financial](modules/financial.md)
 - [Clinical Core](modules/clinical-core.md)
+- [Hospitalizations](modules/hospitalizations.md)
 - [Validation](modules/validation.md)
 
 ## Audits

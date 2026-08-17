@@ -8,6 +8,7 @@ Code paths:
 - `app/Modules/Appointments`
 - `app/Modules/MedicalRecords`
 - `app/Modules/Vaccinations`
+- `app/Modules/Hospitalizations`
 - `app/Modules/PetShopServices`
 - `app/Modules/ServiceOrders`
 
@@ -36,6 +37,8 @@ lookup behavior.
   compatibility, and register the selected items in clinical records.
 - Track vaccination schedules and applications by patient, using an optional
   species-aware catalog and clinic-configured protocol fields.
+- Register patient admissions, operational follow-up, and discharge details
+  without replacing the associated clinical record.
 - Maintain the pet shop service catalog.
 - Build service orders with product and service items.
 - Convert service orders into billable sales when appropriate.
@@ -94,6 +97,7 @@ remains authoritative.
 - `animal_vaccines`
 - `animal_vaccine_species`
 - `vaccinations`
+- `hospitalizations`
 - `petshop_services`
 - `service_orders`
 - `service_order_items`
@@ -148,6 +152,7 @@ Relevant permission slugs:
 - `appointments.manage`
 - `medical-records.manage`
 - `vaccinations.manage`
+- `hospitalizations.manage`
 - `petshop-services.manage`
 - `service-orders.manage`
 

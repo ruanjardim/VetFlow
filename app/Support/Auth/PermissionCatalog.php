@@ -71,6 +71,12 @@ class PermissionCatalog
                 'description' => 'Permite registrar e acompanhar a carteira de vacinação.',
             ],
             [
+                'slug' => 'hospitalizations.manage',
+                'name' => 'Gerenciar internações',
+                'group' => 'Atendimento',
+                'description' => 'Permite registrar e acompanhar internações clínicas.',
+            ],
+            [
                 'slug' => 'petshop-services.manage',
                 'name' => 'Gerenciar servicos PetShop',
                 'group' => 'Operacao',
@@ -157,6 +163,7 @@ class PermissionCatalog
                     'appointments.manage',
                     'medical-records.manage',
                     'vaccinations.manage',
+                    'hospitalizations.manage',
                     'service-orders.manage',
                 ],
             ],
