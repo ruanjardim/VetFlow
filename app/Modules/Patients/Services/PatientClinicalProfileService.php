@@ -29,7 +29,7 @@ class PatientClinicalProfileService
 
         $medicalRecords = $visibility['medicalRecords']
             ? $patient->medicalRecords()
-                ->with(['appointment', 'pathologies', 'examRequests'])
+                ->with(['appointment', 'pathologies', 'examRequests.result'])
                 ->latest('examined_at')
                 ->limit(10)
                 ->get()

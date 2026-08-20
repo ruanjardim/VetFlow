@@ -1,6 +1,6 @@
 # VetFlow Status
 
-Updated: 2026-08-17
+Updated: 2026-08-20
 
 ## Current State
 
@@ -64,6 +64,9 @@ The local working tree was clean before this documentation pass.
 - Structured patient prescriptions with multi-item directions, draft review,
   protected finalization, cancellation history, print-ready presentation, and
   a dedicated veterinarian-facing permission.
+- Exam-result records attached to structured requests, with tenant isolation,
+  draft review, immutable finalization, auditable cancellation, and protection
+  against removing a request that already owns clinical result history.
 
 ## GitHub Scan Summary
 

@@ -87,9 +87,21 @@
   <section class="panel">
     <h2>Exames solicitados</h2>
     @if($medicalRecord->examRequests->isNotEmpty())
-      <div class="table-wrap"><table><thead><tr><th>Exame</th><th>Solicitado em</th></tr></thead><tbody>
+      <div class="table-wrap"><table><thead><tr><th>Exame</th><th>Solicitado em</th><th>Resultado</th><th>Ação</th></tr></thead><tbody>
         @foreach($medicalRecord->examRequests as $examRequest)
-          <tr><td>{{ $examRequest->exam_name }}</td><td>{{ optional($examRequest->created_at)->format('d/m/Y H:i') }}</td></tr>
+          @php($examResult = $examRequest->result)
+          @php($examResultStatusClass = match($examResult?->status) { 'finalized' => 'success', 'cancelled' => 'danger', 'draft' => 'warning', default => 'muted-badge' })
+          <tr>
+            <td>{{ $examRequest->exam_name }}</td>
+            <td>{{ optional($examRequest->created_at)->format('d/m/Y H:i') }}</td>
+            <td>
+              <span class="badge {{ $examResultStatusClass }}">{{ $examResult ? (\App\Modules\MedicalRecords\Models\MedicalRecordExamResult::STATUS_LABELS[$examResult->status] ?? $examResult->status) : 'Aguardando' }}</span>
+              @if($examResult?->result_summary)
+                <br><span class="muted">{{ \Illuminate\Support\Str::limit($examResult->result_summary, 90) }}</span>
+              @endif
+            </td>
+            <td><a class="button secondary" href="{{ route('exam-results.edit', $examRequest->id) }}">{{ $examResult ? 'Abrir resultado' : 'Registrar resultado' }}</a></td>
+          </tr>
         @endforeach
       </tbody></table></div>
     @else

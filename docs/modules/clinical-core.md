@@ -35,6 +35,8 @@ lookup behavior.
 - Register clinical records linked to appointments and patients.
 - Maintain clinic-scoped pathology and exam catalogs, with optional species
   compatibility, and register the selected items in clinical records.
+- Record results for structured exam requests through a protected draft,
+  finalization, and cancellation lifecycle without automatic interpretation.
 - Create structured, print-friendly prescriptions with an immutable finalized
   state and auditable cancellation.
 - Track vaccination schedules and applications by patient, using an optional
@@ -99,6 +101,7 @@ remains authoritative.
 - `animal_exams`
 - `animal_exam_species`
 - `medical_record_exams`
+- `medical_record_exam_results`
 - `animal_vaccines`
 - `animal_vaccine_species`
 - `prescriptions`
@@ -182,9 +185,10 @@ responsible person.
 
 Clinical catalogs complement, rather than replace, the free-text diagnosis and
 clinical notes already stored in a medical record. A pathology or exam without
-species restrictions is available to every species. Results, laboratory
-attributes, units, and reference ranges are intentionally outside this first
-exam-request delivery because those rules require a defined laboratory workflow.
+species restrictions is available to every species. Result documents can now
+be attached to requests, while structured analytes, automatic flags, units,
+inferred reference ranges, and diagnostic interpretation remain outside the
+workflow.
 
 The vaccine catalog stores only clinic-configured operational protocol values.
 It does not encode or prescribe clinical vaccination schedules.
@@ -195,3 +199,7 @@ cross-clinic isolation.
 `tests/Feature/PrescriptionFlowTest.php` covers the prescription lifecycle,
 immutable finalized content, cancellation history, source linkage, permission,
 and cross-clinic isolation.
+
+`tests/Feature/ExamResultFlowTest.php` covers result drafts, finalization,
+immutability, cancellation, source-request protection, permission, and
+cross-clinic isolation.

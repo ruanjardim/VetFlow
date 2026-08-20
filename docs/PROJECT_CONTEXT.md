@@ -1,6 +1,6 @@
 # VetFlow Project Context
 
-Updated: 2026-08-01
+Updated: 2026-08-20
 
 ## Product
 
@@ -62,7 +62,9 @@ profile that connects appointments, medical records, prescriptions,
 vaccinations, and hospitalizations while
 keeping the source records and their access boundaries intact. Structured
 prescriptions now extend that history with a reviewable draft, immutable
-finalization, and explicit cancellation trail.
+finalization, and explicit cancellation trail. Structured exam requests can
+also receive protected result documents while VetFlow remains neutral about
+their clinical interpretation.
 
 The first staging candidate is KingHost shared Linux hosting, using only
 fictitious data and a bounded authenticated cron bridge because shared hosting

@@ -30,9 +30,9 @@ and the user who created the record.
 - One or more structured pathologies selected from the catalog, while the
   free-text diagnosis remains available for hypotheses, differentials, and
   clinical context.
-- One or more structured exam requests selected from the catalog. This first
-  delivery records the request only; it does not fabricate laboratory results,
-  attributes, units, or reference ranges.
+- One or more structured exam requests selected from the catalog, each able to
+  receive a protected result document with draft, finalized, and cancelled
+  states.
 - Zero or more structured prescriptions maintained through their own protected
   lifecycle and linked back to the medical record.
 
@@ -63,7 +63,15 @@ the pathology catalog. Standard entries cover common laboratory and imaging
 requests; a clinic can add a reusable private exam and optionally restrict it
 to one or more species. The medical-record form stores a name snapshot for
 each selected request, preserving the clinical history if the catalog changes
-later.
+later. A request with result history cannot be removed from the medical record.
+
+## Exam Results
+
+Each request can receive one result document with collection/result dates,
+laboratory identification, summary, detailed text, source reference notes, and
+internal notes. Drafts remain editable; finalization records its user and time
+and makes the content immutable. A finalized result can only be cancelled with
+an auditable reason. See [Exam Results](exam-results.md).
 
 ## Tables
 
@@ -74,6 +82,7 @@ later.
 - `animal_exams`
 - `animal_exam_species`
 - `medical_record_exams`
+- `medical_record_exam_results`
 - `prescriptions`
 - `prescription_items`
 
@@ -87,8 +96,8 @@ clinical-sensitive information.
 
 ## Intentionally Out Of Scope
 
-The structured catalog does not calculate or suggest a diagnosis. Prescriptions
-are a separate clinical flow and do not yet provide a digital signature or
-regulated controlled-substance forms. This version records exam requests but
-does not fabricate laboratory results; hospitalization remains a separate
-clinical flow.
+The structured catalog does not calculate or suggest a diagnosis. Exam results
+are recorded exactly as informed and do not generate automatic flags,
+interpretations, analytes, units, or reference ranges. Prescriptions do not yet
+provide a digital signature or regulated controlled-substance forms;
+hospitalization remains a separate clinical flow.

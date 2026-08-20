@@ -90,6 +90,9 @@ This project follows the spirit of Keep a Changelog, with one practical adjustme
   medication instructions, draft review, immutable finalization, auditable
   cancellation, print layout, dedicated permission, and patient-profile
   integration.
+- Tenant-safe exam results linked to structured requests, with reviewable
+  drafts, immutable finalization, auditable cancellation, source-request
+  protection, and an explicit no-automatic-interpretation boundary.
 
 ### Changed
 

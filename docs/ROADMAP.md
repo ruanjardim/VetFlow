@@ -1,6 +1,6 @@
 # VetFlow Roadmap
 
-Updated: 2026-08-13
+Updated: 2026-08-20
 
 This roadmap describes the product direction that should stay visible while VetFlow evolves. It is intentionally high-level and should be revised as implementation priorities change.
 
@@ -60,6 +60,9 @@ The product should feel different from a generic CRUD system by connecting the c
 - Clinical records can produce structured prescriptions whose finalized
   content is immutable, whose cancellations remain auditable, and whose item
   text remains independent from mutable commercial catalogs.
+- Structured exam requests can receive tenant-safe result documents whose
+  finalized content is immutable and whose cancellation history remains
+  auditable without automatic clinical interpretation.
 
 ## Current Near-Term Priorities
 

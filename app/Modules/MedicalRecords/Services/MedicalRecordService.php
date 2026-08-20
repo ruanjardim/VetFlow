@@ -94,19 +94,37 @@ class MedicalRecordService extends BaseService
     /** @param array<int, int> $examIds */
     private function syncExamRequests(MedicalRecord $medicalRecord, array $examIds): void
     {
-        $medicalRecord->examRequests()->delete();
+        $desiredIds = collect($examIds)->map(fn (int $examId): int => $examId)->unique()->values();
+        $currentRequests = $medicalRecord->examRequests()->with('result')->get();
+        $requestsToRemove = $currentRequests
+            ->reject(fn ($request): bool => $desiredIds->contains((int) $request->animal_exam_id));
 
-        if ($examIds === []) {
+        if ($requestsToRemove->contains(fn ($request): bool => $request->result !== null)) {
+            throw ValidationException::withMessages([
+                'exam_ids' => 'Um exame com resultado registrado não pode ser removido do prontuário.',
+            ]);
+        }
+
+        $medicalRecord->examRequests()
+            ->whereKey($requestsToRemove->pluck('id'))
+            ->delete();
+
+        $existingExamIds = $currentRequests
+            ->pluck('animal_exam_id')
+            ->map(fn ($examId): int => (int) $examId);
+        $newExamIds = $desiredIds->diff($existingExamIds)->values();
+
+        if ($newExamIds->isEmpty()) {
             return;
         }
 
         $exams = AnimalExam::query()
-            ->whereIn('id', $examIds)
+            ->whereIn('id', $newExamIds)
             ->get()
             ->keyBy('id');
 
         $medicalRecord->examRequests()->createMany(
-            collect($examIds)
+            $newExamIds
                 ->map(fn (int $examId): array => [
                     'animal_exam_id' => $examId,
                     'exam_name' => $exams->get($examId)->name,
