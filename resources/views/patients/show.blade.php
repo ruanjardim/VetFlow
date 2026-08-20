@@ -138,17 +138,18 @@
   @if($visibility['hospitalizations'])
     <section class="panel">
       <div class="panel-heading"><div><h2>Internações</h2><p>Até 10 admissões mais recentes.</p></div></div>
-      <div class="table-wrap"><table><thead><tr><th>Admissão</th><th>Status</th><th>Leito ou setor</th><th>Alta</th><th>Ações</th></tr></thead><tbody>
+      <div class="table-wrap"><table><thead><tr><th>Admissão</th><th>Status</th><th>Leito ou setor</th><th>Evoluções</th><th>Alta</th><th>Ações</th></tr></thead><tbody>
         @forelse($hospitalizations as $hospitalization)
           <tr>
             <td>{{ optional($hospitalization->admitted_at)->format('d/m/Y H:i') }}</td>
             <td>{{ ['hospitalized' => 'Internado', 'discharged' => 'Alta registrada', 'cancelled' => 'Cancelada'][$hospitalization->status] ?? $hospitalization->status }}</td>
             <td>{{ $hospitalization->accommodation ?: '-' }}</td>
+            <td>{{ $hospitalization->evolutions_count }}</td>
             <td>{{ optional($hospitalization->discharged_at)->format('d/m/Y H:i') ?: '-' }}</td>
             <td><a class="button secondary" href="{{ route('hospitalizations.edit', $hospitalization->id) }}">Abrir</a></td>
           </tr>
         @empty
-          <tr><td colspan="5" class="muted">Nenhuma internação registrada para este paciente.</td></tr>
+          <tr><td colspan="6" class="muted">Nenhuma internação registrada para este paciente.</td></tr>
         @endforelse
       </tbody></table></div>
     </section>

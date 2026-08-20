@@ -64,7 +64,8 @@ keeping the source records and their access boundaries intact. Structured
 prescriptions now extend that history with a reviewable draft, immutable
 finalization, and explicit cancellation trail. Structured exam requests can
 also receive protected result documents while VetFlow remains neutral about
-their clinical interpretation.
+their clinical interpretation. Active admissions now keep append-only
+evolutions whose history remains readable after discharge or cancellation.
 
 The first staging candidate is KingHost shared Linux hosting, using only
 fictitious data and a bounded authenticated cron bridge because shared hosting

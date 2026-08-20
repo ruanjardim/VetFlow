@@ -63,6 +63,9 @@ The product should feel different from a generic CRUD system by connecting the c
 - Structured exam requests can receive tenant-safe result documents whose
   finalized content is immutable and whose cancellation history remains
   auditable without automatic clinical interpretation.
+- Active hospitalizations have an append-only evolution diary with authorship,
+  observation timestamps, optional vital-sign snapshots, and a read-only
+  history after discharge or cancellation.
 
 ## Current Near-Term Priorities
 

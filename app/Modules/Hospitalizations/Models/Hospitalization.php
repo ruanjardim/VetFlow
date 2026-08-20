@@ -8,6 +8,7 @@ use App\Modules\MedicalRecords\Models\MedicalRecord;
 use App\Modules\Patients\Models\Patient;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Hospitalization extends Model
@@ -36,5 +37,10 @@ class Hospitalization extends Model
     public function admittedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'admitted_by');
+    }
+
+    public function evolutions(): HasMany
+    {
+        return $this->hasMany(HospitalizationEvolution::class)->latest('observed_at');
     }
 }

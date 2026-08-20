@@ -16,7 +16,7 @@ This index maps the current code modules and the documentation that should event
 | Financial | Financial transactions and payable/receivable flows | Documented in [Financial](financial.md) |
 | Implementation | Assisted CSV/Excel onboarding, six import blocks, and durable import history | Documented in [Implementation](implementation.md) |
 | Inventory | Stock movement and lot/expiration control | Documented in [Inventory](inventory.md) |
-| Hospitalizations | Patient admission, operational follow-up, and discharge record | Documented in [Hospitalizations](hospitalizations.md) |
+| Hospitalizations | Patient admission, append-only evolution diary, and discharge record | Documented in [Hospitalizations](hospitalizations.md) |
 | MedicalRecords | Clinical records linked to appointments | Documented in [Medical Records](medical-records.md) |
 | ExamResults | Protected result lifecycle for structured exam requests | Documented in [Exam Results](exam-results.md) |
 | Prescriptions | Structured clinical prescriptions with protected lifecycle | Documented in [Prescriptions](prescriptions.md) |

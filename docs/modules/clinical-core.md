@@ -43,6 +43,8 @@ lookup behavior.
   species-aware catalog and clinic-configured protocol fields.
 - Register patient admissions, operational follow-up, and discharge details
   without replacing the associated clinical record.
+- Append immutable observed evolutions to active admissions and retain their
+  authored history after discharge or cancellation.
 - Present a permission-aware patient profile that consolidates appointments,
   medical records, prescriptions, vaccinations, and hospitalizations without
   duplicating them.
@@ -108,6 +110,7 @@ remains authoritative.
 - `prescription_items`
 - `vaccinations`
 - `hospitalizations`
+- `hospitalization_evolutions`
 - `petshop_services`
 - `service_orders`
 - `service_order_items`
@@ -203,3 +206,7 @@ and cross-clinic isolation.
 `tests/Feature/ExamResultFlowTest.php` covers result drafts, finalization,
 immutability, cancellation, source-request protection, permission, and
 cross-clinic isolation.
+
+`tests/Feature/HospitalizationEvolutionFlowTest.php` covers append-only
+evolutions, optional vital-sign snapshots, active-admission enforcement,
+authorship, permission, and cross-clinic isolation.

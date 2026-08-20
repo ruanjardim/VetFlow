@@ -19,6 +19,7 @@ class HospitalizationRepository extends BaseRepository implements Hospitalizatio
     {
         return $this->query()
             ->with(['patient.tutor', 'medicalRecord', 'admittedBy'])
+            ->withCount('evolutions')
             ->orderByRaw("case when status = 'hospitalized' then 0 else 1 end")
             ->latest('admitted_at')
             ->paginate($perPage);
@@ -27,7 +28,7 @@ class HospitalizationRepository extends BaseRepository implements Hospitalizatio
     public function findOrFail(int $id): Model
     {
         return $this->query()
-            ->with(['patient.tutor', 'medicalRecord', 'admittedBy'])
+            ->with(['patient.tutor', 'medicalRecord', 'admittedBy', 'evolutions.recordedBy'])
             ->findOrFail($id);
     }
 }

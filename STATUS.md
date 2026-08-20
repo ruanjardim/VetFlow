@@ -67,6 +67,9 @@ The local working tree was clean before this documentation pass.
 - Exam-result records attached to structured requests, with tenant isolation,
   draft review, immutable finalization, auditable cancellation, and protection
   against removing a request that already owns clinical result history.
+- Append-only hospitalization evolutions with optional vital-sign snapshots,
+  author and observation timestamps, tenant isolation, and automatic write
+  protection once the admission is discharged or cancelled.
 
 ## GitHub Scan Summary
 

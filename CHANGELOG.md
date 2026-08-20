@@ -93,6 +93,9 @@ This project follows the spirit of Keep a Changelog, with one practical adjustme
 - Tenant-safe exam results linked to structured requests, with reviewable
   drafts, immutable finalization, auditable cancellation, source-request
   protection, and an explicit no-automatic-interpretation boundary.
+- Append-only hospitalization evolutions with observation time, author,
+  optional vital-sign snapshots, active-admission enforcement, and read-only
+  history after discharge or cancellation.
 
 ### Changed
 

@@ -54,6 +54,7 @@ class PatientClinicalProfileService
         $hospitalizations = $visibility['hospitalizations']
             ? $patient->hospitalizations()
                 ->with(['medicalRecord', 'admittedBy'])
+                ->withCount('evolutions')
                 ->latest('admitted_at')
                 ->limit(10)
                 ->get()
