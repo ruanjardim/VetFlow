@@ -23,6 +23,12 @@ class PermissionCatalog
                 'description' => 'Permite acessar cadastro e manutencao de clinicas.',
             ],
             [
+                'slug' => 'clinic-branding.manage',
+                'name' => 'Gerenciar identidade visual',
+                'group' => 'Administrativo',
+                'description' => 'Permite escolher o ícone da clínica exibido no menu do VetFlow.',
+            ],
+            [
                 'slug' => 'implementation.manage',
                 'name' => 'Gerenciar implantacao',
                 'group' => 'Administrativo',

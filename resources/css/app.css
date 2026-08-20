@@ -58,7 +58,26 @@ textarea {
   font-size: 20px;
 }
 
-.brand span {
+.brand-heading {
+  align-items: center;
+  color: #f8fafc;
+  display: flex;
+  gap: 8px;
+}
+
+.brand-animal-icon {
+  color: #7dd3fc;
+  display: inline-flex;
+  flex: 0 0 auto;
+}
+
+.brand-animal-icon svg {
+  fill: currentColor;
+  height: 25px;
+  width: 25px;
+}
+
+.brand-subtitle {
   color: #aeb8c6;
   font-size: 13px;
 }
@@ -233,6 +252,62 @@ textarea {
 .specialty-actions span {
   color: #475569;
   font-weight: 700;
+}
+
+.clinic-branding-fields {
+  border-top: 1px solid #e2e8f0;
+  display: grid;
+  gap: 18px;
+  margin-top: 8px;
+  padding-top: 18px;
+}
+
+.clinic-branding-fields small {
+  color: #64748b;
+  display: block;
+  margin-top: 6px;
+}
+
+.brand-icon-picker {
+  border: 0;
+  margin: 0;
+  padding: 0;
+}
+
+.brand-icon-picker legend {
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.brand-icon-options {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(auto-fit, minmax(145px, 1fr));
+}
+
+.brand-icon-option {
+  align-items: center;
+  background: #ffffff;
+  border: 1px solid #dbe3ee;
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  gap: 9px;
+  padding: 11px;
+}
+
+.brand-icon-option:has(input:checked) {
+  background: #eff6ff;
+  border-color: #0284c7;
+}
+
+.brand-icon-option input {
+  accent-color: #0284c7;
+  min-height: 0;
+}
+
+.brand-icon-option .brand-animal-icon {
+  color: #0369a1;
 }
 
 .main {

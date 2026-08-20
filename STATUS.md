@@ -77,6 +77,9 @@ The local working tree was clean before this documentation pass.
 - A reverse-chronological patient clinical timeline assembled from permitted
   source modules, with direct source links, clinic isolation, and no duplicated
   clinical state or automatic interpretation.
+- Clinic-scoped sidebar identity with optional automatic, manually selected,
+  or hidden animal icons. Automatic mode uses the clinic users' configured
+  species of practice and falls back to a generic paw for mixed practices.
 
 ## GitHub Scan Summary
 

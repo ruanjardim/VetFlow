@@ -15,8 +15,13 @@
   <div class="shell">
     <aside class="sidebar">
       <a class="brand" href="{{ route('dashboard') }}">
-        <strong>VetFlow</strong>
-        <span>ERP veterinario</span>
+        <span class="brand-heading">
+          <strong>VetFlow</strong>
+          @if($brandIconKey)
+            <x-brand-animal-icon :icon="$brandIconKey" />
+          @endif
+        </span>
+        <span class="brand-subtitle">ERP veterinario</span>
       </a>
 
       <nav class="nav">
@@ -119,14 +124,17 @@
           </details>
         @endcanany
 
-        @canany(['clinics.manage', 'users.manage', 'implementation.manage'])
-          <details class="nav-group" @if(request()->routeIs('clinics.*', 'access-users.*', 'implementation.*')) open @endif>
+        @canany(['clinics.manage', 'clinic-branding.manage', 'users.manage', 'implementation.manage'])
+          <details class="nav-group" @if(request()->routeIs('clinics.*', 'clinic-branding.*', 'access-users.*', 'implementation.*')) open @endif>
             <summary><span>Administração</span><span class="nav-chevron">⌄</span></summary>
             <div class="nav-submenu">
               @if(auth()->user()?->clinic_id === null)
                 @can('clinics.manage')
                   <a class="{{ request()->routeIs('clinics.*') ? 'is-active' : '' }}" href="{{ route('clinics.index') }}">Clínicas</a>
                 @endcan
+              @endif
+              @if(auth()->user()?->clinic_id !== null)
+                @can('clinic-branding.manage')<a class="{{ request()->routeIs('clinic-branding.*') ? 'is-active' : '' }}" href="{{ route('clinic-branding.edit') }}">Identidade visual</a>@endcan
               @endif
               @can('users.manage')<a class="{{ request()->routeIs('access-users.*') ? 'is-active' : '' }}" href="{{ route('access-users.index') }}">Usuários e acessos</a>@endcan
               @can('implementation.manage')<a class="{{ request()->routeIs('implementation.*') ? 'is-active' : '' }}" href="{{ route('implementation.index') }}">Implantação</a>@endcan

@@ -8,6 +8,9 @@ This project follows the spirit of Keep a Changelog, with one practical adjustme
 
 ### Added
 
+- Clinic-scoped animal icon branding beside the VetFlow sidebar title, with
+  automatic species-based resolution, manual selection, an off mode, and a
+  dedicated administrator permission.
 - Root README with product overview, stack, setup, validation, and documentation links.
 - Root project status file.
 - Root agent guidance file.
