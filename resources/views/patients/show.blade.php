@@ -40,6 +40,77 @@
     </div>
   </section>
 
+  @if($visibility['medicalRecords'])
+    <section class="panel clinical-alert-management">
+      <div class="panel-heading">
+        <div>
+          <h2>Alertas clínicos</h2>
+          <p>Registros objetivos e auditáveis exibidos na ficha, no prontuário, na prescrição e na internação.</p>
+        </div>
+        <span class="badge {{ $activeClinicalAlerts->isNotEmpty() ? 'danger' : 'success' }}">
+          {{ $activeClinicalAlerts->count() }} {{ $activeClinicalAlerts->count() === 1 ? 'ativo' : 'ativos' }}
+        </span>
+      </div>
+
+      @if($activeClinicalAlerts->isNotEmpty())
+        <div class="clinical-alerts-list" role="alert" aria-label="Alertas clínicos ativos">
+          @foreach($activeClinicalAlerts as $clinicalAlert)
+            <article class="clinical-alert-card">
+              <strong>{{ $clinicalAlert->title }}</strong>
+              @if($clinicalAlert->details)<p>{!! nl2br(e($clinicalAlert->details)) !!}</p>@endif
+              <small>Registrado em {{ optional($clinicalAlert->created_at)->format('d/m/Y H:i') }} por {{ $clinicalAlert->createdBy?->name ?? '-' }}.</small>
+              <form class="clinical-alert-resolution" method="POST" action="{{ route('patient-clinical-alerts.resolve', [$patient->id, $clinicalAlert->id]) }}">
+                @csrf
+                @method('PATCH')
+                <div class="field">
+                  <label for="resolution_notes_{{ $clinicalAlert->id }}">Motivo da resolução</label>
+                  <textarea id="resolution_notes_{{ $clinicalAlert->id }}" name="resolution_notes" required minlength="10" maxlength="2000" placeholder="Descreva o fato que permite encerrar este alerta."></textarea>
+                </div>
+                <button class="secondary" type="submit" data-confirm="Resolver este alerta mantendo-o no histórico?">Resolver alerta</button>
+              </form>
+            </article>
+          @endforeach
+        </div>
+      @else
+        <p class="muted">Nenhum alerta clínico ativo para este paciente.</p>
+      @endif
+
+      <form method="POST" action="{{ route('patient-clinical-alerts.store', $patient->id) }}">
+        @csrf
+        <div class="form-grid">
+          <div class="field">
+            <label for="clinical_alert_title">Novo alerta</label>
+            <input id="clinical_alert_title" name="title" required maxlength="160" value="{{ old('title') }}" placeholder="Ex.: reação documentada a medicamento">
+          </div>
+          <div class="field full">
+            <label for="clinical_alert_details">Detalhes observados</label>
+            <textarea id="clinical_alert_details" name="details" maxlength="5000" rows="3">{{ old('details') }}</textarea>
+            <small>Registre fatos conhecidos. O VetFlow não classifica gravidade nem gera interpretação clínica.</small>
+          </div>
+        </div>
+        <button type="submit">Registrar alerta</button>
+      </form>
+
+      @if($resolvedClinicalAlerts->isNotEmpty())
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Alerta resolvido</th><th>Registrado por</th><th>Resolução</th><th>Resolvido por</th></tr></thead>
+            <tbody>
+              @foreach($resolvedClinicalAlerts as $clinicalAlert)
+                <tr>
+                  <td><strong>{{ $clinicalAlert->title }}</strong><br><span class="muted">{{ optional($clinicalAlert->created_at)->format('d/m/Y H:i') }}</span></td>
+                  <td>{{ $clinicalAlert->createdBy?->name ?? '-' }}</td>
+                  <td>{!! nl2br(e($clinicalAlert->resolution_notes)) !!}<br><span class="muted">{{ optional($clinicalAlert->resolved_at)->format('d/m/Y H:i') }}</span></td>
+                  <td>{{ $clinicalAlert->resolvedBy?->name ?? '-' }}</td>
+                </tr>
+              @endforeach
+            </tbody>
+          </table>
+        </div>
+      @endif
+    </section>
+  @endif
+
   @if($visibility['appointments'])
     <section class="panel">
       <div class="panel-heading"><div><h2>Consultas</h2><p>Até 10 atendimentos mais recentes.</p></div></div>

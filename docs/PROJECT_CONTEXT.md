@@ -66,6 +66,9 @@ finalization, and explicit cancellation trail. Structured exam requests can
 also receive protected result documents while VetFlow remains neutral about
 their clinical interpretation. Active admissions now keep append-only
 evolutions whose history remains readable after discharge or cancellation.
+Manually recorded patient clinical alerts are now visible across the highest
+risk clinical screens and use an auditable active/resolved lifecycle. VetFlow
+does not infer their severity or generate them from other clinical data.
 
 The first staging candidate is KingHost shared Linux hosting, using only
 fictitious data and a bounded authenticated cron bridge because shared hosting

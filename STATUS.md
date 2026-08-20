@@ -70,6 +70,10 @@ The local working tree was clean before this documentation pass.
 - Append-only hospitalization evolutions with optional vital-sign snapshots,
   author and observation timestamps, tenant isolation, and automatic write
   protection once the admission is discharged or cancelled.
+- Patient clinical alerts with immutable original content, auditable
+  resolution, clinic isolation, and active banners in the patient profile,
+  medical record, prescription, and hospitalization screens. VetFlow does not
+  calculate severity or create these alerts automatically.
 
 ## GitHub Scan Summary
 

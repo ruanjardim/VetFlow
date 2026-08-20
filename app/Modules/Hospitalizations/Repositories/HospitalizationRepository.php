@@ -28,7 +28,13 @@ class HospitalizationRepository extends BaseRepository implements Hospitalizatio
     public function findOrFail(int $id): Model
     {
         return $this->query()
-            ->with(['patient.tutor', 'medicalRecord', 'admittedBy', 'evolutions.recordedBy'])
+            ->with([
+                'patient.tutor',
+                'patient.activeClinicalAlerts.createdBy',
+                'medicalRecord',
+                'admittedBy',
+                'evolutions.recordedBy',
+            ])
             ->findOrFail($id);
     }
 }

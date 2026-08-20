@@ -4,6 +4,7 @@ use App\Modules\MedicalRecords\Controllers\ExamCatalogController;
 use App\Modules\MedicalRecords\Controllers\ExamResultController;
 use App\Modules\MedicalRecords\Controllers\MedicalRecordController;
 use App\Modules\MedicalRecords\Controllers\PathologyCatalogController;
+use App\Modules\Patients\Controllers\PatientClinicalAlertController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('catalog/pathologies', [PathologyCatalogController::class, 'index'])
@@ -27,6 +28,14 @@ Route::patch('exam-requests/{examRequest}/result/finalize', [ExamResultControlle
 Route::patch('exam-requests/{examRequest}/result/cancel', [ExamResultController::class, 'cancel'])
     ->whereNumber('examRequest')
     ->name('exam-results.cancel');
+
+Route::post('patients/{patient}/clinical-alerts', [PatientClinicalAlertController::class, 'store'])
+    ->whereNumber('patient')
+    ->name('patient-clinical-alerts.store');
+Route::patch('patients/{patient}/clinical-alerts/{alert}/resolve', [PatientClinicalAlertController::class, 'resolve'])
+    ->whereNumber('patient')
+    ->whereNumber('alert')
+    ->name('patient-clinical-alerts.resolve');
 
 Route::resource('medical-records', MedicalRecordController::class)
     ->except(['destroy'])

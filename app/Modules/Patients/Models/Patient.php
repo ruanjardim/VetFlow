@@ -72,4 +72,16 @@ class Patient extends Model
     {
         return $this->hasMany(Prescription::class);
     }
+
+    public function clinicalAlerts(): HasMany
+    {
+        return $this->hasMany(PatientClinicalAlert::class)->latest();
+    }
+
+    public function activeClinicalAlerts(): HasMany
+    {
+        return $this->hasMany(PatientClinicalAlert::class)
+            ->where('status', 'active')
+            ->latest();
+    }
 }

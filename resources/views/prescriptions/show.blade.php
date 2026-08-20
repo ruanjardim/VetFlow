@@ -24,6 +24,8 @@
     </div>
   </header>
 
+  @include('patients.partials.clinical-alerts-banner', ['patient' => $prescription->patient])
+
   <article class="panel prescription-document">
     <div class="prescription-document-header">
       <div>

@@ -66,6 +66,10 @@ The product should feel different from a generic CRUD system by connecting the c
 - Active hospitalizations have an append-only evolution diary with authorship,
   observation timestamps, optional vital-sign snapshots, and a read-only
   history after discharge or cancellation.
+- Patient care exposes manually recorded clinical alerts at the patient,
+  medical-record, prescription, and hospitalization touchpoints, with
+  tenant-safe authorship and auditable resolution but no automatic clinical
+  classification.
 
 ## Current Near-Term Priorities
 

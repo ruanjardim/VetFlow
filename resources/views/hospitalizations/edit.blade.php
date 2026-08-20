@@ -13,6 +13,8 @@
     </div>
   </header>
 
+  @include('patients.partials.clinical-alerts-banner', ['patient' => $hospitalization->patient])
+
   <form class="panel" method="POST" action="{{ route('hospitalizations.update', $hospitalization->id) }}">
     @csrf
     @method('PUT')

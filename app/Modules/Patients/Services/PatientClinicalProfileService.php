@@ -35,6 +35,21 @@ class PatientClinicalProfileService
                 ->get()
             : new Collection;
 
+        $activeClinicalAlerts = $visibility['medicalRecords']
+            ? $patient->activeClinicalAlerts()
+                ->with('createdBy')
+                ->get()
+            : new Collection;
+
+        $resolvedClinicalAlerts = $visibility['medicalRecords']
+            ? $patient->clinicalAlerts()
+                ->where('status', 'resolved')
+                ->with(['createdBy', 'resolvedBy'])
+                ->latest('resolved_at')
+                ->limit(10)
+                ->get()
+            : new Collection;
+
         $prescriptions = $visibility['prescriptions']
             ? $patient->prescriptions()
                 ->with(['medicalRecord', 'items'])
@@ -60,6 +75,16 @@ class PatientClinicalProfileService
                 ->get()
             : new Collection;
 
-        return compact('patient', 'appointments', 'medicalRecords', 'prescriptions', 'vaccinations', 'hospitalizations', 'visibility');
+        return compact(
+            'patient',
+            'appointments',
+            'medicalRecords',
+            'activeClinicalAlerts',
+            'resolvedClinicalAlerts',
+            'prescriptions',
+            'vaccinations',
+            'hospitalizations',
+            'visibility'
+        );
     }
 }

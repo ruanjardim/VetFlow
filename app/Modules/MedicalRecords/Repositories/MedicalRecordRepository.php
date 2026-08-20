@@ -30,6 +30,7 @@ class MedicalRecordRepository extends BaseRepository implements MedicalRecordRep
                 'appointment.tutor',
                 'patient.tutor',
                 'patient.animalSpecies',
+                'patient.activeClinicalAlerts.createdBy',
                 'createdBy',
                 'pathologies.species',
                 'examRequests.exam',

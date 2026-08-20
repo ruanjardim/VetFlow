@@ -45,6 +45,8 @@ lookup behavior.
   without replacing the associated clinical record.
 - Append immutable observed evolutions to active admissions and retain their
   authored history after discharge or cancellation.
+- Register patient clinical alerts, expose active notices in risk-sensitive
+  workflows, and resolve them with an authored reason while retaining history.
 - Present a permission-aware patient profile that consolidates appointments,
   medical records, prescriptions, vaccinations, and hospitalizations without
   duplicating them.
@@ -111,6 +113,7 @@ remains authoritative.
 - `vaccinations`
 - `hospitalizations`
 - `hospitalization_evolutions`
+- `patient_clinical_alerts`
 - `petshop_services`
 - `service_orders`
 - `service_order_items`
@@ -210,3 +213,7 @@ cross-clinic isolation.
 `tests/Feature/HospitalizationEvolutionFlowTest.php` covers append-only
 evolutions, optional vital-sign snapshots, active-admission enforcement,
 authorship, permission, and cross-clinic isolation.
+
+`tests/Feature/PatientClinicalAlertFlowTest.php` covers alert creation,
+cross-workflow visibility, auditable resolution, permission, immutable history,
+patient/alert pairing, and cross-clinic isolation.

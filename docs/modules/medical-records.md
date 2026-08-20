@@ -35,6 +35,8 @@ and the user who created the record.
   states.
 - Zero or more structured prescriptions maintained through their own protected
   lifecycle and linked back to the medical record.
+- Active patient clinical alerts displayed before the record content, exactly
+  as entered by the clinical team and without automatic interpretation.
 
 ## Pathology Catalog
 
@@ -85,6 +87,7 @@ an auditable reason. See [Exam Results](exam-results.md).
 - `medical_record_exam_results`
 - `prescriptions`
 - `prescription_items`
+- `patient_clinical_alerts`
 
 ## Permission
 

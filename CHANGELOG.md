@@ -94,8 +94,12 @@ This project follows the spirit of Keep a Changelog, with one practical adjustme
   drafts, immutable finalization, auditable cancellation, source-request
   protection, and an explicit no-automatic-interpretation boundary.
 - Append-only hospitalization evolutions with observation time, author,
-  optional vital-sign snapshots, active-admission enforcement, and read-only
-  history after discharge or cancellation.
+  optional vital-sign snapshots, tenant isolation, and write protection after
+  discharge or cancellation.
+- Auditable patient clinical alerts with active/resolved states, required
+  resolution notes, tenant isolation, and active visibility in the patient
+  profile, medical record, prescription, and hospitalization flows without
+  automatic severity or interpretation.
 
 ### Changed
 

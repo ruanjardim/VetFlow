@@ -2544,6 +2544,55 @@ textarea {
   max-width: 920px;
 }
 
+.clinical-alerts-banner {
+  background: #fff7f7;
+  border-color: #fecaca;
+}
+
+.clinical-alerts-banner h2 {
+  color: #991b1b;
+}
+
+.clinical-alerts-list {
+  display: grid;
+  gap: 10px;
+}
+
+.clinical-alert-card {
+  background: #ffffff;
+  border-left: 4px solid #dc2626;
+  border-radius: 8px;
+  display: grid;
+  gap: 5px;
+  padding: 12px 14px;
+}
+
+.clinical-alert-card p {
+  margin: 0;
+  white-space: pre-line;
+}
+
+.clinical-alert-card small {
+  color: #64748b;
+}
+
+.clinical-alert-management {
+  display: grid;
+  gap: 16px;
+}
+
+.clinical-alert-resolution {
+  align-items: end;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: minmax(220px, 1fr) auto;
+  margin-top: 12px;
+}
+
+.clinical-alert-resolution textarea {
+  min-height: 72px;
+}
+
 @media (max-width: 640px) {
   .prescription-items-heading {
     align-items: stretch;
@@ -2551,6 +2600,10 @@ textarea {
   }
 
   .prescription-recipient {
+    grid-template-columns: 1fr;
+  }
+
+  .clinical-alert-resolution {
     grid-template-columns: 1fr;
   }
 }

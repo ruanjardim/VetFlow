@@ -28,6 +28,7 @@ class PrescriptionRepository extends BaseRepository implements PrescriptionRepos
         return $this->query()
             ->with([
                 'patient.tutor',
+                'patient.activeClinicalAlerts.createdBy',
                 'medicalRecord.appointment',
                 'createdBy',
                 'finalizedBy',

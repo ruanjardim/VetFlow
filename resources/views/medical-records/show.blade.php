@@ -20,6 +20,8 @@
     </div>
   </header>
 
+  @include('patients.partials.clinical-alerts-banner', ['patient' => $medicalRecord->patient])
+
   <section class="panel">
     <div class="form-grid">
       <div class="field">

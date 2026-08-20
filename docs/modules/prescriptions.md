@@ -54,6 +54,10 @@ date, author, items, directions, general instructions, and lifecycle state.
 Drafts are explicitly marked as having no final-document validity. Cancelled
 documents retain a visible reason.
 
+Active patient clinical alerts are shown to the operator above the document
+but omitted from the printed prescription. The alert is contextual safety
+information and does not alter the prescription's immutable content.
+
 This version does not implement a veterinarian credential registry, digital
 signature, controlled-substance forms, external validation, or automatic
 regulatory compliance. Those require a separate legal and product definition.

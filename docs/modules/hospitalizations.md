@@ -18,6 +18,8 @@ diary of observed evolutions.
 - Immutable evolution entries with observation time, recording user, notes,
   and optional weight, temperature, heart-rate, and respiratory-rate snapshots.
 - Read-only history inside the patient's clinical profile.
+- Active patient clinical alerts displayed before hospitalization updates and
+  evolution entry.
 
 ## Evolution Diary
 
@@ -29,6 +31,8 @@ complete diary remains available in read-only mode.
 
 The optional vital signs are observations only. VetFlow does not classify
 values, suggest conduct, or generate automatic clinical alerts from them.
+Clinical alerts are entered and resolved explicitly by permitted users; they
+are never inferred from an evolution.
 
 ## Boundaries
 
