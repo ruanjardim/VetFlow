@@ -69,6 +69,9 @@ evolutions whose history remains readable after discharge or cancellation.
 Manually recorded patient clinical alerts are now visible across the highest
 risk clinical screens and use an auditable active/resolved lifecycle. VetFlow
 does not infer their severity or generate them from other clinical data.
+The patient profile also assembles permitted source records into a single
+reverse-chronological timeline. This is a read model only: the sequence does
+not duplicate data or imply a clinical relationship between events.
 
 The first staging candidate is KingHost shared Linux hosting, using only
 fictitious data and a bounded authenticated cron bridge because shared hosting

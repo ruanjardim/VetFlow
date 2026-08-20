@@ -74,6 +74,9 @@ The local working tree was clean before this documentation pass.
   resolution, clinic isolation, and active banners in the patient profile,
   medical record, prescription, and hospitalization screens. VetFlow does not
   calculate severity or create these alerts automatically.
+- A reverse-chronological patient clinical timeline assembled from permitted
+  source modules, with direct source links, clinic isolation, and no duplicated
+  clinical state or automatic interpretation.
 
 ## GitHub Scan Summary
 

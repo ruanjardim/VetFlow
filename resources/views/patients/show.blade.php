@@ -111,6 +111,44 @@
     </section>
   @endif
 
+  @if($clinicalTimeline->isNotEmpty())
+    <section class="panel clinical-timeline-panel" data-clinical-timeline>
+      <div class="panel-heading">
+        <div>
+          <h2>Linha do tempo clínica</h2>
+          <p>Eventos dos módulos permitidos, ordenados do mais recente para o mais antigo.</p>
+        </div>
+        <span class="badge muted-badge">{{ $clinicalTimeline->count() }} {{ $clinicalTimeline->count() === 1 ? 'evento' : 'eventos' }}</span>
+      </div>
+
+      <div class="clinical-timeline">
+        @foreach($clinicalTimeline as $timelineEvent)
+          <article class="clinical-timeline-event">
+            <span class="clinical-timeline-marker {{ $timelineEvent['status_class'] }}" aria-hidden="true"></span>
+            <div class="clinical-timeline-date">
+              <strong>{{ $timelineEvent['occurred_at']->format('d/m/Y') }}</strong>
+              <span>{{ $timelineEvent['occurred_at']->format('H:i') }}</span>
+            </div>
+            <div class="clinical-timeline-content">
+              <div class="clinical-timeline-title">
+                <span class="badge muted-badge">{{ $timelineEvent['category'] }}</span>
+                <strong>{{ $timelineEvent['title'] }}</strong>
+                <span class="badge {{ $timelineEvent['status_class'] }}">{{ $timelineEvent['status'] }}</span>
+              </div>
+              <p>{{ $timelineEvent['description'] }}</p>
+              @if($timelineEvent['actor'])
+                <small>Registrado por {{ $timelineEvent['actor'] }}.</small>
+              @endif
+            </div>
+            @if($timelineEvent['route_name'])
+              <a class="button secondary clinical-timeline-action" href="{{ route($timelineEvent['route_name'], $timelineEvent['route_parameters']) }}">Abrir registro</a>
+            @endif
+          </article>
+        @endforeach
+      </div>
+    </section>
+  @endif
+
   @if($visibility['appointments'])
     <section class="panel">
       <div class="panel-heading"><div><h2>Consultas</h2><p>Até 10 atendimentos mais recentes.</p></div></div>

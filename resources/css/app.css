@@ -2593,6 +2593,86 @@ textarea {
   min-height: 72px;
 }
 
+.clinical-timeline-panel {
+  overflow: hidden;
+}
+
+.clinical-timeline {
+  display: grid;
+  margin-top: 8px;
+}
+
+.clinical-timeline-event {
+  align-items: start;
+  display: grid;
+  gap: 14px;
+  grid-template-columns: 14px 92px minmax(0, 1fr) auto;
+  min-height: 92px;
+  padding: 14px 0;
+  position: relative;
+}
+
+.clinical-timeline-event:not(:last-child)::before {
+  background: #dbe3ee;
+  content: '';
+  height: calc(100% - 20px);
+  left: 6px;
+  position: absolute;
+  top: 34px;
+  width: 2px;
+}
+
+.clinical-timeline-marker {
+  background: #64748b;
+  border: 3px solid #ffffff;
+  border-radius: 999px;
+  box-shadow: 0 0 0 2px #cbd5e1;
+  height: 12px;
+  margin-top: 5px;
+  width: 12px;
+  z-index: 1;
+}
+
+.clinical-timeline-marker.success {
+  background: #059669;
+  box-shadow: 0 0 0 2px #a7f3d0;
+}
+
+.clinical-timeline-marker.warning {
+  background: #d97706;
+  box-shadow: 0 0 0 2px #fde68a;
+}
+
+.clinical-timeline-marker.danger {
+  background: #dc2626;
+  box-shadow: 0 0 0 2px #fecaca;
+}
+
+.clinical-timeline-date {
+  display: grid;
+  gap: 2px;
+}
+
+.clinical-timeline-date span,
+.clinical-timeline-content small {
+  color: #64748b;
+}
+
+.clinical-timeline-title {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.clinical-timeline-content p {
+  margin: 7px 0 3px;
+}
+
+.clinical-timeline-action {
+  white-space: nowrap;
+}
+
 @media (max-width: 640px) {
   .prescription-items-heading {
     align-items: stretch;
@@ -2605,6 +2685,21 @@ textarea {
 
   .clinical-alert-resolution {
     grid-template-columns: 1fr;
+  }
+
+  .clinical-timeline-event {
+    gap: 8px 12px;
+    grid-template-columns: 14px minmax(0, 1fr);
+  }
+
+  .clinical-timeline-date,
+  .clinical-timeline-content,
+  .clinical-timeline-action {
+    grid-column: 2;
+  }
+
+  .clinical-timeline-action {
+    justify-self: start;
   }
 }
 

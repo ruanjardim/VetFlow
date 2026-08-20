@@ -100,6 +100,10 @@ This project follows the spirit of Keep a Changelog, with one practical adjustme
   resolution notes, tenant isolation, and active visibility in the patient
   profile, medical record, prescription, and hospitalization flows without
   automatic severity or interpretation.
+- Permission-aware patient clinical timeline that orders appointments,
+  medical records, exam results, prescriptions, vaccinations,
+  hospitalization events/evolutions, and clinical alerts without duplicating
+  or interpreting their source records.
 
 ### Changed
 

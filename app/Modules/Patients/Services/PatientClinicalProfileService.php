@@ -2,12 +2,16 @@
 
 namespace App\Modules\Patients\Services;
 
+use App\Modules\Hospitalizations\Models\HospitalizationEvolution;
 use App\Modules\Patients\Contracts\PatientRepositoryInterface;
 use Illuminate\Support\Collection;
 
 class PatientClinicalProfileService
 {
-    public function __construct(private readonly PatientRepositoryInterface $patients) {}
+    public function __construct(
+        private readonly PatientRepositoryInterface $patients,
+        private readonly PatientClinicalTimelineService $timeline,
+    ) {}
 
     /**
      * @param  array{appointments: bool, medicalRecords: bool, prescriptions: bool, vaccinations: bool, hospitalizations: bool}  $visibility
@@ -29,7 +33,14 @@ class PatientClinicalProfileService
 
         $medicalRecords = $visibility['medicalRecords']
             ? $patient->medicalRecords()
-                ->with(['appointment', 'pathologies', 'examRequests.result'])
+                ->with([
+                    'appointment',
+                    'createdBy',
+                    'pathologies',
+                    'examRequests.result.createdBy',
+                    'examRequests.result.finalizedBy',
+                    'examRequests.result.cancelledBy',
+                ])
                 ->latest('examined_at')
                 ->limit(10)
                 ->get()
@@ -52,7 +63,7 @@ class PatientClinicalProfileService
 
         $prescriptions = $visibility['prescriptions']
             ? $patient->prescriptions()
-                ->with(['medicalRecord', 'items'])
+                ->with(['medicalRecord', 'items', 'createdBy'])
                 ->latest('prescribed_at')
                 ->limit(10)
                 ->get()
@@ -60,9 +71,18 @@ class PatientClinicalProfileService
 
         $vaccinations = $visibility['vaccinations']
             ? $patient->vaccinations()
-                ->with('vaccine')
+                ->with(['vaccine', 'createdBy'])
                 ->latest('scheduled_for')
                 ->limit(10)
+                ->get()
+            : new Collection;
+
+        $hospitalizationEvolutions = $visibility['hospitalizations']
+            ? HospitalizationEvolution::query()
+                ->whereHas('hospitalization', fn ($query) => $query->where('patient_id', $patient->id))
+                ->with(['hospitalization', 'recordedBy'])
+                ->latest('observed_at')
+                ->limit(20)
                 ->get()
             : new Collection;
 
@@ -75,6 +95,17 @@ class PatientClinicalProfileService
                 ->get()
             : new Collection;
 
+        $clinicalTimeline = $this->timeline->build(compact(
+            'appointments',
+            'medicalRecords',
+            'activeClinicalAlerts',
+            'resolvedClinicalAlerts',
+            'prescriptions',
+            'vaccinations',
+            'hospitalizations',
+            'hospitalizationEvolutions'
+        ));
+
         return compact(
             'patient',
             'appointments',
@@ -84,6 +115,7 @@ class PatientClinicalProfileService
             'prescriptions',
             'vaccinations',
             'hospitalizations',
+            'clinicalTimeline',
             'visibility'
         );
     }

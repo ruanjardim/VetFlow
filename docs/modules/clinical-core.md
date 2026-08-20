@@ -47,6 +47,8 @@ lookup behavior.
   authored history after discharge or cancellation.
 - Register patient clinical alerts, expose active notices in risk-sensitive
   workflows, and resolve them with an authored reason while retaining history.
+- Assemble permitted source records into a reverse-chronological patient
+  timeline without copying or interpreting their clinical content.
 - Present a permission-aware patient profile that consolidates appointments,
   medical records, prescriptions, vaccinations, and hospitalizations without
   duplicating them.
@@ -217,3 +219,7 @@ authorship, permission, and cross-clinic isolation.
 `tests/Feature/PatientClinicalAlertFlowTest.php` covers alert creation,
 cross-workflow visibility, auditable resolution, permission, immutable history,
 patient/alert pairing, and cross-clinic isolation.
+
+`tests/Feature/PatientClinicalTimelineTest.php` covers source consolidation,
+reverse chronological ordering, source links, permission filtering, and
+cross-clinic isolation.

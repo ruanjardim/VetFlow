@@ -70,6 +70,9 @@ The product should feel different from a generic CRUD system by connecting the c
   medical-record, prescription, and hospitalization touchpoints, with
   tenant-safe authorship and auditable resolution but no automatic clinical
   classification.
+- The patient profile provides a permission-aware longitudinal timeline across
+  clinical source modules while preserving each source record and access
+  boundary.
 
 ## Current Near-Term Priorities
 

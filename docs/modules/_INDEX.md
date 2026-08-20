@@ -21,7 +21,7 @@ This index maps the current code modules and the documentation that should event
 | ExamResults | Protected result lifecycle for structured exam requests | Documented in [Exam Results](exam-results.md) |
 | Prescriptions | Structured clinical prescriptions with protected lifecycle | Documented in [Prescriptions](prescriptions.md) |
 | Vaccinations | Patient vaccination schedules and applications | Documented in [Vaccinations](vaccinations.md) |
-| Patients | Pets/patients with extensible taxonomy and auditable clinical alerts | Documented in [Patient Taxonomy](patient-taxonomy.md), [Patient Clinical Alerts](patient-clinical-alerts.md), and [Clinical Core](clinical-core.md) |
+| Patients | Pets/patients with extensible taxonomy, clinical alerts, and longitudinal timeline | Documented in [Patient Taxonomy](patient-taxonomy.md), [Patient Clinical Alerts](patient-clinical-alerts.md), [Patient Clinical Timeline](patient-clinical-timeline.md), and [Clinical Core](clinical-core.md) |
 | Pets | Pet-related area | Pending review; overlaps with Patients |
 | PetShopServices | Pet shop service catalog | Covered in [Clinical Core](clinical-core.md) |
 | ProductIntelligence | Global product data, suggestions, GTIN intelligence | Documented in [Product Intelligence](product-intelligence.md) |
