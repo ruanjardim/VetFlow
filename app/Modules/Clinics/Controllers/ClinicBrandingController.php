@@ -5,11 +5,15 @@ namespace App\Modules\Clinics\Controllers;
 use App\Modules\Clinics\Models\Clinic;
 use App\Modules\Clinics\Requests\UpdateClinicBrandingRequest;
 use App\Modules\Clinics\Services\ClinicBrandingService;
+use App\Modules\Clinics\Services\ClinicService;
 use App\Support\Tenancy\TenantContext;
 
 class ClinicBrandingController
 {
-    public function __construct(private readonly TenantContext $tenant) {}
+    public function __construct(
+        private readonly TenantContext $tenant,
+        private readonly ClinicService $clinics
+    ) {}
 
     public function edit()
     {
@@ -22,7 +26,7 @@ class ClinicBrandingController
 
     public function update(UpdateClinicBrandingRequest $request)
     {
-        $this->currentClinic()->update($request->validated());
+        $this->clinics->update($this->currentClinic()->id, $request->validated());
 
         return redirect()
             ->route('clinic-branding.edit')

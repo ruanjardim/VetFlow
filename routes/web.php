@@ -91,6 +91,7 @@ Route::middleware(['auth', EnsureUserIsActive::class])->group(function () {
     });
 
     $moduleRoutes = [
+        'audit.manage' => app_path('Modules/Audit/Routes/web.php'),
         'appointments.manage' => app_path('Modules/Appointments/Routes/web.php'),
         'clinics.manage' => app_path('Modules/Clinics/Routes/web.php'),
         'clinic-branding.manage' => app_path('Modules/Clinics/Routes/branding.php'),

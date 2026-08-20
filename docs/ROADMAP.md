@@ -73,6 +73,8 @@ The product should feel different from a generic CRUD system by connecting the c
 - The patient profile provides a permission-aware longitudinal timeline across
   clinical source modules while preserving each source record and access
   boundary.
+- Sensitive collaborator-access and clinic-branding changes produce a
+  tenant-scoped, read-only administrative audit trail without storing passwords.
 
 ## Current Near-Term Priorities
 
@@ -118,4 +120,3 @@ The product should feel different from a generic CRUD system by connecting the c
 
 - Guided onboarding for a new clinic.
 - Supplier lead-time and demand signals for future replenishment tuning.
-- Audit trail for sensitive operational changes.

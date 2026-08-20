@@ -310,6 +310,33 @@ textarea {
   color: #0369a1;
 }
 
+.audit-filters {
+  align-items: end;
+}
+
+.audit-changes summary {
+  color: #0369a1;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.audit-changes[open] summary {
+  margin-bottom: 8px;
+}
+
+.audit-changes div {
+  border-top: 1px solid #e2e8f0;
+  display: grid;
+  gap: 2px;
+  min-width: 250px;
+  padding: 7px 0;
+}
+
+.audit-changes span {
+  color: #475569;
+  font-size: 12px;
+}
+
 .main {
   min-width: 0;
   padding: 28px;

@@ -80,6 +80,9 @@ The local working tree was clean before this documentation pass.
 - Clinic-scoped sidebar identity with optional automatic, manually selected,
   or hidden animal icons. Automatic mode uses the clinic users' configured
   species of practice and falls back to a generic paw for mixed practices.
+- An append-only administrative audit trail for collaborator access and clinic
+  branding changes, with tenant isolation, actor and before/after snapshots,
+  password redaction, filtering, and a dedicated read permission.
 
 ## GitHub Scan Summary
 

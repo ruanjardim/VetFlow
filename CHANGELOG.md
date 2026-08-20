@@ -8,6 +8,8 @@ This project follows the spirit of Keep a Changelog, with one practical adjustme
 
 ### Added
 
+- Tenant-scoped administrative audit trail for collaborator access and clinic
+  branding changes, with filtered read-only history and password redaction.
 - Clinic-scoped animal icon branding beside the VetFlow sidebar title, with
   automatic species-based resolution, manual selection, an off mode, and a
   dedicated administrator permission.

@@ -7,6 +7,7 @@ This index maps the current code modules and the documentation that should event
 | Module | Purpose | Documentation status |
 | --- | --- | --- |
 | Access | Collaborator records and role preset assignment | Documented in [Access](access.md) |
+| Audit | Append-only history for sensitive administrative changes | Documented in [Administrative Audit Trail](audit.md) |
 | Appointments | Appointment workflows and assisted contact follow-up | Documented in [Appointment Reminders](appointment-reminders.md) and [Clinical Core](clinical-core.md) |
 | Clients | Client-related area | Pending module doc |
 | ClinicProducts | Clinic-specific product association | Pending module doc |

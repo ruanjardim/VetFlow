@@ -29,6 +29,12 @@ class PermissionCatalog
                 'description' => 'Permite escolher o ícone da clínica exibido no menu do VetFlow.',
             ],
             [
+                'slug' => 'audit.manage',
+                'name' => 'Consultar auditoria',
+                'group' => 'Administrativo',
+                'description' => 'Permite consultar alterações administrativas sensíveis da clínica.',
+            ],
+            [
                 'slug' => 'implementation.manage',
                 'name' => 'Gerenciar implantacao',
                 'group' => 'Administrativo',
