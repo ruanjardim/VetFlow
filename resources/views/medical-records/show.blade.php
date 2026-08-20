@@ -9,6 +9,12 @@
       <p>Consulta: {{ $medicalRecord->appointment?->title }} em {{ optional($medicalRecord->appointment?->scheduled_at)->format('d/m/Y H:i') }}</p>
     </div>
     <div class="actions">
+      @can('prescriptions.manage')
+        <a class="button" href="{{ route('prescriptions.create', ['medical_record_id' => $medicalRecord->id]) }}">Nova prescrição</a>
+      @endcan
+      @can('patients.manage')
+        <a class="button secondary" href="{{ route('patients.show', $medicalRecord->patient_id) }}">Ficha do paciente</a>
+      @endcan
       <a class="button secondary" href="{{ route('medical-records.edit', $medicalRecord->id) }}">Editar</a>
       <a class="button secondary" href="{{ route('medical-records.index') }}">Voltar</a>
     </div>
@@ -90,4 +96,36 @@
       <p class="muted">Nenhum exame estruturado foi solicitado neste prontuário.</p>
     @endif
   </section>
+
+  @can('prescriptions.manage')
+    <section class="panel">
+      <div class="panel-heading">
+        <div>
+          <h2>Prescrições</h2>
+          <p>Documentos terapêuticos vinculados a este atendimento.</p>
+        </div>
+        <a class="button secondary" href="{{ route('prescriptions.create', ['medical_record_id' => $medicalRecord->id]) }}">Criar prescrição</a>
+      </div>
+      <div class="panel-body">
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Data</th><th>Itens</th><th>Status</th><th>Ação</th></tr></thead>
+            <tbody>
+              @forelse($medicalRecord->prescriptions->sortByDesc('prescribed_at') as $prescription)
+                @php($prescriptionStatusClass = match($prescription->status) { 'finalized' => 'success', 'cancelled' => 'danger', default => 'warning' })
+                <tr>
+                  <td>{{ $prescription->prescribed_at->format('d/m/Y H:i') }}</td>
+                  <td>{{ $prescription->items->count() }}</td>
+                  <td><span class="badge {{ $prescriptionStatusClass }}">{{ \App\Modules\Prescriptions\Models\Prescription::STATUS_LABELS[$prescription->status] ?? $prescription->status }}</span></td>
+                  <td><a class="button secondary" href="{{ route('prescriptions.show', $prescription->id) }}">Abrir</a></td>
+                </tr>
+              @empty
+                <tr><td colspan="4" class="muted">Nenhuma prescrição vinculada.</td></tr>
+              @endforelse
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  @endcan
 @endsection

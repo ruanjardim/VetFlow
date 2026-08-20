@@ -57,7 +57,12 @@ The repository now includes public project documentation, CI, a visual
 walkthrough, assisted onboarding imports, resilient NF-e/product lookup,
 actionable dashboard priorities, clinic-scoped collaborator management, and
 explainable stock replenishment suggestions based on current stock and recent
-received purchases.
+received purchases. Patient care now includes a permission-aware longitudinal
+profile that connects appointments, medical records, prescriptions,
+vaccinations, and hospitalizations while
+keeping the source records and their access boundaries intact. Structured
+prescriptions now extend that history with a reviewable draft, immutable
+finalization, and explicit cancellation trail.
 
 The first staging candidate is KingHost shared Linux hosting, using only
 fictitious data and a bounded authenticated cron bridge because shared hosting

@@ -53,6 +53,13 @@ The product should feel different from a generic CRUD system by connecting the c
 - Navigation is grouped into permission-aware expandable modules, and patient
   registration uses an extensible species and breed catalog that supports
   exotic, wildlife, aquatic, and large-animal practices.
+- Patient care has a permission-aware longitudinal profile that connects
+  appointments, medical records, prescriptions, vaccinations, and
+  hospitalizations without duplicating source records or exposing restricted
+  clinical details.
+- Clinical records can produce structured prescriptions whose finalized
+  content is immutable, whose cancellations remain auditable, and whose item
+  text remains independent from mutable commercial catalogs.
 
 ## Current Near-Term Priorities
 

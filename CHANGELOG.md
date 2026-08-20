@@ -86,6 +86,10 @@ This project follows the spirit of Keep a Changelog, with one practical adjustme
 - Clinic-scoped hospitalization workflow for admissions, discharge records,
   accommodation, operational follow-up, and patient-profile history without
   altering the original medical record.
+- Structured clinical prescriptions linked to medical records, with repeatable
+  medication instructions, draft review, immutable finalization, auditable
+  cancellation, print layout, dedicated permission, and patient-profile
+  integration.
 
 ### Changed
 

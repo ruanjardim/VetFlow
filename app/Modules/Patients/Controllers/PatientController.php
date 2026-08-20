@@ -44,6 +44,7 @@ class PatientController extends BaseCrudController
         return view('patients.show', $this->profile->forPatient($id, [
             'appointments' => $user?->can('appointments.manage') ?? false,
             'medicalRecords' => $user?->can('medical-records.manage') ?? false,
+            'prescriptions' => $user?->can('prescriptions.manage') ?? false,
             'vaccinations' => $user?->can('vaccinations.manage') ?? false,
             'hospitalizations' => $user?->can('hospitalizations.manage') ?? false,
         ]));

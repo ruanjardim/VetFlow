@@ -61,6 +61,9 @@ The local working tree was clean before this documentation pass.
 - A clinic-scoped hospitalization workflow for patient admissions, operational
   follow-up, discharge registration, and patient-profile history without
   duplicating or changing medical records.
+- Structured patient prescriptions with multi-item directions, draft review,
+  protected finalization, cancellation history, print-ready presentation, and
+  a dedicated veterinarian-facing permission.
 
 ## GitHub Scan Summary
 

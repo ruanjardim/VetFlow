@@ -77,6 +77,12 @@ class PermissionCatalog
                 'description' => 'Permite registrar e acompanhar internações clínicas.',
             ],
             [
+                'slug' => 'prescriptions.manage',
+                'name' => 'Gerenciar prescrições',
+                'group' => 'Atendimento',
+                'description' => 'Permite elaborar, finalizar, consultar e cancelar prescrições clínicas.',
+            ],
+            [
                 'slug' => 'petshop-services.manage',
                 'name' => 'Gerenciar servicos PetShop',
                 'group' => 'Operacao',
@@ -164,6 +170,7 @@ class PermissionCatalog
                     'medical-records.manage',
                     'vaccinations.manage',
                     'hospitalizations.manage',
+                    'prescriptions.manage',
                     'service-orders.manage',
                 ],
             ],

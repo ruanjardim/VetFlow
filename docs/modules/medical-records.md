@@ -33,6 +33,8 @@ and the user who created the record.
 - One or more structured exam requests selected from the catalog. This first
   delivery records the request only; it does not fabricate laboratory results,
   attributes, units, or reference ranges.
+- Zero or more structured prescriptions maintained through their own protected
+  lifecycle and linked back to the medical record.
 
 ## Pathology Catalog
 
@@ -72,6 +74,8 @@ later.
 - `animal_exams`
 - `animal_exam_species`
 - `medical_record_exams`
+- `prescriptions`
+- `prescription_items`
 
 ## Permission
 
@@ -83,6 +87,8 @@ clinical-sensitive information.
 
 ## Intentionally Out Of Scope
 
-The structured catalog does not calculate or suggest a diagnosis. This version
-also does not generate formal prescriptions, store laboratory results, or
-control hospitalization. These are separate clinical flows.
+The structured catalog does not calculate or suggest a diagnosis. Prescriptions
+are a separate clinical flow and do not yet provide a digital signature or
+regulated controlled-substance forms. This version records exam requests but
+does not fabricate laboratory results; hospitalization remains a separate
+clinical flow.

@@ -6,6 +6,7 @@ use App\Models\Concerns\BelongsToClinicTenant;
 use App\Models\User;
 use App\Modules\Appointments\Models\Appointment;
 use App\Modules\Patients\Models\Patient;
+use App\Modules\Prescriptions\Models\Prescription;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -55,5 +56,10 @@ class MedicalRecord extends Model
     public function examRequests(): HasMany
     {
         return $this->hasMany(MedicalRecordExam::class)->latest();
+    }
+
+    public function prescriptions(): HasMany
+    {
+        return $this->hasMany(Prescription::class);
     }
 }

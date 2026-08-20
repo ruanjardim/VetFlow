@@ -24,13 +24,14 @@
           <a class="{{ request()->routeIs('dashboard') ? 'is-active' : '' }}" href="{{ route('dashboard') }}">Dashboard</a>
         @endcan
 
-        @canany(['tutors.manage', 'patients.manage', 'medical-records.manage', 'vaccinations.manage', 'hospitalizations.manage'])
-          <details class="nav-group" @if(request()->routeIs('tutores.*', 'patients.*', 'medical-records.*', 'vaccinations.*', 'hospitalizations.*')) open @endif>
+        @canany(['tutors.manage', 'patients.manage', 'medical-records.manage', 'vaccinations.manage', 'hospitalizations.manage', 'prescriptions.manage'])
+          <details class="nav-group" @if(request()->routeIs('tutores.*', 'patients.*', 'medical-records.*', 'vaccinations.*', 'hospitalizations.*', 'prescriptions.*')) open @endif>
             <summary><span>Atendimento clínico</span><span class="nav-chevron">⌄</span></summary>
             <div class="nav-submenu">
               @can('tutors.manage')<a class="{{ request()->routeIs('tutores.*') ? 'is-active' : '' }}" href="{{ route('tutores.index') }}">Responsáveis</a>@endcan
               @can('patients.manage')<a class="{{ request()->routeIs('patients.*') ? 'is-active' : '' }}" href="{{ route('patients.index') }}">Pacientes</a>@endcan
               @can('medical-records.manage')<a class="{{ request()->routeIs('medical-records.*') ? 'is-active' : '' }}" href="{{ route('medical-records.index') }}">Prontuários</a>@endcan
+              @can('prescriptions.manage')<a class="{{ request()->routeIs('prescriptions.*') ? 'is-active' : '' }}" href="{{ route('prescriptions.index') }}">Prescrições</a>@endcan
               @can('vaccinations.manage')<a class="{{ request()->routeIs('vaccinations.*') ? 'is-active' : '' }}" href="{{ route('vaccinations.index') }}">Vacinação</a>@endcan
               @can('hospitalizations.manage')<a class="{{ request()->routeIs('hospitalizations.*') ? 'is-active' : '' }}" href="{{ route('hospitalizations.index') }}">Internações</a>@endcan
             </div>

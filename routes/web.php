@@ -103,6 +103,7 @@ Route::middleware(['auth', EnsureUserIsActive::class])->group(function () {
         'patients.manage' => app_path('Modules/Patients/Routes/web.php'),
         'petshop-services.manage' => app_path('Modules/PetShopServices/Routes/web.php'),
         'products.manage' => app_path('Modules/Products/Routes/web.php'),
+        'prescriptions.manage' => app_path('Modules/Prescriptions/Routes/web.php'),
         'purchase-entries.manage' => app_path('Modules/PurchaseEntries/Routes/web.php'),
         'sales.manage' => app_path('Modules/Sales/Routes/web.php'),
         'schedules.manage' => app_path('Modules/Schedules/Routes/web.php'),

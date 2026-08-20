@@ -7,8 +7,8 @@ use App\Modules\Appointments\Models\Appointment;
 use App\Modules\MedicalRecords\Models\MedicalRecord;
 use App\Modules\MedicalRecords\Requests\StoreMedicalRecordRequest;
 use App\Modules\MedicalRecords\Requests\UpdateMedicalRecordRequest;
-use App\Modules\MedicalRecords\Services\MedicalRecordService;
 use App\Modules\MedicalRecords\Services\ExamCatalogService;
+use App\Modules\MedicalRecords\Services\MedicalRecordService;
 use App\Modules\MedicalRecords\Services\PathologyCatalogService;
 use App\Modules\Patients\Models\Patient;
 use App\Support\Tenancy\TenantContext;
@@ -48,8 +48,14 @@ class MedicalRecordController extends BaseCrudController
 
     public function show(int $id)
     {
+        $medicalRecord = $this->service->findOrFail($id);
+
+        if (request()->user()?->hasPermission('prescriptions.manage')) {
+            $medicalRecord->load(['prescriptions.items', 'prescriptions.createdBy']);
+        }
+
         return view("{$this->viewPath}.show", [
-            'medicalRecord' => $this->service->findOrFail($id),
+            'medicalRecord' => $medicalRecord,
         ]);
     }
 

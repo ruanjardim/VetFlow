@@ -35,10 +35,15 @@ lookup behavior.
 - Register clinical records linked to appointments and patients.
 - Maintain clinic-scoped pathology and exam catalogs, with optional species
   compatibility, and register the selected items in clinical records.
+- Create structured, print-friendly prescriptions with an immutable finalized
+  state and auditable cancellation.
 - Track vaccination schedules and applications by patient, using an optional
   species-aware catalog and clinic-configured protocol fields.
 - Register patient admissions, operational follow-up, and discharge details
   without replacing the associated clinical record.
+- Present a permission-aware patient profile that consolidates appointments,
+  medical records, prescriptions, vaccinations, and hospitalizations without
+  duplicating them.
 - Maintain the pet shop service catalog.
 - Build service orders with product and service items.
 - Convert service orders into billable sales when appropriate.
@@ -96,6 +101,8 @@ remains authoritative.
 - `medical_record_exams`
 - `animal_vaccines`
 - `animal_vaccine_species`
+- `prescriptions`
+- `prescription_items`
 - `vaccinations`
 - `hospitalizations`
 - `petshop_services`
@@ -151,6 +158,7 @@ Relevant permission slugs:
 - `schedules.manage`
 - `appointments.manage`
 - `medical-records.manage`
+- `prescriptions.manage`
 - `vaccinations.manage`
 - `hospitalizations.manage`
 - `petshop-services.manage`
@@ -184,3 +192,6 @@ It does not encode or prescribe clinical vaccination schedules.
 `tests/Feature/AppointmentReminderFlowTest.php` covers reminder preparation,
 outcome side effects, audit history, channel validation, permissions, and
 cross-clinic isolation.
+`tests/Feature/PrescriptionFlowTest.php` covers the prescription lifecycle,
+immutable finalized content, cancellation history, source linkage, permission,
+and cross-clinic isolation.

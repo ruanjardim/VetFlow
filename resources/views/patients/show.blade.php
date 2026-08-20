@@ -86,6 +86,35 @@
     </section>
   @endif
 
+  @if($visibility['prescriptions'])
+    <section class="panel">
+      <div class="panel-heading"><div><h2>Prescrições</h2><p>Até 10 documentos terapêuticos mais recentes.</p></div></div>
+      <div class="table-wrap"><table><thead><tr><th>Data</th><th>Prontuário</th><th>Itens</th><th>Status</th><th>Ações</th></tr></thead><tbody>
+        @forelse($prescriptions as $prescription)
+          @php($prescriptionStatusClass = match($prescription->status) { 'finalized' => 'success', 'cancelled' => 'danger', default => 'warning' })
+          <tr>
+            <td>{{ optional($prescription->prescribed_at)->format('d/m/Y H:i') }}</td>
+            <td>
+              @if($visibility['medicalRecords'] && $prescription->medicalRecord)
+                <a href="{{ route('medical-records.show', $prescription->medicalRecord->id) }}">#{{ $prescription->medicalRecord->id }}</a>
+              @else
+                <span class="muted">Acesso restrito</span>
+              @endif
+            </td>
+            <td>
+              <strong>{{ $prescription->items->count() }} {{ $prescription->items->count() === 1 ? 'item' : 'itens' }}</strong>
+              <br><span class="muted">{{ $prescription->items->pluck('medication_name')->join(', ') }}</span>
+            </td>
+            <td><span class="badge {{ $prescriptionStatusClass }}">{{ \App\Modules\Prescriptions\Models\Prescription::STATUS_LABELS[$prescription->status] ?? $prescription->status }}</span></td>
+            <td><a class="button secondary" href="{{ route('prescriptions.show', $prescription->id) }}">Abrir</a></td>
+          </tr>
+        @empty
+          <tr><td colspan="5" class="muted">Nenhuma prescrição registrada para este paciente.</td></tr>
+        @endforelse
+      </tbody></table></div>
+    </section>
+  @endif
+
   @if($visibility['vaccinations'])
     <section class="panel">
       <div class="panel-heading"><div><h2>Carteira de vacinação</h2><p>Até 10 aplicações ou agendamentos mais recentes.</p></div></div>

@@ -2757,4 +2757,57 @@ document.addEventListener('DOMContentLoaded', () => {
       cepInput.addEventListener('blur', lookupCep);
     }
   }
+
+  const prescriptionForm = document.querySelector('[data-prescription-form]');
+
+  if (prescriptionForm) {
+    const itemsContainer = prescriptionForm.querySelector('[data-prescription-items]');
+    const itemTemplate = prescriptionForm.querySelector('[data-prescription-item-template]');
+    const addButton = prescriptionForm.querySelector('[data-prescription-add-item]');
+
+    const refreshPrescriptionItems = () => {
+      const items = [...itemsContainer.querySelectorAll('[data-prescription-item]')];
+
+      items.forEach((item, index) => {
+        const number = item.querySelector('[data-prescription-item-number]');
+
+        if (number) {
+          number.textContent = String(index + 1);
+        }
+      });
+
+      addButton.disabled = items.length >= 30;
+      itemsContainer.querySelectorAll('[data-prescription-remove-item]').forEach((button) => {
+        button.disabled = items.length === 1;
+      });
+    };
+
+    addButton?.addEventListener('click', () => {
+      const nextIndex = Number(itemsContainer.dataset.nextIndex || 0);
+      const wrapper = document.createElement('div');
+
+      wrapper.innerHTML = itemTemplate.innerHTML.replaceAll('__INDEX__', String(nextIndex)).trim();
+      itemsContainer.append(wrapper.firstElementChild);
+      itemsContainer.dataset.nextIndex = String(nextIndex + 1);
+      refreshPrescriptionItems();
+      itemsContainer.lastElementChild?.querySelector('input')?.focus();
+    });
+
+    itemsContainer?.addEventListener('click', (event) => {
+      const removeButton = event.target.closest('[data-prescription-remove-item]');
+
+      if (!removeButton) {
+        return;
+      }
+
+      removeButton.closest('[data-prescription-item]')?.remove();
+      refreshPrescriptionItems();
+    });
+
+    refreshPrescriptionItems();
+  }
+
+  document.querySelectorAll('[data-print-page]').forEach((button) => {
+    button.addEventListener('click', () => window.print());
+  });
 });

@@ -7,12 +7,10 @@ use Illuminate\Support\Collection;
 
 class PatientClinicalProfileService
 {
-    public function __construct(private readonly PatientRepositoryInterface $patients)
-    {
-    }
+    public function __construct(private readonly PatientRepositoryInterface $patients) {}
 
     /**
-     * @param  array{appointments: bool, medicalRecords: bool, vaccinations: bool, hospitalizations: bool}  $visibility
+     * @param  array{appointments: bool, medicalRecords: bool, prescriptions: bool, vaccinations: bool, hospitalizations: bool}  $visibility
      * @return array<string, mixed>
      */
     public function forPatient(int $patientId, array $visibility): array
@@ -27,7 +25,7 @@ class PatientClinicalProfileService
                 ->latest('scheduled_at')
                 ->limit(10)
                 ->get()
-            : new Collection();
+            : new Collection;
 
         $medicalRecords = $visibility['medicalRecords']
             ? $patient->medicalRecords()
@@ -35,7 +33,15 @@ class PatientClinicalProfileService
                 ->latest('examined_at')
                 ->limit(10)
                 ->get()
-            : new Collection();
+            : new Collection;
+
+        $prescriptions = $visibility['prescriptions']
+            ? $patient->prescriptions()
+                ->with(['medicalRecord', 'items'])
+                ->latest('prescribed_at')
+                ->limit(10)
+                ->get()
+            : new Collection;
 
         $vaccinations = $visibility['vaccinations']
             ? $patient->vaccinations()
@@ -43,7 +49,7 @@ class PatientClinicalProfileService
                 ->latest('scheduled_for')
                 ->limit(10)
                 ->get()
-            : new Collection();
+            : new Collection;
 
         $hospitalizations = $visibility['hospitalizations']
             ? $patient->hospitalizations()
@@ -51,8 +57,8 @@ class PatientClinicalProfileService
                 ->latest('admitted_at')
                 ->limit(10)
                 ->get()
-            : new Collection();
+            : new Collection;
 
-        return compact('patient', 'appointments', 'medicalRecords', 'vaccinations', 'hospitalizations', 'visibility');
+        return compact('patient', 'appointments', 'medicalRecords', 'prescriptions', 'vaccinations', 'hospitalizations', 'visibility');
     }
 }

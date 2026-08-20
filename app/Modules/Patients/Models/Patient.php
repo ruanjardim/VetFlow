@@ -6,6 +6,7 @@ use App\Models\Concerns\BelongsToClinicTenant;
 use App\Modules\Appointments\Models\Appointment;
 use App\Modules\Hospitalizations\Models\Hospitalization;
 use App\Modules\MedicalRecords\Models\MedicalRecord;
+use App\Modules\Prescriptions\Models\Prescription;
 use App\Modules\Tutors\Models\Tutor;
 use App\Modules\Vaccinations\Models\Vaccination;
 use Illuminate\Database\Eloquent\Model;
@@ -65,5 +66,10 @@ class Patient extends Model
     public function hospitalizations(): HasMany
     {
         return $this->hasMany(Hospitalization::class);
+    }
+
+    public function prescriptions(): HasMany
+    {
+        return $this->hasMany(Prescription::class);
     }
 }

@@ -12,16 +12,18 @@ use App\Modules\Commissions\Contracts\CommissionRuleRepositoryInterface;
 use App\Modules\Commissions\Repositories\CommissionRuleRepository;
 use App\Modules\Financial\Contracts\FinancialTransactionRepositoryInterface;
 use App\Modules\Financial\Repositories\FinancialTransactionRepository;
-use App\Modules\Inventory\Contracts\InventoryMovementRepositoryInterface;
-use App\Modules\Inventory\Repositories\InventoryMovementRepository;
 use App\Modules\Hospitalizations\Contracts\HospitalizationRepositoryInterface;
 use App\Modules\Hospitalizations\Repositories\HospitalizationRepository;
+use App\Modules\Inventory\Contracts\InventoryMovementRepositoryInterface;
+use App\Modules\Inventory\Repositories\InventoryMovementRepository;
 use App\Modules\MedicalRecords\Contracts\MedicalRecordRepositoryInterface;
 use App\Modules\MedicalRecords\Repositories\MedicalRecordRepository;
 use App\Modules\Patients\Contracts\PatientRepositoryInterface;
 use App\Modules\Patients\Repositories\PatientRepository;
 use App\Modules\PetShopServices\Contracts\PetShopServiceRepositoryInterface;
 use App\Modules\PetShopServices\Repositories\PetShopServiceRepository;
+use App\Modules\Prescriptions\Contracts\PrescriptionRepositoryInterface;
+use App\Modules\Prescriptions\Repositories\PrescriptionRepository;
 use App\Modules\Products\Contracts\ProductRepositoryInterface;
 use App\Modules\Products\Repositories\ProductRepository;
 use App\Modules\Sales\Contracts\SaleRepositoryInterface;
@@ -95,6 +97,11 @@ class RepositoryServiceProvider extends ServiceProvider
         $this->app->bind(
             ProductRepositoryInterface::class,
             ProductRepository::class
+        );
+
+        $this->app->bind(
+            PrescriptionRepositoryInterface::class,
+            PrescriptionRepository::class
         );
 
         $this->app->bind(
