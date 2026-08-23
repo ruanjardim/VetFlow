@@ -277,6 +277,119 @@
     </section>
   @endif
 
+  @if(!empty($pilotReleases))
+    <section class="panel">
+      <div class="panel-body">
+        <div class="implementation-heading">
+          <div>
+            <span class="eyebrow">Liberação piloto</span>
+            <h2>Responsáveis, escopo e notas</h2>
+            <p class="muted">
+              Salvar o plano cria uma nova revisão; o conteúdo anterior permanece preservado para auditoria.
+            </p>
+          </div>
+        </div>
+
+        <div class="implementation-readiness-list">
+          @foreach($pilotReleases as $release)
+            @php
+              $useOldRelease = (int) old('clinic_id') === (int) $release['clinic_id'];
+            @endphp
+            <article class="implementation-readiness-card">
+              <div class="implementation-readiness-header">
+                <div>
+                  <h3>{{ $release['clinic_name'] }}</h3>
+
+                  @if($release['has_release'])
+                    <p class="muted">
+                      Revisão {{ $release['revision'] }} registrada por {{ $release['user_name'] }}
+                      em {{ $release['recorded_at']?->format('d/m/Y H:i') }}
+                    </p>
+                  @else
+                    <p class="muted">Plano ainda não registrado</p>
+                  @endif
+                </div>
+              </div>
+
+              <form
+                class="implementation-pilot-release"
+                method="POST"
+                action="{{ route('implementation.pilot-releases.store') }}"
+              >
+                @csrf
+                <input type="hidden" name="clinic_id" value="{{ $release['clinic_id'] }}">
+
+                <div class="form-grid">
+                  <div class="field">
+                    <label for="release-owner-{{ $release['clinic_id'] }}">Responsável operacional</label>
+                    <input
+                      id="release-owner-{{ $release['clinic_id'] }}"
+                      name="release_owner"
+                      type="text"
+                      maxlength="150"
+                      required
+                      value="{{ $useOldRelease ? old('release_owner') : $release['release_owner'] }}"
+                    >
+                  </div>
+
+                  <div class="field">
+                    <label for="support-owner-{{ $release['clinic_id'] }}">Responsável pelo suporte</label>
+                    <input
+                      id="support-owner-{{ $release['clinic_id'] }}"
+                      name="support_owner"
+                      type="text"
+                      maxlength="150"
+                      required
+                      value="{{ $useOldRelease ? old('support_owner') : $release['support_owner'] }}"
+                    >
+                  </div>
+
+                  <div class="field">
+                    <label for="planned-start-{{ $release['clinic_id'] }}">Início previsto</label>
+                    <input
+                      id="planned-start-{{ $release['clinic_id'] }}"
+                      name="planned_start_date"
+                      type="date"
+                      value="{{ $useOldRelease ? old('planned_start_date') : $release['planned_start_date']?->format('Y-m-d') }}"
+                    >
+                  </div>
+                </div>
+
+                <div class="field">
+                  <label for="pilot-scope-{{ $release['clinic_id'] }}">Escopo funcional do piloto</label>
+                  <textarea
+                    id="pilot-scope-{{ $release['clinic_id'] }}"
+                    name="scope"
+                    rows="4"
+                    maxlength="5000"
+                    required
+                    placeholder="Módulos, equipe, unidade e rotinas incluídas"
+                  >{{ $useOldRelease ? old('scope') : $release['scope'] }}</textarea>
+                </div>
+
+                <div class="field">
+                  <label for="release-notes-{{ $release['clinic_id'] }}">Notas da liberação</label>
+                  <textarea
+                    id="release-notes-{{ $release['clinic_id'] }}"
+                    name="release_notes"
+                    rows="4"
+                    maxlength="10000"
+                    required
+                    placeholder="Mudanças, limitações conhecidas e orientações para o piloto"
+                  >{{ $useOldRelease ? old('release_notes') : $release['release_notes'] }}</textarea>
+                </div>
+
+                <button class="button primary" type="submit">
+                  {{ $release['has_release'] ? 'Salvar nova revisão' : 'Registrar plano do piloto' }}
+                </button>
+              </form>
+            </article>
+          @endforeach
+        </div>
+      </div>
+    </section>
+  @endif
+
   <section class="panel">
     <div class="panel-body">
       <div class="implementation-heading">

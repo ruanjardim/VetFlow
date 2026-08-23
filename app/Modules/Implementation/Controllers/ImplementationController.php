@@ -9,6 +9,7 @@ use App\Modules\Implementation\Contracts\CsvImportService;
 use App\Modules\Implementation\Requests\SelectClinicRequest;
 use App\Modules\Implementation\Requests\SelectSourceRequest;
 use App\Modules\Implementation\Requests\StoreImplementationPilotCheckRequest;
+use App\Modules\Implementation\Requests\StoreImplementationPilotReleaseRequest;
 use App\Modules\Implementation\Requests\UploadImplementationFileRequest;
 use App\Modules\Implementation\Services\ExcelTemplateService;
 use App\Modules\Implementation\Services\FinancialCsvImportService;
@@ -16,6 +17,7 @@ use App\Modules\Implementation\Services\ImplementationDataQualityService;
 use App\Modules\Implementation\Services\ImplementationFileAnalyzer;
 use App\Modules\Implementation\Services\ImplementationImportService;
 use App\Modules\Implementation\Services\ImplementationPilotChecklistService;
+use App\Modules\Implementation\Services\ImplementationPilotReleaseService;
 use App\Modules\Implementation\Services\ImplementationReadinessService;
 use App\Modules\Implementation\Services\ImplementationWorkflowService;
 use App\Modules\Implementation\Services\PatientCsvImportService;
@@ -283,6 +285,7 @@ class ImplementationController extends Controller
         private readonly ImplementationReadinessService $implementationReadiness,
         private readonly ImplementationDataQualityService $implementationDataQuality,
         private readonly ImplementationPilotChecklistService $pilotChecklist,
+        private readonly ImplementationPilotReleaseService $pilotRelease,
         private readonly ImplementationFileAnalyzer $fileAnalyzer,
         private readonly ExcelTemplateService $excelTemplates
     ) {}
@@ -375,6 +378,7 @@ class ImplementationController extends Controller
                 $onboardingReadiness
             ),
             'pilotChecklists' => $this->pilotChecklist->forClinics($clinics),
+            'pilotReleases' => $this->pilotRelease->forClinics($clinics),
         ]);
     }
 
@@ -398,6 +402,25 @@ class ImplementationController extends Controller
         return redirect()
             ->route('implementation.index')
             ->with('success', 'Checklist do piloto atualizado com histórico preservado.');
+    }
+
+    public function storePilotRelease(
+        StoreImplementationPilotReleaseRequest $request
+    ): RedirectResponse {
+        $validated = $request->validated();
+        $clinic = $this->accessibleClinics($request)
+            ->findOrFail((int) $validated['clinic_id']);
+        /** @var User $user */
+        $user = $request->user();
+
+        $release = $this->pilotRelease->record($clinic, $user, $validated);
+
+        return redirect()
+            ->route('implementation.index')
+            ->with(
+                'success',
+                "Plano do piloto salvo como revisão {$release->revision}."
+            );
     }
 
     public function selectClinic(SelectClinicRequest $request): RedirectResponse

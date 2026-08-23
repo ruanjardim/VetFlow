@@ -14,6 +14,8 @@ This project follows the spirit of Keep a Changelog, with one practical adjustme
   transparent pending-record counts and the same accessible-clinic boundary.
 - Append-only clinic pilot checklist with attributed completion and reopening
   decisions for data review, quality, access, backup, and training.
+- Versioned clinic pilot-release plans with operational and support owners,
+  planned date, functional scope, release notes, and attributed revisions.
 - Public no-cache release identity endpoint backed by a normalized full Git
   SHA, with Render runtime detection and production release-gate validation.
 - End-to-end runtime operations probe that carries a synthetic persistent

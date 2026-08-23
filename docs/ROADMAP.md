@@ -89,6 +89,8 @@ The product should feel different from a generic CRUD system by connecting the c
   counts while incomplete blocks remain awaiting evaluation.
 - Pilot preparation records append-only, attributed decisions for data review,
   quality, access, backup, and training checks in each clinic.
+- Pilot-release plans keep versioned owners, date, scope, and release notes per
+  clinic without overwriting earlier preparation evidence.
 
 ## Current Near-Term Priorities
 
@@ -133,5 +135,6 @@ The product should feel different from a generic CRUD system by connecting the c
 
 ## Ideas Worth Exploring
 
-- Consolidate onboarding evidence into an explicit pilot-readiness decision.
+- Consolidate onboarding evidence and the latest release plan into an explicit
+  pilot-readiness decision.
 - Supplier lead-time and demand signals for future replenishment tuning.

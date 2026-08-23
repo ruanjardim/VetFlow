@@ -47,6 +47,12 @@ with clinic and user snapshots, an optional observation, and decision time.
 The interface presents the latest decision while preserving earlier events for
 audit; it never edits or deletes an earlier answer.
 
+Each clinic can also maintain a versioned pilot-release plan. The required
+operational owner, support owner, functional scope, and release notes, plus an
+optional planned start date, are stored as an append-only revision attributed
+to the authenticated user. The assistant loads the latest revision into the
+form while retaining all previous plans for audit and recovery.
+
 The wizard state is kept in the authenticated session. Normalized rows are
 stored temporarily as a private JSON file on the `local` disk, separated by
 entity type, and removed when the wizard is reset or the import finishes.
@@ -187,9 +193,11 @@ tipo,descricao,pessoa_documento,valor,vencimento,status,forma_pagamento,data_pag
 | `ImplementationReadinessService` | Builds tenant-safe onboarding coverage from the latest successful execution of each supported import block. |
 | `ImplementationDataQualityService` | Consolidates transparent, read-only quality checks for completed onboarding blocks in the accessible clinic scope. |
 | `ImplementationPilotChecklistService` | Builds the latest checklist state and appends auditable completion or reopening decisions. |
+| `ImplementationPilotReleaseService` | Reads the latest pilot plan and appends sequential, attributed revisions. |
 | `ImplementationWorkflowService` | Manages session state and private temporary analysis files. |
 | `ImplementationImport` | Represents one successfully completed import summary. |
 | `ImplementationPilotCheck` | Represents one immutable pilot-checklist decision event. |
+| `ImplementationPilotRelease` | Represents one immutable revision of the clinic pilot plan. |
 | `CsvFileAnalyzer` | Applies shared delimiter, header, encoding, row-limit, and summary rules to catalog, Stock, and Financial CSV files. |
 | `CsvValueNormalizer` | Normalizes strings, Brazilian decimals, and supported dates for catalog, Stock, and Financial imports. |
 | `TutorCsvImportService` | Parses, maps, validates, previews, and imports Tutor rows. |
@@ -227,6 +235,7 @@ tipo,descricao,pessoa_documento,valor,vencimento,status,forma_pagamento,data_pag
   soft-deleted records.
 - Pilot-checklist validation and reads use the same active accessible-clinic
   boundary; every decision stores the authenticated responsible user.
+- Pilot-release validation and revision reads use that same clinic boundary.
 - Global implementation users can see recent history across the active clinic
   scope available to the wizard.
 - The import rows and their sensitive business fields are never copied into
@@ -241,7 +250,9 @@ original file name, total/imported/invalid counts, and completion time.
 
 The module also owns `implementation_pilot_checks`, an append-only audit log
 for checklist completion and reopening decisions. The database restore control
-totals include both Implementation audit tables.
+totals also include `implementation_pilot_releases`, whose sequential records
+preserve the responsible owners, planned date, scope, and release notes. All
+three Implementation audit tables participate in restore control totals.
 
 Confirmed imports continue creating their business records in `tutors`,
 `patients`, `suppliers`, `products`, `inventory_movements`, or
@@ -276,7 +287,8 @@ cross-clinic Supplier isolation.
 after successful confirmation, absence of row payloads, survival after wizard
 reset, clinic-scoped visibility, guided coverage, completed-block quality
 checks, append-only pilot decisions, checklist clinic isolation, and no history
-for blocked imports.
+for blocked imports. It also covers append-only pilot-plan revisions and their
+clinic boundary.
 
 `tests/Feature/ImplementationExcelTest.php` covers all six Excel imports,
 first-worksheet date normalization, `implementation_excel` trace metadata,

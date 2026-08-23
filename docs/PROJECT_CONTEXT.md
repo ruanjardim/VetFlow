@@ -95,6 +95,9 @@ infers pilot approval or changes business data.
 Pilot preparation now also has a five-item human checklist per clinic. Every
 completion or reopening is stored as a new attributed event, so the current
 state is convenient to read without sacrificing the decision history.
+The pilot plan follows the same principle: every change to its operational and
+support owners, planned date, functional scope, or release notes creates a new
+attributed revision instead of overwriting earlier preparation evidence.
 
 The first staging candidate is KingHost shared Linux hosting, using only
 fictitious data and a bounded authenticated cron bridge because shared hosting

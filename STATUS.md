@@ -102,6 +102,9 @@ The local working tree was clean before this documentation pass.
 - Pilot preparation has a five-item checklist whose completion and reopening
   decisions are append-only, clinic-scoped, attributed, timestamped, and
   optionally documented by the operator.
+- Each clinic can keep a versioned pilot-release plan with operational and
+  support owners, planned date, functional scope, release notes, and the
+  attributed history of every revision.
 
 ## GitHub Scan Summary
 

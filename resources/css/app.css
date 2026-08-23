@@ -1995,6 +1995,19 @@ textarea {
   justify-self: start;
 }
 
+.implementation-pilot-release {
+  display: grid;
+  gap: 1rem;
+}
+
+.implementation-pilot-release .form-grid {
+  margin-bottom: 0;
+}
+
+.implementation-pilot-release .button {
+  justify-self: start;
+}
+
 .implementation-steps {
   display: grid;
   gap: 8px;

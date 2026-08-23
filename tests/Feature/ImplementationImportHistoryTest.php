@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Modules\Clinics\Models\Clinic;
 use App\Modules\Implementation\Models\ImplementationImport;
 use App\Modules\Implementation\Models\ImplementationPilotCheck;
+use App\Modules\Implementation\Models\ImplementationPilotRelease;
 use DateTimeInterface;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -266,6 +267,68 @@ class ImplementationImportHistoryTest extends TestCase
         $this->assertFalse($dataReviewed['completed']);
         $this->assertTrue($dataReviewed['has_decision']);
         $this->assertSame($user->name, $dataReviewed['user_name']);
+    }
+
+    public function test_pilot_release_plan_keeps_revisions_and_respects_clinic_scope(): void
+    {
+        $ownClinic = $this->clinic('Clínica Liberação', '12345678000200');
+        $otherClinic = $this->clinic('Clínica Plano Oculto', '12345678000201');
+        $user = $this->authorizedUser($ownClinic);
+
+        $firstRevision = [
+            'clinic_id' => $ownClinic->id,
+            'release_owner' => 'Ana Operações',
+            'support_owner' => 'Bruno Suporte',
+            'planned_start_date' => '2026-09-01',
+            'scope' => 'Agenda e atendimento clínico.',
+            'release_notes' => 'Primeira versão do plano.',
+        ];
+
+        $this->actingAs($user)
+            ->post(route('implementation.pilot-releases.store'), $firstRevision)
+            ->assertRedirect(route('implementation.index'));
+
+        $this->post(route('implementation.pilot-releases.store'), [
+            ...$firstRevision,
+            'support_owner' => 'Carla Suporte',
+            'scope' => 'Agenda, atendimento clínico e prescrições.',
+            'release_notes' => 'Escopo ampliado após revisão.',
+        ])->assertRedirect(route('implementation.index'));
+
+        $this->from(route('implementation.index'))
+            ->post(route('implementation.pilot-releases.store'), [
+                ...$firstRevision,
+                'clinic_id' => $otherClinic->id,
+            ])
+            ->assertRedirect(route('implementation.index'))
+            ->assertSessionHasErrors('clinic_id');
+
+        $releases = ImplementationPilotRelease::query()->orderBy('revision')->get();
+
+        $this->assertCount(2, $releases);
+        $this->assertSame(1, $releases[0]->revision);
+        $this->assertSame(2, $releases[1]->revision);
+        $this->assertSame('Bruno Suporte', $releases[0]->support_owner);
+        $this->assertSame('Carla Suporte', $releases[1]->support_owner);
+        $this->assertSame($user->id, $releases[1]->user_id);
+
+        $response = $this->get(route('implementation.index'));
+        $response
+            ->assertOk()
+            ->assertSee('Responsáveis, escopo e notas')
+            ->assertSee('Revisão 2')
+            ->assertSee('Carla Suporte')
+            ->assertSee('Escopo ampliado após revisão.')
+            ->assertDontSee('Clínica Plano Oculto');
+
+        $pilotReleases = $response->viewData('pilotReleases');
+
+        $this->assertCount(1, $pilotReleases);
+        $this->assertSame($ownClinic->id, $pilotReleases[0]['clinic_id']);
+        $this->assertTrue($pilotReleases[0]['has_release']);
+        $this->assertSame(2, $pilotReleases[0]['revision']);
+        $this->assertSame('Carla Suporte', $pilotReleases[0]['support_owner']);
+        $this->assertSame($user->name, $pilotReleases[0]['user_name']);
     }
 
     public function test_invalid_import_does_not_create_history(): void
