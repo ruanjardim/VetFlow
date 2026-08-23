@@ -90,6 +90,9 @@ The local working tree was clean before this documentation pass.
   sentinel through the real asynchronous queue, removes its temporary
   artifacts after approval, and supplies environment-bound evidence to the
   release-readiness gate.
+- A public, no-cache release identity endpoint that exposes only the deployed
+  Git SHA and lets operators prove that health checks target the intended
+  commit; the production release gate rejects a missing or malformed SHA.
 
 ## GitHub Scan Summary
 

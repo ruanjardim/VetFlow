@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Support\Operations\ReleaseIdentityService;
 use App\Support\Operations\RuntimeOperationsProbeService;
 use Carbon\CarbonImmutable;
 use Illuminate\Console\Command;
@@ -19,7 +20,7 @@ class ReleaseReadinessCheckCommand extends Command
         {--backup-evidence= : Evidencia JSON gerada por vetflow:backup:verify}
         {--runtime-evidence= : Evidencia JSON gerada por vetflow:runtime:probe}';
 
-    protected $description = 'Verifica configuracao, banco, migrations, logs, fila, armazenamento e backup para uma release.';
+    protected $description = 'Verifica identidade, configuracao, banco, migrations, logs, fila, armazenamento e backup para uma release.';
 
     /**
      * @var array<int, array{check: string, status: string, detail: string}>
@@ -30,6 +31,17 @@ class ReleaseReadinessCheckCommand extends Command
     {
         $this->checks = [];
         $productionLike = app()->environment(['production', 'staging']);
+
+        $releaseSha = app(ReleaseIdentityService::class)->sha();
+        $this->check(
+            'Identidade da release',
+            ! $productionLike || $releaseSha !== null,
+            $releaseSha !== null
+                ? 'Commit '.substr($releaseSha, 0, 7).' identificado.'
+                : ($productionLike
+                    ? 'VETFLOW_RELEASE_SHA ou RENDER_GIT_COMMIT deve conter um SHA Git completo.'
+                    : 'SHA completo sera obrigatorio em staging/producao.')
+        );
 
         $this->check(
             'Chave da aplicacao',

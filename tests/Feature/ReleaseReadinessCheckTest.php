@@ -15,6 +15,13 @@ class ReleaseReadinessCheckTest extends TestCase
     /** @var array<int, string> */
     private array $temporaryEvidence = [];
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        config(['operations.release.sha' => str_repeat('d', 40)]);
+    }
+
     protected function tearDown(): void
     {
         File::delete($this->temporaryEvidence);
@@ -182,6 +189,28 @@ class ReleaseReadinessCheckTest extends TestCase
         $this->artisan('vetflow:release:check', [
             '--backup-confirmed' => true,
             '--runtime-evidence' => $evidencePath,
+        ])
+            ->expectsOutputToContain('Release bloqueada por 1 verificacao(oes).')
+            ->assertFailed();
+    }
+
+    public function test_production_release_requires_a_complete_git_commit_identity(): void
+    {
+        Storage::fake('local');
+        $this->app->detectEnvironment(fn (): string => 'production');
+        config([
+            'app.key' => 'base64:production-readiness-key',
+            'app.debug' => false,
+            'app.url' => 'https://vetflow.example',
+            'filesystems.default' => 'local',
+            'logging.default' => 'single',
+            'queue.default' => 'database',
+            'operations.release.sha' => 'short-sha',
+        ]);
+
+        $this->artisan('vetflow:release:check', [
+            '--backup-confirmed' => true,
+            '--runtime-evidence' => $this->runtimeEvidence('production'),
         ])
             ->expectsOutputToContain('Release bloqueada por 1 verificacao(oes).')
             ->assertFailed();

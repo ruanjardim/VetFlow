@@ -80,6 +80,8 @@ The product should feel different from a generic CRUD system by connecting the c
 - Runtime operations have a synthetic end-to-end probe that carries a
   persistent storage sentinel through the real asynchronous queue and produces
   recent environment-bound evidence for the release gate.
+- Deployments have a public release identity endpoint and a production gate
+  that validate the complete Git SHA independently from process health.
 
 ## Current Near-Term Priorities
 

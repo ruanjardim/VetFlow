@@ -33,6 +33,7 @@ QUEUE_CONNECTION=database
 FILESYSTEM_DISK=local
 VETFLOW_SEED_DEMO_USER=false
 VETFLOW_QUEUE_MODE=worker
+VETFLOW_RELEASE_SHA=<full-40-character-git-sha>
 ```
 
 Generate a real `APP_KEY` during provisioning:
@@ -101,8 +102,14 @@ and a temporary write/delete probe on the configured storage disk. The
 proves that a real asynchronous job can read the prepared persistent marker and
 write a verifiable result.
 
+The release gate also requires a complete Git SHA in staging and production.
+Set `VETFLOW_RELEASE_SHA` in a generic provider. On Render, the application
+automatically falls back to the platform-provided `RENDER_GIT_COMMIT`.
+
 After deployment:
 
+- request `/up` and confirm a successful health response;
+- request `/ops/release` and compare `release.sha` with the intended commit;
 - login as an active administrator;
 - confirm clinic selection/context;
 - run one product lookup without requiring paid providers;

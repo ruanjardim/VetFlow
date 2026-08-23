@@ -1,6 +1,10 @@
 <?php
 
 return [
+    'release' => [
+        'sha' => env('VETFLOW_RELEASE_SHA', env('RENDER_GIT_COMMIT')),
+    ],
+
     'backup' => [
         'evidence_max_age_days' => (int) env('VETFLOW_BACKUP_EVIDENCE_MAX_AGE_DAYS', 30),
     ],

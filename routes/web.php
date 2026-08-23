@@ -4,6 +4,7 @@ use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Auth\NewPasswordController;
 use App\Http\Controllers\Auth\PasswordResetLinkController;
 use App\Http\Controllers\Operations\QueueCronController;
+use App\Http\Controllers\Operations\ReleaseIdentityController;
 use App\Http\Middleware\EnsureUserHasPermission;
 use App\Http\Middleware\EnsureUserIsActive;
 use App\Modules\Dashboard\Http\Controllers\DashboardController;
@@ -32,6 +33,10 @@ Route::get('/assets/app.js', function () {
 Route::get('/ops/cron/queue', QueueCronController::class)
     ->middleware('throttle:6,1')
     ->name('operations.queue-cron');
+
+Route::get('/ops/release', ReleaseIdentityController::class)
+    ->middleware('throttle:30,1')
+    ->name('operations.release');
 
 Route::middleware('guest')->group(function () {
     Route::get('/login', [AuthenticatedSessionController::class, 'create'])->name('login');

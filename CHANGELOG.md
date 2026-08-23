@@ -8,6 +8,8 @@ This project follows the spirit of Keep a Changelog, with one practical adjustme
 
 ### Added
 
+- Public no-cache release identity endpoint backed by a normalized full Git
+  SHA, with Render runtime detection and production release-gate validation.
 - End-to-end runtime operations probe that carries a synthetic persistent
   storage sentinel through the real asynchronous queue, removes its temporary
   artifacts after verification, and supplies fresh evidence to the release gate.

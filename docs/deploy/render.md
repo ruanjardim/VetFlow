@@ -52,6 +52,10 @@ Os valores públicos vêm do `render.yaml`: `APP_ENV=production`,
 `DB_CONNECTION=pgsql`, `DB_SSLMODE=prefer`, `SESSION_SECURE_COOKIE=true`,
 `SESSION_SAME_SITE=lax` e `TRUSTED_PROXIES=*`.
 
+O Render também fornece `RENDER_GIT_COMMIT` no runtime. O VetFlow usa esse SHA
+automaticamente para identificar a versão implantada; não é necessário criar
+`VETFLOW_RELEASE_SHA` neste serviço.
+
 Gere a chave localmente em uma cópia confiável, nunca no repositório:
 
 ```bash
@@ -92,13 +96,16 @@ jobs; se isso mudar, crie um Worker/cron separado antes de depender de fila.
    de Nginx/PHP-FPM. Erros de variável ausente interrompem o boot de propósito.
 2. Abra `https://<subdomínio>.onrender.com/up`; o endpoint não exige login e
    deve responder `200`.
-3. Abra a tela de login. Não existe usuário de demonstração automático: crie o
+3. Abra `https://<subdomínio>.onrender.com/ops/release`; deve responder `200` e
+   `release.sha` deve ser idêntico ao commit selecionado no deploy. Interrompa
+   a validação se o SHA for diferente ou o endpoint estiver indisponível.
+4. Abra a tela de login. Não existe usuário de demonstração automático: crie o
    primeiro administrador manualmente, no Shell do Render ou em um ambiente
    controlado, com `php artisan vetflow:admin:create`.
-4. Teste com uma clínica e dados fictícios: login, isolamento por clínica,
+5. Teste com uma clínica e dados fictícios: login, isolamento por clínica,
    importação CSV/XLSX, leitura de NF-e XML sem salvar documento real e um
    upload descartável.
-5. O Blueprint gratuito atual não possui worker, disco persistente nem Shell e,
+6. O Blueprint gratuito atual não possui worker, disco persistente nem Shell e,
    portanto, é somente uma demonstração descartável: o gate de release deve
    bloquear a ausência de evidência operacional. Quando um worker e storage
    persistente forem adicionados, execute o

@@ -9,6 +9,8 @@ provider-specific runbook.
 ## 1. Release Scope
 
 - Confirm the target commit and pull request.
+- Configure `VETFLOW_RELEASE_SHA` with the full 40-character commit SHA, unless
+  the hosting platform provides `RENDER_GIT_COMMIT` automatically.
 - Confirm CI is green for Laravel tests and the frontend build.
 - Review migrations, seeders, environment changes, storage paths, and queue
   changes included in the release.
@@ -86,6 +88,7 @@ the worker/cron and restart-boundary procedure.
 
 The command blocks a production release when it finds:
 
+- a missing or invalid full Git commit identity;
 - a missing `APP_KEY`;
 - `APP_DEBUG=true`;
 - an `APP_URL` without HTTPS;
@@ -104,6 +107,8 @@ Run the command without `--backup-confirmed` in local or testing environments.
 ## 6. Smoke Tests
 
 - Open `/up` and confirm a successful health response.
+- Open `/ops/release`, confirm `200`, and compare `release.sha` with the exact
+  deployed commit before testing business flows.
 - Log in with an active administrator.
 - Confirm the expected clinic context and tenant-scoped lists.
 - Open Users and Access and confirm the administrator preset.
@@ -144,6 +149,7 @@ permission checks fail.
 Record:
 
 - deployed commit and release time;
+- `/ops/release` response matched to that commit;
 - migration and seeder result;
 - runtime-check output;
 - runtime-probe ULID and evidence location, without sentinel contents;
