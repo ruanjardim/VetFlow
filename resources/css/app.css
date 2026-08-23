@@ -1849,6 +1849,72 @@ textarea {
   height: 100%;
 }
 
+.implementation-readiness-list {
+  display: grid;
+  gap: 1rem;
+}
+
+.implementation-readiness-card {
+  padding: 1rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.75rem;
+  background: #f8fafc;
+}
+
+.implementation-readiness-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.75rem;
+}
+
+.implementation-readiness-header h3,
+.implementation-readiness-header p {
+  margin: 0;
+}
+
+.implementation-readiness-header > strong {
+  color: #0f766e;
+  font-size: 1.25rem;
+}
+
+.implementation-readiness-blocks {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.implementation-readiness-block {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.625rem;
+  padding: 0.75rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.625rem;
+  background: #ffffff;
+}
+
+.implementation-readiness-block > span {
+  color: #64748b;
+  font-weight: 700;
+}
+
+.implementation-readiness-block.completed > span {
+  color: #15803d;
+}
+
+.implementation-readiness-block strong,
+.implementation-readiness-block small {
+  display: block;
+}
+
+.implementation-readiness-block small {
+  margin-top: 0.2rem;
+  color: #64748b;
+}
+
 .implementation-steps {
   display: grid;
   gap: 8px;
@@ -2218,6 +2284,7 @@ textarea {
   .sale-checkout-payment,
   .implementation-options,
   .implementation-blocks,
+  .implementation-readiness-blocks,
   .implementation-summary {
     grid-template-columns: 1fr;
   }

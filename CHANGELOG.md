@@ -8,6 +8,8 @@ This project follows the spirit of Keep a Changelog, with one practical adjustme
 
 ### Added
 
+- Tenant-safe guided onboarding coverage in the Implementation assistant,
+  derived from the latest successful execution of each supported import block.
 - Public no-cache release identity endpoint backed by a normalized full Git
   SHA, with Render runtime detection and production release-gate validation.
 - End-to-end runtime operations probe that carries a synthetic persistent

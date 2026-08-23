@@ -13,6 +13,7 @@ use App\Modules\Implementation\Services\ExcelTemplateService;
 use App\Modules\Implementation\Services\FinancialCsvImportService;
 use App\Modules\Implementation\Services\ImplementationFileAnalyzer;
 use App\Modules\Implementation\Services\ImplementationImportService;
+use App\Modules\Implementation\Services\ImplementationReadinessService;
 use App\Modules\Implementation\Services\ImplementationWorkflowService;
 use App\Modules\Implementation\Services\PatientCsvImportService;
 use App\Modules\Implementation\Services\ProductCsvImportService;
@@ -276,6 +277,7 @@ class ImplementationController extends Controller
         private readonly StockCsvImportService $stockCsvImporter,
         private readonly FinancialCsvImportService $financialCsvImporter,
         private readonly ImplementationImportService $implementationImporter,
+        private readonly ImplementationReadinessService $implementationReadiness,
         private readonly ImplementationFileAnalyzer $fileAnalyzer,
         private readonly ExcelTemplateService $excelTemplates
     ) {}
@@ -361,6 +363,7 @@ class ImplementationController extends Controller
             'mappingDefinitions' => $importer->mappingDefinitions(),
             'completedSummary' => $state['completed'] ?? null,
             'recentImports' => $this->implementationImporter->recentFor($user),
+            'onboardingReadiness' => $this->implementationReadiness->forClinics($clinics),
         ]);
     }
 

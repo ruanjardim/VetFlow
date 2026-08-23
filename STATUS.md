@@ -93,6 +93,9 @@ The local working tree was clean before this documentation pass.
 - A public, no-cache release identity endpoint that exposes only the deployed
   Git SHA and lets operators prove that health checks target the intended
   commit; the production release gate rejects a missing or malformed SHA.
+- Guided onboarding coverage in the Implementation assistant, calculated from
+  the latest successful import of each supported block without duplicating
+  imported data or crossing clinic boundaries.
 
 ## GitHub Scan Summary
 

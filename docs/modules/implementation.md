@@ -22,6 +22,14 @@ validation, mapping review, and explicit confirmation.
 8. Review the completion summary.
 9. Consult the permanent summary in the recent import history.
 
+The top of the assistant also presents a read-only onboarding coverage panel
+for every clinic available to the current user. A block is considered complete
+only after at least one successful import has been recorded for that clinic.
+Repeated imports do not inflate progress: the panel keeps the latest successful
+execution for each of the six supported blocks, displays its source, timestamp,
+and imported count, and calculates a percentage from distinct completed blocks.
+It does not claim that business validation or pilot acceptance is complete.
+
 The wizard state is kept in the authenticated session. Normalized rows are
 stored temporarily as a private JSON file on the `local` disk, separated by
 entity type, and removed when the wizard is reset or the import finishes.
@@ -159,6 +167,7 @@ tipo,descricao,pessoa_documento,valor,vencimento,status,forma_pagamento,data_pag
 | `ImplementationFileAnalyzer` | Validates the selected source, safely reads the first XLSX worksheet, and bridges it to the existing import contracts. |
 | `ExcelTemplateService` | Streams standardized `.xlsx` templates for all six blocks. |
 | `ImplementationImportService` | Runs the selected importer and durable audit write in one outer transaction, and scopes recent history queries. |
+| `ImplementationReadinessService` | Builds tenant-safe onboarding coverage from the latest successful execution of each supported import block. |
 | `ImplementationWorkflowService` | Manages session state and private temporary analysis files. |
 | `ImplementationImport` | Represents one successfully completed import summary. |
 | `CsvFileAnalyzer` | Applies shared delimiter, header, encoding, row-limit, and summary rules to catalog, Stock, and Financial CSV files. |
@@ -191,6 +200,9 @@ tipo,descricao,pessoa_documento,valor,vencimento,status,forma_pagamento,data_pag
 - Every imported Financial Transaction receives the selected `clinic_id`.
 - Temporary analysis is associated with the authenticated user's session.
 - Clinic users can see only import history from their own clinic.
+- Clinic users can see onboarding coverage only for their own clinic; global
+  implementation users see only the active clinics already available to the
+  assistant.
 - Global implementation users can see recent history across the active clinic
   scope available to the wizard.
 - The import rows and their sensitive business fields are never copied into

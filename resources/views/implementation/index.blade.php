@@ -48,6 +48,71 @@
     </div>
   @endif
 
+  @if(!empty($onboardingReadiness))
+    <section class="panel">
+      <div class="panel-body">
+        <div class="implementation-heading">
+          <div>
+            <span class="eyebrow">Onboarding guiado</span>
+            <h2>Cobertura da implantação</h2>
+            <p class="muted">
+              O progresso considera somente blocos que já tiveram uma importação concluída com sucesso.
+            </p>
+          </div>
+        </div>
+
+        <div class="implementation-readiness-list">
+          @foreach($onboardingReadiness as $readiness)
+            <article class="implementation-readiness-card">
+              <div class="implementation-readiness-header">
+                <div>
+                  <h3>{{ $readiness['clinic_name'] }}</h3>
+                  <p class="muted">
+                    {{ $readiness['completed_blocks'] }} de {{ $readiness['total_blocks'] }} blocos concluídos
+                  </p>
+                </div>
+
+                <strong>{{ $readiness['percentage'] }}%</strong>
+              </div>
+
+              <div
+                class="implementation-progress"
+                role="progressbar"
+                aria-valuemin="0"
+                aria-valuemax="100"
+                aria-valuenow="{{ $readiness['percentage'] }}"
+                aria-label="Cobertura da implantação de {{ $readiness['clinic_name'] }}"
+              >
+                <span style="width: {{ $readiness['percentage'] }}%"></span>
+              </div>
+
+              <div class="implementation-readiness-blocks">
+                @foreach($readiness['blocks'] as $block)
+                  <div class="implementation-readiness-block {{ $block['completed'] ? 'completed' : 'pending' }}">
+                    <span aria-hidden="true">{{ $block['completed'] ? '✓' : '○' }}</span>
+
+                    <div>
+                      <strong>{{ $block['label'] }}</strong>
+
+                      @if($block['completed'])
+                        <small>
+                          {{ $block['imported_count'] }} registros via {{ mb_strtoupper($block['source']) }}
+                          em {{ $block['completed_at']?->format('d/m/Y H:i') }}
+                        </small>
+                      @else
+                        <small>Pendente de importação concluída</small>
+                      @endif
+                    </div>
+                  </div>
+                @endforeach
+              </div>
+            </article>
+          @endforeach
+        </div>
+      </div>
+    </section>
+  @endif
+
   <section class="panel">
     <div class="panel-body">
       <div class="implementation-heading">

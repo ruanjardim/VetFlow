@@ -82,6 +82,9 @@ The product should feel different from a generic CRUD system by connecting the c
   recent environment-bound evidence for the release gate.
 - Deployments have a public release identity endpoint and a production gate
   that validate the complete Git SHA independently from process health.
+- The Implementation assistant shows tenant-safe guided onboarding coverage
+  across the six supported import blocks, based on their latest successful
+  executions.
 
 ## Current Near-Term Priorities
 
@@ -126,5 +129,6 @@ The product should feel different from a generic CRUD system by connecting the c
 
 ## Ideas Worth Exploring
 
-- Guided onboarding for a new clinic.
+- Extend guided onboarding from import coverage to explicit data-quality and
+  pilot-readiness evidence.
 - Supplier lead-time and demand signals for future replenishment tuning.

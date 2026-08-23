@@ -7,6 +7,7 @@ use App\Models\Role;
 use App\Models\User;
 use App\Modules\Clinics\Models\Clinic;
 use App\Modules\Implementation\Models\ImplementationImport;
+use DateTimeInterface;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
@@ -82,6 +83,50 @@ class ImplementationImportHistoryTest extends TestCase
             ->assertDontSee('Clínica Externa');
     }
 
+    public function test_onboarding_readiness_uses_the_latest_successful_block_per_accessible_clinic(): void
+    {
+        $ownClinic = $this->clinic('Clínica Horizonte', '12345678000194');
+        $otherClinic = $this->clinic('Clínica Oculta', '12345678000195');
+        $user = $this->authorizedUser($ownClinic);
+
+        $this->history(
+            $ownClinic,
+            $user,
+            'tutores-antigo.csv',
+            'tutors',
+            now()->subDay(),
+            1
+        );
+        $this->history($ownClinic, $user, 'tutores-atual.csv', 'tutors', now(), 2);
+        $this->history($ownClinic, $user, 'pacientes.csv', 'patients', now(), 3);
+        $this->history($otherClinic, $user, 'produtos.csv', 'products', now(), 4);
+
+        $response = $this->actingAs($user)->get(route('implementation.index'));
+
+        $response
+            ->assertOk()
+            ->assertSee('Cobertura da implantação')
+            ->assertSee('2 de 6 blocos concluídos')
+            ->assertSee('33%')
+            ->assertSee('2 registros via CSV')
+            ->assertDontSee('Clínica Oculta');
+
+        $readiness = $response->viewData('onboardingReadiness');
+
+        $this->assertCount(1, $readiness);
+        $this->assertSame($ownClinic->id, $readiness[0]['clinic_id']);
+        $this->assertSame(2, $readiness[0]['completed_blocks']);
+        $this->assertSame(6, $readiness[0]['total_blocks']);
+        $this->assertSame(33, $readiness[0]['percentage']);
+        $this->assertSame(
+            2,
+            collect($readiness[0]['blocks'])->firstWhere('type', 'tutors')['imported_count']
+        );
+        $this->assertFalse(
+            collect($readiness[0]['blocks'])->firstWhere('type', 'financial')['completed']
+        );
+    }
+
     public function test_invalid_import_does_not_create_history(): void
     {
         Storage::fake('local');
@@ -121,21 +166,33 @@ class ImplementationImportHistoryTest extends TestCase
     private function history(
         Clinic $clinic,
         User $user,
-        string $fileName
+        string $fileName,
+        string $entityType = 'tutors',
+        ?DateTimeInterface $completedAt = null,
+        int $importedCount = 1
     ): ImplementationImport {
+        $labels = [
+            'tutors' => 'Responsáveis',
+            'patients' => 'Pacientes',
+            'suppliers' => 'Fornecedores',
+            'products' => 'Produtos',
+            'stock' => 'Estoque inicial',
+            'financial' => 'Financeiro',
+        ];
+
         return ImplementationImport::query()->create([
             'clinic_id' => $clinic->id,
             'user_id' => $user->id,
             'clinic_name' => $clinic->trade_name,
             'user_name' => $user->name,
-            'entity_type' => 'tutors',
-            'entity_label' => 'Tutores',
+            'entity_type' => $entityType,
+            'entity_label' => $labels[$entityType],
             'data_source' => 'csv',
             'file_name' => $fileName,
-            'total_rows' => 1,
-            'imported_count' => 1,
+            'total_rows' => $importedCount,
+            'imported_count' => $importedCount,
             'invalid_rows' => 0,
-            'completed_at' => now(),
+            'completed_at' => $completedAt ?? now(),
         ]);
     }
 
