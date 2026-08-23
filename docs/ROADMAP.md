@@ -87,6 +87,8 @@ The product should feel different from a generic CRUD system by connecting the c
   executions.
 - Completed onboarding blocks expose explicit, read-only data-quality pending
   counts while incomplete blocks remain awaiting evaluation.
+- Pilot preparation records append-only, attributed decisions for data review,
+  quality, access, backup, and training checks in each clinic.
 
 ## Current Near-Term Priorities
 
@@ -131,6 +133,5 @@ The product should feel different from a generic CRUD system by connecting the c
 
 ## Ideas Worth Exploring
 
-- Extend guided onboarding from coverage and data-quality checks to explicit
-  pilot-readiness evidence.
+- Consolidate onboarding evidence into an explicit pilot-readiness decision.
 - Supplier lead-time and demand signals for future replenishment tuning.

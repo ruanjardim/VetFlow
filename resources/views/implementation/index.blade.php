@@ -186,6 +186,97 @@
     </section>
   @endif
 
+  @if(!empty($pilotChecklists))
+    <section class="panel">
+      <div class="panel-body">
+        <div class="implementation-heading">
+          <div>
+            <span class="eyebrow">Preparação do piloto</span>
+            <h2>Checklist auditável</h2>
+            <p class="muted">
+              Cada conclusão ou reabertura gera uma nova decisão com responsável e horário, preservando o histórico.
+            </p>
+          </div>
+        </div>
+
+        <div class="implementation-readiness-list">
+          @foreach($pilotChecklists as $checklist)
+            <article class="implementation-readiness-card">
+              <div class="implementation-readiness-header">
+                <div>
+                  <h3>{{ $checklist['clinic_name'] }}</h3>
+                  <p class="muted">
+                    {{ $checklist['completed_checks'] }} de {{ $checklist['total_checks'] }} itens concluídos
+                  </p>
+                </div>
+
+                <strong>{{ $checklist['percentage'] }}%</strong>
+              </div>
+
+              <div
+                class="implementation-progress"
+                role="progressbar"
+                aria-valuemin="0"
+                aria-valuemax="100"
+                aria-valuenow="{{ $checklist['percentage'] }}"
+                aria-label="Checklist do piloto de {{ $checklist['clinic_name'] }}"
+              >
+                <span style="width: {{ $checklist['percentage'] }}%"></span>
+              </div>
+
+              <div class="implementation-pilot-checks">
+                @foreach($checklist['checks'] as $check)
+                  <form
+                    class="implementation-pilot-check {{ $check['completed'] ? 'completed' : 'pending' }}"
+                    method="POST"
+                    action="{{ route('implementation.pilot-checks.store') }}"
+                  >
+                    @csrf
+                    <input type="hidden" name="clinic_id" value="{{ $checklist['clinic_id'] }}">
+                    <input type="hidden" name="check_key" value="{{ $check['key'] }}">
+                    <input type="hidden" name="completed" value="{{ $check['completed'] ? 0 : 1 }}">
+
+                    <div class="implementation-pilot-check-heading">
+                      <span aria-hidden="true">{{ $check['completed'] ? '✓' : '○' }}</span>
+                      <div>
+                        <strong>{{ $check['label'] }}</strong>
+                        <small>{{ $check['description'] }}</small>
+                      </div>
+                    </div>
+
+                    <label for="pilot-note-{{ $checklist['clinic_id'] }}-{{ $check['key'] }}">
+                      Observação da decisão
+                    </label>
+                    <textarea
+                      id="pilot-note-{{ $checklist['clinic_id'] }}-{{ $check['key'] }}"
+                      name="notes"
+                      rows="2"
+                      maxlength="1000"
+                      placeholder="Contexto opcional para a equipe"
+                    >{{ $check['notes'] }}</textarea>
+
+                    @if($check['has_decision'])
+                      <small class="implementation-pilot-audit">
+                        Última decisão por {{ $check['user_name'] }}
+                        em {{ $check['decided_at']?->format('d/m/Y H:i') }}
+                      </small>
+                    @else
+                      <small class="implementation-pilot-audit">Ainda sem decisão registrada</small>
+                    @endif
+
+                    <button class="button secondary small" type="submit">
+                      {{ $check['completed'] ? 'Reabrir item' : 'Marcar concluído' }}
+                    </button>
+                  </form>
+                @endforeach
+              </div>
+            </article>
+          @endforeach
+        </div>
+      </div>
+    </section>
+  @endif
+
   <section class="panel">
     <div class="panel-body">
       <div class="implementation-heading">

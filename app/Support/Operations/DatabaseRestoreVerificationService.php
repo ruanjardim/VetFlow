@@ -55,6 +55,7 @@ class DatabaseRestoreVerificationService
         'financial_transactions',
         'commission_rules',
         'implementation_imports',
+        'implementation_pilot_checks',
         'global_products',
         'global_product_sources',
         'global_product_images',

@@ -7,6 +7,7 @@ use App\Models\Role;
 use App\Models\User;
 use App\Modules\Clinics\Models\Clinic;
 use App\Modules\Implementation\Models\ImplementationImport;
+use App\Modules\Implementation\Models\ImplementationPilotCheck;
 use DateTimeInterface;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -203,6 +204,68 @@ class ImplementationImportHistoryTest extends TestCase
         $this->assertSame(1, $blocks['financial']['issue_count']);
         $this->assertSame('awaiting', $blocks['patients']['status']);
         $this->assertNull($blocks['patients']['issue_count']);
+    }
+
+    public function test_pilot_checklist_preserves_decision_history_and_clinic_scope(): void
+    {
+        $ownClinic = $this->clinic('Clínica Piloto', '12345678000198');
+        $otherClinic = $this->clinic('Clínica Não Autorizada', '12345678000199');
+        $user = $this->authorizedUser($ownClinic);
+
+        $this->actingAs($user)
+            ->post(route('implementation.pilot-checks.store'), [
+                'clinic_id' => $ownClinic->id,
+                'check_key' => 'data_reviewed',
+                'completed' => '1',
+                'notes' => 'Amostra conferida com a equipe.',
+            ])
+            ->assertRedirect(route('implementation.index'));
+
+        $this->post(route('implementation.pilot-checks.store'), [
+            'clinic_id' => $ownClinic->id,
+            'check_key' => 'data_reviewed',
+            'completed' => '0',
+            'notes' => 'Reaberto para uma nova conferência.',
+        ])->assertRedirect(route('implementation.index'));
+
+        $this->from(route('implementation.index'))
+            ->post(route('implementation.pilot-checks.store'), [
+                'clinic_id' => $otherClinic->id,
+                'check_key' => 'data_reviewed',
+                'completed' => '1',
+            ])
+            ->assertRedirect(route('implementation.index'))
+            ->assertSessionHasErrors('clinic_id');
+
+        $decisions = ImplementationPilotCheck::query()->orderBy('id')->get();
+
+        $this->assertCount(2, $decisions);
+        $this->assertTrue($decisions[0]->completed);
+        $this->assertFalse($decisions[1]->completed);
+        $this->assertSame($user->id, $decisions[1]->user_id);
+        $this->assertSame('Reaberto para uma nova conferência.', $decisions[1]->notes);
+
+        $response = $this->get(route('implementation.index'));
+        $response
+            ->assertOk()
+            ->assertSee('Checklist auditável')
+            ->assertSee('0 de 5 itens concluídos')
+            ->assertSee('Reaberto para uma nova conferência.')
+            ->assertSee($user->name)
+            ->assertDontSee('Clínica Não Autorizada');
+
+        $checklists = $response->viewData('pilotChecklists');
+        $dataReviewed = collect($checklists[0]['checks'])->firstWhere(
+            'key',
+            'data_reviewed'
+        );
+
+        $this->assertCount(1, $checklists);
+        $this->assertSame($ownClinic->id, $checklists[0]['clinic_id']);
+        $this->assertSame(0, $checklists[0]['completed_checks']);
+        $this->assertFalse($dataReviewed['completed']);
+        $this->assertTrue($dataReviewed['has_decision']);
+        $this->assertSame($user->name, $dataReviewed['user_name']);
     }
 
     public function test_invalid_import_does_not_create_history(): void

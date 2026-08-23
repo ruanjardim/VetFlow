@@ -92,6 +92,9 @@ its append-only successful import summaries. Completed blocks also receive a
 read-only quality review based on six documented, tenant-scoped checks. Blocks
 without a successful import remain awaiting evaluation, and neither panel
 infers pilot approval or changes business data.
+Pilot preparation now also has a five-item human checklist per clinic. Every
+completion or reopening is stored as a new attributed event, so the current
+state is convenient to read without sacrificing the decision history.
 
 The first staging candidate is KingHost shared Linux hosting, using only
 fictitious data and a bounded authenticated cron bridge because shared hosting

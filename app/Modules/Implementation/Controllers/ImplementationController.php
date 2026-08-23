@@ -8,12 +8,14 @@ use App\Modules\Clinics\Models\Clinic;
 use App\Modules\Implementation\Contracts\CsvImportService;
 use App\Modules\Implementation\Requests\SelectClinicRequest;
 use App\Modules\Implementation\Requests\SelectSourceRequest;
+use App\Modules\Implementation\Requests\StoreImplementationPilotCheckRequest;
 use App\Modules\Implementation\Requests\UploadImplementationFileRequest;
 use App\Modules\Implementation\Services\ExcelTemplateService;
 use App\Modules\Implementation\Services\FinancialCsvImportService;
 use App\Modules\Implementation\Services\ImplementationDataQualityService;
 use App\Modules\Implementation\Services\ImplementationFileAnalyzer;
 use App\Modules\Implementation\Services\ImplementationImportService;
+use App\Modules\Implementation\Services\ImplementationPilotChecklistService;
 use App\Modules\Implementation\Services\ImplementationReadinessService;
 use App\Modules\Implementation\Services\ImplementationWorkflowService;
 use App\Modules\Implementation\Services\PatientCsvImportService;
@@ -280,6 +282,7 @@ class ImplementationController extends Controller
         private readonly ImplementationImportService $implementationImporter,
         private readonly ImplementationReadinessService $implementationReadiness,
         private readonly ImplementationDataQualityService $implementationDataQuality,
+        private readonly ImplementationPilotChecklistService $pilotChecklist,
         private readonly ImplementationFileAnalyzer $fileAnalyzer,
         private readonly ExcelTemplateService $excelTemplates
     ) {}
@@ -371,7 +374,30 @@ class ImplementationController extends Controller
                 $clinics,
                 $onboardingReadiness
             ),
+            'pilotChecklists' => $this->pilotChecklist->forClinics($clinics),
         ]);
+    }
+
+    public function storePilotCheck(
+        StoreImplementationPilotCheckRequest $request
+    ): RedirectResponse {
+        $validated = $request->validated();
+        $clinic = $this->accessibleClinics($request)
+            ->findOrFail((int) $validated['clinic_id']);
+        /** @var User $user */
+        $user = $request->user();
+
+        $this->pilotChecklist->record(
+            $clinic,
+            $user,
+            $validated['check_key'],
+            $request->boolean('completed'),
+            $validated['notes'] ?? null
+        );
+
+        return redirect()
+            ->route('implementation.index')
+            ->with('success', 'Checklist do piloto atualizado com histórico preservado.');
     }
 
     public function selectClinic(SelectClinicRequest $request): RedirectResponse

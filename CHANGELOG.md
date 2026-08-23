@@ -12,6 +12,8 @@ This project follows the spirit of Keep a Changelog, with one practical adjustme
   derived from the latest successful execution of each supported import block.
 - Read-only onboarding data-quality review for completed import blocks, with
   transparent pending-record counts and the same accessible-clinic boundary.
+- Append-only clinic pilot checklist with attributed completion and reopening
+  decisions for data review, quality, access, backup, and training.
 - Public no-cache release identity endpoint backed by a normalized full Git
   SHA, with Render runtime detection and production release-gate validation.
 - End-to-end runtime operations probe that carries a synthetic persistent

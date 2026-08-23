@@ -17,6 +17,9 @@ Route::post('implementation/clinic', [ImplementationController::class, 'selectCl
 Route::post('implementation/source', [ImplementationController::class, 'selectSource'])
     ->name('implementation.source');
 
+Route::post('implementation/pilot-checks', [ImplementationController::class, 'storePilotCheck'])
+    ->name('implementation.pilot-checks.store');
+
 Route::post('implementation/tutors/upload', [ImplementationController::class, 'uploadTutors'])
     ->name('implementation.tutors.upload');
 
