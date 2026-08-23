@@ -127,6 +127,84 @@ class ImplementationImportHistoryTest extends TestCase
         );
     }
 
+    public function test_onboarding_quality_only_evaluates_completed_blocks_in_the_accessible_clinic(): void
+    {
+        $ownClinic = $this->clinic('Clínica Qualidade', '12345678000196');
+        $otherClinic = $this->clinic('Clínica Fora do Escopo', '12345678000197');
+        $user = $this->authorizedUser($ownClinic);
+
+        foreach (['tutors', 'suppliers', 'financial'] as $entityType) {
+            $this->history(
+                $ownClinic,
+                $user,
+                $entityType.'.csv',
+                $entityType
+            );
+        }
+        $this->history($otherClinic, $user, 'externo.csv', 'tutors');
+
+        DB::table('tutors')->insert([
+            [
+                'clinic_id' => $ownClinic->id,
+                'name' => 'Responsável sem dados recomendados',
+                'phone' => '21999990001',
+                'active' => true,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'clinic_id' => $otherClinic->id,
+                'name' => 'Responsável externo',
+                'phone' => '21999990002',
+                'active' => true,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+        ]);
+        DB::table('suppliers')->insert([
+            'clinic_id' => $ownClinic->id,
+            'name' => 'Fornecedor completo',
+            'document' => '12345678000195',
+            'email' => 'fornecedor@example.com',
+            'active' => true,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        DB::table('financial_transactions')->insert([
+            'clinic_id' => $ownClinic->id,
+            'type' => 'expense',
+            'description' => 'Conta sem vencimento',
+            'amount' => 100,
+            'status' => 'pending',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $response = $this->actingAs($user)->get(route('implementation.index'));
+
+        $response
+            ->assertOk()
+            ->assertSee('Pendências do onboarding')
+            ->assertSee('2 pendências em 3 blocos avaliados')
+            ->assertSee('1 de 3 blocos avaliados sem pendências detectadas')
+            ->assertDontSee('Clínica Fora do Escopo');
+
+        $quality = $response->viewData('onboardingQuality');
+        $blocks = collect($quality[0]['blocks'])->keyBy('type');
+
+        $this->assertCount(1, $quality);
+        $this->assertSame($ownClinic->id, $quality[0]['clinic_id']);
+        $this->assertSame(3, $quality[0]['evaluated_blocks']);
+        $this->assertSame(1, $quality[0]['ready_blocks']);
+        $this->assertSame(2, $quality[0]['total_issues']);
+        $this->assertSame(33, $quality[0]['percentage']);
+        $this->assertSame(1, $blocks['tutors']['issue_count']);
+        $this->assertSame('ready', $blocks['suppliers']['status']);
+        $this->assertSame(1, $blocks['financial']['issue_count']);
+        $this->assertSame('awaiting', $blocks['patients']['status']);
+        $this->assertNull($blocks['patients']['issue_count']);
+    }
+
     public function test_invalid_import_does_not_create_history(): void
     {
         Storage::fake('local');

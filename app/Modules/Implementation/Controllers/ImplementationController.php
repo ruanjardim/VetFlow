@@ -11,6 +11,7 @@ use App\Modules\Implementation\Requests\SelectSourceRequest;
 use App\Modules\Implementation\Requests\UploadImplementationFileRequest;
 use App\Modules\Implementation\Services\ExcelTemplateService;
 use App\Modules\Implementation\Services\FinancialCsvImportService;
+use App\Modules\Implementation\Services\ImplementationDataQualityService;
 use App\Modules\Implementation\Services\ImplementationFileAnalyzer;
 use App\Modules\Implementation\Services\ImplementationImportService;
 use App\Modules\Implementation\Services\ImplementationReadinessService;
@@ -278,6 +279,7 @@ class ImplementationController extends Controller
         private readonly FinancialCsvImportService $financialCsvImporter,
         private readonly ImplementationImportService $implementationImporter,
         private readonly ImplementationReadinessService $implementationReadiness,
+        private readonly ImplementationDataQualityService $implementationDataQuality,
         private readonly ImplementationFileAnalyzer $fileAnalyzer,
         private readonly ExcelTemplateService $excelTemplates
     ) {}
@@ -318,6 +320,7 @@ class ImplementationController extends Controller
             : 'csv';
         /** @var User $user */
         $user = $request->user();
+        $onboardingReadiness = $this->implementationReadiness->forClinics($clinics);
 
         return view('implementation.index', [
             'clinics' => $clinics,
@@ -363,7 +366,11 @@ class ImplementationController extends Controller
             'mappingDefinitions' => $importer->mappingDefinitions(),
             'completedSummary' => $state['completed'] ?? null,
             'recentImports' => $this->implementationImporter->recentFor($user),
-            'onboardingReadiness' => $this->implementationReadiness->forClinics($clinics),
+            'onboardingReadiness' => $onboardingReadiness,
+            'onboardingQuality' => $this->implementationDataQuality->forClinics(
+                $clinics,
+                $onboardingReadiness
+            ),
         ]);
     }
 

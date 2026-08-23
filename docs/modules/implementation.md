@@ -30,6 +30,16 @@ execution for each of the six supported blocks, displays its source, timestamp,
 and imported count, and calculates a percentage from distinct completed blocks.
 It does not claim that business validation or pilot acceptance is complete.
 
+A second read-only panel evaluates data quality only for blocks whose import
+coverage is already complete. It counts clinic-scoped records that need manual
+review using six transparent checks: Tutors without CPF or email; Patients
+without Tutor, catalogued species, or birth date; Suppliers without a document
+or contact channel; Products without a positive sale price or commercial
+identifier; positive Stock without a registered cost; and Financial records
+whose value or dates conflict with their status. A block without a completed
+import remains marked as awaiting instead of receiving a misleading zero-issue
+score. These checks guide review and do not automatically alter business data.
+
 The wizard state is kept in the authenticated session. Normalized rows are
 stored temporarily as a private JSON file on the `local` disk, separated by
 entity type, and removed when the wizard is reset or the import finishes.
@@ -168,6 +178,7 @@ tipo,descricao,pessoa_documento,valor,vencimento,status,forma_pagamento,data_pag
 | `ExcelTemplateService` | Streams standardized `.xlsx` templates for all six blocks. |
 | `ImplementationImportService` | Runs the selected importer and durable audit write in one outer transaction, and scopes recent history queries. |
 | `ImplementationReadinessService` | Builds tenant-safe onboarding coverage from the latest successful execution of each supported import block. |
+| `ImplementationDataQualityService` | Consolidates transparent, read-only quality checks for completed onboarding blocks in the accessible clinic scope. |
 | `ImplementationWorkflowService` | Manages session state and private temporary analysis files. |
 | `ImplementationImport` | Represents one successfully completed import summary. |
 | `CsvFileAnalyzer` | Applies shared delimiter, header, encoding, row-limit, and summary rules to catalog, Stock, and Financial CSV files. |
@@ -203,6 +214,8 @@ tipo,descricao,pessoa_documento,valor,vencimento,status,forma_pagamento,data_pag
 - Clinic users can see onboarding coverage only for their own clinic; global
   implementation users see only the active clinics already available to the
   assistant.
+- Onboarding quality queries use that same accessible clinic list and ignore
+  soft-deleted records.
 - Global implementation users can see recent history across the active clinic
   scope available to the wizard.
 - The import rows and their sensitive business fields are never copied into
@@ -246,7 +259,8 @@ cross-clinic Supplier isolation.
 
 `tests/Feature/ImplementationImportHistoryTest.php` covers permanent summaries
 after successful confirmation, absence of row payloads, survival after wizard
-reset, clinic-scoped visibility, and no history for blocked imports.
+reset, clinic-scoped visibility, guided coverage, completed-block quality
+checks, and no history for blocked imports.
 
 `tests/Feature/ImplementationExcelTest.php` covers all six Excel imports,
 first-worksheet date normalization, `implementation_excel` trace metadata,

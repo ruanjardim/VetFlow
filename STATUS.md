@@ -96,6 +96,9 @@ The local working tree was clean before this documentation pass.
 - Guided onboarding coverage in the Implementation assistant, calculated from
   the latest successful import of each supported block without duplicating
   imported data or crossing clinic boundaries.
+- Completed onboarding blocks receive a read-only, tenant-safe data-quality
+  review with explicit pending-record counts; blocks not yet imported remain
+  marked as awaiting evaluation.
 
 ## GitHub Scan Summary
 

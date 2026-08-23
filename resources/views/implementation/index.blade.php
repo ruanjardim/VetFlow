@@ -113,6 +113,79 @@
     </section>
   @endif
 
+  @if(!empty($onboardingQuality))
+    <section class="panel">
+      <div class="panel-body">
+        <div class="implementation-heading">
+          <div>
+            <span class="eyebrow">Qualidade dos dados</span>
+            <h2>Pendências do onboarding</h2>
+            <p class="muted">
+              A revisão começa depois da primeira importação de cada bloco e destaca cadastros que merecem conferência.
+            </p>
+          </div>
+        </div>
+
+        <div class="implementation-readiness-list">
+          @foreach($onboardingQuality as $quality)
+            <article class="implementation-readiness-card">
+              <div class="implementation-readiness-header">
+                <div>
+                  <h3>{{ $quality['clinic_name'] }}</h3>
+                  <p class="muted">
+                    {{ $quality['total_issues'] }} pendências em {{ $quality['evaluated_blocks'] }} blocos avaliados
+                  </p>
+                </div>
+
+                <strong>{{ $quality['percentage'] }}%</strong>
+              </div>
+
+              <div
+                class="implementation-progress"
+                role="progressbar"
+                aria-valuemin="0"
+                aria-valuemax="100"
+                aria-valuenow="{{ $quality['percentage'] }}"
+                aria-label="Qualidade dos dados de {{ $quality['clinic_name'] }}"
+              >
+                <span style="width: {{ $quality['percentage'] }}%"></span>
+              </div>
+
+              <p class="implementation-quality-summary">
+                {{ $quality['ready_blocks'] }} de {{ $quality['evaluated_blocks'] }} blocos avaliados sem pendências detectadas
+              </p>
+
+              <div class="implementation-readiness-blocks">
+                @foreach($quality['blocks'] as $block)
+                  <div class="implementation-readiness-block quality-{{ $block['status'] }}">
+                    <span aria-hidden="true">
+                      {{ $block['status'] === 'ready' ? '✓' : ($block['status'] === 'attention' ? '!' : '○') }}
+                    </span>
+
+                    <div>
+                      <strong>{{ $block['label'] }}</strong>
+
+                      @if($block['status'] === 'awaiting')
+                        <small>Aguardando importação concluída</small>
+                      @elseif($block['status'] === 'ready')
+                        <small>Sem pendências detectadas</small>
+                      @else
+                        <small>
+                          {{ $block['issue_count'] }} registros para revisar:<br>
+                          {{ $block['description'] }}
+                        </small>
+                      @endif
+                    </div>
+                  </div>
+                @endforeach
+              </div>
+            </article>
+          @endforeach
+        </div>
+      </div>
+    </section>
+  @endif
+
   <section class="panel">
     <div class="panel-body">
       <div class="implementation-heading">

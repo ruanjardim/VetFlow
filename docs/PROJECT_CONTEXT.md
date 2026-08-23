@@ -88,9 +88,10 @@ Release traceability now exposes only the normalized full Git SHA at
 `/ops/release`. Staging and production readiness require this identity, so a
 healthy process cannot be mistaken for proof that the intended commit is live.
 The Implementation assistant now derives onboarding coverage per clinic from
-its append-only successful import summaries. This first guided-onboarding slice
-shows objective migration progress only; it does not infer data quality or
-pilot approval.
+its append-only successful import summaries. Completed blocks also receive a
+read-only quality review based on six documented, tenant-scoped checks. Blocks
+without a successful import remain awaiting evaluation, and neither panel
+infers pilot approval or changes business data.
 
 The first staging candidate is KingHost shared Linux hosting, using only
 fictitious data and a bounded authenticated cron bridge because shared hosting

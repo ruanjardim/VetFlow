@@ -1905,6 +1905,19 @@ textarea {
   color: #15803d;
 }
 
+.implementation-readiness-block.quality-ready > span {
+  color: #15803d;
+}
+
+.implementation-readiness-block.quality-attention {
+  border-color: #fed7aa;
+  background: #fff7ed;
+}
+
+.implementation-readiness-block.quality-attention > span {
+  color: #c2410c;
+}
+
 .implementation-readiness-block strong,
 .implementation-readiness-block small {
   display: block;
@@ -1913,6 +1926,12 @@ textarea {
 .implementation-readiness-block small {
   margin-top: 0.2rem;
   color: #64748b;
+}
+
+.implementation-quality-summary {
+  color: #64748b;
+  font-size: 0.875rem;
+  margin: 0.625rem 0 0;
 }
 
 .implementation-steps {

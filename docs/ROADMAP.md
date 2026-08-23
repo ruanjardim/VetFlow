@@ -85,6 +85,8 @@ The product should feel different from a generic CRUD system by connecting the c
 - The Implementation assistant shows tenant-safe guided onboarding coverage
   across the six supported import blocks, based on their latest successful
   executions.
+- Completed onboarding blocks expose explicit, read-only data-quality pending
+  counts while incomplete blocks remain awaiting evaluation.
 
 ## Current Near-Term Priorities
 
@@ -129,6 +131,6 @@ The product should feel different from a generic CRUD system by connecting the c
 
 ## Ideas Worth Exploring
 
-- Extend guided onboarding from import coverage to explicit data-quality and
+- Extend guided onboarding from coverage and data-quality checks to explicit
   pilot-readiness evidence.
 - Supplier lead-time and demand signals for future replenishment tuning.
