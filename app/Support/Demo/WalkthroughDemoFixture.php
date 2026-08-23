@@ -10,6 +10,8 @@ final class WalkthroughDemoFixture
 
     public const TUTOR_EMAIL = 'mariana.demo@vetflow.local';
 
+    public const SUPPLIER_DOCUMENT = '12345678000195';
+
     public const PATIENT_NAME = 'Luna';
 
     public const APPOINTMENT_TITLE = 'Consulta de retorno - Luna';
@@ -19,6 +21,22 @@ final class WalkthroughDemoFixture
     public const SALE_CODE = 'DEMO-SALE-0001';
 
     public const SALE_PAYMENT_REFERENCE = 'DEMO-PAY-0001';
+
+    public const IMPLEMENTATION_NOTE = '[walkthrough_demo] Evidencia ficticia para validacao do piloto.';
+
+    public const PILOT_RELEASE_NOTES = '[walkthrough_demo] Piloto ficticio com escopo limitado aos fluxos operacionais demonstrativos.';
+
+    /**
+     * @var array<string, string>
+     */
+    public const IMPLEMENTATION_IMPORT_FILES = [
+        'tutors' => 'walkthrough-piloto-responsaveis.csv',
+        'patients' => 'walkthrough-piloto-pacientes.csv',
+        'suppliers' => 'walkthrough-piloto-fornecedores.csv',
+        'products' => 'walkthrough-piloto-produtos.csv',
+        'stock' => 'walkthrough-piloto-estoque.csv',
+        'financial' => 'walkthrough-piloto-financeiro.csv',
+    ];
 
     /**
      * @var array<int, string>

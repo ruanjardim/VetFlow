@@ -4,6 +4,12 @@ namespace Tests\Feature;
 
 use App\Models\User;
 use App\Modules\Clinics\Models\Clinic;
+use App\Modules\Implementation\Models\ImplementationImport;
+use App\Modules\Implementation\Services\ImplementationDataQualityService;
+use App\Modules\Implementation\Services\ImplementationPilotChecklistService;
+use App\Modules\Implementation\Services\ImplementationPilotReadinessService;
+use App\Modules\Implementation\Services\ImplementationPilotReleaseService;
+use App\Modules\Implementation\Services\ImplementationReadinessService;
 use App\Modules\Products\Models\Product;
 use App\Support\Demo\WalkthroughDemoFixture;
 use Database\Seeders\WalkthroughDemoSeeder;
@@ -36,6 +42,20 @@ class WalkthroughDemoResetTest extends TestCase
             'unit' => 'un',
             'active' => true,
         ]);
+        $unrelatedImport = ImplementationImport::query()->create([
+            'clinic_id' => $clinic->id,
+            'user_id' => $unrelatedUser->id,
+            'clinic_name' => $clinic->trade_name,
+            'user_name' => $unrelatedUser->name,
+            'entity_type' => 'tutors',
+            'entity_label' => 'Responsáveis',
+            'data_source' => 'csv',
+            'file_name' => 'preservado.csv',
+            'total_rows' => 1,
+            'imported_count' => 1,
+            'invalid_rows' => 0,
+            'completed_at' => now()->subDays(2),
+        ]);
 
         $this->artisan('vetflow:demo:reset', ['--force' => true])
             ->assertSuccessful();
@@ -49,6 +69,9 @@ class WalkthroughDemoResetTest extends TestCase
         ]);
         $this->assertDatabaseMissing('tutors', [
             'email' => WalkthroughDemoFixture::TUTOR_EMAIL,
+        ]);
+        $this->assertDatabaseMissing('suppliers', [
+            'document' => WalkthroughDemoFixture::SUPPLIER_DOCUMENT,
         ]);
         $this->assertDatabaseMissing('products', [
             'sku' => WalkthroughDemoFixture::PRODUCT_SKUS[0],
@@ -67,6 +90,16 @@ class WalkthroughDemoResetTest extends TestCase
             'id' => $unrelatedProduct->id,
             'deleted_at' => null,
         ]);
+        $this->assertDatabaseHas('implementation_imports', [
+            'id' => $unrelatedImport->id,
+            'file_name' => 'preservado.csv',
+        ]);
+        $this->assertSame(
+            0,
+            ImplementationImport::query()
+                ->whereIn('file_name', array_values(WalkthroughDemoFixture::IMPLEMENTATION_IMPORT_FILES))
+                ->count()
+        );
     }
 
     public function test_reset_can_reseed_the_walkthrough_without_duplicates(): void
@@ -100,6 +133,43 @@ class WalkthroughDemoResetTest extends TestCase
             'code' => WalkthroughDemoFixture::SALE_CODE,
             'deleted_at' => null,
         ]);
+        $this->assertSame(
+            6,
+            ImplementationImport::query()
+                ->whereIn('file_name', array_values(WalkthroughDemoFixture::IMPLEMENTATION_IMPORT_FILES))
+                ->count()
+        );
+        $this->assertDatabaseCount('implementation_pilot_checks', 3);
+        $this->assertDatabaseCount('implementation_pilot_releases', 1);
+    }
+
+    public function test_walkthrough_seeds_a_truthful_blocked_pilot_scenario(): void
+    {
+        $this->seed(WalkthroughDemoSeeder::class);
+
+        $clinic = Clinic::query()
+            ->where('cnpj', WalkthroughDemoFixture::CLINIC_CNPJ)
+            ->firstOrFail();
+        $clinics = collect([$clinic]);
+        $coverage = app(ImplementationReadinessService::class)->forClinics($clinics);
+        $quality = app(ImplementationDataQualityService::class)->forClinics($clinics, $coverage);
+        $checklist = app(ImplementationPilotChecklistService::class)->forClinics($clinics);
+        $release = app(ImplementationPilotReleaseService::class)->forClinics($clinics);
+        $readiness = app(ImplementationPilotReadinessService::class)->forClinics(
+            $clinics,
+            $coverage,
+            $quality,
+            $checklist,
+            $release
+        );
+
+        $this->assertSame(6, $coverage[0]['completed_blocks']);
+        $this->assertSame(6, $quality[0]['evaluated_blocks']);
+        $this->assertSame(2, $quality[0]['total_issues']);
+        $this->assertSame(3, $checklist[0]['completed_checks']);
+        $this->assertSame(1, $release[0]['revision']);
+        $this->assertFalse($readiness[0]['gates_passed']);
+        $this->assertSame('blocked', $readiness[0]['status']['key']);
     }
 
     public function test_reset_is_blocked_outside_local_and_testing_environments(): void

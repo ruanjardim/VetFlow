@@ -109,6 +109,9 @@ The local working tree was clean before this documentation pass.
   pendencies, a complete checklist, and a release-plan revision before an
   explicit human approval; each decision is bound to a hashed evidence
   snapshot and becomes stale when its source evidence changes.
+- The fictitious walkthrough includes a reproducible, intentionally blocked
+  pilot-preparation scenario that exercises all six coverage blocks, quality
+  gates, checklist progress, and a versioned release plan without real data.
 
 ## GitHub Scan Summary
 

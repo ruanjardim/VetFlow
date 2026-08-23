@@ -71,6 +71,16 @@ metadata: destination clinic, responsible user, data block, source, file name,
 row counts, and completion time. Imported row contents and validation details
 are not copied into the history.
 
+## Fictitious Pilot Validation
+
+`WalkthroughDemoSeeder` now creates a reproducible preparation scenario for
+the walkthrough clinic. It records coverage for all six blocks, three completed
+human checks, and one versioned release plan. The source records intentionally
+retain two visible quality pendencies, so the consolidated gate must remain
+blocked instead of implying a successful pilot. The local/testing-only
+`vetflow:demo:reset --reseed` command removes and recreates only the records
+identified by the walkthrough fixture, preserving unrelated clinic data.
+
 ## CSV Contract
 
 CSV keeps automatic comma/semicolon delimiter detection and Windows-1252 to
