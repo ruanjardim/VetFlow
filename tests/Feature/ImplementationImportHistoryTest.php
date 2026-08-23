@@ -254,6 +254,82 @@ class ImplementationImportHistoryTest extends TestCase
         ]))->assertNotFound();
     }
 
+    public function test_pilot_history_consolidates_only_accessible_clinic_events(): void
+    {
+        $ownClinic = $this->clinic('Clínica Histórico', '12345678000212');
+        $otherClinic = $this->clinic('Clínica Histórico Oculto', '12345678000213');
+        $user = $this->authorizedUser($ownClinic);
+
+        $this->history($ownClinic, $user, 'historico-proprio.csv');
+        $this->history($otherClinic, $user, 'historico-oculto.csv');
+
+        foreach ([$ownClinic, $otherClinic] as $clinic) {
+            ImplementationPilotCheck::query()->create([
+                'clinic_id' => $clinic->id,
+                'user_id' => $user->id,
+                'clinic_name' => $clinic->trade_name,
+                'user_name' => $user->name,
+                'check_key' => 'data_reviewed',
+                'check_label' => $clinic->id === $ownClinic->id
+                    ? 'Checklist próprio'
+                    : 'Checklist oculto',
+                'completed' => true,
+                'decided_at' => now(),
+            ]);
+            ImplementationPilotRelease::query()->create([
+                'clinic_id' => $clinic->id,
+                'user_id' => $user->id,
+                'clinic_name' => $clinic->trade_name,
+                'user_name' => $user->name,
+                'revision' => 1,
+                'release_owner' => 'Operação '.$clinic->id,
+                'support_owner' => 'Suporte '.$clinic->id,
+                'scope' => $clinic->id === $ownClinic->id ? 'Escopo próprio' : 'Escopo oculto',
+                'release_notes' => 'Notas da revisão.',
+                'recorded_at' => now(),
+            ]);
+            ImplementationPilotDecision::query()->create([
+                'clinic_id' => $clinic->id,
+                'user_id' => $user->id,
+                'clinic_name' => $clinic->trade_name,
+                'user_name' => $user->name,
+                'decision' => 'held',
+                'evidence_snapshot' => [
+                    'coverage' => ['completed' => 1],
+                    'quality' => ['issues' => 2],
+                    'checklist' => ['completed' => 1],
+                ],
+                'evidence_hash' => hash('sha256', 'clinic-'.$clinic->id),
+                'notes' => $clinic->id === $ownClinic->id
+                    ? 'Decisão própria em espera'
+                    : 'Decisão oculta',
+                'decided_at' => now(),
+            ]);
+        }
+
+        $response = $this->actingAs($user)->get(route('implementation.pilots.history', $ownClinic));
+
+        $response
+            ->assertOk()
+            ->assertSee('Histórico do piloto')
+            ->assertSee('historico-proprio.csv')
+            ->assertSee('Checklist próprio')
+            ->assertSee('Escopo próprio')
+            ->assertSee('Decisão própria em espera')
+            ->assertDontSee('historico-oculto.csv')
+            ->assertDontSee('Checklist oculto')
+            ->assertDontSee('Escopo oculto')
+            ->assertDontSee('Decisão oculta');
+
+        $history = $response->viewData('history');
+        $this->assertSame(1, $history['imports']->total());
+        $this->assertSame(1, $history['checks']->total());
+        $this->assertSame(1, $history['releases']->total());
+        $this->assertSame(1, $history['decisions']->total());
+
+        $this->get(route('implementation.pilots.history', $otherClinic))->assertNotFound();
+    }
+
     public function test_pilot_checklist_preserves_decision_history_and_clinic_scope(): void
     {
         $ownClinic = $this->clinic('Clínica Piloto', '12345678000198');

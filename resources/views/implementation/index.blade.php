@@ -105,6 +105,15 @@
                 </div>
               @endif
 
+              <div class="row-actions">
+                <a
+                  class="button secondary"
+                  href="{{ route('implementation.pilots.history', $readiness['clinic_id']) }}"
+                >
+                  Ver histórico do piloto
+                </a>
+              </div>
+
               <form
                 class="implementation-readiness-decision"
                 method="POST"

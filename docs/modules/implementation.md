@@ -67,6 +67,12 @@ import, quality result, checklist answer, or release revision changes, the
 previous decision is visibly stale and a new decision is required. Approval is
 rejected while any gate is pending; an in-waiting decision requires notes.
 
+Each readiness card links to a clinic-scoped pilot history. The read-only page
+consolidates paginated import executions, checklist decisions, release-plan
+revisions, and evidence-bound readiness decisions. Earlier events remain
+visible in their original attributed form, including a shortened evidence hash
+for operational correlation.
+
 The wizard state is kept in the authenticated session. Normalized rows are
 stored temporarily as a private JSON file on the `local` disk, separated by
 entity type, and removed when the wizard is reset or the import finishes.
@@ -217,6 +223,7 @@ tipo,descricao,pessoa_documento,valor,vencimento,status,forma_pagamento,data_pag
 | `ImplementationReadinessService` | Builds tenant-safe onboarding coverage from the latest successful execution of each supported import block. |
 | `ImplementationDataQualityService` | Consolidates transparent, read-only quality checks for completed onboarding blocks in the accessible clinic scope. |
 | `ImplementationPilotChecklistService` | Builds the latest checklist state and appends auditable completion or reopening decisions. |
+| `ImplementationPilotHistoryService` | Reads the four clinic-scoped audit streams with independent pagination for the consolidated pilot history. |
 | `ImplementationPilotReleaseService` | Reads the latest pilot plan and appends sequential, attributed revisions. |
 | `ImplementationPilotReadinessService` | Consolidates four evidence gates, detects stale decisions, and appends evidence-bound human decisions. |
 | `ImplementationWorkflowService` | Manages session state and private temporary analysis files. |
@@ -318,7 +325,8 @@ reset, clinic-scoped visibility, guided coverage, completed-block quality
 checks, append-only pilot decisions, checklist clinic isolation, and no history
 for blocked imports. It also covers append-only pilot-plan revisions and their
 clinic boundary, approval preconditions, evidence snapshots, and automatic
-staleness after a source decision changes.
+staleness after a source decision changes, plus the consolidated tenant-safe
+pilot history.
 
 `tests/Feature/ImplementationExcelTest.php` covers all six Excel imports,
 first-worksheet date normalization, `implementation_excel` trace metadata,

@@ -31,6 +31,10 @@ Route::get('implementation/quality/{clinic}/{type}', [ImplementationController::
     ->whereIn('type', ['tutors', 'patients', 'suppliers', 'products', 'stock', 'financial'])
     ->name('implementation.quality.issues');
 
+Route::get('implementation/pilots/{clinic}/history', [ImplementationController::class, 'pilotHistory'])
+    ->whereNumber('clinic')
+    ->name('implementation.pilots.history');
+
 Route::post('implementation/tutors/upload', [ImplementationController::class, 'uploadTutors'])
     ->name('implementation.tutors.upload');
 

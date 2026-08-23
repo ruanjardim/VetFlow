@@ -18,6 +18,7 @@ use App\Modules\Implementation\Services\ImplementationDataQualityService;
 use App\Modules\Implementation\Services\ImplementationFileAnalyzer;
 use App\Modules\Implementation\Services\ImplementationImportService;
 use App\Modules\Implementation\Services\ImplementationPilotChecklistService;
+use App\Modules\Implementation\Services\ImplementationPilotHistoryService;
 use App\Modules\Implementation\Services\ImplementationPilotReadinessService;
 use App\Modules\Implementation\Services\ImplementationPilotReleaseService;
 use App\Modules\Implementation\Services\ImplementationReadinessService;
@@ -287,6 +288,7 @@ class ImplementationController extends Controller
         private readonly ImplementationReadinessService $implementationReadiness,
         private readonly ImplementationDataQualityService $implementationDataQuality,
         private readonly ImplementationPilotChecklistService $pilotChecklist,
+        private readonly ImplementationPilotHistoryService $pilotHistory,
         private readonly ImplementationPilotReleaseService $pilotRelease,
         private readonly ImplementationPilotReadinessService $pilotReadiness,
         private readonly ImplementationFileAnalyzer $fileAnalyzer,
@@ -432,6 +434,16 @@ class ImplementationController extends Controller
                 $accessibleClinic,
                 $type
             ),
+        ]);
+    }
+
+    public function pilotHistory(Request $request, int $clinic): View
+    {
+        $accessibleClinic = $this->accessibleClinics($request)->findOrFail($clinic);
+
+        return view('implementation.pilot-history', [
+            'clinic' => $accessibleClinic,
+            'history' => $this->pilotHistory->forClinic($accessibleClinic),
         ]);
     }
 
