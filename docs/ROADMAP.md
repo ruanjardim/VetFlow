@@ -137,6 +137,6 @@ The product should feel different from a generic CRUD system by connecting the c
 
 ## Ideas Worth Exploring
 
-- Validate the guided-onboarding readiness model with fictitious pilot data
-  before changing any gate or quality rule.
+- Run the guided-onboarding readiness rehearsal in staging with the fictitious
+  scenario, exported report, and history before changing any gate or quality rule.
 - Supplier lead-time and demand signals for future replenishment tuning.

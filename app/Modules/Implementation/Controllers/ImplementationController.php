@@ -19,6 +19,7 @@ use App\Modules\Implementation\Services\ImplementationFileAnalyzer;
 use App\Modules\Implementation\Services\ImplementationImportService;
 use App\Modules\Implementation\Services\ImplementationPilotChecklistService;
 use App\Modules\Implementation\Services\ImplementationPilotHistoryService;
+use App\Modules\Implementation\Services\ImplementationPilotPortfolioService;
 use App\Modules\Implementation\Services\ImplementationPilotReadinessService;
 use App\Modules\Implementation\Services\ImplementationPilotReleaseService;
 use App\Modules\Implementation\Services\ImplementationPilotReportService;
@@ -291,6 +292,7 @@ class ImplementationController extends Controller
         private readonly ImplementationDataQualityService $implementationDataQuality,
         private readonly ImplementationPilotChecklistService $pilotChecklist,
         private readonly ImplementationPilotHistoryService $pilotHistory,
+        private readonly ImplementationPilotPortfolioService $pilotPortfolio,
         private readonly ImplementationPilotReleaseService $pilotRelease,
         private readonly ImplementationPilotReadinessService $pilotReadiness,
         private readonly ImplementationPilotReportService $pilotReport,
@@ -341,6 +343,17 @@ class ImplementationController extends Controller
         );
         $pilotChecklists = $this->pilotChecklist->forClinics($clinics);
         $pilotReleases = $this->pilotRelease->forClinics($clinics);
+        $pilotReadiness = $this->pilotReadiness->forClinics(
+            $clinics,
+            $onboardingReadiness,
+            $onboardingQuality,
+            $pilotChecklists,
+            $pilotReleases
+        );
+        $pilotPortfolio = $this->pilotPortfolio->summarize(
+            $pilotReadiness,
+            $request->string('pilot_status')->toString()
+        );
 
         return view('implementation.index', [
             'clinics' => $clinics,
@@ -390,13 +403,8 @@ class ImplementationController extends Controller
             'onboardingQuality' => $onboardingQuality,
             'pilotChecklists' => $pilotChecklists,
             'pilotReleases' => $pilotReleases,
-            'pilotReadiness' => $this->pilotReadiness->forClinics(
-                $clinics,
-                $onboardingReadiness,
-                $onboardingQuality,
-                $pilotChecklists,
-                $pilotReleases
-            ),
+            'pilotReadiness' => $pilotPortfolio['items'],
+            'pilotPortfolio' => $pilotPortfolio,
         ]);
     }
 

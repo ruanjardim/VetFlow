@@ -102,6 +102,10 @@ The final guided-onboarding slice consolidates coverage, quality, checklist,
 and release-plan evidence without converting them into an automatic business
 approval. A human approval or hold decision is stored with a hashed evidence
 snapshot and becomes stale whenever one of those source signals changes.
+Operators can now inspect the complete pilot history, correct quality issues
+through tenant-safe queues, emit the current preparation report, and triage a
+multi-clinic portfolio by readiness status. A reproducible fictitious scenario
+exercises the blocked path before any rule is tuned from pilot evidence.
 
 The first staging candidate is KingHost shared Linux hosting, using only
 fictitious data and a bounded authenticated cron bridge because shared hosting

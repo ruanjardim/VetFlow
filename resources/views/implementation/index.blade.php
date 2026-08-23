@@ -48,7 +48,7 @@
     </div>
   @endif
 
-  @if(!empty($pilotReadiness))
+  @if(($pilotPortfolio['total'] ?? 0) > 0)
     <section class="panel implementation-pilot-readiness">
       <div class="panel-body">
         <div class="implementation-heading">
@@ -61,8 +61,48 @@
           </div>
         </div>
 
-        <div class="implementation-readiness-list">
-          @foreach($pilotReadiness as $readiness)
+        <div class="implementation-summary implementation-portfolio-summary">
+          <div><span>Clínicas</span><strong>{{ $pilotPortfolio['total'] }}</strong></div>
+          <div><span>Pendentes</span><strong>{{ $pilotPortfolio['counts']['blocked'] }}</strong></div>
+          <div><span>Aguardando decisão</span><strong>{{ $pilotPortfolio['counts']['awaiting'] }}</strong></div>
+          <div><span>Em espera</span><strong>{{ $pilotPortfolio['counts']['held'] }}</strong></div>
+          <div><span>Aprovadas</span><strong>{{ $pilotPortfolio['counts']['approved'] }}</strong></div>
+          <div><span>Decisões superadas</span><strong>{{ $pilotPortfolio['stale_decisions'] }}</strong></div>
+        </div>
+
+        <form method="GET" action="{{ route('implementation.index') }}" class="form-grid implementation-portfolio-filter">
+          <div class="field">
+            <label for="pilot-status">Filtrar prontidão</label>
+            <select id="pilot-status" name="pilot_status">
+              <option value="">Todas as clínicas</option>
+              @foreach($pilotPortfolio['filters'] as $statusKey => $statusLabel)
+                <option value="{{ $statusKey }}" @selected($pilotPortfolio['selected_status'] === $statusKey)>
+                  {{ $statusLabel }} ({{ $pilotPortfolio['counts'][$statusKey] }})
+                </option>
+              @endforeach
+            </select>
+          </div>
+
+          <div class="field implementation-portfolio-filter-actions">
+            <button type="submit">Aplicar filtro</button>
+            @if($pilotPortfolio['selected_status'])
+              <a class="button secondary" href="{{ route('implementation.index') }}">Limpar</a>
+            @endif
+          </div>
+        </form>
+
+        @if(empty($pilotReadiness))
+          <div class="empty-state">
+            <h3>Nenhuma clínica neste status</h3>
+            <p>Altere o filtro para consultar os demais pilotos.</p>
+          </div>
+        @else
+          <p class="muted implementation-portfolio-visible">
+            Exibindo {{ $pilotPortfolio['visible'] }} de {{ $pilotPortfolio['total'] }} clínicas.
+          </p>
+
+          <div class="implementation-readiness-list">
+            @foreach($pilotReadiness as $readiness)
             <article class="implementation-readiness-card readiness-{{ $readiness['status']['key'] }}">
               <div class="implementation-readiness-header">
                 <div>
@@ -154,9 +194,10 @@
 
                 <button class="button primary" type="submit">Registrar decisão</button>
               </form>
-            </article>
-          @endforeach
-        </div>
+              </article>
+            @endforeach
+          </div>
+        @endif
       </div>
     </section>
   @endif

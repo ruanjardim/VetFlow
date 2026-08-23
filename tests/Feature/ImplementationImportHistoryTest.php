@@ -370,6 +370,66 @@ class ImplementationImportHistoryTest extends TestCase
         $this->get(route('implementation.pilots.report-json', $otherClinic))->assertNotFound();
     }
 
+    public function test_pilot_portfolio_summarizes_prioritizes_and_filters_clinics(): void
+    {
+        $blockedClinic = $this->clinic('Clínica Bloqueada', '12345678000216');
+        $awaitingClinic = $this->clinic('Clínica Aguardando', '12345678000217');
+        $user = $this->authorizedUser();
+
+        foreach (['tutors', 'patients', 'suppliers', 'products', 'stock', 'financial'] as $type) {
+            $this->history($awaitingClinic, $user, $type.'.csv', $type);
+        }
+
+        foreach (['data_reviewed', 'quality_resolved', 'access_validated', 'backup_aligned', 'training_completed'] as $key) {
+            ImplementationPilotCheck::query()->create([
+                'clinic_id' => $awaitingClinic->id,
+                'user_id' => $user->id,
+                'clinic_name' => $awaitingClinic->trade_name,
+                'user_name' => $user->name,
+                'check_key' => $key,
+                'check_label' => $key,
+                'completed' => true,
+                'decided_at' => now(),
+            ]);
+        }
+
+        ImplementationPilotRelease::query()->create([
+            'clinic_id' => $awaitingClinic->id,
+            'user_id' => $user->id,
+            'clinic_name' => $awaitingClinic->trade_name,
+            'user_name' => $user->name,
+            'revision' => 1,
+            'release_owner' => 'Operação',
+            'support_owner' => 'Suporte',
+            'scope' => 'Escopo validado.',
+            'release_notes' => 'Aguardando decisão humana.',
+            'recorded_at' => now(),
+        ]);
+
+        $all = $this->actingAs($user)->get(route('implementation.index'));
+        $portfolio = $all->viewData('pilotPortfolio');
+
+        $all
+            ->assertOk()
+            ->assertSee('Decisões superadas')
+            ->assertSee('Exibindo 2 de 2 clínicas.');
+        $this->assertSame(2, $portfolio['total']);
+        $this->assertSame(1, $portfolio['counts']['blocked']);
+        $this->assertSame(1, $portfolio['counts']['awaiting']);
+        $this->assertSame(0, $portfolio['counts']['approved']);
+        $this->assertSame($blockedClinic->id, $portfolio['items'][0]['clinic_id']);
+
+        $filtered = $this->get(route('implementation.index', ['pilot_status' => 'awaiting']));
+        $filteredPortfolio = $filtered->viewData('pilotPortfolio');
+        $filteredReadiness = $filtered->viewData('pilotReadiness');
+
+        $filtered->assertOk()->assertSee('Exibindo 1 de 2 clínicas.');
+        $this->assertSame('awaiting', $filteredPortfolio['selected_status']);
+        $this->assertSame(1, $filteredPortfolio['visible']);
+        $this->assertCount(1, $filteredReadiness);
+        $this->assertSame($awaitingClinic->id, $filteredReadiness[0]['clinic_id']);
+    }
+
     public function test_pilot_checklist_preserves_decision_history_and_clinic_scope(): void
     {
         $ownClinic = $this->clinic('Clínica Piloto', '12345678000198');

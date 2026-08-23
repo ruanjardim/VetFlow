@@ -111,6 +111,8 @@ The local working tree was clean before this documentation pass.
   checklist, release-plan, and evidence-bound decision trails for each clinic.
 - The current pilot-preparation state is available as a print-friendly report
   and a no-cache JSON download generated from the same readiness evidence.
+- Multi-clinic implementation operators receive a prioritized readiness
+  portfolio with status totals, stale-decision counts, and status filtering.
 - A consolidated readiness panel requires coverage, zero detected quality
   pendencies, a complete checklist, and a release-plan revision before an
   explicit human approval; each decision is bound to a hashed evidence

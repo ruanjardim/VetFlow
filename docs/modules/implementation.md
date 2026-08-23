@@ -79,6 +79,11 @@ demand from the same tenant-scoped coverage, quality, checklist, release, and
 readiness services, so they do not introduce a second source of truth. The
 report identifies its generation time and current evidence hash.
 
+For multi-clinic operation, the readiness section also acts as a pilot
+portfolio. It summarizes blocked, awaiting, held, approved, and stale-decision
+counts, prioritizes unresolved clinics, and supports a status filter without
+changing the evidence or hiding other onboarding panels.
+
 The wizard state is kept in the authenticated session. Normalized rows are
 stored temporarily as a private JSON file on the `local` disk, separated by
 entity type, and removed when the wizard is reset or the import finishes.
@@ -230,6 +235,7 @@ tipo,descricao,pessoa_documento,valor,vencimento,status,forma_pagamento,data_pag
 | `ImplementationDataQualityService` | Consolidates transparent, read-only quality checks for completed onboarding blocks in the accessible clinic scope. |
 | `ImplementationPilotChecklistService` | Builds the latest checklist state and appends auditable completion or reopening decisions. |
 | `ImplementationPilotHistoryService` | Reads the four clinic-scoped audit streams with independent pagination for the consolidated pilot history. |
+| `ImplementationPilotPortfolioService` | Summarizes, prioritizes, and filters current readiness across accessible clinics. |
 | `ImplementationPilotReleaseService` | Reads the latest pilot plan and appends sequential, attributed revisions. |
 | `ImplementationPilotReportService` | Builds the printable and JSON current-state report from the existing tenant-scoped readiness services. |
 | `ImplementationPilotReadinessService` | Consolidates four evidence gates, detects stale decisions, and appends evidence-bound human decisions. |
@@ -332,8 +338,8 @@ reset, clinic-scoped visibility, guided coverage, completed-block quality
 checks, append-only pilot decisions, checklist clinic isolation, and no history
 for blocked imports. It also covers append-only pilot-plan revisions and their
 clinic boundary, approval preconditions, evidence snapshots, and automatic
-staleness after a source decision changes, plus the consolidated tenant-safe
-pilot history.
+staleness after a source decision changes, the consolidated tenant-safe pilot
+history, current-state report export, and multi-clinic portfolio filtering.
 
 `tests/Feature/ImplementationExcelTest.php` covers all six Excel imports,
 first-worksheet date normalization, `implementation_excel` trace metadata,
