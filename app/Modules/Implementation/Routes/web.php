@@ -23,6 +23,9 @@ Route::post('implementation/pilot-checks', [ImplementationController::class, 'st
 Route::post('implementation/pilot-releases', [ImplementationController::class, 'storePilotRelease'])
     ->name('implementation.pilot-releases.store');
 
+Route::post('implementation/pilot-decisions', [ImplementationController::class, 'storePilotDecision'])
+    ->name('implementation.pilot-decisions.store');
+
 Route::post('implementation/tutors/upload', [ImplementationController::class, 'uploadTutors'])
     ->name('implementation.tutors.upload');
 

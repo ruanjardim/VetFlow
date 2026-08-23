@@ -48,6 +48,103 @@
     </div>
   @endif
 
+  @if(!empty($pilotReadiness))
+    <section class="panel implementation-pilot-readiness">
+      <div class="panel-body">
+        <div class="implementation-heading">
+          <div>
+            <span class="eyebrow">Decisão consolidada</span>
+            <h2>Prontidão para o piloto</h2>
+            <p class="muted">
+              A decisão humana fica vinculada a um retrato das importações, qualidade, checklist e plano atuais.
+            </p>
+          </div>
+        </div>
+
+        <div class="implementation-readiness-list">
+          @foreach($pilotReadiness as $readiness)
+            <article class="implementation-readiness-card readiness-{{ $readiness['status']['key'] }}">
+              <div class="implementation-readiness-header">
+                <div>
+                  <h3>{{ $readiness['clinic_name'] }}</h3>
+                  <p class="muted">{{ $readiness['status']['description'] }}</p>
+                </div>
+
+                <span class="implementation-readiness-status">
+                  {{ $readiness['status']['label'] }}
+                </span>
+              </div>
+
+              <div class="implementation-readiness-gates">
+                @foreach($readiness['gates'] as $gate)
+                  <div class="implementation-readiness-gate {{ $gate['passed'] ? 'passed' : 'pending' }}">
+                    <span aria-hidden="true">{{ $gate['passed'] ? '✓' : '○' }}</span>
+                    <div>
+                      <strong>{{ $gate['label'] }}</strong>
+                      <small>{{ $gate['summary'] }}</small>
+                    </div>
+                  </div>
+                @endforeach
+              </div>
+
+              @if($readiness['decision'])
+                <div class="implementation-decision-audit">
+                  <strong>
+                    Última decisão: {{ $readiness['decision'] === 'approved' ? 'Aprovado' : 'Em espera' }}
+                  </strong>
+                  <span>
+                    por {{ $readiness['decision_user_name'] }}
+                    em {{ $readiness['decided_at']?->format('d/m/Y H:i') }}
+                  </span>
+
+                  @if(!$readiness['decision_current'])
+                    <small>Esta decisão foi superada por mudanças nas evidências.</small>
+                  @elseif($readiness['decision_notes'])
+                    <small>{{ $readiness['decision_notes'] }}</small>
+                  @endif
+                </div>
+              @endif
+
+              <form
+                class="implementation-readiness-decision"
+                method="POST"
+                action="{{ route('implementation.pilot-decisions.store') }}"
+              >
+                @csrf
+                <input type="hidden" name="clinic_id" value="{{ $readiness['clinic_id'] }}">
+
+                <div class="field">
+                  <label for="pilot-decision-{{ $readiness['clinic_id'] }}">Decisão</label>
+                  <select id="pilot-decision-{{ $readiness['clinic_id'] }}" name="decision" required>
+                    @if($readiness['gates_passed'])
+                      <option value="approved">Aprovar piloto com as evidências atuais</option>
+                    @endif
+                    <option value="held">Manter piloto em espera</option>
+                  </select>
+                </div>
+
+                <div class="field">
+                  <label for="pilot-decision-notes-{{ $readiness['clinic_id'] }}">
+                    Justificativa ou observação
+                  </label>
+                  <textarea
+                    id="pilot-decision-notes-{{ $readiness['clinic_id'] }}"
+                    name="notes"
+                    rows="3"
+                    maxlength="2000"
+                    placeholder="Obrigatória ao manter o piloto em espera"
+                  ></textarea>
+                </div>
+
+                <button class="button primary" type="submit">Registrar decisão</button>
+              </form>
+            </article>
+          @endforeach
+        </div>
+      </div>
+    </section>
+  @endif
+
   @if(!empty($onboardingReadiness))
     <section class="panel">
       <div class="panel-body">

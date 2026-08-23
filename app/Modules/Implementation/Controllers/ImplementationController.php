@@ -9,6 +9,7 @@ use App\Modules\Implementation\Contracts\CsvImportService;
 use App\Modules\Implementation\Requests\SelectClinicRequest;
 use App\Modules\Implementation\Requests\SelectSourceRequest;
 use App\Modules\Implementation\Requests\StoreImplementationPilotCheckRequest;
+use App\Modules\Implementation\Requests\StoreImplementationPilotDecisionRequest;
 use App\Modules\Implementation\Requests\StoreImplementationPilotReleaseRequest;
 use App\Modules\Implementation\Requests\UploadImplementationFileRequest;
 use App\Modules\Implementation\Services\ExcelTemplateService;
@@ -17,6 +18,7 @@ use App\Modules\Implementation\Services\ImplementationDataQualityService;
 use App\Modules\Implementation\Services\ImplementationFileAnalyzer;
 use App\Modules\Implementation\Services\ImplementationImportService;
 use App\Modules\Implementation\Services\ImplementationPilotChecklistService;
+use App\Modules\Implementation\Services\ImplementationPilotReadinessService;
 use App\Modules\Implementation\Services\ImplementationPilotReleaseService;
 use App\Modules\Implementation\Services\ImplementationReadinessService;
 use App\Modules\Implementation\Services\ImplementationWorkflowService;
@@ -286,6 +288,7 @@ class ImplementationController extends Controller
         private readonly ImplementationDataQualityService $implementationDataQuality,
         private readonly ImplementationPilotChecklistService $pilotChecklist,
         private readonly ImplementationPilotReleaseService $pilotRelease,
+        private readonly ImplementationPilotReadinessService $pilotReadiness,
         private readonly ImplementationFileAnalyzer $fileAnalyzer,
         private readonly ExcelTemplateService $excelTemplates
     ) {}
@@ -327,6 +330,12 @@ class ImplementationController extends Controller
         /** @var User $user */
         $user = $request->user();
         $onboardingReadiness = $this->implementationReadiness->forClinics($clinics);
+        $onboardingQuality = $this->implementationDataQuality->forClinics(
+            $clinics,
+            $onboardingReadiness
+        );
+        $pilotChecklists = $this->pilotChecklist->forClinics($clinics);
+        $pilotReleases = $this->pilotRelease->forClinics($clinics);
 
         return view('implementation.index', [
             'clinics' => $clinics,
@@ -373,12 +382,16 @@ class ImplementationController extends Controller
             'completedSummary' => $state['completed'] ?? null,
             'recentImports' => $this->implementationImporter->recentFor($user),
             'onboardingReadiness' => $onboardingReadiness,
-            'onboardingQuality' => $this->implementationDataQuality->forClinics(
+            'onboardingQuality' => $onboardingQuality,
+            'pilotChecklists' => $pilotChecklists,
+            'pilotReleases' => $pilotReleases,
+            'pilotReadiness' => $this->pilotReadiness->forClinics(
                 $clinics,
-                $onboardingReadiness
+                $onboardingReadiness,
+                $onboardingQuality,
+                $pilotChecklists,
+                $pilotReleases
             ),
-            'pilotChecklists' => $this->pilotChecklist->forClinics($clinics),
-            'pilotReleases' => $this->pilotRelease->forClinics($clinics),
         ]);
     }
 
@@ -421,6 +434,46 @@ class ImplementationController extends Controller
                 'success',
                 "Plano do piloto salvo como revisão {$release->revision}."
             );
+    }
+
+    public function storePilotDecision(
+        StoreImplementationPilotDecisionRequest $request
+    ): RedirectResponse {
+        $validated = $request->validated();
+        $clinic = $this->accessibleClinics($request)
+            ->findOrFail((int) $validated['clinic_id']);
+        /** @var User $user */
+        $user = $request->user();
+        $clinics = collect([$clinic]);
+        $coverage = $this->implementationReadiness->forClinics($clinics);
+        $quality = $this->implementationDataQuality->forClinics($clinics, $coverage);
+        $checklists = $this->pilotChecklist->forClinics($clinics);
+        $releases = $this->pilotRelease->forClinics($clinics);
+        $readiness = $this->pilotReadiness->forClinics(
+            $clinics,
+            $coverage,
+            $quality,
+            $checklists,
+            $releases
+        )[0];
+
+        try {
+            $this->pilotReadiness->record(
+                $clinic,
+                $user,
+                $validated['decision'],
+                $validated['notes'] ?? null,
+                $readiness
+            );
+        } catch (DomainException $exception) {
+            return redirect()
+                ->route('implementation.index')
+                ->with('error', $exception->getMessage());
+        }
+
+        return redirect()
+            ->route('implementation.index')
+            ->with('success', 'Decisão de prontidão registrada com as evidências atuais.');
     }
 
     public function selectClinic(SelectClinicRequest $request): RedirectResponse

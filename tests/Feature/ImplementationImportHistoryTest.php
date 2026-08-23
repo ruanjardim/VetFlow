@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Modules\Clinics\Models\Clinic;
 use App\Modules\Implementation\Models\ImplementationImport;
 use App\Modules\Implementation\Models\ImplementationPilotCheck;
+use App\Modules\Implementation\Models\ImplementationPilotDecision;
 use App\Modules\Implementation\Models\ImplementationPilotRelease;
 use DateTimeInterface;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -329,6 +330,117 @@ class ImplementationImportHistoryTest extends TestCase
         $this->assertSame(2, $pilotReleases[0]['revision']);
         $this->assertSame('Carla Suporte', $pilotReleases[0]['support_owner']);
         $this->assertSame($user->name, $pilotReleases[0]['user_name']);
+    }
+
+    public function test_pilot_decision_requires_current_evidence_and_becomes_stale_after_change(): void
+    {
+        $clinic = $this->clinic('Clínica Decisão', '12345678000202');
+        $user = $this->authorizedUser($clinic);
+
+        $this->actingAs($user)
+            ->post(route('implementation.pilot-decisions.store'), [
+                'clinic_id' => $clinic->id,
+                'decision' => 'approved',
+            ])
+            ->assertRedirect(route('implementation.index'))
+            ->assertSessionHas(
+                'error',
+                'A aprovação exige que os quatro portões de prontidão estejam atendidos.'
+            );
+
+        $this->assertDatabaseCount('implementation_pilot_decisions', 0);
+
+        foreach (['tutors', 'patients', 'suppliers', 'products', 'stock', 'financial'] as $type) {
+            $this->history($clinic, $user, $type.'.csv', $type);
+        }
+
+        $checkKeys = [
+            'data_reviewed',
+            'quality_resolved',
+            'access_validated',
+            'backup_aligned',
+            'training_completed',
+        ];
+
+        foreach ($checkKeys as $key) {
+            ImplementationPilotCheck::query()->create([
+                'clinic_id' => $clinic->id,
+                'user_id' => $user->id,
+                'clinic_name' => $clinic->trade_name,
+                'user_name' => $user->name,
+                'check_key' => $key,
+                'check_label' => $key,
+                'completed' => true,
+                'decided_at' => now(),
+            ]);
+        }
+
+        ImplementationPilotRelease::query()->create([
+            'clinic_id' => $clinic->id,
+            'user_id' => $user->id,
+            'clinic_name' => $clinic->trade_name,
+            'user_name' => $user->name,
+            'revision' => 1,
+            'release_owner' => 'Responsável Piloto',
+            'support_owner' => 'Responsável Suporte',
+            'planned_start_date' => '2026-09-01',
+            'scope' => 'Escopo piloto validado.',
+            'release_notes' => 'Notas da primeira liberação.',
+            'recorded_at' => now(),
+        ]);
+
+        $readyResponse = $this->get(route('implementation.index'));
+        $ready = $readyResponse->viewData('pilotReadiness')[0];
+
+        $readyResponse
+            ->assertOk()
+            ->assertSee('Prontidão para o piloto')
+            ->assertSee('Aguardando decisão')
+            ->assertSee('Aprovar piloto com as evidências atuais');
+        $this->assertTrue($ready['gates_passed']);
+        $this->assertSame('awaiting', $ready['status']['key']);
+        $this->assertTrue(collect($ready['gates'])->every('passed'));
+
+        $this->post(route('implementation.pilot-decisions.store'), [
+            'clinic_id' => $clinic->id,
+            'decision' => 'approved',
+            'notes' => 'Aprovação para início controlado.',
+        ])->assertRedirect(route('implementation.index'));
+
+        $decision = ImplementationPilotDecision::query()->sole();
+
+        $this->assertSame('approved', $decision->decision);
+        $this->assertSame(64, strlen($decision->evidence_hash));
+        $this->assertSame(6, $decision->evidence_snapshot['coverage']['completed']);
+        $this->assertSame(1, $decision->evidence_snapshot['release']['revision']);
+
+        $approved = $this->get(route('implementation.index'));
+        $approvedReadiness = $approved->viewData('pilotReadiness')[0];
+        $approved->assertOk()->assertSee('Piloto aprovado');
+        $this->assertTrue($approvedReadiness['decision_current']);
+        $this->assertSame('approved', $approvedReadiness['status']['key']);
+
+        ImplementationPilotCheck::query()->create([
+            'clinic_id' => $clinic->id,
+            'user_id' => $user->id,
+            'clinic_name' => $clinic->trade_name,
+            'user_name' => $user->name,
+            'check_key' => 'data_reviewed',
+            'check_label' => 'Dados importados revisados',
+            'completed' => false,
+            'notes' => 'Nova amostra precisa ser conferida.',
+            'decided_at' => now()->addSecond(),
+        ]);
+
+        $stale = $this->get(route('implementation.index'));
+        $staleReadiness = $stale->viewData('pilotReadiness')[0];
+
+        $stale
+            ->assertOk()
+            ->assertSee('Evidências pendentes')
+            ->assertSee('decisão foi superada por mudanças nas evidências');
+        $this->assertFalse($staleReadiness['decision_current']);
+        $this->assertSame('blocked', $staleReadiness['status']['key']);
     }
 
     public function test_invalid_import_does_not_create_history(): void

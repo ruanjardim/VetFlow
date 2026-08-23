@@ -105,6 +105,10 @@ The local working tree was clean before this documentation pass.
 - Each clinic can keep a versioned pilot-release plan with operational and
   support owners, planned date, functional scope, release notes, and the
   attributed history of every revision.
+- A consolidated readiness panel requires coverage, zero detected quality
+  pendencies, a complete checklist, and a release-plan revision before an
+  explicit human approval; each decision is bound to a hashed evidence
+  snapshot and becomes stale when its source evidence changes.
 
 ## GitHub Scan Summary
 

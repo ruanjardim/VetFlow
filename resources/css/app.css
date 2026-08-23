@@ -1854,6 +1854,94 @@ textarea {
   gap: 1rem;
 }
 
+.implementation-readiness-status {
+  background: #fff7ed;
+  border: 1px solid #fed7aa;
+  border-radius: 999px;
+  color: #9a3412;
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 0.375rem 0.625rem;
+}
+
+.readiness-approved .implementation-readiness-status {
+  background: #f0fdf4;
+  border-color: #bbf7d0;
+  color: #166534;
+}
+
+.readiness-awaiting .implementation-readiness-status {
+  background: #eff6ff;
+  border-color: #bfdbfe;
+  color: #1d4ed8;
+}
+
+.implementation-readiness-gates {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin-top: 1rem;
+}
+
+.implementation-readiness-gate {
+  align-items: flex-start;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.625rem;
+  display: flex;
+  gap: 0.625rem;
+  padding: 0.75rem;
+}
+
+.implementation-readiness-gate > span {
+  color: #64748b;
+  font-weight: 700;
+}
+
+.implementation-readiness-gate.passed > span {
+  color: #15803d;
+}
+
+.implementation-readiness-gate strong,
+.implementation-readiness-gate small {
+  display: block;
+}
+
+.implementation-readiness-gate small {
+  color: #64748b;
+  margin-top: 0.2rem;
+}
+
+.implementation-decision-audit {
+  background: #ffffff;
+  border-left: 3px solid #0f766e;
+  display: grid;
+  gap: 0.2rem;
+  margin-top: 1rem;
+  padding: 0.75rem;
+}
+
+.implementation-decision-audit span,
+.implementation-decision-audit small {
+  color: #64748b;
+}
+
+.implementation-readiness-decision {
+  align-items: end;
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: minmax(220px, 0.8fr) minmax(280px, 1.5fr) auto;
+  margin-top: 1rem;
+}
+
+.implementation-readiness-decision .field {
+  margin: 0;
+}
+
+.implementation-readiness-decision textarea {
+  min-height: 4rem;
+}
+
 .implementation-readiness-card {
   padding: 1rem;
   border: 1px solid #e2e8f0;
@@ -2377,6 +2465,7 @@ textarea {
   .sale-checkout-payment,
   .implementation-options,
   .implementation-blocks,
+  .implementation-readiness-gates,
   .implementation-readiness-blocks,
   .implementation-pilot-checks,
   .implementation-summary {
@@ -2398,9 +2487,14 @@ textarea {
   }
 
   .implementation-heading,
+  .implementation-readiness-decision,
   .implementation-actions {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .implementation-readiness-decision {
+    display: flex;
   }
 
   .auth-shell--login {

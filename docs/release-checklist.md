@@ -111,6 +111,10 @@ Run the command without `--backup-confirmed` in local or testing environments.
   deployed commit before testing business flows.
 - Log in with an active administrator.
 - Confirm the expected clinic context and tenant-scoped lists.
+- Open Implementation and confirm coverage, data-quality, checklist,
+  release-plan, and readiness evidence remain scoped to the selected clinic.
+- Confirm a readiness approval is unavailable while any of the four evidence
+  gates is pending; do not approve a real pilot during a smoke test.
 - Open Users and Access and confirm the administrator preset.
 - Run one product lookup without depending on paid providers.
 - Import a known fictitious NF-e XML in staging and stop before saving the

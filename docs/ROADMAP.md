@@ -91,6 +91,8 @@ The product should feel different from a generic CRUD system by connecting the c
   quality, access, backup, and training checks in each clinic.
 - Pilot-release plans keep versioned owners, date, scope, and release notes per
   clinic without overwriting earlier preparation evidence.
+- Pilot readiness consolidates four evidence gates and requires an explicit,
+  evidence-bound human approval that becomes stale after source changes.
 
 ## Current Near-Term Priorities
 
@@ -135,6 +137,6 @@ The product should feel different from a generic CRUD system by connecting the c
 
 ## Ideas Worth Exploring
 
-- Consolidate onboarding evidence and the latest release plan into an explicit
-  pilot-readiness decision.
+- Validate the guided-onboarding readiness model with fictitious pilot data
+  before changing any gate or quality rule.
 - Supplier lead-time and demand signals for future replenishment tuning.

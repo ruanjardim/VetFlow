@@ -57,6 +57,7 @@ class DatabaseRestoreVerificationService
         'implementation_imports',
         'implementation_pilot_checks',
         'implementation_pilot_releases',
+        'implementation_pilot_decisions',
         'global_products',
         'global_product_sources',
         'global_product_images',

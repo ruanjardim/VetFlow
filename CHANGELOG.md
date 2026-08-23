@@ -16,6 +16,8 @@ This project follows the spirit of Keep a Changelog, with one practical adjustme
   decisions for data review, quality, access, backup, and training.
 - Versioned clinic pilot-release plans with operational and support owners,
   planned date, functional scope, release notes, and attributed revisions.
+- Consolidated pilot-readiness gates with explicit human approval or hold,
+  immutable evidence snapshots, SHA-256 binding, and stale-decision detection.
 - Public no-cache release identity endpoint backed by a normalized full Git
   SHA, with Render runtime detection and production release-gate validation.
 - End-to-end runtime operations probe that carries a synthetic persistent

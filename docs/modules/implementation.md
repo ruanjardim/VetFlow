@@ -53,6 +53,16 @@ optional planned start date, are stored as an append-only revision attributed
 to the authenticated user. The assistant loads the latest revision into the
 form while retaining all previous plans for audit and recovery.
 
+The consolidated pilot-readiness panel evaluates four transparent gates: all
+six import blocks complete; all six quality checks evaluated without pending
+records; all five human checklist items complete; and a pilot-release plan
+revision present. Meeting those gates does not approve the pilot by itself. An
+authorized operator must append an explicit `approved` or `held` decision.
+Every decision stores a JSON snapshot and SHA-256 hash of the evidence. If an
+import, quality result, checklist answer, or release revision changes, the
+previous decision is visibly stale and a new decision is required. Approval is
+rejected while any gate is pending; an in-waiting decision requires notes.
+
 The wizard state is kept in the authenticated session. Normalized rows are
 stored temporarily as a private JSON file on the `local` disk, separated by
 entity type, and removed when the wizard is reset or the import finishes.
@@ -194,10 +204,12 @@ tipo,descricao,pessoa_documento,valor,vencimento,status,forma_pagamento,data_pag
 | `ImplementationDataQualityService` | Consolidates transparent, read-only quality checks for completed onboarding blocks in the accessible clinic scope. |
 | `ImplementationPilotChecklistService` | Builds the latest checklist state and appends auditable completion or reopening decisions. |
 | `ImplementationPilotReleaseService` | Reads the latest pilot plan and appends sequential, attributed revisions. |
+| `ImplementationPilotReadinessService` | Consolidates four evidence gates, detects stale decisions, and appends evidence-bound human decisions. |
 | `ImplementationWorkflowService` | Manages session state and private temporary analysis files. |
 | `ImplementationImport` | Represents one successfully completed import summary. |
 | `ImplementationPilotCheck` | Represents one immutable pilot-checklist decision event. |
 | `ImplementationPilotRelease` | Represents one immutable revision of the clinic pilot plan. |
+| `ImplementationPilotDecision` | Represents one immutable readiness decision and its evidence snapshot/hash. |
 | `CsvFileAnalyzer` | Applies shared delimiter, header, encoding, row-limit, and summary rules to catalog, Stock, and Financial CSV files. |
 | `CsvValueNormalizer` | Normalizes strings, Brazilian decimals, and supported dates for catalog, Stock, and Financial imports. |
 | `TutorCsvImportService` | Parses, maps, validates, previews, and imports Tutor rows. |
@@ -236,6 +248,8 @@ tipo,descricao,pessoa_documento,valor,vencimento,status,forma_pagamento,data_pag
 - Pilot-checklist validation and reads use the same active accessible-clinic
   boundary; every decision stores the authenticated responsible user.
 - Pilot-release validation and revision reads use that same clinic boundary.
+- Readiness decisions are calculated and recorded only inside that same active
+  accessible-clinic boundary.
 - Global implementation users can see recent history across the active clinic
   scope available to the wizard.
 - The import rows and their sensitive business fields are never copied into
@@ -252,7 +266,8 @@ The module also owns `implementation_pilot_checks`, an append-only audit log
 for checklist completion and reopening decisions. The database restore control
 totals also include `implementation_pilot_releases`, whose sequential records
 preserve the responsible owners, planned date, scope, and release notes. All
-three Implementation audit tables participate in restore control totals.
+four Implementation audit tables, including the evidence-bound
+`implementation_pilot_decisions`, participate in restore control totals.
 
 Confirmed imports continue creating their business records in `tutors`,
 `patients`, `suppliers`, `products`, `inventory_movements`, or
@@ -288,7 +303,8 @@ after successful confirmation, absence of row payloads, survival after wizard
 reset, clinic-scoped visibility, guided coverage, completed-block quality
 checks, append-only pilot decisions, checklist clinic isolation, and no history
 for blocked imports. It also covers append-only pilot-plan revisions and their
-clinic boundary.
+clinic boundary, approval preconditions, evidence snapshots, and automatic
+staleness after a source decision changes.
 
 `tests/Feature/ImplementationExcelTest.php` covers all six Excel imports,
 first-worksheet date normalization, `implementation_excel` trace metadata,

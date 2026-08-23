@@ -98,6 +98,10 @@ state is convenient to read without sacrificing the decision history.
 The pilot plan follows the same principle: every change to its operational and
 support owners, planned date, functional scope, or release notes creates a new
 attributed revision instead of overwriting earlier preparation evidence.
+The final guided-onboarding slice consolidates coverage, quality, checklist,
+and release-plan evidence without converting them into an automatic business
+approval. A human approval or hold decision is stored with a hashed evidence
+snapshot and becomes stale whenever one of those source signals changes.
 
 The first staging candidate is KingHost shared Linux hosting, using only
 fictitious data and a bounded authenticated cron bridge because shared hosting
