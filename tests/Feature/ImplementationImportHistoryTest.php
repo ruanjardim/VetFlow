@@ -190,6 +190,7 @@ class ImplementationImportHistoryTest extends TestCase
             ->assertSee('Pendências do onboarding')
             ->assertSee('2 pendências em 3 blocos avaliados')
             ->assertSee('1 de 3 blocos avaliados sem pendências detectadas')
+            ->assertSee('Ver registros')
             ->assertDontSee('Clínica Fora do Escopo');
 
         $quality = $response->viewData('onboardingQuality');
@@ -206,6 +207,51 @@ class ImplementationImportHistoryTest extends TestCase
         $this->assertSame(1, $blocks['financial']['issue_count']);
         $this->assertSame('awaiting', $blocks['patients']['status']);
         $this->assertNull($blocks['patients']['issue_count']);
+    }
+
+    public function test_quality_issue_queue_lists_only_accessible_clinic_records(): void
+    {
+        $ownClinic = $this->clinic('Clínica da Fila', '12345678000210');
+        $otherClinic = $this->clinic('Clínica Oculta da Fila', '12345678000211');
+        $user = $this->authorizedUser($ownClinic);
+
+        DB::table('tutors')->insert([
+            [
+                'clinic_id' => $ownClinic->id,
+                'name' => 'Responsável que precisa de revisão',
+                'phone' => '21999990003',
+                'active' => true,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'clinic_id' => $otherClinic->id,
+                'name' => 'Responsável que deve ficar oculto',
+                'phone' => '21999990004',
+                'active' => true,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+        ]);
+
+        $response = $this->actingAs($user)->get(route('implementation.quality.issues', [
+            'clinic' => $ownClinic->id,
+            'type' => 'tutors',
+        ]));
+
+        $response
+            ->assertOk()
+            ->assertSee('Fila de revisão')
+            ->assertSee('Responsável que precisa de revisão')
+            ->assertSee('CPF não informado')
+            ->assertSee('E-mail não informado')
+            ->assertDontSee('Responsável que deve ficar oculto')
+            ->assertSee('Solicite a correção ao responsável do módulo.');
+
+        $this->get(route('implementation.quality.issues', [
+            'clinic' => $otherClinic->id,
+            'type' => 'tutors',
+        ]))->assertNotFound();
     }
 
     public function test_pilot_checklist_preserves_decision_history_and_clinic_scope(): void

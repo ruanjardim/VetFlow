@@ -417,6 +417,24 @@ class ImplementationController extends Controller
             ->with('success', 'Checklist do piloto atualizado com histórico preservado.');
     }
 
+    public function qualityIssues(
+        Request $request,
+        int $clinic,
+        string $type
+    ): View {
+        abort_unless(in_array($type, ImplementationDataQualityService::types(), true), 404);
+
+        $accessibleClinic = $this->accessibleClinics($request)->findOrFail($clinic);
+
+        return view('implementation.quality-issues', [
+            'clinic' => $accessibleClinic,
+            'quality' => $this->implementationDataQuality->issuesForClinic(
+                $accessibleClinic,
+                $type
+            ),
+        ]);
+    }
+
     public function storePilotRelease(
         StoreImplementationPilotReleaseRequest $request
     ): RedirectResponse {

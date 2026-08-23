@@ -4,11 +4,59 @@ namespace App\Modules\Implementation\Services;
 
 use App\Modules\Clinics\Models\Clinic;
 use Illuminate\Database\Query\Builder;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use InvalidArgumentException;
 
 class ImplementationDataQualityService
 {
+    /** @var array<string, array{label: string, description: string, permission: string, edit_route: string}> */
+    private const BLOCKS = [
+        'tutors' => [
+            'label' => 'Responsáveis',
+            'description' => 'CPF ou e-mail não informado',
+            'permission' => 'tutors.manage',
+            'edit_route' => 'tutores.edit',
+        ],
+        'patients' => [
+            'label' => 'Pacientes',
+            'description' => 'Responsável, espécie ou nascimento não informado',
+            'permission' => 'patients.manage',
+            'edit_route' => 'patients.edit',
+        ],
+        'suppliers' => [
+            'label' => 'Fornecedores',
+            'description' => 'Documento ou canal de contato não informado',
+            'permission' => 'suppliers.manage',
+            'edit_route' => 'suppliers.edit',
+        ],
+        'products' => [
+            'label' => 'Produtos',
+            'description' => 'Preço de venda ou identificador comercial ausente',
+            'permission' => 'products.manage',
+            'edit_route' => 'products.edit',
+        ],
+        'stock' => [
+            'label' => 'Estoque inicial',
+            'description' => 'Saldo positivo sem custo cadastrado',
+            'permission' => 'products.manage',
+            'edit_route' => 'products.edit',
+        ],
+        'financial' => [
+            'label' => 'Financeiro',
+            'description' => 'Valor ou data incompatível com o status',
+            'permission' => 'financial.manage',
+            'edit_route' => 'financial-transactions.edit',
+        ],
+    ];
+
+    /** @return array<int, string> */
+    public static function types(): array
+    {
+        return array_keys(self::BLOCKS);
+    }
+
     /**
      * @param  Collection<int, Clinic>  $clinics
      * @param  array<int, array<string, mixed>>  $readiness
@@ -29,20 +77,11 @@ class ImplementationDataQualityService
             'stock' => $this->stockIssues($clinicIds),
             'financial' => $this->financialIssues($clinicIds),
         ];
-        $descriptions = [
-            'tutors' => 'CPF ou e-mail não informado',
-            'patients' => 'Responsável, espécie ou nascimento não informado',
-            'suppliers' => 'Documento ou canal de contato não informado',
-            'products' => 'Preço de venda ou identificador comercial ausente',
-            'stock' => 'Saldo positivo sem custo cadastrado',
-            'financial' => 'Valor ou data incompatível com o status',
-        ];
         $readinessByClinic = collect($readiness)->keyBy('clinic_id');
 
         return $clinics
             ->map(function (Clinic $clinic) use (
                 $counts,
-                $descriptions,
                 $readinessByClinic
             ): array {
                 $clinicReadiness = $readinessByClinic->get($clinic->id, []);
@@ -50,8 +89,7 @@ class ImplementationDataQualityService
                 $blocks = $coverageBlocks
                     ->map(function (array $coverage, string $type) use (
                         $clinic,
-                        $counts,
-                        $descriptions
+                        $counts
                     ): array {
                         $completed = (bool) ($coverage['completed'] ?? false);
                         $issueCount = $completed
@@ -61,7 +99,7 @@ class ImplementationDataQualityService
                         return [
                             'type' => $type,
                             'label' => $coverage['label'],
-                            'description' => $descriptions[$type],
+                            'description' => self::BLOCKS[$type]['description'],
                             'evaluated' => $completed,
                             'issue_count' => $issueCount,
                             'status' => ! $completed
@@ -90,18 +128,47 @@ class ImplementationDataQualityService
             ->all();
     }
 
+    /**
+     * @return array{
+     *   type: string,
+     *   label: string,
+     *   description: string,
+     *   permission: string,
+     *   edit_route: string,
+     *   issues: LengthAwarePaginator
+     * }
+     */
+    public function issuesForClinic(Clinic $clinic, string $type): array
+    {
+        if (! isset(self::BLOCKS[$type])) {
+            throw new InvalidArgumentException('Bloco de qualidade desconhecido.');
+        }
+
+        $issues = $this->issueQuery($type)
+            ->where('clinic_id', $clinic->id)
+            ->whereNull('deleted_at')
+            ->orderBy('id')
+            ->paginate(20)
+            ->withQueryString();
+
+        $issues->through(fn (object $record): array => [
+            'id' => (int) $record->id,
+            'label' => $this->recordLabel($record, $type),
+            'reasons' => $this->recordReasons($record, $type),
+        ]);
+
+        return [
+            'type' => $type,
+            ...self::BLOCKS[$type],
+            'issues' => $issues,
+        ];
+    }
+
     /** @param  array<int, int>  $clinicIds */
     private function tutorIssues(array $clinicIds): Collection
     {
         return $this->countsByClinic(
-            DB::table('tutors')
-                ->where('active', true)
-                ->where(function (Builder $query): void {
-                    $query->whereNull('cpf')
-                        ->orWhere('cpf', '')
-                        ->orWhereNull('email')
-                        ->orWhere('email', '');
-                }),
+            $this->tutorIssueQuery(),
             $clinicIds
         );
     }
@@ -110,12 +177,7 @@ class ImplementationDataQualityService
     private function patientIssues(array $clinicIds): Collection
     {
         return $this->countsByClinic(
-            DB::table('patients')
-                ->where(function (Builder $query): void {
-                    $query->whereNull('tutor_id')
-                        ->orWhereNull('animal_species_id')
-                        ->orWhereNull('birth_date');
-                }),
+            $this->patientIssueQuery(),
             $clinicIds
         );
     }
@@ -124,24 +186,7 @@ class ImplementationDataQualityService
     private function supplierIssues(array $clinicIds): Collection
     {
         return $this->countsByClinic(
-            DB::table('suppliers')
-                ->where('active', true)
-                ->where(function (Builder $query): void {
-                    $query->whereNull('document')
-                        ->orWhere('document', '')
-                        ->orWhere(function (Builder $contacts): void {
-                            $contacts
-                                ->where(function (Builder $email): void {
-                                    $email->whereNull('email')->orWhere('email', '');
-                                })
-                                ->where(function (Builder $phone): void {
-                                    $phone->whereNull('phone')->orWhere('phone', '');
-                                })
-                                ->where(function (Builder $whatsapp): void {
-                                    $whatsapp->whereNull('whatsapp')->orWhere('whatsapp', '');
-                                });
-                        });
-                }),
+            $this->supplierIssueQuery(),
             $clinicIds
         );
     }
@@ -150,20 +195,7 @@ class ImplementationDataQualityService
     private function productIssues(array $clinicIds): Collection
     {
         return $this->countsByClinic(
-            DB::table('products')
-                ->where('active', true)
-                ->where(function (Builder $query): void {
-                    $query->where('sale_price', '<=', 0)
-                        ->orWhere(function (Builder $identifiers): void {
-                            $identifiers
-                                ->where(function (Builder $barcode): void {
-                                    $barcode->whereNull('barcode')->orWhere('barcode', '');
-                                })
-                                ->where(function (Builder $sku): void {
-                                    $sku->whereNull('sku')->orWhere('sku', '');
-                                });
-                        });
-                }),
+            $this->productIssueQuery(),
             $clinicIds
         );
     }
@@ -172,10 +204,7 @@ class ImplementationDataQualityService
     private function stockIssues(array $clinicIds): Collection
     {
         return $this->countsByClinic(
-            DB::table('products')
-                ->where('active', true)
-                ->where('stock_quantity', '>', 0)
-                ->where('cost_price', '<=', 0),
+            $this->stockIssueQuery(),
             $clinicIds
         );
     }
@@ -184,19 +213,153 @@ class ImplementationDataQualityService
     private function financialIssues(array $clinicIds): Collection
     {
         return $this->countsByClinic(
-            DB::table('financial_transactions')
-                ->where(function (Builder $query): void {
-                    $query->where('amount', '<=', 0)
-                        ->orWhere(function (Builder $pending): void {
-                            $pending->whereIn('status', ['pending', 'overdue'])
-                                ->whereNull('due_date');
-                        })
-                        ->orWhere(function (Builder $paid): void {
-                            $paid->where('status', 'paid')->whereNull('paid_at');
-                        });
-                }),
+            $this->financialIssueQuery(),
             $clinicIds
         );
+    }
+
+    private function issueQuery(string $type): Builder
+    {
+        return match ($type) {
+            'tutors' => $this->tutorIssueQuery(),
+            'patients' => $this->patientIssueQuery(),
+            'suppliers' => $this->supplierIssueQuery(),
+            'products' => $this->productIssueQuery(),
+            'stock' => $this->stockIssueQuery(),
+            'financial' => $this->financialIssueQuery(),
+        };
+    }
+
+    private function tutorIssueQuery(): Builder
+    {
+        return DB::table('tutors')
+            ->where('active', true)
+            ->where(function (Builder $query): void {
+                $query->whereNull('cpf')
+                    ->orWhere('cpf', '')
+                    ->orWhereNull('email')
+                    ->orWhere('email', '');
+            });
+    }
+
+    private function patientIssueQuery(): Builder
+    {
+        return DB::table('patients')
+            ->where(function (Builder $query): void {
+                $query->whereNull('tutor_id')
+                    ->orWhereNull('animal_species_id')
+                    ->orWhereNull('birth_date');
+            });
+    }
+
+    private function supplierIssueQuery(): Builder
+    {
+        return DB::table('suppliers')
+            ->where('active', true)
+            ->where(function (Builder $query): void {
+                $query->whereNull('document')
+                    ->orWhere('document', '')
+                    ->orWhere(function (Builder $contacts): void {
+                        $contacts
+                            ->where(function (Builder $email): void {
+                                $email->whereNull('email')->orWhere('email', '');
+                            })
+                            ->where(function (Builder $phone): void {
+                                $phone->whereNull('phone')->orWhere('phone', '');
+                            })
+                            ->where(function (Builder $whatsapp): void {
+                                $whatsapp->whereNull('whatsapp')->orWhere('whatsapp', '');
+                            });
+                    });
+            });
+    }
+
+    private function productIssueQuery(): Builder
+    {
+        return DB::table('products')
+            ->where('active', true)
+            ->where(function (Builder $query): void {
+                $query->where('sale_price', '<=', 0)
+                    ->orWhere(function (Builder $identifiers): void {
+                        $identifiers
+                            ->where(function (Builder $barcode): void {
+                                $barcode->whereNull('barcode')->orWhere('barcode', '');
+                            })
+                            ->where(function (Builder $sku): void {
+                                $sku->whereNull('sku')->orWhere('sku', '');
+                            });
+                    });
+            });
+    }
+
+    private function stockIssueQuery(): Builder
+    {
+        return DB::table('products')
+            ->where('active', true)
+            ->where('stock_quantity', '>', 0)
+            ->where('cost_price', '<=', 0);
+    }
+
+    private function financialIssueQuery(): Builder
+    {
+        return DB::table('financial_transactions')
+            ->where(function (Builder $query): void {
+                $query->where('amount', '<=', 0)
+                    ->orWhere(function (Builder $pending): void {
+                        $pending->whereIn('status', ['pending', 'overdue'])
+                            ->whereNull('due_date');
+                    })
+                    ->orWhere(function (Builder $paid): void {
+                        $paid->where('status', 'paid')->whereNull('paid_at');
+                    });
+            });
+    }
+
+    private function recordLabel(object $record, string $type): string
+    {
+        $label = $type === 'financial'
+            ? ($record->description ?? null)
+            : ($record->name ?? null);
+
+        return filled($label) ? (string) $label : "Registro #{$record->id}";
+    }
+
+    /** @return array<int, string> */
+    private function recordReasons(object $record, string $type): array
+    {
+        return match ($type) {
+            'tutors' => array_values(array_filter([
+                blank($record->cpf) ? 'CPF não informado' : null,
+                blank($record->email) ? 'E-mail não informado' : null,
+            ])),
+            'patients' => array_values(array_filter([
+                $record->tutor_id === null ? 'Responsável não vinculado' : null,
+                $record->animal_species_id === null ? 'Espécie catalogada não vinculada' : null,
+                $record->birth_date === null ? 'Nascimento não informado' : null,
+            ])),
+            'suppliers' => array_values(array_filter([
+                blank($record->document) ? 'Documento não informado' : null,
+                blank($record->email) && blank($record->phone) && blank($record->whatsapp)
+                    ? 'Nenhum canal de contato informado'
+                    : null,
+            ])),
+            'products' => array_values(array_filter([
+                (float) $record->sale_price <= 0 ? 'Preço de venda deve ser positivo' : null,
+                blank($record->barcode) && blank($record->sku)
+                    ? 'Código de barras e SKU ausentes'
+                    : null,
+            ])),
+            'stock' => ['Saldo positivo sem custo cadastrado'],
+            'financial' => array_values(array_filter([
+                (float) $record->amount <= 0 ? 'Valor deve ser positivo' : null,
+                in_array($record->status, ['pending', 'overdue'], true) && $record->due_date === null
+                    ? 'Data de vencimento ausente'
+                    : null,
+                $record->status === 'paid' && $record->paid_at === null
+                    ? 'Data de pagamento ausente'
+                    : null,
+            ])),
+        };
     }
 
     /**

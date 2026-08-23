@@ -271,6 +271,16 @@
                           {{ $block['issue_count'] }} registros para revisar:<br>
                           {{ $block['description'] }}
                         </small>
+
+                        <a
+                          class="implementation-quality-link"
+                          href="{{ route('implementation.quality.issues', [
+                            'clinic' => $quality['clinic_id'],
+                            'type' => $block['type'],
+                          ]) }}"
+                        >
+                          Ver registros
+                        </a>
                       @endif
                     </div>
                   </div>

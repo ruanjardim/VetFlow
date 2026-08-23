@@ -99,6 +99,8 @@ The local working tree was clean before this documentation pass.
 - Completed onboarding blocks receive a read-only, tenant-safe data-quality
   review with explicit pending-record counts; blocks not yet imported remain
   marked as awaiting evaluation.
+- Quality pendencies have paginated clinic-scoped drilldowns with explicit
+  correction reasons and permission-aware links to their source records.
 - Pilot preparation has a five-item checklist whose completion and reopening
   decisions are append-only, clinic-scoped, attributed, timestamped, and
   optionally documented by the operator.

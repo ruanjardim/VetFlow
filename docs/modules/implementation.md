@@ -39,6 +39,10 @@ identifier; positive Stock without a registered cost; and Financial records
 whose value or dates conflict with their status. A block without a completed
 import remains marked as awaiting instead of receiving a misleading zero-issue
 score. These checks guide review and do not automatically alter business data.
+Every attention block links to a paginated, clinic-scoped review queue that
+identifies the affected records and the exact missing fields. A direct edit
+action is shown only when the operator also has permission for the source
+module; otherwise the page clearly delegates the correction to its owner.
 
 The pilot-preparation checklist adds five explicit human decisions per clinic:
 data review, quality resolution, access validation, backup alignment, and team

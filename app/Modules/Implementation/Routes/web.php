@@ -26,6 +26,11 @@ Route::post('implementation/pilot-releases', [ImplementationController::class, '
 Route::post('implementation/pilot-decisions', [ImplementationController::class, 'storePilotDecision'])
     ->name('implementation.pilot-decisions.store');
 
+Route::get('implementation/quality/{clinic}/{type}', [ImplementationController::class, 'qualityIssues'])
+    ->whereNumber('clinic')
+    ->whereIn('type', ['tutors', 'patients', 'suppliers', 'products', 'stock', 'financial'])
+    ->name('implementation.quality.issues');
+
 Route::post('implementation/tutors/upload', [ImplementationController::class, 'uploadTutors'])
     ->name('implementation.tutors.upload');
 
