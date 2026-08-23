@@ -8,6 +8,8 @@ This project follows the spirit of Keep a Changelog, with one practical adjustme
 
 ### Added
 
+- Read-only backup snapshot and isolated restore verification commands with
+  privacy-safe control totals, JSON evidence, and an evidence-aware release gate.
 - Tenant-scoped administrative audit trail for collaborator access and clinic
   branding changes, with filtered read-only history and password redaction.
 - Clinic-scoped animal icon branding beside the VetFlow sidebar title, with
@@ -61,6 +63,7 @@ This project follows the spirit of Keep a Changelog, with one practical adjustme
 - Release-readiness command covering application configuration, database,
   migrations, logging, queue, storage, and production backup confirmation.
 - Operational release checklist with rollback gates and smoke tests.
+
 - Explainable stock replenishment suggestions that combine current balance,
   minimum stock, and the last 180 days of received purchase history, with
   priority, confidence, supplier/cost context, and purchase-entry prefill.
@@ -109,6 +112,11 @@ This project follows the spirit of Keep a Changelog, with one practical adjustme
   medical records, exam results, prescriptions, vaccinations,
   hospitalization events/evolutions, and clinical alerts without duplicating
   or interpreting their source records.
+
+### Fixed
+
+- Weekly schedule queries now include dated events on the final day of the
+  displayed range across SQLite, MySQL, and PostgreSQL date representations.
 
 ### Changed
 

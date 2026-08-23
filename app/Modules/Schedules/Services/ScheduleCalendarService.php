@@ -81,7 +81,8 @@ class ScheduleCalendarService
         $scheduleEvents = Schedule::query()
             ->with(['patient', 'tutor'])
             ->whereNotNull('scheduled_date')
-            ->whereBetween('scheduled_date', [$start->toDateString(), $end->toDateString()])
+            ->whereDate('scheduled_date', '>=', $start->toDateString())
+            ->whereDate('scheduled_date', '<=', $end->toDateString())
             ->get()
             ->map(fn (Schedule $schedule) => [
                 'date' => $schedule->scheduled_date->toDateString(),

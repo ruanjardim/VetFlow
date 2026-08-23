@@ -1,6 +1,6 @@
 # VetFlow Roadmap
 
-Updated: 2026-08-20
+Updated: 2026-08-23
 
 This roadmap describes the product direction that should stay visible while VetFlow evolves. It is intentionally high-level and should be revised as implementation priorities change.
 
@@ -75,12 +75,15 @@ The product should feel different from a generic CRUD system by connecting the c
   boundary.
 - Sensitive collaborator-access and clinic-branding changes produce a
   tenant-scoped, read-only administrative audit trail without storing passwords.
+- Backup operations have a read-only snapshot and isolated-restore verification
+  workflow that generates privacy-safe evidence for the release gate.
 
 ## Current Near-Term Priorities
 
 1. Pass the KingHost contract gate, provision staging, and validate the
    selected hosting target without real clinic data.
-2. Prove database backup restoration before the first pilot.
+2. Execute and record the database restore drill against the provisioned
+   staging environment before the first pilot.
 3. Run the release checklist and smoke tests in staging.
 4. Define the first pilot scope, release notes, and support owner.
 5. Validate replenishment suggestions with pilot data and tune the history

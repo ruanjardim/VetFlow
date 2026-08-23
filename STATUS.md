@@ -1,6 +1,6 @@
 # VetFlow Status
 
-Updated: 2026-08-20
+Updated: 2026-08-23
 
 ## Current State
 
@@ -83,6 +83,9 @@ The local working tree was clean before this documentation pass.
 - An append-only administrative audit trail for collaborator access and clinic
   branding changes, with tenant isolation, actor and before/after snapshots,
   password redaction, filtering, and a dedicated read permission.
+- A read-only backup/restore drill that captures privacy-safe database control
+  totals, rejects the live source as a restore target, and produces evidence
+  consumable by the release-readiness gate.
 
 ## GitHub Scan Summary
 

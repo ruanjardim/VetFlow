@@ -1,6 +1,6 @@
 # VetFlow Release Checklist
 
-Updated: 2026-07-30
+Updated: 2026-08-23
 
 Use this checklist for a staging release and before the first production pilot.
 It complements the [deployment guide](deployment.md); it does not replace a
@@ -25,8 +25,10 @@ provider-specific runbook.
 - Preserve the previous application build and environment configuration.
 - Define the rollback commit and the database restore decision before starting.
 
-The `--backup-confirmed` flag described below is an operator attestation. It
-does not create or validate a backup by itself.
+Prefer the repository's [backup restore drill](deployment/backup-restore-drill.md),
+which records control totals before export validation and produces evidence
+after an isolated restore. `--backup-confirmed` remains a manual operator
+attestation and does not create or validate a backup by itself.
 
 ## 3. Pre-Release Validation
 
@@ -70,7 +72,7 @@ supported process controls.
 After deployment, run:
 
 ```bash
-php artisan vetflow:release:check --backup-confirmed
+php artisan vetflow:release:check --backup-evidence=/secure/evidence/restore-evidence.json
 ```
 
 The command blocks a production release when it finds:
@@ -84,7 +86,7 @@ The command blocks a production release when it finds:
 - a synchronous or invalid queue connection;
 - a missing `jobs` table for the database queue;
 - a storage disk that cannot create and remove a temporary probe;
-- missing operator confirmation for a restorable backup.
+- missing fresh evidence or operator confirmation for a restorable backup.
 
 Run the command without `--backup-confirmed` in local or testing environments.
 

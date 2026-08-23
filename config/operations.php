@@ -1,6 +1,10 @@
 <?php
 
 return [
+    'backup' => [
+        'evidence_max_age_days' => (int) env('VETFLOW_BACKUP_EVIDENCE_MAX_AGE_DAYS', 30),
+    ],
+
     'queue' => [
         'mode' => env('VETFLOW_QUEUE_MODE', 'worker'),
 

@@ -1,6 +1,6 @@
 # KingHost Staging Runbook
 
-Updated: 2026-08-01
+Updated: 2026-08-23
 
 This runbook prepares the first VetFlow staging environment on KingHost shared
 Linux hosting. It is intentionally limited to fictitious staging data. It does
@@ -170,13 +170,16 @@ Before the first migration against staging:
 6. Record the backup identifier, restore time, result, operator, and cleanup
    decision without recording credentials.
 
-Only after the isolated restore succeeds may the operator attest:
+Use the repository's [backup restore drill](backup-restore-drill.md) to capture
+control totals and produce a recent evidence file. Only after the isolated
+restore succeeds may the operator run:
 
 ```bash
-php artisan vetflow:release:check --backup-confirmed
+php artisan vetflow:release:check --backup-evidence=/secure/evidence/restore-evidence.json
 ```
 
-The flag is an attestation; it does not create or restore a backup.
+The commands do not create or import the provider backup; they verify the
+restored database without changing its records.
 
 ## 8. Smoke Tests
 

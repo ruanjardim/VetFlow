@@ -1,6 +1,6 @@
 # VetFlow Project Context
 
-Updated: 2026-08-20
+Updated: 2026-08-23
 
 ## Product
 
@@ -75,6 +75,10 @@ not duplicate data or imply a clinical relationship between events.
 Sensitive administrative changes to collaborator access and clinic branding
 now produce tenant-scoped, append-only audit events. Password values are never
 stored in that history.
+Backup readiness now includes a read-only snapshot and isolated-restore
+verification workflow. It records only control totals and produces a recent
+evidence file for the release gate; the hosting provider still performs the
+actual export, import, and temporary-database cleanup.
 
 The first staging candidate is KingHost shared Linux hosting, using only
 fictitious data and a bounded authenticated cron bridge because shared hosting

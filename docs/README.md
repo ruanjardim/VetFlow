@@ -16,6 +16,7 @@ This directory contains the working documentation for VetFlow.
 - [KingHost staging runbook](deployment/kinghost-staging.md)
 - [Render demonstration deployment](deploy/render.md)
 - [Release checklist](release-checklist.md)
+- [Backup restore drill](deployment/backup-restore-drill.md)
 - [Roadmap](ROADMAP.md)
 
 ## Database Notes

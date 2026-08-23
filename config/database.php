@@ -114,6 +114,31 @@ return [
             // 'trust_server_certificate' => env('DB_TRUST_SERVER_CERTIFICATE', 'false'),
         ],
 
+        /*
+        | Dedicated, read-only-by-convention target for backup restore drills.
+        | It must point to an isolated database, never to the live source.
+        */
+        'backup_restore' => [
+            'driver' => env('RESTORE_DB_CONNECTION', 'sqlite'),
+            'url' => env('RESTORE_DB_URL'),
+            'host' => env('RESTORE_DB_HOST', '127.0.0.1'),
+            'port' => env('RESTORE_DB_PORT'),
+            'database' => env('RESTORE_DB_DATABASE', database_path('restore-drill.sqlite')),
+            'username' => env('RESTORE_DB_USERNAME'),
+            'password' => env('RESTORE_DB_PASSWORD'),
+            'charset' => env('RESTORE_DB_CHARSET', 'utf8'),
+            'collation' => env('RESTORE_DB_COLLATION', 'utf8mb4_unicode_ci'),
+            'prefix' => '',
+            'prefix_indexes' => true,
+            'strict' => true,
+            'engine' => null,
+            'foreign_key_constraints' => true,
+            'busy_timeout' => null,
+            'journal_mode' => null,
+            'synchronous' => null,
+            'transaction_mode' => 'DEFERRED',
+        ],
+
     ],
 
     /*

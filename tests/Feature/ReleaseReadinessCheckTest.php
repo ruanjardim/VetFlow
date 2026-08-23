@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
@@ -84,5 +85,46 @@ class ReleaseReadinessCheckTest extends TestCase
         $this->artisan('vetflow:release:check', ['--backup-confirmed' => true])
             ->expectsOutputToContain('Verificacoes tecnicas de release aprovadas.')
             ->assertSuccessful();
+    }
+
+    public function test_production_release_accepts_fresh_restore_evidence(): void
+    {
+        Storage::fake('local');
+        $this->app->detectEnvironment(fn (): string => 'production');
+        config([
+            'app.key' => 'base64:production-readiness-key',
+            'app.debug' => false,
+            'app.url' => 'https://vetflow.example',
+            'filesystems.default' => 'local',
+            'logging.default' => 'single',
+            'queue.default' => 'database',
+        ]);
+        $evidencePath = storage_path('framework/testing/release-backup-evidence.json');
+        File::ensureDirectoryExists(dirname($evidencePath));
+        $evidence = [
+            'version' => 1,
+            'status' => 'passed',
+            'backup_identifier' => 'pilot-evidence',
+            'verified_at' => now()->toIso8601String(),
+            'manifest_sha256' => str_repeat('a', 64),
+            'restore' => ['fingerprint' => str_repeat('b', 64)],
+            'checks' => [['name' => 'Tabela clinics', 'passed' => false]],
+        ];
+        File::put($evidencePath, json_encode($evidence, JSON_THROW_ON_ERROR));
+
+        try {
+            $this->artisan('vetflow:release:check', ['--backup-evidence' => $evidencePath])
+                ->expectsOutputToContain('Release bloqueada por 1 verificacao(oes).')
+                ->assertFailed();
+
+            $evidence['checks'][0]['passed'] = true;
+            File::put($evidencePath, json_encode($evidence, JSON_THROW_ON_ERROR));
+
+            $this->artisan('vetflow:release:check', ['--backup-evidence' => $evidencePath])
+                ->expectsOutputToContain('Verificacoes tecnicas de release aprovadas.')
+                ->assertSuccessful();
+        } finally {
+            File::delete($evidencePath);
+        }
     }
 }

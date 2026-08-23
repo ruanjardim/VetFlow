@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use Carbon\CarbonImmutable;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
@@ -13,7 +14,8 @@ use Throwable;
 class ReleaseReadinessCheckCommand extends Command
 {
     protected $signature = 'vetflow:release:check
-        {--backup-confirmed : Confirma que existe backup restauravel antes de uma release em staging/producao}';
+        {--backup-confirmed : Confirma manualmente que existe backup restauravel}
+        {--backup-evidence= : Evidencia JSON gerada por vetflow:backup:verify}';
 
     protected $description = 'Verifica configuracao, banco, migrations, logs, fila, armazenamento e backup para uma release.';
 
@@ -55,15 +57,8 @@ class ReleaseReadinessCheckCommand extends Command
         $this->checkQueue($productionLike);
         $this->checkQueueProcessControl($productionLike);
         $this->checkStorage();
-        $this->check(
-            'Backup restauravel',
-            ! $productionLike || (bool) $this->option('backup-confirmed'),
-            $productionLike
-                ? ((bool) $this->option('backup-confirmed')
-                    ? 'Confirmado pelo operador para esta release.'
-                    : 'Execute novamente com --backup-confirmed depois de validar o backup.')
-                : 'Confirmacao obrigatoria somente em staging/producao.'
-        );
+        [$backupPassed, $backupDetail] = $this->checkBackupEvidence($productionLike);
+        $this->check('Backup restauravel', $backupPassed, $backupDetail);
 
         $this->table(
             ['Verificacao', 'Status', 'Detalhe'],
@@ -241,6 +236,48 @@ class ReleaseReadinessCheckCommand extends Command
             );
         } catch (Throwable $exception) {
             $this->check('Armazenamento', false, $exception->getMessage());
+        }
+    }
+
+    /** @return array{bool, string} */
+    private function checkBackupEvidence(bool $productionLike): array
+    {
+        if (! $productionLike) {
+            return [true, 'Confirmacao obrigatoria somente em staging/producao.'];
+        }
+
+        $evidencePath = trim((string) $this->option('backup-evidence'));
+
+        if ($evidencePath === '') {
+            return (bool) $this->option('backup-confirmed')
+                ? [true, 'Confirmado manualmente pelo operador para esta release.']
+                : [false, 'Informe --backup-evidence depois do teste isolado ou use a confirmacao manual.'];
+        }
+
+        try {
+            if (! File::isFile($evidencePath)) {
+                return [false, 'Arquivo de evidencia de restauracao nao encontrado.'];
+            }
+
+            $evidence = json_decode(File::get($evidencePath), true, flags: JSON_THROW_ON_ERROR);
+            $verifiedAt = CarbonImmutable::parse((string) ($evidence['verified_at'] ?? ''));
+            $maxAgeDays = max(1, (int) config('operations.backup.evidence_max_age_days', 30));
+            $fresh = $verifiedAt->betweenIncluded(now()->subDays($maxAgeDays), now()->addMinutes(5));
+            $checks = collect($evidence['checks'] ?? []);
+            $valid = ($evidence['version'] ?? null) === 1
+                && ($evidence['status'] ?? null) === 'passed'
+                && is_string($evidence['backup_identifier'] ?? null)
+                && preg_match('/^[a-f0-9]{64}$/', (string) ($evidence['manifest_sha256'] ?? '')) === 1
+                && preg_match('/^[a-f0-9]{64}$/', (string) ($evidence['restore']['fingerprint'] ?? '')) === 1
+                && $checks->isNotEmpty()
+                && $checks->every(fn ($check): bool => is_array($check) && ($check['passed'] ?? false) === true)
+                && $fresh;
+
+            return $valid
+                ? [true, 'Restauracao isolada comprovada pela evidencia '.$evidence['backup_identifier'].'.']
+                : [false, "Evidencia invalida, reprovada ou com mais de {$maxAgeDays} dias."];
+        } catch (Throwable) {
+            return [false, 'Evidencia de restauracao invalida ou ilegivel.'];
         }
     }
 
