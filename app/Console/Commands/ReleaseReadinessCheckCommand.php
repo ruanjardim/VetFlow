@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Support\Operations\RuntimeOperationsProbeService;
 use Carbon\CarbonImmutable;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
@@ -15,7 +16,8 @@ class ReleaseReadinessCheckCommand extends Command
 {
     protected $signature = 'vetflow:release:check
         {--backup-confirmed : Confirma manualmente que existe backup restauravel}
-        {--backup-evidence= : Evidencia JSON gerada por vetflow:backup:verify}';
+        {--backup-evidence= : Evidencia JSON gerada por vetflow:backup:verify}
+        {--runtime-evidence= : Evidencia JSON gerada por vetflow:runtime:probe}';
 
     protected $description = 'Verifica configuracao, banco, migrations, logs, fila, armazenamento e backup para uma release.';
 
@@ -57,6 +59,8 @@ class ReleaseReadinessCheckCommand extends Command
         $this->checkQueue($productionLike);
         $this->checkQueueProcessControl($productionLike);
         $this->checkStorage();
+        [$runtimePassed, $runtimeDetail] = $this->checkRuntimeEvidence($productionLike);
+        $this->check('Probe operacional', $runtimePassed, $runtimeDetail);
         [$backupPassed, $backupDetail] = $this->checkBackupEvidence($productionLike);
         $this->check('Backup restauravel', $backupPassed, $backupDetail);
 
@@ -278,6 +282,35 @@ class ReleaseReadinessCheckCommand extends Command
                 : [false, "Evidencia invalida, reprovada ou com mais de {$maxAgeDays} dias."];
         } catch (Throwable) {
             return [false, 'Evidencia de restauracao invalida ou ilegivel.'];
+        }
+    }
+
+    /** @return array{bool, string} */
+    private function checkRuntimeEvidence(bool $productionLike): array
+    {
+        if (! $productionLike) {
+            return [true, 'Evidencia obrigatoria somente em staging/producao.'];
+        }
+
+        $evidencePath = trim((string) $this->option('runtime-evidence'));
+
+        if ($evidencePath === '') {
+            return [false, 'Informe --runtime-evidence depois de processar o probe pela fila.'];
+        }
+
+        try {
+            if (! File::isFile($evidencePath)) {
+                return [false, 'Arquivo de evidencia operacional nao encontrado.'];
+            }
+
+            $evidence = json_decode(File::get($evidencePath), true, flags: JSON_THROW_ON_ERROR);
+
+            return app(RuntimeOperationsProbeService::class)->validateEvidence(
+                $evidence,
+                app()->environment()
+            );
+        } catch (Throwable) {
+            return [false, 'Evidencia operacional invalida ou ilegivel.'];
         }
     }
 

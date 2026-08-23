@@ -77,6 +77,9 @@ The product should feel different from a generic CRUD system by connecting the c
   tenant-scoped, read-only administrative audit trail without storing passwords.
 - Backup operations have a read-only snapshot and isolated-restore verification
   workflow that generates privacy-safe evidence for the release gate.
+- Runtime operations have a synthetic end-to-end probe that carries a
+  persistent storage sentinel through the real asynchronous queue and produces
+  recent environment-bound evidence for the release gate.
 
 ## Current Near-Term Priorities
 

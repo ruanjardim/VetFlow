@@ -79,6 +79,11 @@ Backup readiness now includes a read-only snapshot and isolated-restore
 verification workflow. It records only control totals and produces a recent
 evidence file for the release gate; the hosting provider still performs the
 actual export, import, and temporary-database cleanup.
+Runtime readiness now includes a synthetic two-phase probe. Preparation writes
+a private storage sentinel and dispatches one real asynchronous job; verification
+requires that job to read the same sentinel and write a matching result before
+producing evidence for the release gate. Successful verification removes the
+temporary probe artifacts and never creates clinic or clinical records.
 
 The first staging candidate is KingHost shared Linux hosting, using only
 fictitious data and a bounded authenticated cron bridge because shared hosting

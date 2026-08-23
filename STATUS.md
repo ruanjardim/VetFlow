@@ -86,6 +86,10 @@ The local working tree was clean before this documentation pass.
 - A read-only backup/restore drill that captures privacy-safe database control
   totals, rejects the live source as a restore target, and produces evidence
   consumable by the release-readiness gate.
+- A synthetic end-to-end runtime probe that verifies a persistent storage
+  sentinel through the real asynchronous queue, removes its temporary
+  artifacts after approval, and supplies environment-bound evidence to the
+  release-readiness gate.
 
 ## GitHub Scan Summary
 

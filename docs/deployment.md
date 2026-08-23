@@ -82,7 +82,12 @@ Laravel filesystem. In production:
 Run the automated runtime check after migrations and caches are ready:
 
 ```bash
-php artisan vetflow:release:check --backup-evidence=/secure/evidence/restore-evidence.json
+php artisan vetflow:runtime:probe
+php artisan vetflow:runtime:probe --verify --probe=<ULID> \
+  --evidence=/secure/evidence/runtime-evidence.json
+php artisan vetflow:release:check \
+  --runtime-evidence=/secure/evidence/runtime-evidence.json \
+  --backup-evidence=/secure/evidence/restore-evidence.json
 ```
 
 Follow the [backup restore drill](deployment/backup-restore-drill.md) and prefer
@@ -91,7 +96,10 @@ fallback after an operator has verified that a restorable database backup
 exists for the release. The command also checks the application
 key, production debug/HTTPS settings, database connectivity, pending
 migrations, logging, queue configuration, the `jobs` table when applicable,
-and a temporary write/delete probe on the configured storage disk.
+and a temporary write/delete probe on the configured storage disk. The
+[runtime operations probe](deployment/runtime-operations-probe.md) separately
+proves that a real asynchronous job can read the prepared persistent marker and
+write a verifiable result.
 
 After deployment:
 

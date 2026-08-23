@@ -69,11 +69,20 @@ supported process controls.
 
 ## 5. Automated Runtime Check
 
-After deployment, run:
+After deployment, prepare a synthetic probe, let the real worker or bounded
+cron process it, and generate operational evidence:
 
 ```bash
-php artisan vetflow:release:check --backup-evidence=/secure/evidence/restore-evidence.json
+php artisan vetflow:runtime:probe
+php artisan vetflow:runtime:probe --verify --probe=<ULID> \
+  --evidence=/secure/evidence/runtime-evidence.json
+php artisan vetflow:release:check \
+  --runtime-evidence=/secure/evidence/runtime-evidence.json \
+  --backup-evidence=/secure/evidence/restore-evidence.json
 ```
+
+See the [runtime operations probe](deployment/runtime-operations-probe.md) for
+the worker/cron and restart-boundary procedure.
 
 The command blocks a production release when it finds:
 
@@ -86,6 +95,8 @@ The command blocks a production release when it finds:
 - a synchronous or invalid queue connection;
 - a missing `jobs` table for the database queue;
 - a storage disk that cannot create and remove a temporary probe;
+- missing, stale, failed, or wrong-environment evidence that storage and the
+  asynchronous queue completed an end-to-end probe;
 - missing fresh evidence or operator confirmation for a restorable backup.
 
 Run the command without `--backup-confirmed` in local or testing environments.
@@ -135,6 +146,7 @@ Record:
 - deployed commit and release time;
 - migration and seeder result;
 - runtime-check output;
+- runtime-probe ULID and evidence location, without sentinel contents;
 - smoke-test operator and result;
 - backup location identifier, without credentials;
 - rollback or follow-up decision.

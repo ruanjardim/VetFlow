@@ -98,8 +98,12 @@ jobs; se isso mudar, crie um Worker/cron separado antes de depender de fila.
 4. Teste com uma clínica e dados fictícios: login, isolamento por clínica,
    importação CSV/XLSX, leitura de NF-e XML sem salvar documento real e um
    upload descartável.
-5. Rode, no Shell do Render após confirmar backup restaurável em ambiente pago,
-   `php artisan vetflow:release:check --backup-confirmed`.
+5. O Blueprint gratuito atual não possui worker, disco persistente nem Shell e,
+   portanto, é somente uma demonstração descartável: o gate de release deve
+   bloquear a ausência de evidência operacional. Quando um worker e storage
+   persistente forem adicionados, execute o
+   [probe operacional](../deployment/runtime-operations-probe.md) e forneça
+   `--runtime-evidence` junto da evidência de restauração.
 
 ### Bootstrap inicial sem Shell
 

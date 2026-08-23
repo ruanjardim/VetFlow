@@ -5,6 +5,11 @@ return [
         'evidence_max_age_days' => (int) env('VETFLOW_BACKUP_EVIDENCE_MAX_AGE_DAYS', 30),
     ],
 
+    'runtime_probe' => [
+        'disk' => env('VETFLOW_RUNTIME_PROBE_DISK'),
+        'evidence_max_age_minutes' => (int) env('VETFLOW_RUNTIME_PROBE_EVIDENCE_MAX_AGE_MINUTES', 180),
+    ],
+
     'queue' => [
         'mode' => env('VETFLOW_QUEUE_MODE', 'worker'),
 

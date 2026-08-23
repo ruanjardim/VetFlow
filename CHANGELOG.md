@@ -8,6 +8,9 @@ This project follows the spirit of Keep a Changelog, with one practical adjustme
 
 ### Added
 
+- End-to-end runtime operations probe that carries a synthetic persistent
+  storage sentinel through the real asynchronous queue, removes its temporary
+  artifacts after verification, and supplies fresh evidence to the release gate.
 - Read-only backup snapshot and isolated restore verification commands with
   privacy-safe control totals, JSON evidence, and an evidence-aware release gate.
 - Tenant-scoped administrative audit trail for collaborator access and clinic
