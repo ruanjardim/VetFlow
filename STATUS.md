@@ -109,6 +109,8 @@ The local working tree was clean before this documentation pass.
   attributed history of every revision.
 - A tenant-safe pilot-history page consolidates the append-only import,
   checklist, release-plan, and evidence-bound decision trails for each clinic.
+- The current pilot-preparation state is available as a print-friendly report
+  and a no-cache JSON download generated from the same readiness evidence.
 - A consolidated readiness panel requires coverage, zero detected quality
   pendencies, a complete checklist, and a release-plan revision before an
   explicit human approval; each decision is bound to a hashed evidence

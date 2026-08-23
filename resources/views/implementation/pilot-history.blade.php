@@ -9,9 +9,14 @@
       <p>Evidências e decisões preservadas da clínica {{ $clinic->trade_name }}.</p>
     </div>
 
-    <a class="button secondary" href="{{ route('implementation.index') }}">
-      Voltar à implantação
-    </a>
+    <div class="row-actions">
+      <a class="button secondary" href="{{ route('implementation.pilots.report', $clinic) }}">
+        Relatório atual
+      </a>
+      <a class="button secondary" href="{{ route('implementation.index') }}">
+        Voltar à implantação
+      </a>
+    </div>
   </header>
 
   <section class="panel">

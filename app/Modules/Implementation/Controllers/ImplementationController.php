@@ -21,6 +21,7 @@ use App\Modules\Implementation\Services\ImplementationPilotChecklistService;
 use App\Modules\Implementation\Services\ImplementationPilotHistoryService;
 use App\Modules\Implementation\Services\ImplementationPilotReadinessService;
 use App\Modules\Implementation\Services\ImplementationPilotReleaseService;
+use App\Modules\Implementation\Services\ImplementationPilotReportService;
 use App\Modules\Implementation\Services\ImplementationReadinessService;
 use App\Modules\Implementation\Services\ImplementationWorkflowService;
 use App\Modules\Implementation\Services\PatientCsvImportService;
@@ -35,6 +36,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Str;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ImplementationController extends Controller
@@ -291,6 +293,7 @@ class ImplementationController extends Controller
         private readonly ImplementationPilotHistoryService $pilotHistory,
         private readonly ImplementationPilotReleaseService $pilotRelease,
         private readonly ImplementationPilotReadinessService $pilotReadiness,
+        private readonly ImplementationPilotReportService $pilotReport,
         private readonly ImplementationFileAnalyzer $fileAnalyzer,
         private readonly ExcelTemplateService $excelTemplates
     ) {}
@@ -445,6 +448,39 @@ class ImplementationController extends Controller
             'clinic' => $accessibleClinic,
             'history' => $this->pilotHistory->forClinic($accessibleClinic),
         ]);
+    }
+
+    public function pilotReport(Request $request, int $clinic): View
+    {
+        $accessibleClinic = $this->accessibleClinics($request)->findOrFail($clinic);
+
+        return view('implementation.pilot-report', [
+            'report' => $this->pilotReport->forClinic($accessibleClinic),
+        ]);
+    }
+
+    public function pilotReportJson(Request $request, int $clinic): StreamedResponse
+    {
+        $accessibleClinic = $this->accessibleClinics($request)->findOrFail($clinic);
+        $report = $this->pilotReport->forClinic($accessibleClinic);
+        $fileName = 'vetflow-piloto-'
+            .Str::slug($accessibleClinic->trade_name)
+            .'-'.now()->format('Ymd-His').'.json';
+
+        return response()->streamDownload(
+            fn () => print json_encode(
+                $report,
+                JSON_PRETTY_PRINT
+                    | JSON_UNESCAPED_UNICODE
+                    | JSON_UNESCAPED_SLASHES
+                    | JSON_THROW_ON_ERROR
+            ),
+            $fileName,
+            [
+                'Content-Type' => 'application/json; charset=UTF-8',
+                'Cache-Control' => 'no-store, private',
+            ]
+        );
     }
 
     public function storePilotRelease(

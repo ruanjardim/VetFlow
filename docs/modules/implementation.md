@@ -73,6 +73,12 @@ revisions, and evidence-bound readiness decisions. Earlier events remain
 visible in their original attributed form, including a shortened evidence hash
 for operational correlation.
 
+The current preparation state can also be emitted as a print-friendly report
+or downloaded as a no-cache JSON artifact. Both formats are generated on
+demand from the same tenant-scoped coverage, quality, checklist, release, and
+readiness services, so they do not introduce a second source of truth. The
+report identifies its generation time and current evidence hash.
+
 The wizard state is kept in the authenticated session. Normalized rows are
 stored temporarily as a private JSON file on the `local` disk, separated by
 entity type, and removed when the wizard is reset or the import finishes.
@@ -225,6 +231,7 @@ tipo,descricao,pessoa_documento,valor,vencimento,status,forma_pagamento,data_pag
 | `ImplementationPilotChecklistService` | Builds the latest checklist state and appends auditable completion or reopening decisions. |
 | `ImplementationPilotHistoryService` | Reads the four clinic-scoped audit streams with independent pagination for the consolidated pilot history. |
 | `ImplementationPilotReleaseService` | Reads the latest pilot plan and appends sequential, attributed revisions. |
+| `ImplementationPilotReportService` | Builds the printable and JSON current-state report from the existing tenant-scoped readiness services. |
 | `ImplementationPilotReadinessService` | Consolidates four evidence gates, detects stale decisions, and appends evidence-bound human decisions. |
 | `ImplementationWorkflowService` | Manages session state and private temporary analysis files. |
 | `ImplementationImport` | Represents one successfully completed import summary. |

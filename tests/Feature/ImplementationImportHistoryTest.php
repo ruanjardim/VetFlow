@@ -330,6 +330,46 @@ class ImplementationImportHistoryTest extends TestCase
         $this->get(route('implementation.pilots.history', $otherClinic))->assertNotFound();
     }
 
+    public function test_pilot_report_is_printable_downloadable_and_tenant_safe(): void
+    {
+        $ownClinic = $this->clinic('Clínica Relatório', '12345678000214');
+        $otherClinic = $this->clinic('Clínica Relatório Oculto', '12345678000215');
+        $user = $this->authorizedUser($ownClinic);
+        $this->history($ownClinic, $user, 'relatorio-responsaveis.csv');
+        $this->history($otherClinic, $user, 'relatorio-oculto.csv');
+
+        $html = $this->actingAs($user)->get(route('implementation.pilots.report', $ownClinic));
+
+        $html
+            ->assertOk()
+            ->assertSee('Relatório do piloto')
+            ->assertSee('Clínica Relatório')
+            ->assertSee('1 registros via CSV')
+            ->assertSee('Baixar JSON')
+            ->assertDontSee('Clínica Relatório Oculto');
+
+        $json = $this->get(route('implementation.pilots.report-json', $ownClinic));
+
+        $json
+            ->assertOk()
+            ->assertHeader('content-type', 'application/json; charset=UTF-8');
+
+        $payload = json_decode($json->streamedContent(), true, flags: JSON_THROW_ON_ERROR);
+
+        $this->assertSame($ownClinic->id, $payload['clinic']['id']);
+        $this->assertSame('Clínica Relatório', $payload['clinic']['name']);
+        $this->assertSame(1, $payload['coverage']['completed_blocks']);
+        $this->assertSame('blocked', $payload['readiness']['status']['key']);
+        $this->assertSame(64, strlen($payload['readiness']['evidence_hash']));
+        $this->assertStringContainsString(
+            'attachment; filename=vetflow-piloto-clinica-relatorio-',
+            (string) $json->headers->get('content-disposition')
+        );
+
+        $this->get(route('implementation.pilots.report', $otherClinic))->assertNotFound();
+        $this->get(route('implementation.pilots.report-json', $otherClinic))->assertNotFound();
+    }
+
     public function test_pilot_checklist_preserves_decision_history_and_clinic_scope(): void
     {
         $ownClinic = $this->clinic('Clínica Piloto', '12345678000198');

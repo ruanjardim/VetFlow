@@ -35,6 +35,14 @@ Route::get('implementation/pilots/{clinic}/history', [ImplementationController::
     ->whereNumber('clinic')
     ->name('implementation.pilots.history');
 
+Route::get('implementation/pilots/{clinic}/report', [ImplementationController::class, 'pilotReport'])
+    ->whereNumber('clinic')
+    ->name('implementation.pilots.report');
+
+Route::get('implementation/pilots/{clinic}/report.json', [ImplementationController::class, 'pilotReportJson'])
+    ->whereNumber('clinic')
+    ->name('implementation.pilots.report-json');
+
 Route::post('implementation/tutors/upload', [ImplementationController::class, 'uploadTutors'])
     ->name('implementation.tutors.upload');
 

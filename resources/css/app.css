@@ -2446,6 +2446,17 @@ textarea {
   td {
     padding: 8px 6px;
   }
+
+  body:has(.pilot-report) .user-bar,
+  body:has(.pilot-report) .pilot-report-actions,
+  body:has(.pilot-report) .alert {
+    display: none !important;
+  }
+
+  .pilot-report .panel {
+    break-inside: avoid;
+    margin-bottom: 14px;
+  }
 }
 
 @media (max-width: 900px) {

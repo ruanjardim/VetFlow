@@ -112,6 +112,13 @@
                 >
                   Ver histórico do piloto
                 </a>
+
+                <a
+                  class="button secondary"
+                  href="{{ route('implementation.pilots.report', $readiness['clinic_id']) }}"
+                >
+                  Emitir relatório
+                </a>
               </div>
 
               <form
