@@ -103,6 +103,7 @@ Route::middleware(['auth', EnsureUserIsActive::class])->group(function () {
         'commissions.manage' => app_path('Modules/Commissions/Routes/web.php'),
         'users.manage' => app_path('Modules/Access/Routes/web.php'),
         'implementation.manage' => app_path('Modules/Implementation/Routes/web.php'),
+        'operations.readiness' => app_path('Modules/Operations/Routes/web.php'),
         'financial.manage' => app_path('Modules/Financial/Routes/web.php'),
         'hospitalizations.manage' => app_path('Modules/Hospitalizations/Routes/web.php'),
         'inventory.manage' => app_path('Modules/Inventory/Routes/web.php'),

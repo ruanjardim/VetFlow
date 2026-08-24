@@ -41,6 +41,12 @@ class PermissionCatalog
                 'description' => 'Permite acessar o roteiro de implantacao e migracao de dados da clinica.',
             ],
             [
+                'slug' => 'operations.readiness',
+                'name' => 'Consultar prontidao operacional',
+                'group' => 'Administrativo',
+                'description' => 'Permite consultar identidade da release e sinais tecnicos seguros do ambiente.',
+            ],
+            [
                 'slug' => 'users.manage',
                 'name' => 'Gerenciar usuarios e acessos',
                 'group' => 'Administrativo',

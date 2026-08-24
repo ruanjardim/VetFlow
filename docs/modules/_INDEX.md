@@ -19,6 +19,7 @@ This index maps the current code modules and the documentation that should event
 | Inventory | Stock movement and lot/expiration control | Documented in [Inventory](inventory.md) |
 | Hospitalizations | Patient admission, append-only evolution diary, and discharge record | Documented in [Hospitalizations](hospitalizations.md) |
 | MedicalRecords | Clinical records linked to appointments | Documented in [Medical Records](medical-records.md) |
+| Operations | Protected release and environment readiness console | Documented in [Operations](operations.md) |
 | ExamResults | Protected result lifecycle for structured exam requests | Documented in [Exam Results](exam-results.md) |
 | Prescriptions | Structured clinical prescriptions with protected lifecycle | Documented in [Prescriptions](prescriptions.md) |
 | Vaccinations | Patient vaccination schedules and applications | Documented in [Vaccinations](vaccinations.md) |

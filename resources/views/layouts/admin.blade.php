@@ -124,8 +124,8 @@
           </details>
         @endcanany
 
-        @canany(['clinics.manage', 'clinic-branding.manage', 'users.manage', 'implementation.manage', 'audit.manage'])
-          <details class="nav-group" @if(request()->routeIs('clinics.*', 'clinic-branding.*', 'access-users.*', 'implementation.*', 'audit-events.*')) open @endif>
+        @canany(['clinics.manage', 'clinic-branding.manage', 'users.manage', 'implementation.manage', 'audit.manage', 'operations.readiness'])
+          <details class="nav-group" @if(request()->routeIs('clinics.*', 'clinic-branding.*', 'access-users.*', 'implementation.*', 'audit-events.*', 'operations.*')) open @endif>
             <summary><span>Administração</span><span class="nav-chevron">⌄</span></summary>
             <div class="nav-submenu">
               @if(auth()->user()?->clinic_id === null)
@@ -139,6 +139,7 @@
               @can('users.manage')<a class="{{ request()->routeIs('access-users.*') ? 'is-active' : '' }}" href="{{ route('access-users.index') }}">Usuários e acessos</a>@endcan
               @can('audit.manage')<a class="{{ request()->routeIs('audit-events.*') ? 'is-active' : '' }}" href="{{ route('audit-events.index') }}">Auditoria</a>@endcan
               @can('implementation.manage')<a class="{{ request()->routeIs('implementation.*') ? 'is-active' : '' }}" href="{{ route('implementation.index') }}">Implantação</a>@endcan
+              @can('operations.readiness')<a class="{{ request()->routeIs('operations.*') ? 'is-active' : '' }}" href="{{ route('operations.index') }}">Central de operações</a>@endcan
             </div>
           </details>
         @endcanany
