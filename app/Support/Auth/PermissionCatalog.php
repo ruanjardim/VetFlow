@@ -47,6 +47,12 @@ class PermissionCatalog
                 'description' => 'Permite consultar identidade da release e sinais tecnicos seguros do ambiente.',
             ],
             [
+                'slug' => 'operations.execute',
+                'name' => 'Executar controles operacionais',
+                'group' => 'Administrativo',
+                'description' => 'Permite registrar decisões, smoke tests e evidências operacionais da release.',
+            ],
+            [
                 'slug' => 'users.manage',
                 'name' => 'Gerenciar usuarios e acessos',
                 'group' => 'Administrativo',

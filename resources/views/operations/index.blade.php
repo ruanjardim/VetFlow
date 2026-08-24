@@ -14,6 +14,12 @@
     </div>
   </section>
 
+  @unless($canExecuteOperations)
+    <div class="alert warning">
+      Esta sessão possui acesso de consulta. A execução de probes, importação de evidências e decisões exige a permissão operacional de execução.
+    </div>
+  @endunless
+
   <section class="panel implementation-pilot-readiness">
     <div class="panel-body">
       <div class="implementation-readiness-header">
@@ -57,7 +63,7 @@
         @csrf
         <div class="field">
           <label for="operations-decision">Decisão</label>
-          <select id="operations-decision" name="decision" required @disabled(!$releaseAvailable)>
+          <select id="operations-decision" name="decision" required @disabled(!$releaseAvailable || !$canExecuteOperations)>
             <option value="held" @selected(old('decision') === 'held')>Manter release em espera</option>
             <option value="approved" @selected(old('decision') === 'approved') @disabled(!$state['gates_passed'])>
               Aprovar release
@@ -72,11 +78,11 @@
             maxlength="1000"
             value="{{ old('note') }}"
             placeholder="Obrigatória ao manter a release em espera"
-            @disabled(!$releaseAvailable)
+            @disabled(!$releaseAvailable || !$canExecuteOperations)
           >
         </div>
         <div class="field implementation-portfolio-filter-actions">
-          <button type="submit" @disabled(!$releaseAvailable)>Registrar decisão</button>
+          <button type="submit" @disabled(!$releaseAvailable || !$canExecuteOperations)>Registrar decisão</button>
         </div>
       </form>
     </div>
@@ -122,13 +128,79 @@
     <div class="panel-body">
       <div class="implementation-readiness-header">
         <div>
+          <span class="eyebrow">Restauração isolada</span>
+          <h3>Registrar evidência JSON</h3>
+          <p class="muted">Importe somente o arquivo produzido após conferir um backup em banco temporário. A restauração nunca é executada nesta tela.</p>
+        </div>
+      </div>
+
+      <form
+        method="POST"
+        action="{{ route('operations.backup-evidence.import') }}"
+        enctype="multipart/form-data"
+        class="form-grid compact-filter-grid"
+      >
+        @csrf
+        <div class="field">
+          <label for="operations-backup-evidence">Evidência de restauração (.json)</label>
+          <input
+            id="operations-backup-evidence"
+            type="file"
+            name="evidence"
+            accept="application/json,.json"
+            required
+            @disabled(!$backupEvidenceHistory['available'] || !$canExecuteOperations)
+          >
+          <small>Máximo de 512 KB. Conteúdo excedente é descartado antes do armazenamento privado.</small>
+        </div>
+        <div class="field implementation-portfolio-filter-actions">
+          <button type="submit" @disabled(!$backupEvidenceHistory['available'] || !$canExecuteOperations)>
+            Registrar evidência
+          </button>
+        </div>
+      </form>
+
+      @if($errors->has('backup_evidence'))
+        <div class="alert warning">{{ $errors->first('backup_evidence') }}</div>
+      @endif
+      @error('evidence')<div class="alert warning">{{ $message }}</div>@enderror
+
+      @if($backupEvidenceHistory['items'] !== [])
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Backup</th>
+                <th>Status</th>
+                <th>Verificação</th>
+                <th>Responsável</th>
+                <th>Registro</th>
+              </tr>
+            </thead>
+            <tbody>
+              @foreach($backupEvidenceHistory['items'] as $item)
+                <tr>
+                  <td><strong>{{ $item['identifier'] }}</strong><br><small>{{ $item['checks'] }} verificações</small></td>
+                  <td><span class="badge {{ $item['status_tone'] }}">{{ $item['status_label'] }}</span></td>
+                  <td>{{ $item['verified_at']->format('d/m/Y H:i') }}</td>
+                  <td>{{ $item['actor'] ?? 'Operador removido' }}</td>
+                  <td>{{ $item['occurred_at']->format('d/m/Y H:i') }}</td>
+                </tr>
+              @endforeach
+            </tbody>
+          </table>
+        </div>
+      @endif
+
+      <div class="implementation-readiness-header">
+        <div>
           <span class="eyebrow">Execução assistida</span>
           <h3>Probe operacional</h3>
           <p class="muted">O teste cria apenas artefatos sintéticos, passa pela fila real e mantém o histórico por clínica e release.</p>
         </div>
         <form method="POST" action="{{ route('operations.runtime-probes.prepare') }}">
           @csrf
-          <button type="submit" @disabled(!$runtimeProbeRuns['available'] || !$runtimeProbeRuns['can_prepare'])>
+          <button type="submit" @disabled(!$runtimeProbeRuns['available'] || !$runtimeProbeRuns['can_prepare'] || !$canExecuteOperations)>
             Preparar novo probe
           </button>
         </form>
@@ -160,11 +232,13 @@
                   <td>{{ $run['actor'] ?? 'Operador removido' }}</td>
                   <td>{{ $run['occurred_at']->format('d/m/Y H:i') }}</td>
                   <td>
-                    @if($run['can_verify'])
+                    @if($run['can_verify'] && $canExecuteOperations)
                       <form method="POST" action="{{ route('operations.runtime-probes.verify', $run['probe_id']) }}">
                         @csrf
                         <button type="submit" class="secondary">Verificar resultado</button>
                       </form>
+                    @elseif($run['can_verify'])
+                      <span class="muted">Somente leitura</span>
                     @else
                       <span class="muted">Concluído</span>
                     @endif
@@ -297,11 +371,11 @@
                   maxlength="500"
                   value="{{ $item['note'] }}"
                   placeholder="Contexto opcional da validação"
-                  @disabled(!$smokeChecklist['available'])
+                  @disabled(!$smokeChecklist['available'] || !$canExecuteOperations)
                 >
               </div>
               <div class="field implementation-portfolio-filter-actions">
-                <button type="submit" class="{{ $item['completed'] ? 'secondary' : '' }}" @disabled(!$smokeChecklist['available'])>
+                <button type="submit" class="{{ $item['completed'] ? 'secondary' : '' }}" @disabled(!$smokeChecklist['available'] || !$canExecuteOperations)>
                   {{ $item['completed'] ? 'Reabrir item' : 'Marcar concluído' }}
                 </button>
               </div>

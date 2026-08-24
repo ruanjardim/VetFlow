@@ -3,8 +3,10 @@
 namespace App\Modules\Operations\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Modules\Operations\Requests\ImportOperationsBackupEvidenceRequest;
 use App\Modules\Operations\Requests\StoreOperationsReleaseDecisionRequest;
 use App\Modules\Operations\Requests\StoreOperationsSmokeCheckRequest;
+use App\Modules\Operations\Services\OperationsBackupEvidenceService;
 use App\Modules\Operations\Services\OperationsReleaseDecisionService;
 use App\Modules\Operations\Services\OperationsRuntimeProbeRunService;
 use App\Modules\Operations\Services\OperationsSmokeChecklistService;
@@ -20,6 +22,7 @@ class OperationsController extends Controller
         private readonly OperationsSmokeChecklistService $smokeChecklist,
         private readonly OperationsReleaseDecisionService $releaseDecision,
         private readonly OperationsRuntimeProbeRunService $runtimeProbeRuns,
+        private readonly OperationsBackupEvidenceService $backupEvidence,
     ) {}
 
     public function index(): View
@@ -38,6 +41,8 @@ class OperationsController extends Controller
             'evidence' => $state['evidence'],
             'smokeChecklist' => $state['smoke_checklist'],
             'runtimeProbeRuns' => $this->runtimeProbeRuns->summary(request()->user()),
+            'backupEvidenceHistory' => $this->backupEvidence->summary(request()->user()),
+            'canExecuteOperations' => request()->user()->hasPermission('operations.execute'),
         ]);
     }
 
@@ -108,5 +113,16 @@ class OperationsController extends Controller
         }
 
         return back()->with('success', 'Probe operacional aprovado e evidência privada registrada.');
+    }
+
+    public function importBackupEvidence(ImportOperationsBackupEvidenceRequest $request): RedirectResponse
+    {
+        try {
+            $this->backupEvidence->import($request->user(), $request->file('evidence'));
+        } catch (DomainException $exception) {
+            return back()->withErrors(['backup_evidence' => $exception->getMessage()]);
+        }
+
+        return back()->with('success', 'Evidência de restauração registrada no histórico operacional.');
     }
 }

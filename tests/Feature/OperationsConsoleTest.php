@@ -10,6 +10,7 @@ use App\Modules\Operations\Models\OperationsReleaseDecision;
 use App\Modules\Operations\Models\OperationsRuntimeProbeEvent;
 use App\Support\Operations\RuntimeOperationsProbeService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Storage;
@@ -108,8 +109,8 @@ class OperationsConsoleTest extends TestCase
             'cnpj' => '00000000000902',
             'active' => true,
         ]);
-        $operatorA = $this->userWithPermission('operations.readiness', $clinicA);
-        $operatorB = $this->userWithPermission('operations.readiness', $clinicB);
+        $operatorA = $this->userWithPermission(['operations.readiness', 'operations.execute'], $clinicA);
+        $operatorB = $this->userWithPermission(['operations.readiness', 'operations.execute'], $clinicB);
 
         $this->actingAs($operatorA)->post(
             route('operations.smoke-checks.store', 'health_endpoint'),
@@ -145,7 +146,7 @@ class OperationsConsoleTest extends TestCase
             'logging.default' => 'single',
             'queue.default' => 'sync',
         ]);
-        $operator = $this->userWithPermission('operations.readiness');
+        $operator = $this->userWithPermission(['operations.readiness', 'operations.execute']);
         $checkKeys = [
             'health_endpoint',
             'release_identity',
@@ -211,7 +212,7 @@ class OperationsConsoleTest extends TestCase
             'queue.default' => 'database',
             'filesystems.default' => 'local',
         ]);
-        $operator = $this->userWithPermission('operations.readiness');
+        $operator = $this->userWithPermission(['operations.readiness', 'operations.execute']);
 
         try {
             $this->actingAs($operator)
@@ -281,8 +282,8 @@ class OperationsConsoleTest extends TestCase
             'cnpj' => '00000000000912',
             'active' => true,
         ]);
-        $operatorA = $this->userWithPermission('operations.readiness', $clinicA);
-        $operatorB = $this->userWithPermission('operations.readiness', $clinicB);
+        $operatorA = $this->userWithPermission(['operations.readiness', 'operations.execute'], $clinicA);
+        $operatorB = $this->userWithPermission(['operations.readiness', 'operations.execute'], $clinicB);
 
         $this->actingAs($operatorA)
             ->post(route('operations.runtime-probes.prepare'))
@@ -308,7 +309,7 @@ class OperationsConsoleTest extends TestCase
             'operations.release.sha' => str_repeat('a', 40),
             'filesystems.default' => 'local',
         ]);
-        $operator = $this->userWithPermission('operations.readiness');
+        $operator = $this->userWithPermission(['operations.readiness', 'operations.execute']);
 
         $this->actingAs($operator)
             ->post(route('operations.decision.store'), ['decision' => 'approved'])
@@ -318,13 +319,102 @@ class OperationsConsoleTest extends TestCase
         $this->assertDatabaseCount('operations_release_decisions', 0);
     }
 
-    private function userWithPermission(string $slug, ?Clinic $clinic = null): User
+    public function test_readiness_only_operator_cannot_execute_operational_actions(): void
+    {
+        config(['operations.release.sha' => str_repeat('b', 40)]);
+        $operator = $this->userWithPermission('operations.readiness');
+
+        $this->actingAs($operator)
+            ->get(route('operations.index'))
+            ->assertOk()
+            ->assertSee('Esta sessão possui acesso de consulta.');
+
+        $this->post(route('operations.runtime-probes.prepare'))->assertForbidden();
+        $this->post(route('operations.decision.store'), ['decision' => 'held'])->assertForbidden();
+    }
+
+    public function test_operator_can_import_sanitized_backup_evidence_without_exposing_private_hashes(): void
+    {
+        $directory = storage_path('framework/testing/operations-backup-'.Str::uuid());
+        $sha = str_repeat('9', 40);
+        config([
+            'operations.release.sha' => $sha,
+            'operations.backup.evidence_directory' => $directory,
+        ]);
+        $operator = $this->userWithPermission(['operations.readiness', 'operations.execute']);
+        $payload = json_encode($this->backupEvidence('pilot-restore-20260824'), JSON_THROW_ON_ERROR);
+
+        try {
+            $this->actingAs($operator)
+                ->post(route('operations.backup-evidence.import'), [
+                    'evidence' => UploadedFile::fake()->createWithContent('restore-evidence.json', $payload),
+                ])
+                ->assertRedirect()
+                ->assertSessionHas('success');
+
+            $this->assertDatabaseHas('operations_backup_evidence_events', [
+                'clinic_id' => $operator->clinic_id,
+                'environment' => app()->environment(),
+                'release_sha' => $sha,
+                'backup_identifier' => 'pilot-restore-20260824',
+                'status' => 'passed',
+                'checks_count' => 2,
+            ]);
+            $files = File::files($directory);
+            $this->assertCount(1, $files);
+            $stored = json_decode(File::get($files[0]), true, flags: JSON_THROW_ON_ERROR);
+            $this->assertArrayNotHasKey('unexpected_secret', $stored);
+            $this->assertSame(['name', 'passed'], array_keys($stored['checks'][0]));
+
+            $this->get(route('operations.index'))
+                ->assertOk()
+                ->assertSee('pilot-restore-20260824')
+                ->assertSee('Aprovada')
+                ->assertDontSee(str_repeat('a', 64))
+                ->assertDontSee(str_repeat('b', 64));
+
+            $this->post(route('operations.backup-evidence.import'), [
+                'evidence' => UploadedFile::fake()->createWithContent('restore-evidence.json', $payload),
+            ])->assertRedirect()->assertSessionHasErrors('backup_evidence');
+            $this->assertDatabaseCount('operations_backup_evidence_events', 1);
+        } finally {
+            File::deleteDirectory($directory);
+        }
+    }
+
+    public function test_invalid_backup_evidence_is_rejected_without_persistence(): void
+    {
+        $directory = storage_path('framework/testing/operations-backup-invalid-'.Str::uuid());
+        config([
+            'operations.release.sha' => str_repeat('8', 40),
+            'operations.backup.evidence_directory' => $directory,
+        ]);
+        $operator = $this->userWithPermission(['operations.readiness', 'operations.execute']);
+
+        $this->actingAs($operator)
+            ->post(route('operations.backup-evidence.import'), [
+                'evidence' => UploadedFile::fake()->createWithContent(
+                    'restore-evidence.json',
+                    json_encode(['unexpected_secret' => 'nao armazenar'], JSON_THROW_ON_ERROR),
+                ),
+            ])
+            ->assertRedirect()
+            ->assertSessionHasErrors('backup_evidence');
+
+        $this->assertDatabaseCount('operations_backup_evidence_events', 0);
+        $this->assertDirectoryDoesNotExist($directory);
+    }
+
+    /** @param string|array<int, string> $slugs */
+    private function userWithPermission(string|array $slugs, ?Clinic $clinic = null): User
     {
         $user = User::factory()->create([
             'active' => true,
             'clinic_id' => $clinic?->id,
         ]);
-        $permission = Permission::query()->where('slug', $slug)->firstOrFail();
+        $slugs = (array) $slugs;
+        $permissions = Permission::query()->whereIn('slug', $slugs)->get();
+        $this->assertCount(count($slugs), $permissions);
         $role = Role::query()->create([
             'name' => 'Operations test',
             'slug' => 'operations-test-'.Str::lower(Str::random(8)),
@@ -332,7 +422,7 @@ class OperationsConsoleTest extends TestCase
             'system' => false,
             'active' => true,
         ]);
-        $role->permissions()->attach($permission->id);
+        $role->permissions()->attach($permissions->pluck('id')->all());
         DB::table('user_roles')->insert([
             'ulid' => (string) Str::ulid(),
             'user_id' => $user->id,
@@ -342,5 +432,26 @@ class OperationsConsoleTest extends TestCase
         ]);
 
         return $user;
+    }
+
+    /** @return array<string, mixed> */
+    private function backupEvidence(string $identifier): array
+    {
+        return [
+            'version' => 1,
+            'backup_identifier' => $identifier,
+            'verified_at' => now()->subMinute()->utc()->toIso8601String(),
+            'status' => 'passed',
+            'manifest_sha256' => str_repeat('a', 64),
+            'restore' => [
+                'driver' => 'pgsql',
+                'fingerprint' => str_repeat('b', 64),
+            ],
+            'checks' => [
+                ['name' => 'Historico de migrations', 'passed' => true, 'expected' => ['secret' => 'discard']],
+                ['name' => 'Tabela users', 'passed' => true, 'actual' => ['secret' => 'discard']],
+            ],
+            'unexpected_secret' => 'discard',
+        ];
     }
 }

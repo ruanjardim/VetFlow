@@ -5,7 +5,8 @@ surface for the deployed release identity and its release controls.
 
 ## Boundaries
 
-- Protected by `operations.readiness`.
+- Read access is protected by `operations.readiness`; every state-changing
+  action additionally requires `operations.execute`.
 - Exposes only the short Git SHA, environment name, queue mode/connection, and
   default storage disk.
 - Does not expose credentials, connection strings, environment variables, file
@@ -37,6 +38,20 @@ release SHA. The interface keeps only the probe identifier, safe runtime
 context, actor, timestamp, and status; sentinel hashes and evidence paths stay
 private. A successful verification writes the same evidence format used by
 the CLI release gate, then removes the temporary synthetic artifacts.
+
+## Restore Evidence Intake
+
+The actual export, restore, and verification remain outside the web process
+and must target an isolated database. An authorized operator may import the
+resulting JSON evidence into the Operations Center. Uploads are limited to
+512 KB, structurally validated, freshness checked, reduced to an allowlisted
+schema, and written only to the configured private directory. Unexpected keys,
+control-total payloads, paths, and arbitrary uploaded content are discarded.
+
+Each accepted import appends an `operations_backup_evidence_events` record
+bound to clinic, environment, and release SHA. The database stores only the
+safe identifier, status, timestamps, check count, actor, and a SHA-256 digest;
+the UI never exposes manifest or restored-connection fingerprints.
 
 ## Smoke Checklist
 

@@ -131,6 +131,10 @@ The local working tree was clean before this documentation pass.
   Operations Center. Every transition is append-only and scoped by clinic,
   environment, and release SHA, while evidence paths and sentinel hashes remain
   private.
+- Restore evidence produced against an isolated database can be imported from
+  the Operations Center through a bounded, sanitized JSON intake. Consultation
+  and execution now use separate permissions, and imports keep an append-only
+  tenant/release audit record without exposing infrastructure fingerprints.
 
 ## GitHub Scan Summary
 

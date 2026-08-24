@@ -96,6 +96,11 @@ Administrators can also prepare and verify the synthetic runtime probe from
 that interface. Its execution history is append-only and bound to the current
 clinic, environment, and release SHA; the reusable runtime service still owns
 evidence generation and cleanup, so the web and CLI paths cannot drift.
+Restore evidence generated outside the live database can now be imported by an
+operator with the separate execution permission. The intake validates age and
+shape, removes every field outside a strict allowlist, stores the sanitized
+evidence privately, and appends only safe metadata to the tenant/release audit
+history. The interface never performs the restore itself.
 The Implementation assistant now derives onboarding coverage per clinic from
 its append-only successful import summaries. Completed blocks also receive a
 read-only quality review based on six documented, tenant-scoped checks. Blocks

@@ -2,10 +2,12 @@
 
 namespace App\Support\Operations;
 
+use Carbon\CarbonImmutable;
 use DateTimeInterface;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use InvalidArgumentException;
+use Throwable;
 
 class DatabaseRestoreVerificationService
 {
@@ -61,6 +63,7 @@ class DatabaseRestoreVerificationService
         'operations_smoke_checks',
         'operations_release_decisions',
         'operations_runtime_probe_events',
+        'operations_backup_evidence_events',
         'global_products',
         'global_product_sources',
         'global_product_images',
@@ -155,6 +158,94 @@ class DatabaseRestoreVerificationService
             ],
             'checks' => $checks,
         ];
+    }
+
+    /** @param array<string, mixed> $evidence
+     * @return array<string, mixed>
+     */
+    public function normalizeEvidence(array $evidence): array
+    {
+        try {
+            $identifier = trim((string) ($evidence['backup_identifier'] ?? ''));
+            $verifiedAt = CarbonImmutable::parse((string) ($evidence['verified_at'] ?? ''));
+            $status = (string) ($evidence['status'] ?? '');
+            $manifestSha = (string) ($evidence['manifest_sha256'] ?? '');
+            $restoreDriver = trim((string) ($evidence['restore']['driver'] ?? 'unknown'));
+            $restoreFingerprint = (string) ($evidence['restore']['fingerprint'] ?? '');
+            $checks = collect($evidence['checks'] ?? []);
+            $valid = ($evidence['version'] ?? null) === self::MANIFEST_VERSION
+                && preg_match('/^[A-Za-z0-9][A-Za-z0-9._-]{2,119}$/', $identifier) === 1
+                && in_array($status, ['passed', 'failed'], true)
+                && preg_match('/^[a-f0-9]{64}$/', $manifestSha) === 1
+                && preg_match('/^[a-z0-9_-]{2,40}$/i', $restoreDriver) === 1
+                && preg_match('/^[a-f0-9]{64}$/', $restoreFingerprint) === 1
+                && $checks->isNotEmpty()
+                && $checks->count() <= 200
+                && $checks->every(fn ($check): bool => is_array($check)
+                    && is_string($check['name'] ?? null)
+                    && mb_strlen(trim((string) $check['name'])) >= 2
+                    && mb_strlen(trim((string) $check['name'])) <= 160
+                    && is_bool($check['passed'] ?? null));
+
+            if (! $valid) {
+                throw new InvalidArgumentException('Evidência de restauração inválida ou incompatível.');
+            }
+
+            return [
+                'version' => self::MANIFEST_VERSION,
+                'backup_identifier' => $identifier,
+                'verified_at' => $verifiedAt->utc()->toIso8601String(),
+                'status' => $status,
+                'manifest_sha256' => $manifestSha,
+                'restore' => [
+                    'driver' => $restoreDriver,
+                    'fingerprint' => $restoreFingerprint,
+                ],
+                'checks' => $checks->map(fn (array $check): array => [
+                    'name' => trim((string) $check['name']),
+                    'passed' => $check['passed'],
+                ])->values()->all(),
+            ];
+        } catch (InvalidArgumentException $exception) {
+            throw $exception;
+        } catch (Throwable $exception) {
+            throw new InvalidArgumentException(
+                'Evidência de restauração inválida ou incompatível.',
+                previous: $exception,
+            );
+        }
+    }
+
+    /** @param array<string, mixed> $evidence
+     * @return array{bool, string}
+     */
+    public function assessEvidence(array $evidence): array
+    {
+        try {
+            $normalized = $this->normalizeEvidence($evidence);
+            $maxAgeDays = max(1, (int) config('operations.backup.evidence_max_age_days', 30));
+            $verifiedAt = CarbonImmutable::parse($normalized['verified_at']);
+            $fresh = $verifiedAt->betweenIncluded(now()->subDays($maxAgeDays), now()->addMinutes(5));
+            $passed = $normalized['status'] === 'passed'
+                && collect($normalized['checks'])->every('passed')
+                && $fresh;
+
+            return $passed
+                ? [true, 'Restauracao isolada comprovada pela evidencia '.$normalized['backup_identifier'].'.']
+                : [false, "Evidencia invalida, reprovada ou com mais de {$maxAgeDays} dias."];
+        } catch (Throwable) {
+            return [false, 'Evidencia de restauracao invalida ou ilegivel.'];
+        }
+    }
+
+    /** @param array<string, mixed> $evidence */
+    public function evidenceIsFresh(array $evidence): bool
+    {
+        $normalized = $this->normalizeEvidence($evidence);
+        $maxAgeDays = max(1, (int) config('operations.backup.evidence_max_age_days', 30));
+        $verifiedAt = CarbonImmutable::parse($normalized['verified_at']);
+
+        return $verifiedAt->betweenIncluded(now()->subDays($maxAgeDays), now()->addMinutes(5));
     }
 
     /** @return array{count: int, digest: string, latest: string|null} */

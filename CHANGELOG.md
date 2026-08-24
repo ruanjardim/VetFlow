@@ -8,6 +8,9 @@ This project follows the spirit of Keep a Changelog, with one practical adjustme
 
 ### Added
 
+- Sanitized restore-evidence intake in the Operations Center, with a 512 KB
+  JSON boundary, freshness/shape validation, append-only tenant/release history,
+  duplicate detection, and a separate execution permission.
 - Interface-assisted runtime probe preparation and verification with an
   append-only, clinic/release-scoped execution history and private evidence
   output shared with the CLI release gate.

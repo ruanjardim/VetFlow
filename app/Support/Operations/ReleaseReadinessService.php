@@ -2,7 +2,6 @@
 
 namespace App\Support\Operations;
 
-use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Schema;
@@ -15,6 +14,7 @@ class ReleaseReadinessService
     public function __construct(
         private readonly ReleaseIdentityService $releaseIdentity,
         private readonly RuntimeOperationsProbeService $runtimeProbe,
+        private readonly DatabaseRestoreVerificationService $restoreVerification,
     ) {}
 
     /**
@@ -259,22 +259,8 @@ class ReleaseReadinessService
             }
 
             $evidence = json_decode(File::get($evidencePath), true, flags: JSON_THROW_ON_ERROR);
-            $verifiedAt = CarbonImmutable::parse((string) ($evidence['verified_at'] ?? ''));
-            $maxAgeDays = max(1, (int) config('operations.backup.evidence_max_age_days', 30));
-            $fresh = $verifiedAt->betweenIncluded(now()->subDays($maxAgeDays), now()->addMinutes(5));
-            $checks = collect($evidence['checks'] ?? []);
-            $valid = ($evidence['version'] ?? null) === 1
-                && ($evidence['status'] ?? null) === 'passed'
-                && is_string($evidence['backup_identifier'] ?? null)
-                && preg_match('/^[a-f0-9]{64}$/', (string) ($evidence['manifest_sha256'] ?? '')) === 1
-                && preg_match('/^[a-f0-9]{64}$/', (string) ($evidence['restore']['fingerprint'] ?? '')) === 1
-                && $checks->isNotEmpty()
-                && $checks->every(fn ($check): bool => is_array($check) && ($check['passed'] ?? false) === true)
-                && $fresh;
 
-            return $valid
-                ? [true, 'Restauracao isolada comprovada pela evidencia '.$evidence['backup_identifier'].'.']
-                : [false, "Evidencia invalida, reprovada ou com mais de {$maxAgeDays} dias."];
+            return $this->restoreVerification->assessEvidence($evidence);
         } catch (Throwable) {
             return [false, 'Evidencia de restauracao invalida ou ilegivel.'];
         }

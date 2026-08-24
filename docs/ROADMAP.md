@@ -99,6 +99,9 @@ The product should feel different from a generic CRUD system by connecting the c
 - Runtime probe preparation and verification are available through the
   Operations Center with tenant-safe, append-only execution history and the
   same private evidence format consumed by the CLI gate.
+- Restore evidence can be registered through a bounded and sanitized JSON
+  intake, while operational execution is separated from read-only readiness
+  access and the actual restore remains confined to an isolated database.
 
 ## Current Near-Term Priorities
 
