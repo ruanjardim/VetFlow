@@ -8,6 +8,9 @@ This project follows the spirit of Keep a Changelog, with one practical adjustme
 
 ### Added
 
+- Evidence-validity indicators for backup and runtime probes, including safe
+  expiration deadlines, near-expiry warnings, invalid future-date detection,
+  and the same privacy-safe metadata in the readiness JSON report.
 - Permission-aware guided release plan in the Operations Center, translating
   each current gate into a safe next step, suggested responsibility, and direct
   interface anchor without executing changes or automating human approval.

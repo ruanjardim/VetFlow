@@ -11,6 +11,7 @@ use App\Modules\Operations\Models\OperationsReleaseDecision;
 use App\Modules\Operations\Models\OperationsRuntimeProbeEvent;
 use App\Modules\Operations\Models\OperationsSmokeCheck;
 use App\Support\Operations\RuntimeOperationsProbeService;
+use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
@@ -502,6 +503,69 @@ class OperationsConsoleTest extends TestCase
             $this->assertDatabaseCount('operations_smoke_checks', 0);
             $this->assertDatabaseCount('operations_release_decisions', 0);
         } finally {
+            File::deleteDirectory($directory);
+        }
+    }
+
+    public function test_console_and_report_explain_evidence_expiration_without_private_data(): void
+    {
+        Storage::fake('local');
+        CarbonImmutable::setTestNow('2026-08-24 12:00:00 UTC');
+        $directory = storage_path('framework/testing/operations-validity-'.Str::uuid());
+        config([
+            'operations.release.sha' => str_repeat('4', 40),
+            'operations.backup.evidence_directory' => $directory.'/backup',
+            'operations.backup.evidence_max_age_days' => 30,
+            'operations.runtime_probe.evidence_directory' => $directory.'/runtime',
+            'operations.runtime_probe.evidence_max_age_minutes' => 180,
+            'filesystems.default' => 'local',
+        ]);
+        File::ensureDirectoryExists($directory.'/backup');
+        File::ensureDirectoryExists($directory.'/runtime');
+        File::put($directory.'/backup/backup-validity-evidence.json', json_encode([
+            'backup_identifier' => 'backup-validity',
+            'status' => 'passed',
+            'verified_at' => now()->subDays(2)->toIso8601String(),
+            'checks' => [['name' => 'tables', 'passed' => true]],
+        ], JSON_THROW_ON_ERROR));
+        $runtimePath = $directory.'/runtime/runtime-validity-evidence.json';
+        File::put($runtimePath, json_encode([
+            'probe_id' => '01K3PROBE00000000000000003',
+            'status' => 'passed',
+            'verified_at' => now()->subMinutes(170)->toIso8601String(),
+            'checks' => [['name' => 'queue', 'passed' => true]],
+        ], JSON_THROW_ON_ERROR));
+        $operator = $this->userWithPermission('operations.readiness');
+
+        try {
+            $this->actingAs($operator)
+                ->get(route('operations.index'))
+                ->assertOk()
+                ->assertSee('Dentro do prazo')
+                ->assertSee('Vence em breve')
+                ->assertSee('10 minutos restantes')
+                ->assertDontSee($directory);
+
+            $this->get(route('operations.report.json'))
+                ->assertOk()
+                ->assertJsonPath('evidence_validity.backup.status', 'fresh')
+                ->assertJsonPath('evidence_validity.runtime.status', 'expiring')
+                ->assertJsonMissingPath('evidence.backup.path')
+                ->assertJsonMissingPath('evidence.runtime.path');
+
+            File::put($runtimePath, json_encode([
+                'probe_id' => '01K3PROBE00000000000000003',
+                'status' => 'passed',
+                'verified_at' => now()->subMinutes(181)->toIso8601String(),
+                'checks' => [['name' => 'queue', 'passed' => true]],
+            ], JSON_THROW_ON_ERROR));
+
+            $this->get(route('operations.index'))
+                ->assertOk()
+                ->assertSee('Prazo expirado')
+                ->assertSee('Gere uma nova evidência.');
+        } finally {
+            CarbonImmutable::setTestNow();
             File::deleteDirectory($directory);
         }
     }

@@ -145,6 +145,10 @@
             Nenhuma evidência legível localizada.
           @endif
         </small>
+        <span class="badge {{ $state['evidence_validity']['backup']['tone'] }}">
+          {{ $state['evidence_validity']['backup']['label'] }}
+        </span>
+        <small>{{ $state['evidence_validity']['backup']['detail'] }}</small>
       </article>
 
       <article class="stat">
@@ -158,6 +162,10 @@
             Nenhuma evidência legível localizada.
           @endif
         </small>
+        <span class="badge {{ $state['evidence_validity']['runtime']['tone'] }}">
+          {{ $state['evidence_validity']['runtime']['label'] }}
+        </span>
+        <small>{{ $state['evidence_validity']['runtime']['detail'] }}</small>
       </article>
     </div>
 

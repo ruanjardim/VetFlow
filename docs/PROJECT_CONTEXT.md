@@ -111,6 +111,11 @@ plan. It explains the next safe action, suggests whether infrastructure,
 technical operations, validation, or the release owner should act, and links
 to the corresponding interface section. This guidance is permission-aware but
 advisory: it never changes the environment or records approval automatically.
+Evidence summaries now make their temporal validity explicit. Operators can see
+the configured deadline, a near-expiry warning, expiration, failure, absence,
+or an invalid future date without gaining access to paths, fingerprints,
+hashes, sentinels, or file contents. Temporal validity remains only one part of
+the complete technical gate.
 The Implementation assistant now derives onboarding coverage per clinic from
 its append-only successful import summaries. Completed blocks also receive a
 read-only quality review based on six documented, tenant-scoped checks. Blocks

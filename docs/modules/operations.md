@@ -56,6 +56,19 @@ available to a user with `operations.execute` from read-only follow-up, keeps
 provider configuration and isolated database work outside the web process, and
 does not convert completed technical checks into an automatic release decision.
 
+## Evidence Validity
+
+Backup and runtime evidence summaries show their temporal state independently
+from the complete release gate: not registered, within the configured period,
+near expiration, expired, failed, or carrying an invalid future timestamp. The
+interface calculates and displays the deadline from the same configurable age
+limits enforced by the underlying validators.
+
+The JSON readiness report includes this safe validity summary and expiration
+timestamp. It still excludes evidence paths and contents, and a valid deadline
+does not by itself mean the evidence passed its structural, environment, or
+integrity checks.
+
 ## Runtime Probe Runs
 
 Authorized administrators can prepare and verify the synthetic queue/storage

@@ -141,6 +141,9 @@ The local working tree was clean before this documentation pass.
 - Current release gates are translated into a six-step, permission-aware
   operational plan with safe guidance and direct interface navigation. The plan
   remains advisory and never executes infrastructure work or release approval.
+- Backup and runtime evidence cards expose their configured validity deadline
+  and distinguish missing, current, near-expiry, expired, failed, and invalid
+  dates without exposing files, hashes, or evidence contents.
 
 ## GitHub Scan Summary
 

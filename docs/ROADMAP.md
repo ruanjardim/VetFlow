@@ -100,6 +100,8 @@ The product should feel different from a generic CRUD system by connecting the c
   decisions are reviewable in one tenant-safe, release-filtered timeline.
 - Pending release gates provide an interface-guided next-action plan that
   distinguishes human, infrastructure, and authorized operational work.
+- Operational evidence exposes safe validity and expiration guidance derived
+  from the same age limits enforced by the release gate.
 - Runtime probe preparation and verification are available through the
   Operations Center with tenant-safe, append-only execution history and the
   same private evidence format consumed by the CLI gate.

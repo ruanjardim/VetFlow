@@ -16,6 +16,7 @@ class OperationsReleaseDecisionService
         private readonly ReleaseReadinessService $readiness,
         private readonly OperationalEvidenceService $evidence,
         private readonly OperationsSmokeChecklistService $smokeChecklist,
+        private readonly OperationsEvidenceFreshnessService $evidenceFreshness,
     ) {}
 
     /** @return array<string, mixed> */
@@ -34,6 +35,7 @@ class OperationsReleaseDecisionService
             'backup' => collect($evidence['backup'])->except('path')->all(),
             'runtime' => collect($evidence['runtime'])->except('path')->all(),
         ];
+        $evidenceValidity = $this->evidenceFreshness->summary($publicEvidence);
         $snapshot = $this->snapshot($release['release']['sha'], $readiness, $publicEvidence, $smoke);
         $hash = $this->hash($snapshot);
         $decision = $this->latestDecision($user, $release['release']['sha']);
@@ -48,6 +50,7 @@ class OperationsReleaseDecisionService
             'storage_disk' => (string) config('filesystems.default'),
             'readiness' => $readiness,
             'evidence' => $publicEvidence,
+            'evidence_validity' => $evidenceValidity,
             'smoke_checklist' => $smoke,
             'gates' => $gates,
             'gates_passed' => $gatesPassed,
@@ -103,6 +106,13 @@ class OperationsReleaseDecisionService
             'gates' => $state['gates'],
             'technical_checks' => $state['readiness']['checks'],
             'evidence' => $state['evidence'],
+            'evidence_validity' => collect($state['evidence_validity'])
+                ->map(fn (array $validity): array => [
+                    'status' => $validity['status'],
+                    'label' => $validity['label'],
+                    'detail' => $validity['detail'],
+                    'expires_at' => $validity['expires_at']?->toIso8601String(),
+                ])->all(),
             'smoke_checklist' => [
                 'completed' => $state['smoke_checklist']['completed'],
                 'total' => $state['smoke_checklist']['total'],
