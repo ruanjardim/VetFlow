@@ -96,6 +96,8 @@ The product should feel different from a generic CRUD system by connecting the c
 - Release readiness has a protected Operations Center with shared CLI/UI
   diagnostics, private-evidence summaries, an append-only smoke checklist,
   stale-decision detection, and printable/JSON reports.
+- Operational events from probes, restore evidence, smoke checks, and release
+  decisions are reviewable in one tenant-safe, release-filtered timeline.
 - Runtime probe preparation and verification are available through the
   Operations Center with tenant-safe, append-only execution history and the
   same private evidence format consumed by the CLI gate.

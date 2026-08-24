@@ -20,6 +20,7 @@ surface for the deployed release identity and its release controls.
 ## Main Components
 
 - Route: `/operations`.
+- Unified history: `/operations/history`.
 - Controller: `App\Modules\Operations\Controllers\OperationsController`.
 - Release identity: `App\Support\Operations\ReleaseIdentityService`.
 - Technical gates: `App\Support\Operations\ReleaseReadinessService`.
@@ -28,6 +29,19 @@ surface for the deployed release identity and its release controls.
 The console discovers only the newest legible `*-evidence.json` in the private
 backup and runtime-probe directories. It never sends file paths, hashes,
 database fingerprints, or sentinel contents to the view.
+
+## Unified Operational History
+
+The read-only history combines runtime probe transitions, restore-evidence
+imports, smoke-check decisions, and release decisions in one reverse-
+chronological view. Filters can limit the category or include earlier releases.
+Every query remains scoped to the authenticated clinic and current environment;
+the default scope also requires the current release SHA.
+
+This is a safe read model over the existing append-only tables. It does not
+copy operational state and deliberately excludes free-form notes, evidence
+hashes, filesystem paths, fingerprints, and sentinel contents. The interface
+shows at most the 100 most recent events for a review.
 
 ## Runtime Probe Runs
 
@@ -74,5 +88,6 @@ storage sentinels, credentials, or environment variables.
 
 ## Tests
 
-`tests/Feature/OperationsConsoleTest.php` covers permission isolation and the
-safe release-context presentation.
+`tests/Feature/OperationsConsoleTest.php` covers permission isolation, the safe
+release-context presentation, and tenant/release isolation in the unified
+history.

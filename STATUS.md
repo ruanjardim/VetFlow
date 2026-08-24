@@ -135,6 +135,9 @@ The local working tree was clean before this documentation pass.
   the Operations Center through a bounded, sanitized JSON intake. Consultation
   and execution now use separate permissions, and imports keep an append-only
   tenant/release audit record without exposing infrastructure fingerprints.
+- The Operations Center has a unified read-only timeline over probes, restore
+  evidence, smoke checks, and release decisions. It is filtered by clinic,
+  environment, release, and category without exposing private operational data.
 
 ## GitHub Scan Summary
 

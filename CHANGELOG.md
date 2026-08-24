@@ -8,6 +8,9 @@ This project follows the spirit of Keep a Changelog, with one practical adjustme
 
 ### Added
 
+- Unified, read-only operational timeline for runtime probes, restore evidence,
+  smoke checks, and release decisions, with clinic/release filters and private
+  notes, hashes, paths, and evidence contents excluded from the interface.
 - Sanitized restore-evidence intake in the Operations Center, with a 512 KB
   JSON boundary, freshness/shape validation, append-only tenant/release history,
   duplicate detection, and a separate execution permission.

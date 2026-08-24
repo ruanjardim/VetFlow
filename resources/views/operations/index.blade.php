@@ -9,6 +9,7 @@
       <p>Confira a identidade publicada e o contexto técnico seguro antes de executar o roteiro de liberação.</p>
     </div>
     <div class="row-actions">
+      <a class="button secondary" href="{{ route('operations.history') }}">Ver histórico</a>
       <a class="button secondary" href="{{ route('operations.report') }}">Emitir relatório</a>
       <a class="button secondary" href="{{ route('operations.report.json') }}">Baixar JSON</a>
     </div>

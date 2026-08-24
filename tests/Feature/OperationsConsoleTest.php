@@ -6,8 +6,10 @@ use App\Models\Permission;
 use App\Models\Role;
 use App\Models\User;
 use App\Modules\Clinics\Models\Clinic;
+use App\Modules\Operations\Models\OperationsBackupEvidenceEvent;
 use App\Modules\Operations\Models\OperationsReleaseDecision;
 use App\Modules\Operations\Models\OperationsRuntimeProbeEvent;
+use App\Modules\Operations\Models\OperationsSmokeCheck;
 use App\Support\Operations\RuntimeOperationsProbeService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -331,6 +333,124 @@ class OperationsConsoleTest extends TestCase
 
         $this->post(route('operations.runtime-probes.prepare'))->assertForbidden();
         $this->post(route('operations.decision.store'), ['decision' => 'held'])->assertForbidden();
+    }
+
+    public function test_operator_can_review_a_safe_unified_history_scoped_by_clinic_and_release(): void
+    {
+        $sha = str_repeat('7', 40);
+        $oldSha = str_repeat('6', 40);
+        config(['operations.release.sha' => $sha]);
+        $clinicA = Clinic::query()->create([
+            'corporate_name' => 'Clínica Histórico A',
+            'trade_name' => 'Clínica Histórico A',
+            'cnpj' => '00000000000921',
+            'active' => true,
+        ]);
+        $clinicB = Clinic::query()->create([
+            'corporate_name' => 'Clínica Histórico B',
+            'trade_name' => 'Clínica Histórico B',
+            'cnpj' => '00000000000922',
+            'active' => true,
+        ]);
+        $operator = $this->userWithPermission('operations.readiness', $clinicA);
+        $now = now();
+
+        OperationsRuntimeProbeEvent::query()->create([
+            'clinic_id' => $clinicA->id,
+            'actor_user_id' => $operator->id,
+            'environment' => app()->environment(),
+            'release_sha' => $sha,
+            'probe_id' => '01K3PROBE00000000000000001',
+            'event' => 'verified',
+            'queue_connection' => 'database',
+            'queue_mode' => 'worker',
+            'storage_disk' => 'local',
+            'detail' => 'Quatro verificações seguras aprovadas.',
+            'occurred_at' => $now->copy()->subMinute(),
+        ]);
+        OperationsBackupEvidenceEvent::query()->create([
+            'clinic_id' => $clinicA->id,
+            'actor_user_id' => $operator->id,
+            'environment' => app()->environment(),
+            'release_sha' => $sha,
+            'backup_identifier' => 'restore-current-safe',
+            'status' => 'passed',
+            'checks_count' => 3,
+            'evidence_sha256' => str_repeat('a', 64),
+            'verified_at' => $now->copy()->subMinutes(2),
+            'occurred_at' => $now->copy()->subMinutes(2),
+        ]);
+        OperationsSmokeCheck::query()->create([
+            'clinic_id' => $clinicA->id,
+            'actor_user_id' => $operator->id,
+            'environment' => app()->environment(),
+            'release_sha' => $sha,
+            'check_key' => 'health_endpoint',
+            'completed' => true,
+            'note' => 'NOTA-PRIVADA-NAO-EXIBIR',
+            'created_at' => $now->copy()->subMinutes(3),
+            'updated_at' => $now->copy()->subMinutes(3),
+        ]);
+        OperationsReleaseDecision::query()->create([
+            'clinic_id' => $clinicA->id,
+            'actor_user_id' => $operator->id,
+            'environment' => app()->environment(),
+            'release_sha' => $sha,
+            'decision' => 'held',
+            'evidence_snapshot' => [],
+            'evidence_hash' => str_repeat('b', 64),
+            'note' => 'JUSTIFICATIVA-PRIVADA-NAO-EXIBIR',
+            'decided_at' => $now->copy()->subMinutes(4),
+        ]);
+        OperationsBackupEvidenceEvent::query()->create([
+            'clinic_id' => $clinicA->id,
+            'actor_user_id' => $operator->id,
+            'environment' => app()->environment(),
+            'release_sha' => $oldSha,
+            'backup_identifier' => 'restore-old-release',
+            'status' => 'passed',
+            'checks_count' => 2,
+            'evidence_sha256' => str_repeat('c', 64),
+            'verified_at' => $now->copy()->subDay(),
+            'occurred_at' => $now->copy()->subDay(),
+        ]);
+        OperationsRuntimeProbeEvent::query()->create([
+            'clinic_id' => $clinicB->id,
+            'actor_user_id' => $operator->id,
+            'environment' => app()->environment(),
+            'release_sha' => $sha,
+            'probe_id' => '01K3PROBE00000000000000002',
+            'event' => 'verified',
+            'queue_connection' => 'database',
+            'queue_mode' => 'worker',
+            'storage_disk' => 'local',
+            'detail' => 'EVENTO-DE-OUTRA-CLINICA',
+            'occurred_at' => $now,
+        ]);
+
+        $this->actingAs($operator)
+            ->get(route('operations.history'))
+            ->assertOk()
+            ->assertSee('Histórico operacional')
+            ->assertSeeInOrder([
+                'Saúde da aplicação',
+                'Quatro verificações seguras aprovadas.',
+                'restore-current-safe',
+                'Release mantida em espera',
+            ])
+            ->assertDontSee('restore-old-release')
+            ->assertDontSee('EVENTO-DE-OUTRA-CLINICA')
+            ->assertDontSee('NOTA-PRIVADA-NAO-EXIBIR')
+            ->assertDontSee('JUSTIFICATIVA-PRIVADA-NAO-EXIBIR')
+            ->assertDontSee(str_repeat('a', 64))
+            ->assertDontSee(str_repeat('b', 64));
+
+        $this->get(route('operations.history', ['release' => 'all', 'type' => 'backup']))
+            ->assertOk()
+            ->assertSee('restore-current-safe')
+            ->assertSee('restore-old-release')
+            ->assertDontSee('Quatro verificações seguras aprovadas.')
+            ->assertDontSee('EVENTO-DE-OUTRA-CLINICA');
     }
 
     public function test_operator_can_import_sanitized_backup_evidence_without_exposing_private_hashes(): void

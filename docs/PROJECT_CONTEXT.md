@@ -101,6 +101,11 @@ operator with the separate execution permission. The intake validates age and
 shape, removes every field outside a strict allowlist, stores the sanitized
 evidence privately, and appends only safe metadata to the tenant/release audit
 history. The interface never performs the restore itself.
+Operators can review those records together with runtime probes, smoke checks,
+and release decisions in a single reverse-chronological history. The read model
+stays within the current clinic and environment, defaults to the published
+release, and never exposes free-form notes, evidence hashes, private paths, or
+runtime sentinels.
 The Implementation assistant now derives onboarding coverage per clinic from
 its append-only successful import summaries. Completed blocks also receive a
 read-only quality review based on six documented, tenant-scoped checks. Blocks

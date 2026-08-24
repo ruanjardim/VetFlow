@@ -13,6 +13,9 @@ Route::get('/operations/report', [OperationsController::class, 'report'])
 Route::get('/operations/report.json', [OperationsController::class, 'reportJson'])
     ->name('operations.report.json');
 
+Route::get('/operations/history', [OperationsController::class, 'history'])
+    ->name('operations.history');
+
 Route::middleware(EnsureUserHasPermission::class.':operations.execute')->group(function (): void {
     Route::post('/operations/decision', [OperationsController::class, 'storeDecision'])
         ->name('operations.decision.store');

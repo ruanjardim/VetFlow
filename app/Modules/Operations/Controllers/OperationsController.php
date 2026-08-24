@@ -4,9 +4,11 @@ namespace App\Modules\Operations\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Modules\Operations\Requests\ImportOperationsBackupEvidenceRequest;
+use App\Modules\Operations\Requests\OperationsHistoryRequest;
 use App\Modules\Operations\Requests\StoreOperationsReleaseDecisionRequest;
 use App\Modules\Operations\Requests\StoreOperationsSmokeCheckRequest;
 use App\Modules\Operations\Services\OperationsBackupEvidenceService;
+use App\Modules\Operations\Services\OperationsHistoryService;
 use App\Modules\Operations\Services\OperationsReleaseDecisionService;
 use App\Modules\Operations\Services\OperationsRuntimeProbeRunService;
 use App\Modules\Operations\Services\OperationsSmokeChecklistService;
@@ -23,6 +25,7 @@ class OperationsController extends Controller
         private readonly OperationsReleaseDecisionService $releaseDecision,
         private readonly OperationsRuntimeProbeRunService $runtimeProbeRuns,
         private readonly OperationsBackupEvidenceService $backupEvidence,
+        private readonly OperationsHistoryService $operationsHistory,
     ) {}
 
     public function index(): View
@@ -67,6 +70,19 @@ class OperationsController extends Controller
     {
         return view('operations.report', [
             'report' => $this->releaseDecision->report($request->user()),
+        ]);
+    }
+
+    public function history(OperationsHistoryRequest $request): View
+    {
+        $data = $request->validated();
+
+        return view('operations.history', [
+            'history' => $this->operationsHistory->timeline(
+                $request->user(),
+                $data['type'] ?? null,
+                $data['release'] ?? 'current',
+            ),
         ]);
     }
 

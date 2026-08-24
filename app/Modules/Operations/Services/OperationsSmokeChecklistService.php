@@ -64,6 +64,11 @@ class OperationsSmokeChecklistService
 
     public function __construct(private readonly ReleaseIdentityService $releaseIdentity) {}
 
+    public static function label(string $checkKey): string
+    {
+        return self::CHECKS[$checkKey]['label'] ?? 'Item operacional';
+    }
+
     /**
      * @return array{available: bool, completed: int, total: int, items: array<int, array<string, mixed>>}
      */
