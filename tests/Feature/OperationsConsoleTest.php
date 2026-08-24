@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\Permission;
 use App\Models\Role;
 use App\Models\User;
+use App\Modules\Clinics\Models\Clinic;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -87,9 +88,56 @@ class OperationsConsoleTest extends TestCase
         }
     }
 
-    private function userWithPermission(string $slug): User
+    public function test_smoke_check_decisions_are_append_only_and_clinic_scoped(): void
     {
-        $user = User::factory()->create(['active' => true]);
+        Storage::fake('local');
+        $sha = str_repeat('e', 40);
+        config(['operations.release.sha' => $sha, 'filesystems.default' => 'local']);
+        $clinicA = Clinic::query()->create([
+            'corporate_name' => 'Clínica Operações A',
+            'trade_name' => 'Clínica Operações A',
+            'cnpj' => '00000000000901',
+            'active' => true,
+        ]);
+        $clinicB = Clinic::query()->create([
+            'corporate_name' => 'Clínica Operações B',
+            'trade_name' => 'Clínica Operações B',
+            'cnpj' => '00000000000902',
+            'active' => true,
+        ]);
+        $operatorA = $this->userWithPermission('operations.readiness', $clinicA);
+        $operatorB = $this->userWithPermission('operations.readiness', $clinicB);
+
+        $this->actingAs($operatorA)->post(
+            route('operations.smoke-checks.store', 'health_endpoint'),
+            ['action' => 'complete', 'note' => 'Saúde validada na clínica A.']
+        )->assertRedirect();
+        $this->post(
+            route('operations.smoke-checks.store', 'health_endpoint'),
+            ['action' => 'reopen', 'note' => 'Reaberto para nova conferência.']
+        )->assertRedirect();
+
+        $this->assertDatabaseCount('operations_smoke_checks', 2);
+        $this->assertDatabaseHas('operations_smoke_checks', [
+            'clinic_id' => $clinicA->id,
+            'release_sha' => $sha,
+            'check_key' => 'health_endpoint',
+            'completed' => false,
+        ]);
+
+        $this->actingAs($operatorB)
+            ->get(route('operations.index'))
+            ->assertOk()
+            ->assertDontSee('Saúde validada na clínica A.')
+            ->assertDontSee('Reaberto para nova conferência.');
+    }
+
+    private function userWithPermission(string $slug, ?Clinic $clinic = null): User
+    {
+        $user = User::factory()->create([
+            'active' => true,
+            'clinic_id' => $clinic?->id,
+        ]);
         $permission = Permission::query()->where('slug', $slug)->firstOrFail();
         $role = Role::query()->create([
             'name' => 'Operations test',

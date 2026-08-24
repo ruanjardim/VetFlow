@@ -120,4 +120,65 @@
       </table>
     </div>
   </section>
+
+  <section class="panel">
+    <div class="panel-heading">
+      <div>
+        <span class="eyebrow">Validação humana</span>
+        <h2>Smoke test da release</h2>
+        <p>Cada conclusão ou reabertura cria um novo registro ligado ao ambiente, commit e clínica atuais.</p>
+      </div>
+      <span class="badge {{ $smokeChecklist['completed'] === $smokeChecklist['total'] ? 'success' : 'warning' }}">
+        {{ $smokeChecklist['completed'] }} de {{ $smokeChecklist['total'] }}
+      </span>
+    </div>
+
+    <div class="panel-body">
+      @unless($smokeChecklist['available'])
+        <div class="alert warning">Identifique o commit publicado antes de registrar o smoke test.</div>
+      @endunless
+
+      <div class="implementation-checklist-items">
+        @foreach($smokeChecklist['items'] as $item)
+          <article class="implementation-checklist-item {{ $item['completed'] ? 'completed' : '' }}">
+            <div class="implementation-checklist-copy">
+              <span aria-hidden="true">{{ $item['completed'] ? '✓' : '○' }}</span>
+              <div>
+                <strong>{{ $item['label'] }}</strong>
+                <p class="muted">{{ $item['description'] }}</p>
+                @if($item['actor'])
+                  <small>
+                    Última decisão por {{ $item['actor'] }} em {{ $item['decided_at']->format('d/m/Y H:i') }}
+                  </small>
+                @else
+                  <small>Ainda sem decisão registrada.</small>
+                @endif
+              </div>
+            </div>
+
+            <form method="POST" action="{{ route('operations.smoke-checks.store', $item['key']) }}" class="form-grid compact-filter-grid">
+              @csrf
+              <input type="hidden" name="action" value="{{ $item['completed'] ? 'reopen' : 'complete' }}">
+              <div class="field">
+                <label for="smoke-note-{{ $item['key'] }}">Observação</label>
+                <input
+                  id="smoke-note-{{ $item['key'] }}"
+                  name="note"
+                  maxlength="500"
+                  value="{{ $item['note'] }}"
+                  placeholder="Contexto opcional da validação"
+                  @disabled(!$smokeChecklist['available'])
+                >
+              </div>
+              <div class="field implementation-portfolio-filter-actions">
+                <button type="submit" class="{{ $item['completed'] ? 'secondary' : '' }}" @disabled(!$smokeChecklist['available'])>
+                  {{ $item['completed'] ? 'Reabrir item' : 'Marcar concluído' }}
+                </button>
+              </div>
+            </form>
+          </article>
+        @endforeach
+      </div>
+    </div>
+  </section>
 @endsection

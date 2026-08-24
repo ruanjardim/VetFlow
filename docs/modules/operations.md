@@ -26,6 +26,13 @@ The console discovers only the newest legible `*-evidence.json` in the private
 backup and runtime-probe directories. It never sends file paths, hashes,
 database fingerprints, or sentinel contents to the view.
 
+## Smoke Checklist
+
+The release smoke checklist is derived from `docs/release-checklist.md`.
+Completing or reopening an item appends an `operations_smoke_checks` event; it
+does not overwrite an earlier decision. Current state is isolated by clinic,
+environment, and full release SHA, and every event keeps its actor and note.
+
 ## Tests
 
 `tests/Feature/OperationsConsoleTest.php` covers permission isolation and the
