@@ -6,6 +6,7 @@ use App\Models\Permission;
 use App\Models\Role;
 use App\Models\User;
 use App\Modules\Clinics\Models\Clinic;
+use App\Modules\Operations\Models\OperationsReleaseDecision;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -130,6 +131,86 @@ class OperationsConsoleTest extends TestCase
             ->assertOk()
             ->assertDontSee('Saúde validada na clínica A.')
             ->assertDontSee('Reaberto para nova conferência.');
+    }
+
+    public function test_release_decision_is_bound_to_current_evidence_and_exported_without_cache(): void
+    {
+        Storage::fake('local');
+        $sha = str_repeat('f', 40);
+        config([
+            'operations.release.sha' => $sha,
+            'filesystems.default' => 'local',
+            'logging.default' => 'single',
+            'queue.default' => 'sync',
+        ]);
+        $operator = $this->userWithPermission('operations.readiness');
+        $checkKeys = [
+            'health_endpoint',
+            'release_identity',
+            'tenant_login',
+            'implementation_scope',
+            'product_lookup',
+            'nfe_preview',
+            'stock_entry',
+            'draft_sale',
+            'completed_sale',
+            'async_queue',
+            'disposable_asset',
+            'logs_review',
+        ];
+
+        foreach ($checkKeys as $checkKey) {
+            $this->actingAs($operator)->post(
+                route('operations.smoke-checks.store', $checkKey),
+                ['action' => 'complete']
+            )->assertRedirect();
+        }
+
+        $this->post(route('operations.decision.store'), [
+            'decision' => 'approved',
+        ])->assertRedirect()->assertSessionHasNoErrors();
+
+        $decision = OperationsReleaseDecision::query()->firstOrFail();
+        $this->assertSame('approved', $decision->decision);
+        $this->assertSame($sha, $decision->release_sha);
+        $this->assertMatchesRegularExpression('/^[a-f0-9]{64}$/', $decision->evidence_hash);
+
+        $response = $this->get(route('operations.report.json'))
+            ->assertOk()
+            ->assertJsonPath('release.sha', $sha)
+            ->assertJsonPath('status.key', 'approved')
+            ->assertJsonPath('decision.current', true)
+            ->assertJsonPath('smoke_checklist.completed', 12);
+        $this->assertStringContainsString('no-store', (string) $response->headers->get('Cache-Control'));
+
+        $this->post(route('operations.smoke-checks.store', 'logs_review'), [
+            'action' => 'reopen',
+            'note' => 'Nova revisão necessária.',
+        ])->assertRedirect();
+
+        $this->get(route('operations.report.json'))
+            ->assertOk()
+            ->assertJsonPath('status.key', 'blocked')
+            ->assertJsonPath('decision.current', false)
+            ->assertJsonPath('smoke_checklist.completed', 11);
+        $this->assertDatabaseCount('operations_release_decisions', 1);
+    }
+
+    public function test_release_cannot_be_approved_with_pending_gates(): void
+    {
+        Storage::fake('local');
+        config([
+            'operations.release.sha' => str_repeat('a', 40),
+            'filesystems.default' => 'local',
+        ]);
+        $operator = $this->userWithPermission('operations.readiness');
+
+        $this->actingAs($operator)
+            ->post(route('operations.decision.store'), ['decision' => 'approved'])
+            ->assertRedirect()
+            ->assertSessionHasErrors('decision');
+
+        $this->assertDatabaseCount('operations_release_decisions', 0);
     }
 
     private function userWithPermission(string $slug, ?Clinic $clinic = null): User

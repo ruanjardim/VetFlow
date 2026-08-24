@@ -1,6 +1,6 @@
 # VetFlow Project Context
 
-Updated: 2026-08-23
+Updated: 2026-08-24
 
 ## Product
 
@@ -87,6 +87,11 @@ temporary probe artifacts and never creates clinic or clinical records.
 Release traceability now exposes only the normalized full Git SHA at
 `/ops/release`. Staging and production readiness require this identity, so a
 healthy process cannot be mistaken for proof that the intended commit is live.
+The same operational controls now have a protected interface. The Operations
+Center reuses the command-line release gates, locates safe summaries of the
+latest private backup and runtime-probe evidence, records clinic-scoped smoke
+test events, and binds the final human release decision to a hashed evidence
+snapshot. Reports never expose evidence paths or secret runtime material.
 The Implementation assistant now derives onboarding coverage per clinic from
 its append-only successful import summaries. Completed blocks also receive a
 read-only quality review based on six documented, tenant-scoped checks. Blocks

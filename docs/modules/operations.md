@@ -33,6 +33,18 @@ Completing or reopening an item appends an `operations_smoke_checks` event; it
 does not overwrite an earlier decision. Current state is isolated by clinic,
 environment, and full release SHA, and every event keeps its actor and note.
 
+## Consolidated Decision
+
+Five gates consolidate release identity, platform diagnostics, runtime-probe
+evidence, restore evidence, and the smoke checklist. Approval is rejected while
+any gate is pending. Approval or hold creates an append-only
+`operations_release_decisions` record with a SHA-256 hash of the current safe
+evidence snapshot; later evidence changes make that decision visibly stale.
+
+The same state is available through a print-friendly report and a no-cache JSON
+download. Neither export includes evidence file paths, database fingerprints,
+storage sentinels, credentials, or environment variables.
+
 ## Tests
 
 `tests/Feature/OperationsConsoleTest.php` covers permission isolation and the

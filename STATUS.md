@@ -1,6 +1,6 @@
 # VetFlow Status
 
-Updated: 2026-08-23
+Updated: 2026-08-24
 
 ## Current State
 
@@ -120,6 +120,13 @@ The local working tree was clean before this documentation pass.
 - The fictitious walkthrough includes a reproducible, intentionally blocked
   pilot-preparation scenario that exercises all six coverage blocks, quality
   gates, checklist progress, and a versioned release plan without real data.
+- Authorized administrators have a protected Operations Center that reuses the
+  CLI release diagnostics, discovers only safe summaries of private backup and
+  runtime evidence, and never exposes paths, hashes, credentials, or sentinels.
+- Operational smoke checks are append-only and scoped by clinic, environment,
+  and release SHA; consolidated approval is evidence-bound, becomes stale when
+  a source gate changes, and is available as print-friendly and no-cache JSON
+  reports.
 
 ## GitHub Scan Summary
 

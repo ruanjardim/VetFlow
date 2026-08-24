@@ -8,6 +8,10 @@ This project follows the spirit of Keep a Changelog, with one practical adjustme
 
 ### Added
 
+- Protected Operations Center with shared CLI/UI release diagnostics, safe
+  backup/runtime evidence discovery, an append-only clinic-scoped smoke
+  checklist, evidence-bound human decisions, stale-decision detection, and
+  print-friendly/no-cache JSON reports.
 - Tenant-safe guided onboarding coverage in the Implementation assistant,
   derived from the latest successful execution of each supported import block.
 - Read-only onboarding data-quality review for completed import blocks, with

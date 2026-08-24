@@ -1,6 +1,6 @@
 # VetFlow Roadmap
 
-Updated: 2026-08-23
+Updated: 2026-08-24
 
 This roadmap describes the product direction that should stay visible while VetFlow evolves. It is intentionally high-level and should be revised as implementation priorities change.
 
@@ -93,6 +93,9 @@ The product should feel different from a generic CRUD system by connecting the c
   clinic without overwriting earlier preparation evidence.
 - Pilot readiness consolidates four evidence gates and requires an explicit,
   evidence-bound human approval that becomes stale after source changes.
+- Release readiness has a protected Operations Center with shared CLI/UI
+  diagnostics, private-evidence summaries, an append-only smoke checklist,
+  stale-decision detection, and printable/JSON reports.
 
 ## Current Near-Term Priorities
 

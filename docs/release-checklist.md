@@ -160,3 +160,9 @@ Record:
 - smoke-test operator and result;
 - backup location identifier, without credentials;
 - rollback or follow-up decision.
+
+Authorized administrators can review these gates in **Administração → Central
+de operações**. The interface reads only safe evidence summaries, preserves
+every smoke-check decision, and produces a report tied to the current
+environment and full release SHA. It does not replace the provider-side backup,
+worker/cron operation, or isolated restore procedure.

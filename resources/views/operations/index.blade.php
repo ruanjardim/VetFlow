@@ -8,6 +8,78 @@
       <h1>Central de operações</h1>
       <p>Confira a identidade publicada e o contexto técnico seguro antes de executar o roteiro de liberação.</p>
     </div>
+    <div class="row-actions">
+      <a class="button secondary" href="{{ route('operations.report') }}">Emitir relatório</a>
+      <a class="button secondary" href="{{ route('operations.report.json') }}">Baixar JSON</a>
+    </div>
+  </section>
+
+  <section class="panel implementation-pilot-readiness">
+    <div class="panel-body">
+      <div class="implementation-readiness-header">
+        <div>
+          <span class="eyebrow">Decisão consolidada</span>
+          <h2>Prontidão operacional da release</h2>
+          <p class="muted">{{ $state['status']['description'] }}</p>
+        </div>
+        <span class="implementation-readiness-status">{{ $state['status']['label'] }}</span>
+      </div>
+
+      <div class="implementation-readiness-gates">
+        @foreach($state['gates'] as $gate)
+          <div class="implementation-readiness-gate {{ $gate['passed'] ? 'passed' : 'pending' }}">
+            <span aria-hidden="true">{{ $gate['passed'] ? '✓' : '○' }}</span>
+            <div>
+              <strong>{{ $gate['label'] }}</strong>
+              <small>{{ $gate['summary'] }}</small>
+            </div>
+          </div>
+        @endforeach
+      </div>
+
+      @if($state['decision'])
+        <div class="alert-soft">
+          <div>
+            <strong>
+              Última decisão: {{ $state['decision']['decision'] === 'approved' ? 'Aprovada' : 'Em espera' }}
+              {{ $state['decision']['current'] ? '' : '(superada)' }}
+            </strong>
+            <span>
+              por {{ $state['decision']['actor'] ?? 'Operador removido' }} em
+              {{ $state['decision']['decided_at']->format('d/m/Y H:i') }}
+            </span>
+            @if($state['decision']['note'])<span>{{ $state['decision']['note'] }}</span>@endif
+          </div>
+        </div>
+      @endif
+
+      <form method="POST" action="{{ route('operations.decision.store') }}" class="form-grid compact-filter-grid">
+        @csrf
+        <div class="field">
+          <label for="operations-decision">Decisão</label>
+          <select id="operations-decision" name="decision" required @disabled(!$releaseAvailable)>
+            <option value="held" @selected(old('decision') === 'held')>Manter release em espera</option>
+            <option value="approved" @selected(old('decision') === 'approved') @disabled(!$state['gates_passed'])>
+              Aprovar release
+            </option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="operations-decision-note">Justificativa ou observação</label>
+          <input
+            id="operations-decision-note"
+            name="note"
+            maxlength="1000"
+            value="{{ old('note') }}"
+            placeholder="Obrigatória ao manter a release em espera"
+            @disabled(!$releaseAvailable)
+          >
+        </div>
+        <div class="field implementation-portfolio-filter-actions">
+          <button type="submit" @disabled(!$releaseAvailable)>Registrar decisão</button>
+        </div>
+      </form>
+    </div>
   </section>
 
   <section class="panel">
