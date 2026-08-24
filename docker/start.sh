@@ -36,10 +36,13 @@ fi
 php artisan migrate --force
 
 if [ "${VETFLOW_SEED_WALKTHROUGH:-false}" = 'true' ]; then
-    if [ "${APP_URL:-}" != 'https://demo.vetflowsys.com.br' ]; then
-        echo 'VetFlow startup failed: walkthrough seeding is restricted to the demonstration domain.' >&2
-        exit 1
-    fi
+    case "${APP_URL:-}" in
+        'https://demo.vetflowsys.com.br'|'https://vetflow-demo.onrender.com') ;;
+        *)
+            echo 'VetFlow startup failed: walkthrough seeding is restricted to the demonstration service.' >&2
+            exit 1
+            ;;
+    esac
 
     php artisan db:seed \
         --class='Database\Seeders\WalkthroughDemoSeeder' \

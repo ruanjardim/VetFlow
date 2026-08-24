@@ -95,7 +95,8 @@ jobs; se isso mudar, crie um Worker/cron separado antes de depender de fila.
 
 Para uma revisão visual controlada, o serviço pode executar uma única carga
 idempotente do `WalkthroughDemoSeeder`. Essa opção é aceita somente quando
-`APP_URL=https://demo.vetflowsys.com.br`.
+`APP_URL` identifica `https://demo.vetflowsys.com.br` ou o endereço original
+`https://vetflow-demo.onrender.com` do mesmo serviço demonstrativo.
 
 1. Defina temporariamente `VETFLOW_SEED_WALKTHROUGH=true` no serviço.
 2. Faça um deploy manual e confirme nos logs a mensagem
