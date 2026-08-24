@@ -8,6 +8,9 @@ This project follows the spirit of Keep a Changelog, with one practical adjustme
 
 ### Added
 
+- Permission-aware guided release plan in the Operations Center, translating
+  each current gate into a safe next step, suggested responsibility, and direct
+  interface anchor without executing changes or automating human approval.
 - Unified, read-only operational timeline for runtime probes, restore evidence,
   smoke checks, and release decisions, with clinic/release filters and private
   notes, hashes, paths, and evidence contents excluded from the interface.

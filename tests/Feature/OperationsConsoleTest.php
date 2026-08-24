@@ -453,6 +453,59 @@ class OperationsConsoleTest extends TestCase
             ->assertDontSee('EVENTO-DE-OUTRA-CLINICA');
     }
 
+    public function test_console_guides_pending_release_steps_without_executing_them(): void
+    {
+        Storage::fake('local');
+        $this->app->detectEnvironment(fn (): string => 'production');
+        $directory = storage_path('framework/testing/operations-guidance-'.Str::uuid());
+        config([
+            'app.key' => 'base64:MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTIzNDU2Nzg5MDE=',
+            'app.debug' => false,
+            'app.url' => 'https://vetflow.example',
+            'operations.release.sha' => str_repeat('5', 40),
+            'operations.backup.evidence_directory' => $directory.'/backup',
+            'operations.runtime_probe.evidence_directory' => $directory.'/runtime',
+            'operations.queue.mode' => 'worker',
+            'queue.default' => 'database',
+            'filesystems.default' => 'local',
+            'logging.default' => 'single',
+        ]);
+        $clinic = Clinic::query()->create([
+            'corporate_name' => 'Clínica Roteiro',
+            'trade_name' => 'Clínica Roteiro',
+            'cnpj' => '00000000000923',
+            'active' => true,
+        ]);
+        $reader = $this->userWithPermission('operations.readiness', $clinic);
+        $executor = $this->userWithPermission(['operations.readiness', 'operations.execute'], $clinic);
+
+        try {
+            $this->actingAs($reader)
+                ->get(route('operations.index'))
+                ->assertOk()
+                ->assertSee('Roteiro de liberação')
+                ->assertSee('Comprovar fila e armazenamento')
+                ->assertSee('Comprovar restauração do backup')
+                ->assertSee('Solicite a um operador com permissão de execução')
+                ->assertSee('Somente leitura')
+                ->assertSee('2 de 6 etapas');
+
+            $this->actingAs($executor)
+                ->get(route('operations.index'))
+                ->assertOk()
+                ->assertSee('Prepare o probe, aguarde a fila e verifique o resultado nesta tela.')
+                ->assertSee('Restaure o backup fora do banco ao vivo')
+                ->assertSee('Ação disponível');
+
+            $this->assertDatabaseCount('operations_runtime_probe_events', 0);
+            $this->assertDatabaseCount('operations_backup_evidence_events', 0);
+            $this->assertDatabaseCount('operations_smoke_checks', 0);
+            $this->assertDatabaseCount('operations_release_decisions', 0);
+        } finally {
+            File::deleteDirectory($directory);
+        }
+    }
+
     public function test_operator_can_import_sanitized_backup_evidence_without_exposing_private_hashes(): void
     {
         $directory = storage_path('framework/testing/operations-backup-'.Str::uuid());

@@ -1883,6 +1883,70 @@ textarea {
   margin-top: 1rem;
 }
 
+.operations-guidance-list {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.operations-guidance-item {
+  display: grid;
+  grid-template-columns: 2.25rem minmax(0, 1fr) auto;
+  gap: 1rem;
+  align-items: center;
+  padding: 1rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.75rem;
+  background: #ffffff;
+}
+
+.operations-guidance-item.next {
+  border-color: #0f766e;
+  box-shadow: inset 3px 0 0 #0f766e;
+}
+
+.operations-guidance-marker {
+  display: grid;
+  place-items: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 50%;
+  background: #f1f5f9;
+  color: #64748b;
+  font-weight: 700;
+}
+
+.operations-guidance-item.completed .operations-guidance-marker {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.operations-guidance-copy,
+.operations-guidance-action {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.operations-guidance-copy p,
+.operations-guidance-copy small {
+  margin: 0;
+}
+
+.operations-guidance-copy small,
+.operations-guidance-action small {
+  color: #64748b;
+}
+
+.operations-guidance-title {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  flex-wrap: wrap;
+}
+
+.operations-guidance-action {
+  justify-items: end;
+}
+
 .implementation-readiness-gate {
   align-items: flex-start;
   background: #ffffff;
@@ -2535,6 +2599,16 @@ textarea {
 
   .implementation-readiness-decision {
     display: flex;
+  }
+
+  .operations-guidance-item {
+    align-items: start;
+    grid-template-columns: 2.25rem minmax(0, 1fr);
+  }
+
+  .operations-guidance-action {
+    grid-column: 2;
+    justify-items: start;
   }
 
   .auth-shell--login {

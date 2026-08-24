@@ -138,6 +138,9 @@ The local working tree was clean before this documentation pass.
 - The Operations Center has a unified read-only timeline over probes, restore
   evidence, smoke checks, and release decisions. It is filtered by clinic,
   environment, release, and category without exposing private operational data.
+- Current release gates are translated into a six-step, permission-aware
+  operational plan with safe guidance and direct interface navigation. The plan
+  remains advisory and never executes infrastructure work or release approval.
 
 ## GitHub Scan Summary
 

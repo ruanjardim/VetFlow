@@ -106,6 +106,11 @@ and release decisions in a single reverse-chronological history. The read model
 stays within the current clinic and environment, defaults to the published
 release, and never exposes free-form notes, evidence hashes, private paths, or
 runtime sentinels.
+The Operations Center also turns the current gates into an ordered release
+plan. It explains the next safe action, suggests whether infrastructure,
+technical operations, validation, or the release owner should act, and links
+to the corresponding interface section. This guidance is permission-aware but
+advisory: it never changes the environment or records approval automatically.
 The Implementation assistant now derives onboarding coverage per clinic from
 its append-only successful import summaries. Completed blocks also receive a
 read-only quality review based on six documented, tenant-scoped checks. Blocks

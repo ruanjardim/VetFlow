@@ -21,7 +21,7 @@
     </div>
   @endunless
 
-  <section class="panel implementation-pilot-readiness">
+  <section id="release-decision" class="panel implementation-pilot-readiness">
     <div class="panel-body">
       <div class="implementation-readiness-header">
         <div>
@@ -89,7 +89,42 @@
     </div>
   </section>
 
-  <section class="panel">
+  <section class="panel operations-guidance">
+    <div class="panel-heading">
+      <div>
+        <span class="eyebrow">Próximos passos</span>
+        <h2>Roteiro de liberação</h2>
+        <p>O VetFlow orienta a sequência; cada execução e a decisão final continuam sob controle humano.</p>
+      </div>
+      <span class="badge {{ $operationsGuidance['completed'] === $operationsGuidance['total'] ? 'success' : 'warning' }}">
+        {{ $operationsGuidance['completed'] }} de {{ $operationsGuidance['total'] }} etapas
+      </span>
+    </div>
+
+    <div class="panel-body operations-guidance-list">
+      @foreach($operationsGuidance['items'] as $step)
+        <article class="operations-guidance-item {{ $step['completed'] ? 'completed' : '' }} {{ $operationsGuidance['next'] === $step['key'] ? 'next' : '' }}">
+          <div class="operations-guidance-marker" aria-hidden="true">{{ $step['completed'] ? '✓' : $loop->iteration }}</div>
+          <div class="operations-guidance-copy">
+            <div class="operations-guidance-title">
+              <strong>{{ $step['label'] }}</strong>
+              <span class="badge {{ $step['status_tone'] }}">{{ $step['status_label'] }}</span>
+            </div>
+            <p>{{ $step['guidance'] }}</p>
+            <small>Responsável sugerido: {{ $step['responsibility'] }}</small>
+          </div>
+          <div class="operations-guidance-action">
+            <a class="button secondary" href="#{{ $step['anchor'] }}">{{ $step['action_label'] }}</a>
+            @if(!$step['completed'] && !$step['can_act'] && !in_array($step['key'], ['identity', 'platform', 'decision'], true))
+              <small>Somente leitura</small>
+            @endif
+          </div>
+        </article>
+      @endforeach
+    </div>
+  </section>
+
+  <section id="backup-evidence" class="panel">
     <div class="panel-heading">
       <div>
         <span class="eyebrow">Evidências privadas</span>
@@ -127,7 +162,7 @@
     </div>
 
     <div class="panel-body">
-      <div class="implementation-readiness-header">
+      <div id="runtime-probe" class="implementation-readiness-header">
         <div>
           <span class="eyebrow">Restauração isolada</span>
           <h3>Registrar evidência JSON</h3>
@@ -253,7 +288,7 @@
     </div>
   </section>
 
-  <section class="panel">
+  <section id="release-identity" class="panel">
     <div class="panel-heading">
       <div>
         <span class="eyebrow">Release publicada</span>
@@ -288,7 +323,7 @@
     </div>
   </section>
 
-  <section class="panel">
+  <section id="technical-gates" class="panel">
     <div class="panel-heading">
       <div>
         <span class="eyebrow">Diagnóstico técnico</span>
@@ -326,7 +361,7 @@
     </div>
   </section>
 
-  <section class="panel">
+  <section id="smoke-checklist" class="panel">
     <div class="panel-heading">
       <div>
         <span class="eyebrow">Validação humana</span>

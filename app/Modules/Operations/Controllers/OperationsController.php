@@ -8,6 +8,7 @@ use App\Modules\Operations\Requests\OperationsHistoryRequest;
 use App\Modules\Operations\Requests\StoreOperationsReleaseDecisionRequest;
 use App\Modules\Operations\Requests\StoreOperationsSmokeCheckRequest;
 use App\Modules\Operations\Services\OperationsBackupEvidenceService;
+use App\Modules\Operations\Services\OperationsGuidanceService;
 use App\Modules\Operations\Services\OperationsHistoryService;
 use App\Modules\Operations\Services\OperationsReleaseDecisionService;
 use App\Modules\Operations\Services\OperationsRuntimeProbeRunService;
@@ -26,11 +27,13 @@ class OperationsController extends Controller
         private readonly OperationsRuntimeProbeRunService $runtimeProbeRuns,
         private readonly OperationsBackupEvidenceService $backupEvidence,
         private readonly OperationsHistoryService $operationsHistory,
+        private readonly OperationsGuidanceService $operationsGuidance,
     ) {}
 
     public function index(): View
     {
         $state = $this->releaseDecision->state(request()->user());
+        $canExecuteOperations = request()->user()->hasPermission('operations.execute');
 
         return view('operations.index', [
             'state' => $state,
@@ -45,7 +48,8 @@ class OperationsController extends Controller
             'smokeChecklist' => $state['smoke_checklist'],
             'runtimeProbeRuns' => $this->runtimeProbeRuns->summary(request()->user()),
             'backupEvidenceHistory' => $this->backupEvidence->summary(request()->user()),
-            'canExecuteOperations' => request()->user()->hasPermission('operations.execute'),
+            'operationsGuidance' => $this->operationsGuidance->plan($state, $canExecuteOperations),
+            'canExecuteOperations' => $canExecuteOperations,
         ]);
     }
 

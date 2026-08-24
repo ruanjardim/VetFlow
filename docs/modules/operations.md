@@ -43,6 +43,19 @@ copy operational state and deliberately excludes free-form notes, evidence
 hashes, filesystem paths, fingerprints, and sentinel contents. The interface
 shows at most the 100 most recent events for a review.
 
+## Guided Release Plan
+
+The Operations Center derives a six-step release plan from the same current
+state used by the approval gate: release identity, platform diagnostics,
+runtime probe, isolated restore, smoke test, and final human decision. Each
+step shows a safe instruction, a suggested responsible area, and an anchor to
+the relevant interface section.
+
+Guidance never changes operational data by itself. It distinguishes actions
+available to a user with `operations.execute` from read-only follow-up, keeps
+provider configuration and isolated database work outside the web process, and
+does not convert completed technical checks into an automatic release decision.
+
 ## Runtime Probe Runs
 
 Authorized administrators can prepare and verify the synthetic queue/storage
