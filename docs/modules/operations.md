@@ -1,7 +1,7 @@
 # Operations
 
-The Operations module gives authorized administrators a safe, read-only view
-of the deployed release identity and its operational context.
+The Operations module gives authorized administrators a safe operational
+surface for the deployed release identity and its release controls.
 
 ## Boundaries
 
@@ -11,6 +11,8 @@ of the deployed release identity and its operational context.
 - Does not expose credentials, connection strings, environment variables, file
   paths, probe sentinels, or backup contents.
 - Does not change runtime configuration or execute a deployment.
+- An explicit administrator action may start and verify a synthetic runtime
+  probe; it never creates clinic, patient, financial, or clinical records.
 - Reuses the same `ReleaseReadinessService` as the Artisan release gate, so
   the interface and command cannot drift into different technical rules.
 
@@ -25,6 +27,16 @@ of the deployed release identity and its operational context.
 The console discovers only the newest legible `*-evidence.json` in the private
 backup and runtime-probe directories. It never sends file paths, hashes,
 database fingerprints, or sentinel contents to the view.
+
+## Runtime Probe Runs
+
+Authorized administrators can prepare and verify the synthetic queue/storage
+probe from the Operations Center. Every transition is appended to
+`operations_runtime_probe_events` and scoped by clinic, environment, and full
+release SHA. The interface keeps only the probe identifier, safe runtime
+context, actor, timestamp, and status; sentinel hashes and evidence paths stay
+private. A successful verification writes the same evidence format used by
+the CLI release gate, then removes the temporary synthetic artifacts.
 
 ## Smoke Checklist
 

@@ -8,6 +8,9 @@ This project follows the spirit of Keep a Changelog, with one practical adjustme
 
 ### Added
 
+- Interface-assisted runtime probe preparation and verification with an
+  append-only, clinic/release-scoped execution history and private evidence
+  output shared with the CLI release gate.
 - Protected Operations Center with shared CLI/UI release diagnostics, safe
   backup/runtime evidence discovery, an append-only clinic-scoped smoke
   checklist, evidence-bound human decisions, stale-decision detection, and

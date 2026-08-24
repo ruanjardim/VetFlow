@@ -127,6 +127,10 @@ The local working tree was clean before this documentation pass.
   and release SHA; consolidated approval is evidence-bound, becomes stale when
   a source gate changes, and is available as print-friendly and no-cache JSON
   reports.
+- Administrators can prepare and verify the synthetic runtime probe from the
+  Operations Center. Every transition is append-only and scoped by clinic,
+  environment, and release SHA, while evidence paths and sentinel hashes remain
+  private.
 
 ## GitHub Scan Summary
 

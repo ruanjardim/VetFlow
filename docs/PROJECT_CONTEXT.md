@@ -92,6 +92,10 @@ Center reuses the command-line release gates, locates safe summaries of the
 latest private backup and runtime-probe evidence, records clinic-scoped smoke
 test events, and binds the final human release decision to a hashed evidence
 snapshot. Reports never expose evidence paths or secret runtime material.
+Administrators can also prepare and verify the synthetic runtime probe from
+that interface. Its execution history is append-only and bound to the current
+clinic, environment, and release SHA; the reusable runtime service still owns
+evidence generation and cleanup, so the web and CLI paths cannot drift.
 The Implementation assistant now derives onboarding coverage per clinic from
 its append-only successful import summaries. Completed blocks also receive a
 read-only quality review based on six documented, tenant-scoped checks. Blocks

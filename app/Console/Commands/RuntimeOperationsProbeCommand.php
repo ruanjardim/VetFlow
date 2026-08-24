@@ -4,7 +4,6 @@ namespace App\Console\Commands;
 
 use App\Support\Operations\RuntimeOperationsProbeService;
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\File;
 use Throwable;
 
 class RuntimeOperationsProbeCommand extends Command
@@ -65,18 +64,7 @@ class RuntimeOperationsProbeCommand extends Command
         }
 
         $evidence = $this->probes->verify($probeId);
-        $evidencePath = $this->optionalString('evidence') ?: storage_path(
-            'app/private/runtime-probes/'.$evidence['probe_id'].'-evidence.json'
-        );
-        File::ensureDirectoryExists(dirname($evidencePath));
-        $written = File::put(
-            $evidencePath,
-            json_encode($evidence, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR).PHP_EOL
-        );
-
-        if ($written === false) {
-            throw new \RuntimeException('Nao foi possivel gravar a evidencia operacional.');
-        }
+        $evidencePath = $this->probes->writeEvidence($evidence, $this->optionalString('evidence'));
 
         $this->probes->cleanup($probeId);
 

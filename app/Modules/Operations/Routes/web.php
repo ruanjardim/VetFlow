@@ -18,3 +18,10 @@ Route::post('/operations/decision', [OperationsController::class, 'storeDecision
 Route::post('/operations/smoke-checks/{checkKey}', [OperationsController::class, 'storeSmokeCheck'])
     ->where('checkKey', '[a-z_]+')
     ->name('operations.smoke-checks.store');
+
+Route::post('/operations/runtime-probes', [OperationsController::class, 'prepareRuntimeProbe'])
+    ->name('operations.runtime-probes.prepare');
+
+Route::post('/operations/runtime-probes/{probeId}/verify', [OperationsController::class, 'verifyRuntimeProbe'])
+    ->where('probeId', '[0-9A-HJKMNP-TV-Z]{26}')
+    ->name('operations.runtime-probes.verify');

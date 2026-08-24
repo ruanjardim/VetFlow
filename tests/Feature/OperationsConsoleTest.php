@@ -7,10 +7,12 @@ use App\Models\Role;
 use App\Models\User;
 use App\Modules\Clinics\Models\Clinic;
 use App\Modules\Operations\Models\OperationsReleaseDecision;
+use App\Modules\Operations\Models\OperationsRuntimeProbeEvent;
+use App\Support\Operations\RuntimeOperationsProbeService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Tests\TestCase;
 
@@ -194,6 +196,109 @@ class OperationsConsoleTest extends TestCase
             ->assertJsonPath('decision.current', false)
             ->assertJsonPath('smoke_checklist.completed', 11);
         $this->assertDatabaseCount('operations_release_decisions', 1);
+    }
+
+    public function test_operator_can_prepare_and_verify_a_runtime_probe_from_the_console(): void
+    {
+        Storage::fake('local');
+        $sha = str_repeat('c', 40);
+        $directory = storage_path('framework/testing/operations-runtime-'.Str::uuid());
+        config([
+            'operations.release.sha' => $sha,
+            'operations.queue.mode' => 'worker',
+            'operations.runtime_probe.disk' => 'local',
+            'operations.runtime_probe.evidence_directory' => $directory,
+            'queue.default' => 'database',
+            'filesystems.default' => 'local',
+        ]);
+        $operator = $this->userWithPermission('operations.readiness');
+
+        try {
+            $this->actingAs($operator)
+                ->post(route('operations.runtime-probes.prepare'))
+                ->assertRedirect()
+                ->assertSessionHas('success');
+
+            $prepared = OperationsRuntimeProbeEvent::query()->firstOrFail();
+            $this->assertSame('prepared', $prepared->event);
+            $this->assertSame($operator->clinic_id, $prepared->clinic_id);
+            $this->assertSame($sha, $prepared->release_sha);
+            Storage::disk('local')->assertExists(
+                'vetflow/runtime-probes/'.$prepared->probe_id.'/sentinel.json'
+            );
+
+            $sentinel = Storage::disk('local')->get(
+                'vetflow/runtime-probes/'.$prepared->probe_id.'/sentinel.json'
+            );
+            app(RuntimeOperationsProbeService::class)->process(
+                $prepared->probe_id,
+                'local',
+                hash('sha256', $sentinel),
+            );
+
+            $this->post(route('operations.runtime-probes.verify', $prepared->probe_id))
+                ->assertRedirect()
+                ->assertSessionHas('success');
+
+            $this->assertDatabaseCount('operations_runtime_probe_events', 2);
+            $this->assertDatabaseHas('operations_runtime_probe_events', [
+                'probe_id' => $prepared->probe_id,
+                'event' => 'verified',
+                'release_sha' => $sha,
+            ]);
+            $this->assertFileExists($directory.'/'.$prepared->probe_id.'-evidence.json');
+            Storage::disk('local')->assertMissing('vetflow/runtime-probes/'.$prepared->probe_id);
+
+            $this->get(route('operations.index'))
+                ->assertOk()
+                ->assertSee($prepared->probe_id)
+                ->assertSee('4 verificações operacionais aprovadas.')
+                ->assertDontSee(hash('sha256', $sentinel));
+        } finally {
+            File::deleteDirectory($directory);
+        }
+    }
+
+    public function test_runtime_probe_runs_are_isolated_by_clinic(): void
+    {
+        Storage::fake('local');
+        config([
+            'operations.release.sha' => str_repeat('d', 40),
+            'operations.queue.mode' => 'worker',
+            'operations.runtime_probe.disk' => 'local',
+            'queue.default' => 'database',
+            'filesystems.default' => 'local',
+        ]);
+        $clinicA = Clinic::query()->create([
+            'corporate_name' => 'Clínica Probe A',
+            'trade_name' => 'Clínica Probe A',
+            'cnpj' => '00000000000911',
+            'active' => true,
+        ]);
+        $clinicB = Clinic::query()->create([
+            'corporate_name' => 'Clínica Probe B',
+            'trade_name' => 'Clínica Probe B',
+            'cnpj' => '00000000000912',
+            'active' => true,
+        ]);
+        $operatorA = $this->userWithPermission('operations.readiness', $clinicA);
+        $operatorB = $this->userWithPermission('operations.readiness', $clinicB);
+
+        $this->actingAs($operatorA)
+            ->post(route('operations.runtime-probes.prepare'))
+            ->assertRedirect()
+            ->assertSessionHas('success');
+        $probe = OperationsRuntimeProbeEvent::query()->firstOrFail();
+
+        $this->actingAs($operatorB)
+            ->post(route('operations.runtime-probes.verify', $probe->probe_id))
+            ->assertRedirect()
+            ->assertSessionHasErrors('runtime_probe');
+
+        $this->assertDatabaseCount('operations_runtime_probe_events', 1);
+        $this->get(route('operations.index'))
+            ->assertOk()
+            ->assertDontSee($probe->probe_id);
     }
 
     public function test_release_cannot_be_approved_with_pending_gates(): void

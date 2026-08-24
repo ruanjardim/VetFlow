@@ -60,6 +60,7 @@ class DatabaseRestoreVerificationService
         'implementation_pilot_decisions',
         'operations_smoke_checks',
         'operations_release_decisions',
+        'operations_runtime_probe_events',
         'global_products',
         'global_product_sources',
         'global_product_images',

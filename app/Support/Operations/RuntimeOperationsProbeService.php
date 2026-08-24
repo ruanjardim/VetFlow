@@ -4,6 +4,7 @@ namespace App\Support\Operations;
 
 use App\Jobs\RuntimeOperationsProbeJob;
 use Carbon\CarbonImmutable;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use InvalidArgumentException;
@@ -207,6 +208,34 @@ class RuntimeOperationsProbeService
     {
         $probeId = $this->validatedProbeId($probeId);
         Storage::disk($this->diskName())->deleteDirectory($this->directory($probeId));
+    }
+
+    /** @param array<string, mixed> $evidence */
+    public function writeEvidence(array $evidence, ?string $requestedPath = null): string
+    {
+        $probeId = $this->validatedProbeId((string) ($evidence['probe_id'] ?? ''));
+        $directory = trim((string) config('operations.runtime_probe.evidence_directory'));
+
+        if (! filled($requestedPath) && $directory === '') {
+            throw new RuntimeException('O diretório privado de evidências operacionais não está configurado.');
+        }
+
+        $path = filled($requestedPath)
+            ? (string) $requestedPath
+            : rtrim($directory, '\\/').DIRECTORY_SEPARATOR.$probeId.'-evidence.json';
+
+        if (trim($path) === '') {
+            throw new RuntimeException('O diretório privado de evidências operacionais não está configurado.');
+        }
+
+        File::ensureDirectoryExists(dirname($path));
+        $written = File::put($path, $this->encode($evidence));
+
+        if ($written === false) {
+            throw new RuntimeException('Nao foi possivel gravar a evidencia operacional.');
+        }
+
+        return $path;
     }
 
     /** @param array<string, mixed> $evidence

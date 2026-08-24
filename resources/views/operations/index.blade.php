@@ -118,6 +118,64 @@
         </small>
       </article>
     </div>
+
+    <div class="panel-body">
+      <div class="implementation-readiness-header">
+        <div>
+          <span class="eyebrow">Execução assistida</span>
+          <h3>Probe operacional</h3>
+          <p class="muted">O teste cria apenas artefatos sintéticos, passa pela fila real e mantém o histórico por clínica e release.</p>
+        </div>
+        <form method="POST" action="{{ route('operations.runtime-probes.prepare') }}">
+          @csrf
+          <button type="submit" @disabled(!$runtimeProbeRuns['available'] || !$runtimeProbeRuns['can_prepare'])>
+            Preparar novo probe
+          </button>
+        </form>
+      </div>
+
+      @if($errors->has('runtime_probe'))
+        <div class="alert warning">{{ $errors->first('runtime_probe') }}</div>
+      @endif
+
+      @if($runtimeProbeRuns['items'] === [])
+        <p class="muted">Nenhuma execução iniciada nesta clínica e release.</p>
+      @else
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Probe</th>
+                <th>Status</th>
+                <th>Responsável</th>
+                <th>Atualização</th>
+                <th>Ação</th>
+              </tr>
+            </thead>
+            <tbody>
+              @foreach($runtimeProbeRuns['items'] as $run)
+                <tr>
+                  <td><strong>{{ $run['probe_id'] }}</strong><br><small>{{ $run['detail'] }}</small></td>
+                  <td><span class="badge {{ $run['status_tone'] }}">{{ $run['status_label'] }}</span></td>
+                  <td>{{ $run['actor'] ?? 'Operador removido' }}</td>
+                  <td>{{ $run['occurred_at']->format('d/m/Y H:i') }}</td>
+                  <td>
+                    @if($run['can_verify'])
+                      <form method="POST" action="{{ route('operations.runtime-probes.verify', $run['probe_id']) }}">
+                        @csrf
+                        <button type="submit" class="secondary">Verificar resultado</button>
+                      </form>
+                    @else
+                      <span class="muted">Concluído</span>
+                    @endif
+                  </td>
+                </tr>
+              @endforeach
+            </tbody>
+          </table>
+        </div>
+      @endif
+    </div>
   </section>
 
   <section class="panel">
