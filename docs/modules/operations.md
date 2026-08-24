@@ -11,12 +11,15 @@ of the deployed release identity and its operational context.
 - Does not expose credentials, connection strings, environment variables, file
   paths, probe sentinels, or backup contents.
 - Does not change runtime configuration or execute a deployment.
+- Reuses the same `ReleaseReadinessService` as the Artisan release gate, so
+  the interface and command cannot drift into different technical rules.
 
 ## Main Components
 
 - Route: `/operations`.
 - Controller: `App\Modules\Operations\Controllers\OperationsController`.
 - Release identity: `App\Support\Operations\ReleaseIdentityService`.
+- Technical gates: `App\Support\Operations\ReleaseReadinessService`.
 
 ## Tests
 

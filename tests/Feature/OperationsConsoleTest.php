@@ -7,6 +7,7 @@ use App\Models\Role;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Tests\TestCase;
 
@@ -25,6 +26,7 @@ class OperationsConsoleTest extends TestCase
 
     public function test_authorized_operator_can_see_safe_release_context(): void
     {
+        Storage::fake('local');
         $sha = str_repeat('b', 40);
         config([
             'operations.release.sha' => $sha,
@@ -41,6 +43,9 @@ class OperationsConsoleTest extends TestCase
             ->assertSee(substr($sha, 0, 7))
             ->assertSee('worker / database')
             ->assertSee('local')
+            ->assertSee('Portões da release')
+            ->assertSee('Banco de dados')
+            ->assertSee('Nenhuma migration pendente.')
             ->assertDontSee($sha);
     }
 

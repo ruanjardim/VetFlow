@@ -44,4 +44,42 @@
       </dl>
     </div>
   </section>
+
+  <section class="panel">
+    <div class="panel-heading">
+      <div>
+        <span class="eyebrow">Diagnóstico técnico</span>
+        <h2>Portões da release</h2>
+        <p>O mesmo diagnóstico usado no terminal agora pode ser revisado por administradores na interface.</p>
+      </div>
+      <span class="badge {{ $readiness['passed'] ? 'success' : 'danger' }}">
+        {{ $readiness['passed'] ? 'Aprovado' : $readiness['failures'].' pendência(s)' }}
+      </span>
+    </div>
+
+    <div class="panel-body table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Verificação</th>
+            <th>Status</th>
+            <th>Detalhe seguro</th>
+          </tr>
+        </thead>
+        <tbody>
+          @foreach($readiness['checks'] as $check)
+            <tr>
+              <td><strong>{{ $check['check'] }}</strong></td>
+              <td>
+                <span class="badge {{ $check['passed'] ? 'success' : 'danger' }}">
+                  {{ $check['status'] }}
+                </span>
+              </td>
+              <td>{{ $check['detail'] }}</td>
+            </tr>
+          @endforeach
+        </tbody>
+      </table>
+    </div>
+  </section>
 @endsection
