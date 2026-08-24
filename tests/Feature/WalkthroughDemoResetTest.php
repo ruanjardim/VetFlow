@@ -12,6 +12,7 @@ use App\Modules\Implementation\Services\ImplementationPilotReleaseService;
 use App\Modules\Implementation\Services\ImplementationReadinessService;
 use App\Modules\Products\Models\Product;
 use App\Support\Demo\WalkthroughDemoFixture;
+use Database\Seeders\AuthorizationSeeder;
 use Database\Seeders\WalkthroughDemoSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -19,6 +20,28 @@ use Tests\TestCase;
 class WalkthroughDemoResetTest extends TestCase
 {
     use RefreshDatabase;
+
+    public function test_walkthrough_seeder_does_not_assign_roles_to_unrelated_users_when_authorization_exists(): void
+    {
+        $this->seed(AuthorizationSeeder::class);
+
+        $unrelated = User::factory()->create([
+            'email' => 'unrelated@example.test',
+            'active' => true,
+        ]);
+
+        $this->assertDatabaseMissing('user_roles', [
+            'user_id' => $unrelated->id,
+            'deleted_at' => null,
+        ]);
+
+        $this->seed(WalkthroughDemoSeeder::class);
+
+        $this->assertDatabaseMissing('user_roles', [
+            'user_id' => $unrelated->id,
+            'deleted_at' => null,
+        ]);
+    }
 
     public function test_reset_removes_only_identified_walkthrough_data(): void
     {

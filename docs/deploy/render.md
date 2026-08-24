@@ -49,6 +49,7 @@ Os valores públicos vêm do `render.yaml`: `APP_ENV=production`,
 `APP_DEBUG=false`, `LOG_CHANNEL=stderr`, `LOG_LEVEL=info`,
 `SESSION_DRIVER=database`, `CACHE_STORE=database`, `QUEUE_CONNECTION=database`,
 `FILESYSTEM_DISK=local`, `VETFLOW_SEED_DEMO_USER=false`,
+`VETFLOW_SEED_WALKTHROUGH=false`,
 `DB_CONNECTION=pgsql`, `DB_SSLMODE=prefer`, `SESSION_SECURE_COOKIE=true`,
 `SESSION_SAME_SITE=lax` e `TRUSTED_PROXIES=*`.
 
@@ -89,6 +90,20 @@ php artisan db:seed --class=AuthorizationSeeder --force
 
 Não há worker ou cron no primeiro Web Service. O código atual não despacha
 jobs; se isso mudar, crie um Worker/cron separado antes de depender de fila.
+
+### Carga fictícia opcional do walkthrough
+
+Para uma revisão visual controlada, o serviço pode executar uma única carga
+idempotente do `WalkthroughDemoSeeder`. Essa opção é aceita somente quando
+`APP_URL=https://demo.vetflowsys.com.br`.
+
+1. Defina temporariamente `VETFLOW_SEED_WALKTHROUGH=true` no serviço.
+2. Faça um deploy manual e confirme nos logs a mensagem
+   `VetFlow fictitious walkthrough data seeded.`
+3. Volte imediatamente a variável para `false` e salve a configuração.
+
+O seeder usa identificadores fixos, cria somente dados fictícios e preserva
+registros não relacionados. Não mantenha a opção habilitada depois da carga.
 
 ## Verificação após o deploy
 
@@ -176,6 +191,7 @@ no Registro.br e, por fim, delete o Web Service e o Postgres no Render.
 
 - `APP_DEBUG=false`, `APP_KEY` e credenciais somente no painel do Render.
 - `VETFLOW_SEED_DEMO_USER=false`; nenhum seeder ou usuário fictício automático.
+- `VETFLOW_SEED_WALKTHROUGH=false` após qualquer carga visual controlada.
 - Sem dados, NF-e XML, uploads ou backups reais no serviço Free.
 - Web Service e banco na mesma região, usando conexão interna.
 - Health check `/up` verde, logs em stderr e domínio HTTPS validado.

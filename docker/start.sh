@@ -35,6 +35,20 @@ fi
 
 php artisan migrate --force
 
+if [ "${VETFLOW_SEED_WALKTHROUGH:-false}" = 'true' ]; then
+    if [ "${APP_URL:-}" != 'https://demo.vetflowsys.com.br' ]; then
+        echo 'VetFlow startup failed: walkthrough seeding is restricted to the demonstration domain.' >&2
+        exit 1
+    fi
+
+    php artisan db:seed \
+        --class='Database\Seeders\WalkthroughDemoSeeder' \
+        --force \
+        --no-interaction
+
+    echo 'VetFlow fictitious walkthrough data seeded.'
+fi
+
 if [ "${VETFLOW_BOOTSTRAP_ADMIN:-false}" = 'true' ]; then
     for variable in VETFLOW_BOOTSTRAP_ADMIN_NAME VETFLOW_BOOTSTRAP_ADMIN_EMAIL VETFLOW_BOOTSTRAP_ADMIN_PASSWORD; do
         require_variable "$variable"

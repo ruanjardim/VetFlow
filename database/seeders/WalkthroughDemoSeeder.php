@@ -35,7 +35,12 @@ class WalkthroughDemoSeeder extends Seeder
 
     public function run(): void
     {
-        $this->call(AuthorizationSeeder::class);
+        if (! Role::query()
+            ->whereNull('clinic_id')
+            ->where('slug', 'administrador')
+            ->exists()) {
+            $this->call(AuthorizationSeeder::class);
+        }
 
         DB::transaction(function (): void {
             $clinic = $this->seedClinic();
