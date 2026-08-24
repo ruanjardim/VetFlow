@@ -20,6 +20,11 @@ of the deployed release identity and its operational context.
 - Controller: `App\Modules\Operations\Controllers\OperationsController`.
 - Release identity: `App\Support\Operations\ReleaseIdentityService`.
 - Technical gates: `App\Support\Operations\ReleaseReadinessService`.
+- Evidence discovery: `App\Support\Operations\OperationalEvidenceService`.
+
+The console discovers only the newest legible `*-evidence.json` in the private
+backup and runtime-probe directories. It never sends file paths, hashes,
+database fingerprints, or sentinel contents to the view.
 
 ## Tests
 

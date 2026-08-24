@@ -13,6 +13,44 @@
   <section class="panel">
     <div class="panel-heading">
       <div>
+        <span class="eyebrow">Evidências privadas</span>
+        <h2>Backup e execução assíncrona</h2>
+        <p>A tela mostra somente identificadores, horários e totais; caminhos, hashes e conteúdo permanecem privados.</p>
+      </div>
+    </div>
+
+    <div class="panel-body grid stats">
+      <article class="stat">
+        <span>Restauração isolada</span>
+        <strong>{{ $evidence['backup']['available'] ? ($evidence['backup']['identifier'] ?? 'Localizada') : 'Pendente' }}</strong>
+        <small>
+          @if($evidence['backup']['available'])
+            {{ $evidence['backup']['checks'] }} verificações em
+            {{ \Carbon\CarbonImmutable::parse($evidence['backup']['verified_at'])->format('d/m/Y H:i') }}
+          @else
+            Nenhuma evidência legível localizada.
+          @endif
+        </small>
+      </article>
+
+      <article class="stat">
+        <span>Probe de fila e storage</span>
+        <strong>{{ $evidence['runtime']['available'] ? ($evidence['runtime']['identifier'] ?? 'Localizado') : 'Pendente' }}</strong>
+        <small>
+          @if($evidence['runtime']['available'])
+            {{ $evidence['runtime']['checks'] }} verificações em
+            {{ \Carbon\CarbonImmutable::parse($evidence['runtime']['verified_at'])->format('d/m/Y H:i') }}
+          @else
+            Nenhuma evidência legível localizada.
+          @endif
+        </small>
+      </article>
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-heading">
+      <div>
         <span class="eyebrow">Release publicada</span>
         <h2>Identidade do ambiente</h2>
         <p>Somente informações operacionais não sensíveis são apresentadas nesta tela.</p>

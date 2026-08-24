@@ -8,6 +8,7 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Str;
 use Tests\TestCase;
 
@@ -47,6 +48,43 @@ class OperationsConsoleTest extends TestCase
             ->assertSee('Banco de dados')
             ->assertSee('Nenhuma migration pendente.')
             ->assertDontSee($sha);
+    }
+
+    public function test_console_presents_latest_evidence_without_exposing_private_paths(): void
+    {
+        Storage::fake('local');
+        $directory = storage_path('framework/testing/operations-evidence-'.Str::uuid());
+        File::ensureDirectoryExists($directory.'/backup');
+        File::ensureDirectoryExists($directory.'/runtime');
+        config([
+            'operations.backup.evidence_directory' => $directory.'/backup',
+            'operations.runtime_probe.evidence_directory' => $directory.'/runtime',
+            'filesystems.default' => 'local',
+        ]);
+        File::put($directory.'/backup/pilot-backup-evidence.json', json_encode([
+            'backup_identifier' => 'pilot-backup-2026-08-24',
+            'status' => 'passed',
+            'verified_at' => now()->toIso8601String(),
+            'checks' => [['name' => 'tables', 'passed' => true]],
+        ], JSON_THROW_ON_ERROR));
+        File::put($directory.'/runtime/01K3PROBE00000000000000000-evidence.json', json_encode([
+            'probe_id' => '01K3PROBE00000000000000000',
+            'status' => 'passed',
+            'verified_at' => now()->toIso8601String(),
+            'checks' => [['name' => 'queue', 'passed' => true]],
+        ], JSON_THROW_ON_ERROR));
+
+        try {
+            $this->actingAs($this->userWithPermission('operations.readiness'))
+                ->get(route('operations.index'))
+                ->assertOk()
+                ->assertSee('pilot-backup-2026-08-24')
+                ->assertSee('01K3PROBE00000000000000000')
+                ->assertSee('1 verificações')
+                ->assertDontSee($directory);
+        } finally {
+            File::deleteDirectory($directory);
+        }
     }
 
     private function userWithPermission(string $slug): User
