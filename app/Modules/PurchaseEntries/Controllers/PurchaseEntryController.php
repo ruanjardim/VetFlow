@@ -276,6 +276,10 @@ class PurchaseEntryController extends Controller
                 'baseline_quantity' => $suggestion['baseline_quantity'],
                 'suggested_quantity' => $suggestion['suggested_quantity'],
                 'uses_purchase_history' => $suggestion['uses_purchase_history'],
+                'demand_window_days' => $suggestion['demand_window_days'],
+                'demand_sales_count' => $suggestion['demand_sales_count'],
+                'net_demand_quantity' => $suggestion['net_demand_quantity'],
+                'average_monthly_demand' => $suggestion['average_monthly_demand'],
                 'reason' => $suggestion['reason'],
             ],
         ];

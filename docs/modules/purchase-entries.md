@@ -31,6 +31,7 @@ payables in the financial ledger.
 | `PurchaseEntryService` | Purchase orchestration, stock entry, and payables. |
 | `PurchaseEntryInsightService` | Purchase/product insight support. |
 | `ReplenishmentSuggestionService` | Reorder priority, history, confidence, and quantity calculation. |
+| `ProductDemandSignalService` | Read-only net demand from completed sales and returns. |
 | `NfeXmlImportService` | Parses NF-e XML payloads. |
 | `NfeAccessKeyImportService` | Reuses cached XML by access key. |
 | `PurchaseEntry` / `PurchaseEntryItem` | Purchase data models. |
@@ -69,10 +70,16 @@ or below their minimum. The first explainable rule set is:
 - confidence is low with zero or one batch, medium with two, and high with three
   or more batches;
 - out-of-stock products are shown before the remaining low-stock products.
+- completed and returned product sales from the last 90 days provide a separate
+  demand signal, with returned quantities deducted;
+- draft, cancelled, soft-deleted, and older sales do not contribute to demand;
+- net quantity, contributing sale count, monthly average, and returns are shown
+  explicitly, but this first signal does not change the suggested quantity.
 
 The result is a suggestion, not a purchase order. Opening the purchase entry
-prefills the product, suggested quantity, reference cost, supplier, and the
-calculation metadata, but the operator must review and explicitly save it.
+prefills the product, suggested quantity, reference cost, supplier, purchase
+history, and demand-signal metadata, but the operator must review and explicitly
+save it.
 
 ## Tenant Rules
 

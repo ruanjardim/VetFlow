@@ -10,6 +10,8 @@ class ReplenishmentSuggestionService
 {
     public const HISTORY_WINDOW_DAYS = 180;
 
+    public function __construct(private readonly ProductDemandSignalService $demandSignals) {}
+
     /**
      * @return Collection<int, array<string, mixed>>
      */
@@ -23,11 +25,13 @@ class ReplenishmentSuggestionService
             ->get();
 
         $historyByProduct = $this->historyForProducts($products->pluck('id'));
+        $demandByProduct = $this->demandSignals->signalsForProducts($products->pluck('id'));
 
         $suggestions = $products
             ->map(fn (Product $product): array => $this->buildSuggestion(
                 $product,
-                $historyByProduct->get($product->id, collect())
+                $historyByProduct->get($product->id, collect()),
+                $demandByProduct->get($product->id, $this->demandSignals->emptySignal()),
             ))
             ->sort(function (array $left, array $right): int {
                 $priority = $left['priority_rank'] <=> $right['priority_rank'];
@@ -56,8 +60,9 @@ class ReplenishmentSuggestionService
     {
         $history = $this->historyForProducts(collect([$product->id]))
             ->get($product->id, collect());
+        $demand = $this->demandSignals->signalForProduct($product);
 
-        return $this->buildSuggestion($product, $history);
+        return $this->buildSuggestion($product, $history, $demand);
     }
 
     public function baselineQuantity(Product $product): float
@@ -76,7 +81,7 @@ class ReplenishmentSuggestionService
      * @param  Collection<int, PurchaseEntryItem>  $history
      * @return array<string, mixed>
      */
-    private function buildSuggestion(Product $product, Collection $history): array
+    private function buildSuggestion(Product $product, Collection $history, array $demand): array
     {
         $batches = $this->purchaseBatches($history);
         $historyCount = $batches->count();
@@ -125,7 +130,15 @@ class ReplenishmentSuggestionService
             'last_purchase_quantity' => $lastBatch['quantity'] ?? null,
             'last_supplier_id' => $lastBatch['supplier_id'] ?? null,
             'last_supplier_name' => $lastBatch['supplier_name'] ?? null,
-            'reason' => $this->reason($stock, $usesPurchaseHistory, $historyCount),
+            'demand_window_days' => $demand['window_days'],
+            'demand_sales_count' => $demand['sales_count'],
+            'demand_sold_quantity' => $demand['sold_quantity'],
+            'demand_returned_quantity' => $demand['returned_quantity'],
+            'net_demand_quantity' => $demand['net_quantity'],
+            'average_monthly_demand' => $demand['average_monthly_quantity'],
+            'last_sale_at' => $demand['last_sale_at'],
+            'has_recent_demand' => $demand['has_recent_demand'],
+            'reason' => $this->reason($stock, $usesPurchaseHistory, $historyCount).' '.$this->demandReason($demand),
             'purchase_url' => route('purchase-entries.create', array_filter([
                 'replenishment_product' => $product->id,
                 'clinic_id' => $product->clinic_id,
@@ -248,5 +261,18 @@ class ReplenishmentSuggestionService
         }
 
         return "{$stockReason} Sem compras recebidas nos últimos ".self::HISTORY_WINDOW_DAYS.' dias; a sugestão usa o alvo seguro de duas vezes o estoque mínimo.';
+    }
+
+    /** @param array<string, mixed> $demand */
+    private function demandReason(array $demand): string
+    {
+        if (! $demand['has_recent_demand']) {
+            return 'Nenhuma demanda líquida foi registrada nas vendas concluídas dos últimos '.ProductDemandSignalService::WINDOW_DAYS.' dias.';
+        }
+
+        $quantity = number_format((float) $demand['net_quantity'], 3, ',', '.');
+        $sales = (int) $demand['sales_count'];
+
+        return "A demanda líquida recente foi de {$quantity} unidade(s) em {$sales} venda(s); este sinal ainda não altera a quantidade automaticamente.";
     }
 }

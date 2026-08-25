@@ -6,7 +6,7 @@
   <header class="topbar">
     <div>
       <h1>Reposicao inteligente</h1>
-      <p>Prioridades explicaveis com saldo, estoque minimo e compras recebidas nos ultimos {{ $historyWindowDays }} dias.</p>
+      <p>Prioridades explicaveis com saldo, estoque minimo, compras recebidas em {{ $historyWindowDays }} dias e demanda liquida em {{ $demandWindowDays }} dias.</p>
     </div>
     <div class="actions">
       <a class="button secondary" href="{{ route('purchase-entries.index') }}">Entradas</a>
@@ -39,6 +39,14 @@
       <span>Sem historico recente</span>
       <strong>{{ $stats['without_history'] ?? 0 }}</strong>
     </div>
+    <div class="stat">
+      <span>Com demanda recente</span>
+      <strong>{{ $stats['with_recent_demand'] ?? 0 }}</strong>
+    </div>
+    <div class="stat">
+      <span>Sem demanda recente</span>
+      <strong>{{ $stats['without_recent_demand'] ?? 0 }}</strong>
+    </div>
   </section>
 
   <section class="panel">
@@ -57,6 +65,7 @@
             <th>Saldo / minimo</th>
             <th>Sugestao</th>
             <th>Historico recente</th>
+            <th>Demanda recente</th>
             <th>Fornecedor / custo</th>
             <th>Por que sugerimos</th>
             <th>Acao</th>
@@ -108,6 +117,18 @@
                 @endif
               </td>
               <td>
+                @if($item['has_recent_demand'])
+                  <strong>{{ number_format((float) $item['net_demand_quantity'], 3, ',', '.') }} {{ $item['unit'] }}</strong>
+                  <div class="muted">em {{ $item['demand_sales_count'] }} venda(s)</div>
+                  <div class="muted">Media mensal: {{ number_format((float) $item['average_monthly_demand'], 3, ',', '.') }} {{ $item['unit'] }}</div>
+                  @if($item['demand_returned_quantity'] > 0)
+                    <div class="muted">Devolucoes descontadas: {{ number_format((float) $item['demand_returned_quantity'], 3, ',', '.') }}</div>
+                  @endif
+                @else
+                  <span class="muted">Sem demanda liquida no periodo</span>
+                @endif
+              </td>
+              <td>
                 {{ $item['last_supplier_name'] ?: 'Fornecedor nao identificado' }}
                 <div class="muted">Custo de referencia: R$ {{ number_format((float) $item['unit_cost'], 2, ',', '.') }}</div>
                 @if($item['last_purchase_at'])
@@ -124,7 +145,7 @@
             </tr>
           @empty
             <tr>
-              <td colspan="8" class="muted">Nenhum produto abaixo do minimo agora.</td>
+              <td colspan="9" class="muted">Nenhum produto abaixo do minimo agora.</td>
             </tr>
           @endforelse
         </tbody>

@@ -57,7 +57,10 @@ The repository now includes public project documentation, CI, a visual
 walkthrough, assisted onboarding imports, resilient NF-e/product lookup,
 actionable dashboard priorities, clinic-scoped collaborator management, and
 explainable stock replenishment suggestions based on current stock and recent
-received purchases. Patient care now includes a permission-aware longitudinal
+received purchases. Replenishment now also displays a clinic-scoped 90-day net
+demand signal from completed product sales after returns. This read-only signal
+is preserved in suggestion metadata but does not automatically change the
+proposed purchase quantity. Patient care now includes a permission-aware longitudinal
 profile that connects appointments, medical records, prescriptions,
 vaccinations, and hospitalizations while
 keeping the source records and their access boundaries intact. Structured

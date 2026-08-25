@@ -79,8 +79,15 @@ class PurchaseEntryInsightService
                 'without_history' => $items
                     ->where('history_count', 0)
                     ->count(),
+                'with_recent_demand' => $items
+                    ->where('has_recent_demand', true)
+                    ->count(),
+                'without_recent_demand' => $items
+                    ->where('has_recent_demand', false)
+                    ->count(),
             ],
             'historyWindowDays' => ReplenishmentSuggestionService::HISTORY_WINDOW_DAYS,
+            'demandWindowDays' => ProductDemandSignalService::WINDOW_DAYS,
         ];
     }
 
@@ -213,6 +220,9 @@ class PurchaseEntryInsightService
             'replenishment_confidence' => $suggestion['confidence'],
             'replenishment_history_count' => $suggestion['history_count'],
             'replenishment_reason' => $suggestion['reason'],
+            'demand_window_days' => $suggestion['demand_window_days'],
+            'net_demand_quantity' => $suggestion['net_demand_quantity'],
+            'average_monthly_demand' => $suggestion['average_monthly_demand'],
         ];
     }
 

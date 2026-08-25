@@ -1,6 +1,6 @@
 # VetFlow Status
 
-Updated: 2026-08-24
+Updated: 2026-08-25
 
 ## Current State
 
@@ -42,6 +42,9 @@ The local working tree was clean before this documentation pass.
 - Explainable replenishment suggestions that prioritize low-stock products,
   use recent received-purchase batches when the history is sufficient, and
   prefill a reviewable purchase entry without creating an automatic order.
+- Replenishment cards include a tenant-safe 90-day net demand signal from
+  completed product sales, deducting returns and preserving the calculation in
+  the purchase prefill without automatically changing its quantity.
 - An assisted appointment reminder queue that prepares WhatsApp contact and
   records operator-confirmed outcomes, status changes, and an auditable contact
   history without claiming automatic delivery.

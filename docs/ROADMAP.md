@@ -1,6 +1,6 @@
 # VetFlow Roadmap
 
-Updated: 2026-08-24
+Updated: 2026-08-25
 
 This roadmap describes the product direction that should stay visible while VetFlow evolves. It is intentionally high-level and should be revised as implementation priorities change.
 
@@ -42,6 +42,9 @@ The product should feel different from a generic CRUD system by connecting the c
   authorization boundary.
 - Replenishment suggestions combine current stock, minimum stock, and recent
   received-purchase history with an explicit confidence level and reason.
+- Low-stock replenishment exposes completed-sales net demand and returns over a
+  fixed 90-day window as review context without turning it into an automatic
+  purchasing rule.
 - The selected KingHost staging candidate has a provider-specific runbook and
   a bounded, token-protected queue cron bridge that remains disabled by default.
 - Sales expose realized gross profitability by item type, category, and item,
@@ -154,4 +157,4 @@ The product should feel different from a generic CRUD system by connecting the c
 
 - Run the guided-onboarding readiness rehearsal in staging with the fictitious
   scenario, exported report, and history before changing any gate or quality rule.
-- Supplier lead-time and demand signals for future replenishment tuning.
+- Supplier lead-time signals for future replenishment tuning.

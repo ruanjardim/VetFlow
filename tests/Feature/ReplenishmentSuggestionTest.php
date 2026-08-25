@@ -9,6 +9,7 @@ use App\Modules\Clinics\Models\Clinic;
 use App\Modules\Products\Models\Product;
 use App\Modules\PurchaseEntries\Models\PurchaseEntry;
 use App\Modules\PurchaseEntries\Services\ReplenishmentSuggestionService;
+use App\Modules\Sales\Models\Sale;
 use App\Modules\Suppliers\Models\Supplier;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -32,6 +33,10 @@ class ReplenishmentSuggestionTest extends TestCase
         $this->purchaseBatch($clinic, $supplier, $product, 'ENT-HIST-002', 'received', 20, 14, 13);
         $this->purchaseBatch($clinic, $supplier, $product, 'ENT-DRAFT-001', 'draft', 10, 100, 50);
         $this->purchaseBatch($clinic, $supplier, $product, 'ENT-OLD-001', 'received', 220, 80, 40);
+        $this->sale($clinic, $product, 'VEN-DEM-001', 'completed', 10, 6, 1);
+        $this->sale($clinic, $product, 'VEN-DEM-002', 'returned', 30, 4, 2);
+        $this->sale($clinic, $product, 'VEN-DRAFT-001', 'draft', 5, 100, 0);
+        $this->sale($clinic, $product, 'VEN-OLD-001', 'completed', 100, 50, 0);
 
         $this->actingAs($user);
 
@@ -48,6 +53,13 @@ class ReplenishmentSuggestionTest extends TestCase
         $this->assertSame(40, $suggestion['average_purchase_interval_days']);
         $this->assertSame($supplier->id, $suggestion['last_supplier_id']);
         $this->assertStringContainsString('lote médio de 2 compras', $suggestion['reason']);
+        $this->assertTrue($suggestion['has_recent_demand']);
+        $this->assertSame(2, $suggestion['demand_sales_count']);
+        $this->assertEquals(10.0, $suggestion['demand_sold_quantity']);
+        $this->assertEquals(3.0, $suggestion['demand_returned_quantity']);
+        $this->assertEquals(7.0, $suggestion['net_demand_quantity']);
+        $this->assertEquals(2.333, $suggestion['average_monthly_demand']);
+        $this->assertStringContainsString('demanda líquida recente foi de 7,000', $suggestion['reason']);
 
         $this->get(route('purchase-entries.replenishment'))
             ->assertOk()
@@ -55,6 +67,9 @@ class ReplenishmentSuggestionTest extends TestCase
             ->assertSee('Racao de reposicao')
             ->assertSee('12,000')
             ->assertSee('Distribuidora Historica')
+            ->assertSee('Demanda recente')
+            ->assertSee('7,000')
+            ->assertSee('Devolucoes descontadas: 3,000')
             ->assertSee('Confianca Media');
 
         $this->get($suggestion['purchase_url'])
@@ -65,7 +80,8 @@ class ReplenishmentSuggestionTest extends TestCase
                     && (float) $item['quantity'] === 12.0
                     && (float) $item['unit_cost'] === 13.0
                     && $item['intelligence_status'] === 'replenishment_suggestion'
-                    && $item['intelligence_metadata']['uses_purchase_history'] === true;
+                    && $item['intelligence_metadata']['uses_purchase_history'] === true
+                    && (float) $item['intelligence_metadata']['net_demand_quantity'] === 7.0;
             });
     }
 
@@ -76,6 +92,7 @@ class ReplenishmentSuggestionTest extends TestCase
         $localProduct = $this->product($clinicA, 'Produto local sem historico', stock: 1, minimum: 4, cost: 5);
         $externalProduct = $this->product($clinicB, 'Produto externo invisivel', stock: 0, minimum: 10, cost: 8);
         $user = $this->userForClinic($clinicA);
+        $this->sale($clinicB, $externalProduct, 'VEN-EXTERNA-001', 'completed', 2, 80, 0);
 
         $this->actingAs($user);
 
@@ -87,13 +104,16 @@ class ReplenishmentSuggestionTest extends TestCase
         $this->assertSame(0, $suggestions->first()['history_count']);
         $this->assertSame('low', $suggestions->first()['confidence']);
         $this->assertFalse($suggestions->first()['uses_purchase_history']);
+        $this->assertFalse($suggestions->first()['has_recent_demand']);
+        $this->assertEquals(0.0, $suggestions->first()['net_demand_quantity']);
         $this->assertEquals(7.0, $suggestions->first()['suggested_quantity']);
 
         $this->get(route('purchase-entries.replenishment'))
             ->assertOk()
             ->assertSee('Produto local sem historico')
             ->assertDontSee('Produto externo invisivel')
-            ->assertSee('Sem compras recebidas no periodo');
+            ->assertSee('Sem compras recebidas no periodo')
+            ->assertSee('Sem demanda liquida no periodo');
     }
 
     private function clinic(string $name, string $cnpj): Clinic
@@ -157,6 +177,40 @@ class ReplenishmentSuggestionTest extends TestCase
             'quantity' => $quantity,
             'unit_cost' => $unitCost,
             'total_cost' => $quantity * $unitCost,
+        ]);
+    }
+
+    private function sale(
+        Clinic $clinic,
+        Product $product,
+        string $code,
+        string $status,
+        int $daysAgo,
+        float $quantity,
+        float $returnedQuantity,
+    ): void {
+        $completedAt = $status === 'draft' ? null : now()->subDays($daysAgo);
+        $sale = Sale::query()->create([
+            'clinic_id' => $clinic->id,
+            'code' => $code,
+            'status' => $status,
+            'payment_status' => $status === 'draft' ? 'pending' : 'paid',
+            'sold_at' => now()->subDays($daysAgo),
+            'completed_at' => $completedAt,
+            'subtotal' => $quantity * 20,
+            'total' => $quantity * 20,
+            'stock_applied' => $status !== 'draft',
+            'financial_applied' => $status !== 'draft',
+        ]);
+
+        $sale->items()->create([
+            'product_id' => $product->id,
+            'type' => 'product',
+            'description' => $product->name,
+            'quantity' => $quantity,
+            'returned_quantity' => $returnedQuantity,
+            'unit_price' => 20,
+            'total' => $quantity * 20,
         ]);
     }
 
