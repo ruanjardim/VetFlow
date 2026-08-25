@@ -60,7 +60,11 @@ explainable stock replenishment suggestions based on current stock and recent
 received purchases. Replenishment now also displays a clinic-scoped 90-day net
 demand signal from completed product sales after returns. This read-only signal
 is preserved in suggestion metadata but does not automatically change the
-proposed purchase quantity. Patient care now includes a permission-aware longitudinal
+proposed purchase quantity. The same replenishment view now groups received
+batches by supplier/product and shows delivery counts, weighted observed cost,
+and lead-time samples when purchase and receipt dates are available. These are
+historical facts, not an automatic supplier recommendation or delivery promise.
+Patient care now includes a permission-aware longitudinal
 profile that connects appointments, medical records, prescriptions,
 vaccinations, and hospitalizations while
 keeping the source records and their access boundaries intact. Structured

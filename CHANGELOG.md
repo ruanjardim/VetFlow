@@ -11,6 +11,9 @@ This project follows the spirit of Keep a Changelog, with one practical adjustme
 - Tenant-scoped 90-day product demand signals in smart replenishment, with
   completed-sale counts, returned quantities, monthly averages, safe purchase
   prefill metadata, and no automatic quantity adjustment.
+- Supplier/product observations for recent received purchases, including
+  delivery count, received quantity, weighted cost, and valid lead-time samples
+  without automatic supplier ranking or promised-date claims.
 - Evidence-validity indicators for backup and runtime probes, including safe
   expiration deadlines, near-expiry warnings, invalid future-date detection,
   and the same privacy-safe metadata in the readiness JSON report.

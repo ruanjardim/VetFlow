@@ -45,6 +45,9 @@ The local working tree was clean before this documentation pass.
 - Replenishment cards include a tenant-safe 90-day net demand signal from
   completed product sales, deducting returns and preserving the calculation in
   the purchase prefill without automatically changing its quantity.
+- Supplier/product observations now summarize recent received batches, weighted
+  cost, and valid purchase-to-receipt lead-time samples without assigning a
+  supplier score, delivery promise, or automatic selection.
 - An assisted appointment reminder queue that prepares WhatsApp contact and
   records operator-confirmed outcomes, status changes, and an auditable contact
   history without claiming automatic delivery.

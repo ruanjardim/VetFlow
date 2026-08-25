@@ -85,6 +85,9 @@ class PurchaseEntryInsightService
                 'without_recent_demand' => $items
                     ->where('has_recent_demand', false)
                     ->count(),
+                'with_supplier_lead_time' => $items
+                    ->where('has_supplier_lead_time', true)
+                    ->count(),
             ],
             'historyWindowDays' => ReplenishmentSuggestionService::HISTORY_WINDOW_DAYS,
             'demandWindowDays' => ProductDemandSignalService::WINDOW_DAYS,
@@ -223,6 +226,8 @@ class PurchaseEntryInsightService
             'demand_window_days' => $suggestion['demand_window_days'],
             'net_demand_quantity' => $suggestion['net_demand_quantity'],
             'average_monthly_demand' => $suggestion['average_monthly_demand'],
+            'reference_supplier_deliveries' => $suggestion['reference_supplier_deliveries'],
+            'reference_supplier_average_lead_time_days' => $suggestion['reference_supplier_average_lead_time_days'],
         ];
     }
 

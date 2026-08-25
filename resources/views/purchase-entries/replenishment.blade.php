@@ -47,6 +47,10 @@
       <span>Sem demanda recente</span>
       <strong>{{ $stats['without_recent_demand'] ?? 0 }}</strong>
     </div>
+    <div class="stat">
+      <span>Com prazo observado</span>
+      <strong>{{ $stats['with_supplier_lead_time'] ?? 0 }}</strong>
+    </div>
   </section>
 
   <section class="panel">
@@ -131,6 +135,16 @@
               <td>
                 {{ $item['last_supplier_name'] ?: 'Fornecedor nao identificado' }}
                 <div class="muted">Custo de referencia: R$ {{ number_format((float) $item['unit_cost'], 2, ',', '.') }}</div>
+                @if($item['has_reference_supplier_history'])
+                  <div class="muted">{{ $item['reference_supplier_deliveries'] }} recebimento(s) no periodo</div>
+                  <div class="muted">Custo medio observado: R$ {{ number_format((float) $item['reference_supplier_average_unit_cost'], 2, ',', '.') }}</div>
+                @endif
+                @if($item['has_supplier_lead_time'])
+                  <div class="muted">Prazo medio observado: {{ $item['reference_supplier_average_lead_time_days'] }} dias</div>
+                  <div class="muted">Faixa: {{ $item['reference_supplier_minimum_lead_time_days'] }} a {{ $item['reference_supplier_maximum_lead_time_days'] }} dias</div>
+                @elseif($item['has_reference_supplier_history'])
+                  <div class="muted">Prazo indisponivel: faltam datas de compra/recebimento</div>
+                @endif
                 @if($item['last_purchase_at'])
                   <div class="muted">Ultima compra: {{ $item['last_purchase_at']->format('d/m/Y') }}</div>
                 @endif

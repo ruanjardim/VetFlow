@@ -45,6 +45,9 @@ The product should feel different from a generic CRUD system by connecting the c
 - Low-stock replenishment exposes completed-sales net demand and returns over a
   fixed 90-day window as review context without turning it into an automatic
   purchasing rule.
+- Replenishment exposes supplier/product delivery counts, observed weighted
+  cost, and purchase-to-receipt lead-time samples without creating a supplier
+  score or automatic selection rule.
 - The selected KingHost staging candidate has a provider-specific runbook and
   a bounded, token-protected queue cron bridge that remains disabled by default.
 - Sales expose realized gross profitability by item type, category, and item,
@@ -157,4 +160,5 @@ The product should feel different from a generic CRUD system by connecting the c
 
 - Run the guided-onboarding readiness rehearsal in staging with the fictitious
   scenario, exported report, and history before changing any gate or quality rule.
-- Supplier lead-time signals for future replenishment tuning.
+- Validate demand and supplier lead-time observations with pilot data before
+  allowing either signal to tune quantities or supplier choices.

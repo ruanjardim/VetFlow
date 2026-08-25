@@ -280,6 +280,13 @@ class PurchaseEntryController extends Controller
                 'demand_sales_count' => $suggestion['demand_sales_count'],
                 'net_demand_quantity' => $suggestion['net_demand_quantity'],
                 'average_monthly_demand' => $suggestion['average_monthly_demand'],
+                'reference_supplier_deliveries' => $suggestion['reference_supplier_deliveries'],
+                'reference_supplier_quantity_received' => $suggestion['reference_supplier_quantity_received'],
+                'reference_supplier_average_unit_cost' => $suggestion['reference_supplier_average_unit_cost'],
+                'reference_supplier_lead_time_samples' => $suggestion['reference_supplier_lead_time_samples'],
+                'reference_supplier_average_lead_time_days' => $suggestion['reference_supplier_average_lead_time_days'],
+                'reference_supplier_minimum_lead_time_days' => $suggestion['reference_supplier_minimum_lead_time_days'],
+                'reference_supplier_maximum_lead_time_days' => $suggestion['reference_supplier_maximum_lead_time_days'],
                 'reason' => $suggestion['reason'],
             ],
         ];

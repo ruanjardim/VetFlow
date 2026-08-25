@@ -29,8 +29,8 @@ class ReplenishmentSuggestionTest extends TestCase
         $product = $this->product($clinic, 'Racao de reposicao', stock: 2, minimum: 5, cost: 9);
         $user = $this->userForClinic($clinic);
 
-        $this->purchaseBatch($clinic, $supplier, $product, 'ENT-HIST-001', 'received', 60, 10, 11);
-        $this->purchaseBatch($clinic, $supplier, $product, 'ENT-HIST-002', 'received', 20, 14, 13);
+        $this->purchaseBatch($clinic, $supplier, $product, 'ENT-HIST-001', 'received', 60, 10, 11, 6);
+        $this->purchaseBatch($clinic, $supplier, $product, 'ENT-HIST-002', 'received', 20, 14, 13, 10);
         $this->purchaseBatch($clinic, $supplier, $product, 'ENT-DRAFT-001', 'draft', 10, 100, 50);
         $this->purchaseBatch($clinic, $supplier, $product, 'ENT-OLD-001', 'received', 220, 80, 40);
         $this->sale($clinic, $product, 'VEN-DEM-001', 'completed', 10, 6, 1);
@@ -60,6 +60,17 @@ class ReplenishmentSuggestionTest extends TestCase
         $this->assertEquals(7.0, $suggestion['net_demand_quantity']);
         $this->assertEquals(2.333, $suggestion['average_monthly_demand']);
         $this->assertStringContainsString('demanda líquida recente foi de 7,000', $suggestion['reason']);
+        $this->assertTrue($suggestion['has_reference_supplier_history']);
+        $this->assertTrue($suggestion['has_supplier_lead_time']);
+        $this->assertSame(2, $suggestion['reference_supplier_deliveries']);
+        $this->assertEquals(24.0, $suggestion['reference_supplier_quantity_received']);
+        $this->assertEquals(12.0, $suggestion['reference_supplier_average_batch_quantity']);
+        $this->assertEquals(12.17, $suggestion['reference_supplier_average_unit_cost']);
+        $this->assertSame(2, $suggestion['reference_supplier_lead_time_samples']);
+        $this->assertSame(8, $suggestion['reference_supplier_average_lead_time_days']);
+        $this->assertSame(6, $suggestion['reference_supplier_minimum_lead_time_days']);
+        $this->assertSame(10, $suggestion['reference_supplier_maximum_lead_time_days']);
+        $this->assertStringContainsString('prazo médio observado de Distribuidora Historica foi de 8 dia(s)', $suggestion['reason']);
 
         $this->get(route('purchase-entries.replenishment'))
             ->assertOk()
@@ -70,6 +81,8 @@ class ReplenishmentSuggestionTest extends TestCase
             ->assertSee('Demanda recente')
             ->assertSee('7,000')
             ->assertSee('Devolucoes descontadas: 3,000')
+            ->assertSee('Prazo medio observado: 8 dias')
+            ->assertSee('Faixa: 6 a 10 dias')
             ->assertSee('Confianca Media');
 
         $this->get($suggestion['purchase_url'])
@@ -81,7 +94,8 @@ class ReplenishmentSuggestionTest extends TestCase
                     && (float) $item['unit_cost'] === 13.0
                     && $item['intelligence_status'] === 'replenishment_suggestion'
                     && $item['intelligence_metadata']['uses_purchase_history'] === true
-                    && (float) $item['intelligence_metadata']['net_demand_quantity'] === 7.0;
+                    && (float) $item['intelligence_metadata']['net_demand_quantity'] === 7.0
+                    && $item['intelligence_metadata']['reference_supplier_average_lead_time_days'] === 8;
             });
     }
 
@@ -106,6 +120,8 @@ class ReplenishmentSuggestionTest extends TestCase
         $this->assertFalse($suggestions->first()['uses_purchase_history']);
         $this->assertFalse($suggestions->first()['has_recent_demand']);
         $this->assertEquals(0.0, $suggestions->first()['net_demand_quantity']);
+        $this->assertFalse($suggestions->first()['has_reference_supplier_history']);
+        $this->assertFalse($suggestions->first()['has_supplier_lead_time']);
         $this->assertEquals(7.0, $suggestions->first()['suggested_quantity']);
 
         $this->get(route('purchase-entries.replenishment'))
@@ -157,7 +173,8 @@ class ReplenishmentSuggestionTest extends TestCase
         string $status,
         int $daysAgo,
         float $quantity,
-        float $unitCost
+        float $unitCost,
+        int $leadTimeDays = 0,
     ): void {
         $receivedAt = $status === 'received' ? now()->subDays($daysAgo) : null;
         $entry = PurchaseEntry::query()->create([
@@ -165,7 +182,7 @@ class ReplenishmentSuggestionTest extends TestCase
             'supplier_id' => $supplier->id,
             'code' => $code,
             'status' => $status,
-            'purchased_at' => now()->subDays($daysAgo),
+            'purchased_at' => now()->subDays($daysAgo + $leadTimeDays),
             'received_at' => $receivedAt,
             'subtotal' => $quantity * $unitCost,
             'total' => $quantity * $unitCost,

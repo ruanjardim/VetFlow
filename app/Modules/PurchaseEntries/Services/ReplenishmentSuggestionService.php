@@ -10,7 +10,10 @@ class ReplenishmentSuggestionService
 {
     public const HISTORY_WINDOW_DAYS = 180;
 
-    public function __construct(private readonly ProductDemandSignalService $demandSignals) {}
+    public function __construct(
+        private readonly ProductDemandSignalService $demandSignals,
+        private readonly SupplierProductSignalService $supplierSignals,
+    ) {}
 
     /**
      * @return Collection<int, array<string, mixed>>
@@ -96,6 +99,11 @@ class ReplenishmentSuggestionService
             ? $averagePurchaseQuantity
             : $baselineQuantity;
         $lastBatch = $batches->first();
+        $supplierSignal = $this->supplierSignals->summarize(
+            $batches,
+            $lastBatch['supplier_id'] ?? null,
+        );
+        $referenceSupplier = $supplierSignal['reference'];
         $unitCost = (float) ($lastBatch['unit_cost'] ?? 0);
 
         if ($unitCost <= 0) {
@@ -130,6 +138,19 @@ class ReplenishmentSuggestionService
             'last_purchase_quantity' => $lastBatch['quantity'] ?? null,
             'last_supplier_id' => $lastBatch['supplier_id'] ?? null,
             'last_supplier_name' => $lastBatch['supplier_name'] ?? null,
+            'supplier_profiles' => $supplierSignal['profiles'],
+            'reference_supplier_deliveries' => $referenceSupplier['deliveries_count'],
+            'reference_supplier_quantity_received' => $referenceSupplier['quantity_received'],
+            'reference_supplier_average_batch_quantity' => $referenceSupplier['average_batch_quantity'],
+            'reference_supplier_average_unit_cost' => $referenceSupplier['average_unit_cost'],
+            'reference_supplier_latest_unit_cost' => $referenceSupplier['latest_unit_cost'],
+            'reference_supplier_last_received_at' => $referenceSupplier['last_received_at'],
+            'reference_supplier_lead_time_samples' => $referenceSupplier['lead_time_samples'],
+            'reference_supplier_average_lead_time_days' => $referenceSupplier['average_lead_time_days'],
+            'reference_supplier_minimum_lead_time_days' => $referenceSupplier['minimum_lead_time_days'],
+            'reference_supplier_maximum_lead_time_days' => $referenceSupplier['maximum_lead_time_days'],
+            'has_reference_supplier_history' => $referenceSupplier['deliveries_count'] > 0,
+            'has_supplier_lead_time' => $referenceSupplier['has_lead_time'],
             'demand_window_days' => $demand['window_days'],
             'demand_sales_count' => $demand['sales_count'],
             'demand_sold_quantity' => $demand['sold_quantity'],
@@ -138,7 +159,9 @@ class ReplenishmentSuggestionService
             'average_monthly_demand' => $demand['average_monthly_quantity'],
             'last_sale_at' => $demand['last_sale_at'],
             'has_recent_demand' => $demand['has_recent_demand'],
-            'reason' => $this->reason($stock, $usesPurchaseHistory, $historyCount).' '.$this->demandReason($demand),
+            'reason' => $this->reason($stock, $usesPurchaseHistory, $historyCount)
+                .' '.$this->demandReason($demand)
+                .' '.$this->supplierReason($referenceSupplier),
             'purchase_url' => route('purchase-entries.create', array_filter([
                 'replenishment_product' => $product->id,
                 'clinic_id' => $product->clinic_id,
@@ -192,6 +215,9 @@ class ReplenishmentSuggestionService
                     'quantity' => round($quantity, 3),
                     'unit_cost' => $quantity > 0 ? round($totalCost / $quantity, 2) : 0,
                     'purchased_at' => $entry?->received_at ?? $entry?->purchased_at,
+                    'ordered_at' => $entry?->purchased_at,
+                    'received_at' => $entry?->received_at,
+                    'lead_time_days' => $this->leadTimeDays($entry?->purchased_at, $entry?->received_at),
                     'supplier_id' => $entry?->supplier_id,
                     'supplier_name' => $entry?->supplier?->name,
                 ];
@@ -274,5 +300,28 @@ class ReplenishmentSuggestionService
         $sales = (int) $demand['sales_count'];
 
         return "A demanda líquida recente foi de {$quantity} unidade(s) em {$sales} venda(s); este sinal ainda não altera a quantidade automaticamente.";
+    }
+
+    private function leadTimeDays($purchasedAt, $receivedAt): ?int
+    {
+        if ($purchasedAt === null || $receivedAt === null || $receivedAt->lt($purchasedAt)) {
+            return null;
+        }
+
+        return (int) round($purchasedAt->diffInDays($receivedAt));
+    }
+
+    /** @param array<string, mixed> $supplier */
+    private function supplierReason(array $supplier): string
+    {
+        if ($supplier['deliveries_count'] === 0) {
+            return 'Ainda não há fornecedor identificado em recebimentos recentes deste produto.';
+        }
+
+        if (! $supplier['has_lead_time']) {
+            return "O fornecedor {$supplier['supplier_name']} possui recebimentos recentes, mas sem datas suficientes para calcular o prazo observado.";
+        }
+
+        return "O prazo médio observado de {$supplier['supplier_name']} foi de {$supplier['average_lead_time_days']} dia(s) em {$supplier['lead_time_samples']} recebimento(s); esse histórico não representa promessa de entrega.";
     }
 }

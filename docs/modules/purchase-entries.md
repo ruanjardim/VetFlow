@@ -32,6 +32,7 @@ payables in the financial ledger.
 | `PurchaseEntryInsightService` | Purchase/product insight support. |
 | `ReplenishmentSuggestionService` | Reorder priority, history, confidence, and quantity calculation. |
 | `ProductDemandSignalService` | Read-only net demand from completed sales and returns. |
+| `SupplierProductSignalService` | Observed delivery, quantity, cost, and lead-time profile per supplier/product. |
 | `NfeXmlImportService` | Parses NF-e XML payloads. |
 | `NfeAccessKeyImportService` | Reuses cached XML by access key. |
 | `PurchaseEntry` / `PurchaseEntryItem` | Purchase data models. |
@@ -75,6 +76,14 @@ or below their minimum. The first explainable rule set is:
 - draft, cancelled, soft-deleted, and older sales do not contribute to demand;
 - net quantity, contributing sale count, monthly average, and returns are shown
   explicitly, but this first signal does not change the suggested quantity.
+- received batches are also grouped by supplier and product inside the same
+  180-day window, exposing delivery count, received quantity, weighted average
+  cost, and latest cost;
+- lead time is calculated only when both purchase and receipt dates are valid,
+  with sample count, average, and observed range shown explicitly;
+- the most recent supplier remains a reference rather than an automatic choice,
+  and historical lead time is never presented as a promised delivery date or
+  supplier quality score.
 
 The result is a suggestion, not a purchase order. Opening the purchase entry
 prefills the product, suggested quantity, reference cost, supplier, purchase
