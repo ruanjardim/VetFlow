@@ -88,6 +88,12 @@ class PurchaseEntryInsightService
                 'with_supplier_lead_time' => $items
                     ->where('has_supplier_lead_time', true)
                     ->count(),
+                'coverage_risk' => $items
+                    ->whereIn('coverage_risk', ['critical', 'risk'])
+                    ->count(),
+                'coverage_unmeasured' => $items
+                    ->whereIn('coverage_risk', ['insufficient', 'unmeasured'])
+                    ->count(),
             ],
             'historyWindowDays' => ReplenishmentSuggestionService::HISTORY_WINDOW_DAYS,
             'demandWindowDays' => ProductDemandSignalService::WINDOW_DAYS,
@@ -228,6 +234,11 @@ class PurchaseEntryInsightService
             'average_monthly_demand' => $suggestion['average_monthly_demand'],
             'reference_supplier_deliveries' => $suggestion['reference_supplier_deliveries'],
             'reference_supplier_average_lead_time_days' => $suggestion['reference_supplier_average_lead_time_days'],
+            'coverage_days' => $suggestion['coverage_days'],
+            'coverage_margin_days' => $suggestion['coverage_margin_days'],
+            'projected_stock_at_receipt' => $suggestion['projected_stock_at_receipt'],
+            'coverage_risk' => $suggestion['coverage_risk'],
+            'coverage_risk_label' => $suggestion['coverage_risk_label'],
         ];
     }
 

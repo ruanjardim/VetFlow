@@ -14,6 +14,9 @@ This project follows the spirit of Keep a Changelog, with one practical adjustme
 - Supplier/product observations for recent received purchases, including
   delivery count, received quantity, weighted cost, and valid lead-time samples
   without automatic supplier ranking or promised-date claims.
+- Explainable stock coverage and rupture signals derived from current balance,
+  net daily demand, and observed supplier lead time, including explicit
+  insufficient-data states and no automatic purchase adjustment.
 - Evidence-validity indicators for backup and runtime probes, including safe
   expiration deadlines, near-expiry warnings, invalid future-date detection,
   and the same privacy-safe metadata in the readiness JSON report.

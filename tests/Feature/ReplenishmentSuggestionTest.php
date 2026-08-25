@@ -71,6 +71,13 @@ class ReplenishmentSuggestionTest extends TestCase
         $this->assertSame(6, $suggestion['reference_supplier_minimum_lead_time_days']);
         $this->assertSame(10, $suggestion['reference_supplier_maximum_lead_time_days']);
         $this->assertStringContainsString('prazo médio observado de Distribuidora Historica foi de 8 dia(s)', $suggestion['reason']);
+        $this->assertSame('covered', $suggestion['coverage_risk']);
+        $this->assertSame('Cobertura acima do prazo', $suggestion['coverage_risk_label']);
+        $this->assertEquals(0.0778, $suggestion['daily_demand_quantity']);
+        $this->assertEquals(25.7, $suggestion['coverage_days']);
+        $this->assertEquals(17.7, $suggestion['coverage_margin_days']);
+        $this->assertEquals(1.378, $suggestion['projected_stock_at_receipt']);
+        $this->assertStringContainsString('cobertura estimada de 25,7 dia(s) supera', mb_strtolower($suggestion['reason']));
 
         $this->get(route('purchase-entries.replenishment'))
             ->assertOk()
@@ -83,6 +90,9 @@ class ReplenishmentSuggestionTest extends TestCase
             ->assertSee('Devolucoes descontadas: 3,000')
             ->assertSee('Prazo medio observado: 8 dias')
             ->assertSee('Faixa: 6 a 10 dias')
+            ->assertSee('Cobertura acima do prazo')
+            ->assertSee('Cobertura estimada: 25,7 dias')
+            ->assertSee('Margem observada: 17,7 dias')
             ->assertSee('Confianca Media');
 
         $this->get($suggestion['purchase_url'])
@@ -95,7 +105,8 @@ class ReplenishmentSuggestionTest extends TestCase
                     && $item['intelligence_status'] === 'replenishment_suggestion'
                     && $item['intelligence_metadata']['uses_purchase_history'] === true
                     && (float) $item['intelligence_metadata']['net_demand_quantity'] === 7.0
-                    && $item['intelligence_metadata']['reference_supplier_average_lead_time_days'] === 8;
+                    && $item['intelligence_metadata']['reference_supplier_average_lead_time_days'] === 8
+                    && $item['intelligence_metadata']['coverage_risk'] === 'covered';
             });
     }
 
@@ -122,6 +133,8 @@ class ReplenishmentSuggestionTest extends TestCase
         $this->assertEquals(0.0, $suggestions->first()['net_demand_quantity']);
         $this->assertFalse($suggestions->first()['has_reference_supplier_history']);
         $this->assertFalse($suggestions->first()['has_supplier_lead_time']);
+        $this->assertSame('insufficient', $suggestions->first()['coverage_risk']);
+        $this->assertNull($suggestions->first()['coverage_days']);
         $this->assertEquals(7.0, $suggestions->first()['suggested_quantity']);
 
         $this->get(route('purchase-entries.replenishment'))
@@ -129,7 +142,42 @@ class ReplenishmentSuggestionTest extends TestCase
             ->assertSee('Produto local sem historico')
             ->assertDontSee('Produto externo invisivel')
             ->assertSee('Sem compras recebidas no periodo')
-            ->assertSee('Sem demanda liquida no periodo');
+            ->assertSee('Sem demanda liquida no periodo')
+            ->assertSee('Base insuficiente');
+    }
+
+    public function test_coverage_flags_when_stock_may_end_before_observed_receipt(): void
+    {
+        $this->travelTo('2026-08-01 10:00:00');
+
+        $clinic = $this->clinic('Clinica Risco de Ruptura', '00000000000621');
+        $supplier = $this->supplier($clinic, 'Fornecedor Prazo Observado');
+        $product = $this->product($clinic, 'Produto com cobertura curta', stock: 2, minimum: 5, cost: 10);
+        $user = $this->userForClinic($clinic);
+
+        $this->purchaseBatch($clinic, $supplier, $product, 'ENT-RISCO-001', 'received', 5, 10, 10, 7);
+        $this->sale($clinic, $product, 'VEN-RISCO-001', 'completed', 2, 90, 0);
+
+        $this->actingAs($user);
+
+        $suggestion = app(ReplenishmentSuggestionService::class)->suggestionFor($product);
+
+        $this->assertSame('risk', $suggestion['coverage_risk']);
+        $this->assertSame('Risco de ruptura', $suggestion['coverage_risk_label']);
+        $this->assertEquals(1.0, $suggestion['daily_demand_quantity']);
+        $this->assertEquals(2.0, $suggestion['coverage_days']);
+        $this->assertSame(7, $suggestion['coverage_lead_time_days']);
+        $this->assertEquals(-5.0, $suggestion['coverage_margin_days']);
+        $this->assertEquals(0.0, $suggestion['projected_stock_at_receipt']);
+        $this->assertStringContainsString('menor ou igual ao prazo médio observado', $suggestion['reason']);
+
+        $this->get(route('purchase-entries.replenishment'))
+            ->assertOk()
+            ->assertSee('Produto com cobertura curta')
+            ->assertSee('Risco de ruptura')
+            ->assertSee('Cobertura estimada: 2,0 dias')
+            ->assertSee('Deficit estimado: 5,0 dias')
+            ->assertViewHas('stats', fn (array $stats): bool => $stats['coverage_risk'] === 1);
     }
 
     private function clinic(string $name, string $cnpj): Clinic

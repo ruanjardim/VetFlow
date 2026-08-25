@@ -48,6 +48,9 @@ The local working tree was clean before this documentation pass.
 - Supplier/product observations now summarize recent received batches, weighted
   cost, and valid purchase-to-receipt lead-time samples without assigning a
   supplier score, delivery promise, or automatic selection.
+- Low-stock products now expose demand-derived coverage days, the projected
+  balance at observed receipt time, and an explicit rupture/insufficient-data
+  state without changing the purchase recommendation automatically.
 - An assisted appointment reminder queue that prepares WhatsApp contact and
   records operator-confirmed outcomes, status changes, and an auditable contact
   history without claiming automatic delivery.

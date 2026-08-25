@@ -48,6 +48,9 @@ The product should feel different from a generic CRUD system by connecting the c
 - Replenishment exposes supplier/product delivery counts, observed weighted
   cost, and purchase-to-receipt lead-time samples without creating a supplier
   score or automatic selection rule.
+- Current stock, net daily demand, and observed lead time now produce an
+  explainable coverage margin or rupture warning while incomplete evidence
+  remains explicitly inconclusive.
 - The selected KingHost staging candidate has a provider-specific runbook and
   a bounded, token-protected queue cron bridge that remains disabled by default.
 - Sales expose realized gross profitability by item type, category, and item,

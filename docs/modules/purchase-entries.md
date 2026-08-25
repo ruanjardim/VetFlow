@@ -33,6 +33,7 @@ payables in the financial ledger.
 | `ReplenishmentSuggestionService` | Reorder priority, history, confidence, and quantity calculation. |
 | `ProductDemandSignalService` | Read-only net demand from completed sales and returns. |
 | `SupplierProductSignalService` | Observed delivery, quantity, cost, and lead-time profile per supplier/product. |
+| `InventoryCoverageSignalService` | Explainable stock-coverage and observed lead-time comparison. |
 | `NfeXmlImportService` | Parses NF-e XML payloads. |
 | `NfeAccessKeyImportService` | Reuses cached XML by access key. |
 | `PurchaseEntry` / `PurchaseEntryItem` | Purchase data models. |
@@ -84,6 +85,14 @@ or below their minimum. The first explainable rule set is:
 - the most recent supplier remains a reference rather than an automatic choice,
   and historical lead time is never presented as a promised delivery date or
   supplier quality score.
+- daily demand is derived from the 90-day net quantity, and current stock is
+  divided by that rate to expose estimated coverage days;
+- a rupture risk is shown only when projected coverage is less than or equal to
+  the reference supplier's observed average lead time, while missing demand or
+  lead-time evidence is labeled as insufficient instead of inferred;
+- projected stock at receipt and the positive margin or negative gap are shown
+  as calculation context, but coverage does not alter quantity, supplier, or
+  purchase state automatically.
 
 The result is a suggestion, not a purchase order. Opening the purchase entry
 prefills the product, suggested quantity, reference cost, supplier, purchase

@@ -51,6 +51,14 @@
       <span>Com prazo observado</span>
       <strong>{{ $stats['with_supplier_lead_time'] ?? 0 }}</strong>
     </div>
+    <div class="stat">
+      <span>Risco de ruptura</span>
+      <strong>{{ $stats['coverage_risk'] ?? 0 }}</strong>
+    </div>
+    <div class="stat">
+      <span>Cobertura sem comparacao</span>
+      <strong>{{ $stats['coverage_unmeasured'] ?? 0 }}</strong>
+    </div>
   </section>
 
   <section class="panel">
@@ -70,6 +78,7 @@
             <th>Sugestao</th>
             <th>Historico recente</th>
             <th>Demanda recente</th>
+            <th>Cobertura / risco</th>
             <th>Fornecedor / custo</th>
             <th>Por que sugerimos</th>
             <th>Acao</th>
@@ -93,6 +102,22 @@
               <td>
                 <span class="badge {{ $priorityBadge }}">{{ $item['priority_label'] }}</span>
                 <div class="muted">Confianca {{ $confidenceLabel }}</div>
+              </td>
+              <td>
+                <span class="badge {{ $item['coverage_risk_tone'] }}">{{ $item['coverage_risk_label'] }}</span>
+                @if($item['coverage_days'] !== null)
+                  <div class="muted">Cobertura estimada: {{ number_format((float) $item['coverage_days'], 1, ',', '.') }} dias</div>
+                @endif
+                @if($item['coverage_margin_days'] !== null)
+                  @if($item['coverage_margin_days'] < 0)
+                    <div class="muted">Deficit estimado: {{ number_format(abs((float) $item['coverage_margin_days']), 1, ',', '.') }} dias</div>
+                  @else
+                    <div class="muted">Margem observada: {{ number_format((float) $item['coverage_margin_days'], 1, ',', '.') }} dias</div>
+                  @endif
+                @endif
+                @if($item['projected_stock_at_receipt'] !== null)
+                  <div class="muted">Saldo projetado no recebimento: {{ number_format((float) $item['projected_stock_at_receipt'], 3, ',', '.') }} {{ $item['unit'] }}</div>
+                @endif
               </td>
               <td>
                 <strong>{{ $item['product']->name }}</strong>
@@ -159,7 +184,7 @@
             </tr>
           @empty
             <tr>
-              <td colspan="9" class="muted">Nenhum produto abaixo do minimo agora.</td>
+              <td colspan="10" class="muted">Nenhum produto abaixo do minimo agora.</td>
             </tr>
           @endforelse
         </tbody>

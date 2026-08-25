@@ -287,6 +287,12 @@ class PurchaseEntryController extends Controller
                 'reference_supplier_average_lead_time_days' => $suggestion['reference_supplier_average_lead_time_days'],
                 'reference_supplier_minimum_lead_time_days' => $suggestion['reference_supplier_minimum_lead_time_days'],
                 'reference_supplier_maximum_lead_time_days' => $suggestion['reference_supplier_maximum_lead_time_days'],
+                'daily_demand_quantity' => $suggestion['daily_demand_quantity'],
+                'coverage_days' => $suggestion['coverage_days'],
+                'coverage_lead_time_days' => $suggestion['coverage_lead_time_days'],
+                'coverage_margin_days' => $suggestion['coverage_margin_days'],
+                'projected_stock_at_receipt' => $suggestion['projected_stock_at_receipt'],
+                'coverage_risk' => $suggestion['coverage_risk'],
                 'reason' => $suggestion['reason'],
             ],
         ];

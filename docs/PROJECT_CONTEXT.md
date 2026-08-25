@@ -64,6 +64,10 @@ proposed purchase quantity. The same replenishment view now groups received
 batches by supplier/product and shows delivery counts, weighted observed cost,
 and lead-time samples when purchase and receipt dates are available. These are
 historical facts, not an automatic supplier recommendation or delivery promise.
+Current stock can now be compared with those signals through an explainable
+coverage projection. A rupture warning appears only when demand-derived coverage
+does not exceed the observed average lead time; absent demand or lead-time data
+remains explicitly inconclusive, and the projection never changes a purchase.
 Patient care now includes a permission-aware longitudinal
 profile that connects appointments, medical records, prescriptions,
 vaccinations, and hospitalizations while

@@ -13,6 +13,7 @@ class ReplenishmentSuggestionService
     public function __construct(
         private readonly ProductDemandSignalService $demandSignals,
         private readonly SupplierProductSignalService $supplierSignals,
+        private readonly InventoryCoverageSignalService $coverageSignals,
     ) {}
 
     /**
@@ -113,6 +114,7 @@ class ReplenishmentSuggestionService
         $stock = (float) $product->stock_quantity;
         $minimum = (float) $product->minimum_stock;
         $priority = $this->priority($stock, $minimum);
+        $coverage = $this->coverageSignals->calculate($stock, $demand, $referenceSupplier);
 
         return [
             'product' => $product,
@@ -159,9 +161,19 @@ class ReplenishmentSuggestionService
             'average_monthly_demand' => $demand['average_monthly_quantity'],
             'last_sale_at' => $demand['last_sale_at'],
             'has_recent_demand' => $demand['has_recent_demand'],
+            'daily_demand_quantity' => $coverage['daily_demand_quantity'],
+            'coverage_days' => $coverage['coverage_days'],
+            'coverage_lead_time_days' => $coverage['lead_time_days'],
+            'coverage_margin_days' => $coverage['coverage_margin_days'],
+            'projected_stock_at_receipt' => $coverage['projected_stock_at_receipt'],
+            'coverage_risk' => $coverage['risk_key'],
+            'coverage_risk_label' => $coverage['risk_label'],
+            'coverage_risk_tone' => $coverage['risk_tone'],
+            'coverage_risk_rank' => $coverage['risk_rank'],
             'reason' => $this->reason($stock, $usesPurchaseHistory, $historyCount)
                 .' '.$this->demandReason($demand)
-                .' '.$this->supplierReason($referenceSupplier),
+                .' '.$this->supplierReason($referenceSupplier)
+                .' '.$coverage['summary'],
             'purchase_url' => route('purchase-entries.create', array_filter([
                 'replenishment_product' => $product->id,
                 'clinic_id' => $product->clinic_id,
