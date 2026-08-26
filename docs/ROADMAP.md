@@ -57,6 +57,9 @@ The product should feel different from a generic CRUD system by connecting the c
 - Replenishment purchase prefills preserve the same canonical evidence used by
   human review in a signed envelope, establishing a trustworthy base for
   measuring later operator decisions without changing rules automatically.
+- Saved purchase items now measure whether signed replenishment quantity, cost,
+  and supplier context were kept or adjusted; unverifiable evidence is excluded
+  and the comparison remains observational.
 - The selected KingHost staging candidate has a provider-specific runbook and
   a bounded, token-protected queue cron bridge that remains disabled by default.
 - Sales expose realized gross profitability by item type, category, and item,

@@ -57,6 +57,9 @@ The local working tree was clean before this documentation pass.
 - Replenishment review and purchase prefill now share a canonical, versioned
   evidence snapshot; purchase metadata includes an HMAC signature so future
   validation can detect tampering before measuring operator changes.
+- Saved replenishment purchases now retain a backend-computed comparison of
+  suggested versus actual quantity, unit cost, and supplier. Invalid or
+  mismatched evidence is explicitly unavailable and contributes no metrics.
 - An assisted appointment reminder queue that prepares WhatsApp contact and
   records operator-confirmed outcomes, status changes, and an auditable contact
   history without claiming automatic delivery.

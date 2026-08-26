@@ -138,6 +138,126 @@ class ReplenishmentSuggestionTest extends TestCase
         $this->assertFalse($evidence->validEnvelope($envelope));
     }
 
+    public function test_saved_purchase_measures_operator_changes_against_valid_evidence(): void
+    {
+        $this->travelTo('2026-08-01 10:00:00');
+
+        $clinic = $this->clinic('Clinica Decisao de Compra', '00000000000607');
+        $suggestedSupplier = $this->supplier($clinic, 'Fornecedor sugerido');
+        $selectedSupplier = $this->supplier($clinic, 'Fornecedor escolhido');
+        $product = $this->product($clinic, 'Produto com decisao medida', stock: 2, minimum: 5, cost: 9);
+        $user = $this->userForClinic($clinic);
+
+        $this->purchaseBatch($clinic, $suggestedSupplier, $product, 'ENT-MED-001', 'received', 60, 10, 11, 6);
+        $this->purchaseBatch($clinic, $suggestedSupplier, $product, 'ENT-MED-002', 'received', 20, 14, 13, 10);
+
+        $this->actingAs($user);
+
+        $suggestion = app(ReplenishmentSuggestionService::class)->suggestionFor($product);
+        $prefill = $this->get($suggestion['purchase_url'])
+            ->assertOk()
+            ->viewData('suggestedItem');
+
+        $this->post(route('purchase-entries.store'), [
+            'supplier_id' => $selectedSupplier->id,
+            'status' => 'draft',
+            'purchased_at' => now()->format('Y-m-d'),
+            'items' => [[
+                'product_id' => $product->id,
+                'description' => $product->name,
+                'quantity' => 15,
+                'unit_cost' => 14,
+                'sale_price' => 20,
+                'intelligence_status' => $prefill['intelligence_status'],
+                'intelligence_metadata' => json_encode($prefill['intelligence_metadata'], JSON_THROW_ON_ERROR),
+            ]],
+        ])->assertRedirect(route('purchase-entries.index'));
+
+        $entry = PurchaseEntry::query()->latest('id')->firstOrFail();
+        $decision = $entry->items()->sole()->intelligence_metadata['replenishment_decision'];
+
+        $this->assertSame('valid', $decision['evidence_status']);
+        $this->assertSame('adjusted', $decision['classification']);
+        $this->assertEquals(12.0, $decision['quantity']['suggested']);
+        $this->assertEquals(15.0, $decision['quantity']['actual']);
+        $this->assertEquals(3.0, $decision['quantity']['delta']);
+        $this->assertEquals(25.0, $decision['quantity']['delta_percent']);
+        $this->assertTrue($decision['quantity']['changed']);
+        $this->assertEquals(13.0, $decision['unit_cost']['suggested']);
+        $this->assertEquals(14.0, $decision['unit_cost']['actual']);
+        $this->assertEquals(1.0, $decision['unit_cost']['delta']);
+        $this->assertEquals(7.69, $decision['unit_cost']['delta_percent']);
+        $this->assertTrue($decision['unit_cost']['changed']);
+        $this->assertSame($suggestedSupplier->id, $decision['supplier']['suggested_id']);
+        $this->assertSame($selectedSupplier->id, $decision['supplier']['actual_id']);
+        $this->assertSame('changed', $decision['supplier']['status']);
+        $this->assertSame(
+            $prefill['intelligence_metadata']['evidence']['hash'],
+            $decision['evidence_hash'],
+        );
+
+        $this->post(route('purchase-entries.store'), [
+            'supplier_id' => $suggestedSupplier->id,
+            'status' => 'draft',
+            'purchased_at' => now()->format('Y-m-d'),
+            'items' => [[
+                'product_id' => $product->id,
+                'description' => $product->name,
+                'quantity' => $prefill['quantity'],
+                'unit_cost' => $prefill['unit_cost'],
+                'sale_price' => 20,
+                'intelligence_status' => $prefill['intelligence_status'],
+                'intelligence_metadata' => json_encode($prefill['intelligence_metadata'], JSON_THROW_ON_ERROR),
+            ]],
+        ])->assertRedirect(route('purchase-entries.index'));
+
+        $keptEntry = PurchaseEntry::query()->latest('id')->firstOrFail();
+        $kept = $keptEntry->items()->sole()->intelligence_metadata['replenishment_decision'];
+
+        $this->assertSame('kept', $kept['classification']);
+        $this->assertFalse($kept['quantity']['changed']);
+        $this->assertFalse($kept['unit_cost']['changed']);
+        $this->assertSame('kept', $kept['supplier']['status']);
+    }
+
+    public function test_invalid_replenishment_evidence_is_excluded_from_purchase_comparison(): void
+    {
+        $clinic = $this->clinic('Clinica Evidencia de Compra Invalida', '00000000000609');
+        $product = $this->product($clinic, 'Produto com metadado alterado', stock: 2, minimum: 5, cost: 9);
+        $user = $this->userForClinic($clinic);
+
+        $this->actingAs($user);
+
+        $suggestion = app(ReplenishmentSuggestionService::class)->suggestionFor($product);
+        $prefill = $this->get($suggestion['purchase_url'])
+            ->assertOk()
+            ->viewData('suggestedItem');
+        $prefill['intelligence_metadata']['evidence']['snapshot']['suggested_quantity'] = 900;
+
+        $this->post(route('purchase-entries.store'), [
+            'status' => 'draft',
+            'purchased_at' => now()->format('Y-m-d'),
+            'items' => [[
+                'product_id' => $product->id,
+                'description' => $product->name,
+                'quantity' => 10,
+                'unit_cost' => 9,
+                'sale_price' => 18,
+                'intelligence_status' => $prefill['intelligence_status'],
+                'intelligence_metadata' => json_encode($prefill['intelligence_metadata'], JSON_THROW_ON_ERROR),
+            ]],
+        ])->assertRedirect(route('purchase-entries.index'));
+
+        $entry = PurchaseEntry::query()->latest('id')->firstOrFail();
+        $decision = $entry->items()->sole()->intelligence_metadata['replenishment_decision'];
+
+        $this->assertSame('invalid', $decision['evidence_status']);
+        $this->assertSame('unavailable', $decision['classification']);
+        $this->assertArrayNotHasKey('quantity', $decision);
+        $this->assertArrayNotHasKey('unit_cost', $decision);
+        $this->assertArrayNotHasKey('supplier', $decision);
+    }
+
     public function test_suggestions_are_clinic_scoped_and_fall_back_to_the_minimum_stock_rule(): void
     {
         $clinicA = $this->clinic('Clinica Reposicao B', '00000000000611');

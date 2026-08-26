@@ -37,6 +37,7 @@ payables in the financial ledger.
 | `SupplierProductSignalService` | Observed delivery, quantity, cost, and lead-time profile per supplier/product. |
 | `InventoryCoverageSignalService` | Explainable stock-coverage and observed lead-time comparison. |
 | `ReplenishmentEvidenceService` | Canonical evidence snapshots, hashes, and HMAC-signed purchase envelopes. |
+| `ReplenishmentPurchaseDecisionService` | Validates signed evidence and measures saved operator adjustments. |
 | `ReplenishmentReviewService` | Append-only human decisions, evidence snapshots, and stale-review detection. |
 | `NfeXmlImportService` | Parses NF-e XML payloads. |
 | `NfeAccessKeyImportService` | Reuses cached XML by access key. |
@@ -111,6 +112,12 @@ or below their minimum. The first explainable rule set is:
 - purchase-form metadata carries an HMAC-signed evidence envelope so later
   validation can reject client-side changes before comparing the original
   suggestion with the saved operator decision.
+- when a purchase item originating from replenishment is saved, the backend
+  compares actual quantity, unit cost, and supplier with the signed snapshot;
+- the stored decision metadata classifies the result as kept or adjusted and
+  preserves absolute and percentage deltas without changing the purchase;
+- invalid or product/clinic-mismatched evidence is marked unavailable and is
+  excluded from comparison instead of being trusted.
 
 The result is a suggestion, not a purchase order. Opening the purchase entry
 prefills the product, suggested quantity, reference cost, supplier, purchase

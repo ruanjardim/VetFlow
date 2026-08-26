@@ -13,6 +13,9 @@ This project follows the spirit of Keep a Changelog, with one practical adjustme
 
 ### Added
 
+- Backend comparison of signed replenishment suggestions with saved purchase
+  quantity, unit cost, and supplier, including kept/adjusted classification,
+  transparent deltas, and exclusion of invalid or mismatched evidence.
 - Canonical replenishment evidence service shared by human review and purchase
   prefill, with versioned snapshots, SHA-256 fingerprints, HMAC signatures,
   and tamper detection as the basis for later validation metrics.

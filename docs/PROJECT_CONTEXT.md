@@ -75,7 +75,10 @@ signal changes. Reviews never create a purchase or mutate inventory.
 The same canonical snapshot now accompanies a purchase prefill inside a
 versioned, HMAC-signed envelope. This creates a tamper-detectable foundation
 for comparing future saved purchases with what VetFlow originally suggested;
-no comparison or automatic rule adjustment is inferred yet.
+saved replenishment items now record whether quantity, cost, or the reference
+supplier was kept or adjusted, including transparent deltas. Invalid or
+scope-mismatched envelopes produce no comparison. These observations remain
+descriptive and never tune a rule or change a purchase automatically.
 Patient care now includes a permission-aware longitudinal
 profile that connects appointments, medical records, prescriptions,
 vaccinations, and hospitalizations while
