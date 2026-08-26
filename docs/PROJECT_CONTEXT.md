@@ -79,6 +79,11 @@ saved replenishment items now record whether quantity, cost, or the reference
 supplier was kept or adjusted, including transparent deltas. Invalid or
 scope-mismatched envelopes produce no comparison. These observations remain
 descriptive and never tune a rule or change a purchase automatically.
+The protected purchase-decision history now makes those observations visible
+through the interface, with filters for decision and entry state, suggested
+versus actual values, and strict clinic isolation. Only the safe read model is
+rendered; signed envelopes, fingerprints, and raw intelligence metadata remain
+server-side.
 Patient care now includes a permission-aware longitudinal
 profile that connects appointments, medical records, prescriptions,
 vaccinations, and hospitalizations while

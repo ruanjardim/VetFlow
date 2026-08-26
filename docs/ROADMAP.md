@@ -60,6 +60,9 @@ The product should feel different from a generic CRUD system by connecting the c
 - Saved purchase items now measure whether signed replenishment quantity, cost,
   and supplier context were kept or adjusted; unverifiable evidence is excluded
   and the comparison remains observational.
+- Purchase decision history is now visible through a tenant-safe read-only
+  interface with classification/status filters and no exposure of signed
+  evidence internals.
 - The selected KingHost staging candidate has a provider-specific runbook and
   a bounded, token-protected queue cron bridge that remains disabled by default.
 - Sales expose realized gross profitability by item type, category, and item,

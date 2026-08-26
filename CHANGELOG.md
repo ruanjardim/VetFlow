@@ -13,6 +13,9 @@ This project follows the spirit of Keep a Changelog, with one practical adjustme
 
 ### Added
 
+- Clinic-scoped, read-only replenishment purchase-decision history with
+  kept/adjusted/unavailable filters, transparent quantity and cost deltas,
+  supplier comparison, source-entry links, and private evidence internals.
 - Backend comparison of signed replenishment suggestions with saved purchase
   quantity, unit cost, and supplier, including kept/adjusted classification,
   transparent deltas, and exclusion of invalid or mismatched evidence.

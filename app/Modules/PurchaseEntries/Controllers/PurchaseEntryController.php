@@ -14,6 +14,7 @@ use App\Modules\PurchaseEntries\Services\NfeXmlImportService;
 use App\Modules\PurchaseEntries\Services\PurchaseEntryInsightService;
 use App\Modules\PurchaseEntries\Services\PurchaseEntryService;
 use App\Modules\PurchaseEntries\Services\ReplenishmentEvidenceService;
+use App\Modules\PurchaseEntries\Services\ReplenishmentPurchaseHistoryService;
 use App\Modules\PurchaseEntries\Services\ReplenishmentReviewService;
 use App\Modules\Suppliers\Models\Supplier;
 use Illuminate\Http\JsonResponse;
@@ -32,6 +33,7 @@ class PurchaseEntryController extends Controller
         private readonly PurchaseEntryInsightService $insights,
         private readonly ReplenishmentReviewService $replenishmentReviews,
         private readonly ReplenishmentEvidenceService $replenishmentEvidence,
+        private readonly ReplenishmentPurchaseHistoryService $replenishmentPurchaseHistory,
     ) {}
 
     public function index()
@@ -95,6 +97,27 @@ class PurchaseEntryController extends Controller
                 $validated['q'] ?? null,
             ),
             'decisions' => ReplenishmentReviewService::DECISIONS,
+            'filters' => $validated,
+        ]);
+    }
+
+    public function replenishmentPurchases(Request $request): View
+    {
+        $validated = $request->validate([
+            'classification' => ['nullable', Rule::in(array_keys(ReplenishmentPurchaseHistoryService::CLASSIFICATIONS))],
+            'status' => ['nullable', Rule::in(array_keys(ReplenishmentPurchaseHistoryService::PURCHASE_STATUSES))],
+            'q' => ['nullable', 'string', 'max:120'],
+        ]);
+
+        return view('purchase-entries.replenishment-purchases', [
+            'items' => $this->replenishmentPurchaseHistory->history(
+                $request->user(),
+                $validated['classification'] ?? null,
+                $validated['status'] ?? null,
+                $validated['q'] ?? null,
+            ),
+            'classifications' => ReplenishmentPurchaseHistoryService::CLASSIFICATIONS,
+            'purchaseStatuses' => ReplenishmentPurchaseHistoryService::PURCHASE_STATUSES,
             'filters' => $validated,
         ]);
     }

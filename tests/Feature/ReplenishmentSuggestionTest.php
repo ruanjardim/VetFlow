@@ -218,6 +218,36 @@ class ReplenishmentSuggestionTest extends TestCase
         $this->assertFalse($kept['quantity']['changed']);
         $this->assertFalse($kept['unit_cost']['changed']);
         $this->assertSame('kept', $kept['supplier']['status']);
+
+        $this->get(route('purchase-entries.replenishment-purchases'))
+            ->assertOk()
+            ->assertSeeText('Decisões de compra da reposição')
+            ->assertSeeText($entry->code)
+            ->assertSeeText($keptEntry->code)
+            ->assertSeeText('Produto com decisao medida')
+            ->assertSeeText('Ajustada')
+            ->assertSeeText('Mantida')
+            ->assertSeeText('Fornecedor escolhido')
+            ->assertSeeText('Fornecedor sugerido')
+            ->assertSeeText('+3,000')
+            ->assertSeeText('+25,00%')
+            ->assertSeeText('+R$ 1,00')
+            ->assertDontSeeText($prefill['intelligence_metadata']['evidence']['signature']);
+
+        $this->get(route('purchase-entries.replenishment-purchases', ['classification' => 'adjusted']))
+            ->assertOk()
+            ->assertSeeText($entry->code)
+            ->assertDontSeeText($keptEntry->code);
+
+        $this->get(route('purchase-entries.replenishment-purchases', ['classification' => 'kept']))
+            ->assertOk()
+            ->assertSeeText($keptEntry->code)
+            ->assertDontSeeText($entry->code);
+
+        $this->get(route('purchase-entries.replenishment-purchases', ['q' => $entry->code]))
+            ->assertOk()
+            ->assertSeeText($entry->code)
+            ->assertDontSeeText($keptEntry->code);
     }
 
     public function test_invalid_replenishment_evidence_is_excluded_from_purchase_comparison(): void
@@ -256,6 +286,13 @@ class ReplenishmentSuggestionTest extends TestCase
         $this->assertArrayNotHasKey('quantity', $decision);
         $this->assertArrayNotHasKey('unit_cost', $decision);
         $this->assertArrayNotHasKey('supplier', $decision);
+
+        $this->get(route('purchase-entries.replenishment-purchases'))
+            ->assertOk()
+            ->assertSeeText($entry->code)
+            ->assertSeeText('Comparação indisponível')
+            ->assertSeeText('Evidência inválida')
+            ->assertSeeText('Sugestão indisponível');
     }
 
     public function test_suggestions_are_clinic_scoped_and_fall_back_to_the_minimum_stock_rule(): void
@@ -420,12 +457,45 @@ class ReplenishmentSuggestionTest extends TestCase
             ])
             ->assertSessionHasNoErrors();
 
+        $externalEntry = PurchaseEntry::query()->create([
+            'clinic_id' => $clinicB->id,
+            'code' => 'ENT-DECISAO-EXTERNA',
+            'status' => 'draft',
+            'purchased_at' => now(),
+            'subtotal' => 5,
+            'total' => 5,
+        ]);
+        $externalEntry->items()->create([
+            'product_id' => $productB->id,
+            'description' => $productB->name,
+            'quantity' => 1,
+            'unit_cost' => 5,
+            'total_cost' => 5,
+            'intelligence_status' => 'replenishment_suggestion',
+            'intelligence_metadata' => [
+                'replenishment_decision' => [
+                    'version' => 1,
+                    'evidence_status' => 'valid',
+                    'classification' => 'adjusted',
+                    'quantity' => ['suggested' => 2, 'actual' => 1, 'delta' => -1, 'delta_percent' => -50],
+                    'unit_cost' => ['suggested' => 4, 'actual' => 5, 'delta' => 1, 'delta_percent' => 25],
+                    'supplier' => ['suggested_id' => null, 'actual_id' => null, 'status' => 'unavailable'],
+                    'evaluated_at' => now()->toISOString(),
+                ],
+            ],
+        ]);
+
         $this->actingAs($userA);
 
         $this->get(route('purchase-entries.replenishment-reviews'))
             ->assertOk()
             ->assertDontSeeText('Produto externo da revisao')
             ->assertDontSeeText('Registro exclusivo da clinica B.');
+
+        $this->get(route('purchase-entries.replenishment-purchases'))
+            ->assertOk()
+            ->assertDontSeeText('ENT-DECISAO-EXTERNA')
+            ->assertDontSeeText('Produto externo da revisao');
 
         $this->post(route('purchase-entries.replenishment-reviews.store', $productB), [
             'decision' => 'reviewed',

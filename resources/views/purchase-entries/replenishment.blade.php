@@ -10,6 +10,7 @@
     </div>
     <div class="actions">
       <a class="button secondary" href="{{ route('purchase-entries.index') }}">Entradas</a>
+      <a class="button secondary" href="{{ route('purchase-entries.replenishment-purchases') }}">Decisoes de compra</a>
       <a class="button secondary" href="{{ route('purchase-entries.replenishment-reviews') }}">Historico de revisoes</a>
       <a class="button" href="{{ route('purchase-entries.create') }}">Nova entrada</a>
     </div>

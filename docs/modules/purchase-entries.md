@@ -24,6 +24,8 @@ payables in the financial ledger.
   evidence visible at the time.
 - Prefill a purchase entry from a suggestion while keeping the final quantity,
   supplier, cost, and save decision under operator control.
+- Expose a clinic-scoped, read-only history of the resulting purchase decisions
+  without returning signed envelopes or internal evidence metadata to the view.
 
 ## Key Classes
 
@@ -38,6 +40,7 @@ payables in the financial ledger.
 | `InventoryCoverageSignalService` | Explainable stock-coverage and observed lead-time comparison. |
 | `ReplenishmentEvidenceService` | Canonical evidence snapshots, hashes, and HMAC-signed purchase envelopes. |
 | `ReplenishmentPurchaseDecisionService` | Validates signed evidence and measures saved operator adjustments. |
+| `ReplenishmentPurchaseHistoryService` | Filters and presents safe purchase-decision comparisons. |
 | `ReplenishmentReviewService` | Append-only human decisions, evidence snapshots, and stale-review detection. |
 | `NfeXmlImportService` | Parses NF-e XML payloads. |
 | `NfeAccessKeyImportService` | Reuses cached XML by access key. |
@@ -118,6 +121,12 @@ or below their minimum. The first explainable rule set is:
   preserves absolute and percentage deltas without changing the purchase;
 - invalid or product/clinic-mismatched evidence is marked unavailable and is
   excluded from comparison instead of being trusted.
+- a protected decision-history screen shows kept, adjusted, and unavailable
+  comparisons with quantity/cost deltas, supplier context, purchase status,
+  product/entry search, and links back to the source entry;
+- history queries scope through the parent purchase entry because item rows do
+  not carry `clinic_id`, and the read model omits signatures, hashes, and raw
+  intelligence metadata.
 
 The result is a suggestion, not a purchase order. Opening the purchase entry
 prefills the product, suggested quantity, reference cost, supplier, purchase

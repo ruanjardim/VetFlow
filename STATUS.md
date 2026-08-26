@@ -60,6 +60,9 @@ The local working tree was clean before this documentation pass.
 - Saved replenishment purchases now retain a backend-computed comparison of
   suggested versus actual quantity, unit cost, and supplier. Invalid or
   mismatched evidence is explicitly unavailable and contributes no metrics.
+- A clinic-scoped decision-history interface now presents those purchase
+  comparisons with filters, transparent deltas, supplier context, and source
+  entry links while keeping signatures and raw metadata private.
 - An assisted appointment reminder queue that prepares WhatsApp contact and
   records operator-confirmed outcomes, status changes, and an auditable contact
   history without claiming automatic delivery.

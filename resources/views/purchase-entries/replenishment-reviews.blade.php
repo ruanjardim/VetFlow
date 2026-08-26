@@ -9,6 +9,7 @@
       <p>Trilha append-only das revisoes humanas, vinculada aos calculos existentes em cada decisao.</p>
     </div>
     <div class="actions">
+      <a class="button secondary" href="{{ route('purchase-entries.replenishment-purchases') }}">Decisoes de compra</a>
       <a class="button secondary" href="{{ route('purchase-entries.replenishment') }}">Voltar a reposicao</a>
     </div>
   </header>
