@@ -8,6 +8,8 @@ This project follows the spirit of Keep a Changelog, with one practical adjustme
 
 ### Security
 
+- Updated the frontend build chain to `nanoid` 3.3.18 and `postcss` 8.5.26,
+  clearing the current high/moderate npm advisories before the demo release.
 - Updated `league/commonmark` to 2.10.0, including the upstream fixes for the
   August 2026 denial-of-service and unsafe-link parsing advisories.
 
