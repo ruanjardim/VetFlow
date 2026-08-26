@@ -54,6 +54,9 @@ The product should feel different from a generic CRUD system by connecting the c
 - Human replenishment reviews are append-only and evidence-bound, with an
   explicit on-hold path, tenant-safe history, and stale-state detection after
   the underlying suggestion changes.
+- Replenishment purchase prefills preserve the same canonical evidence used by
+  human review in a signed envelope, establishing a trustworthy base for
+  measuring later operator decisions without changing rules automatically.
 - The selected KingHost staging candidate has a provider-specific runbook and
   a bounded, token-protected queue cron bridge that remains disabled by default.
 - Sales expose realized gross profitability by item type, category, and item,

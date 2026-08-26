@@ -72,6 +72,10 @@ Operators can now append a reviewed or on-hold decision to that exact
 replenishment evidence. The protected history preserves authorship and the
 calculation snapshot, and labels a decision as superseded when any source
 signal changes. Reviews never create a purchase or mutate inventory.
+The same canonical snapshot now accompanies a purchase prefill inside a
+versioned, HMAC-signed envelope. This creates a tamper-detectable foundation
+for comparing future saved purchases with what VetFlow originally suggested;
+no comparison or automatic rule adjustment is inferred yet.
 Patient care now includes a permission-aware longitudinal
 profile that connects appointments, medical records, prescriptions,
 vaccinations, and hospitalizations while

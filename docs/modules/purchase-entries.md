@@ -36,6 +36,7 @@ payables in the financial ledger.
 | `ProductDemandSignalService` | Read-only net demand from completed sales and returns. |
 | `SupplierProductSignalService` | Observed delivery, quantity, cost, and lead-time profile per supplier/product. |
 | `InventoryCoverageSignalService` | Explainable stock-coverage and observed lead-time comparison. |
+| `ReplenishmentEvidenceService` | Canonical evidence snapshots, hashes, and HMAC-signed purchase envelopes. |
 | `ReplenishmentReviewService` | Append-only human decisions, evidence snapshots, and stale-review detection. |
 | `NfeXmlImportService` | Parses NF-e XML payloads. |
 | `NfeAccessKeyImportService` | Reuses cached XML by access key. |
@@ -105,6 +106,11 @@ or below their minimum. The first explainable rule set is:
   supplier, lead-time, or coverage evidence changes;
 - the protected history remains scoped to the current clinic and has no
   automatic purchase, stock, supplier, or financial side effect.
+- review events and purchase prefills now use the same versioned evidence
+  snapshot and SHA-256 fingerprint;
+- purchase-form metadata carries an HMAC-signed evidence envelope so later
+  validation can reject client-side changes before comparing the original
+  suggestion with the saved operator decision.
 
 The result is a suggestion, not a purchase order. Opening the purchase entry
 prefills the product, suggested quantity, reference cost, supplier, purchase

@@ -9,6 +9,7 @@ use App\Modules\Clinics\Models\Clinic;
 use App\Modules\Products\Models\Product;
 use App\Modules\PurchaseEntries\Models\PurchaseEntry;
 use App\Modules\PurchaseEntries\Models\ReplenishmentReviewEvent;
+use App\Modules\PurchaseEntries\Services\ReplenishmentEvidenceService;
 use App\Modules\PurchaseEntries\Services\ReplenishmentSuggestionService;
 use App\Modules\Sales\Models\Sale;
 use App\Modules\Suppliers\Models\Supplier;
@@ -107,8 +108,34 @@ class ReplenishmentSuggestionTest extends TestCase
                     && $item['intelligence_metadata']['uses_purchase_history'] === true
                     && (float) $item['intelligence_metadata']['net_demand_quantity'] === 7.0
                     && $item['intelligence_metadata']['reference_supplier_average_lead_time_days'] === 8
-                    && $item['intelligence_metadata']['coverage_risk'] === 'covered';
+                    && $item['intelligence_metadata']['coverage_risk'] === 'covered'
+                    && strlen($item['intelligence_metadata']['evidence']['hash']) === 64
+                    && strlen($item['intelligence_metadata']['evidence']['signature']) === 64
+                    && app(ReplenishmentEvidenceService::class)->validEnvelope(
+                        $item['intelligence_metadata']['evidence']
+                    );
             });
+    }
+
+    public function test_replenishment_evidence_rejects_changes_to_the_signed_snapshot(): void
+    {
+        $clinic = $this->clinic('Clinica Evidencia Assinada', '00000000000605');
+        $product = $this->product($clinic, 'Produto com evidencia assinada', stock: 2, minimum: 5, cost: 9);
+        $user = $this->userForClinic($clinic);
+
+        $this->actingAs($user);
+
+        $suggestion = app(ReplenishmentSuggestionService::class)->suggestionFor($product);
+        $evidence = app(ReplenishmentEvidenceService::class);
+        $envelope = $evidence->envelope($suggestion);
+
+        $this->assertTrue($evidence->validEnvelope($envelope));
+        $this->assertSame($clinic->id, $envelope['snapshot']['clinic_id']);
+        $this->assertSame($product->id, $envelope['snapshot']['product_id']);
+
+        $envelope['snapshot']['suggested_quantity'] = 999;
+
+        $this->assertFalse($evidence->validEnvelope($envelope));
     }
 
     public function test_suggestions_are_clinic_scoped_and_fall_back_to_the_minimum_stock_rule(): void

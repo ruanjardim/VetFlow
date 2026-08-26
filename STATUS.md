@@ -54,6 +54,9 @@ The local working tree was clean before this documentation pass.
 - Replenishment suggestions now accept append-only reviewed/on-hold decisions,
   retain the attributed evidence snapshot, expose a clinic-scoped history, and
   become visibly superseded after their source calculation changes.
+- Replenishment review and purchase prefill now share a canonical, versioned
+  evidence snapshot; purchase metadata includes an HMAC signature so future
+  validation can detect tampering before measuring operator changes.
 - An assisted appointment reminder queue that prepares WhatsApp contact and
   records operator-confirmed outcomes, status changes, and an auditable contact
   history without claiming automatic delivery.

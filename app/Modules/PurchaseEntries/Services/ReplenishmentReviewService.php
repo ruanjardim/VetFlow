@@ -19,6 +19,7 @@ class ReplenishmentReviewService
 
     public function __construct(
         private readonly ReplenishmentSuggestionService $replenishmentSuggestions,
+        private readonly ReplenishmentEvidenceService $evidence,
     ) {}
 
     /**
@@ -44,7 +45,7 @@ class ReplenishmentReviewService
 
         return $suggestions->map(function (array $suggestion) use ($latest): array {
             $event = $latest->get($suggestion['product']->id);
-            $evidenceHash = $this->hash($this->snapshot($suggestion));
+            $evidenceHash = $this->evidence->hash($this->evidence->snapshot($suggestion));
             $current = $event !== null && hash_equals($event->evidence_hash, $evidenceHash);
 
             return array_merge($suggestion, [
@@ -70,7 +71,7 @@ class ReplenishmentReviewService
         }
 
         $suggestion = $this->replenishmentSuggestions->suggestionFor($product);
-        $snapshot = $this->snapshot($suggestion);
+        $snapshot = $this->evidence->snapshot($suggestion);
 
         return DB::transaction(fn (): ReplenishmentReviewEvent => ReplenishmentReviewEvent::query()->create([
             'clinic_id' => $product->clinic_id,
@@ -79,7 +80,7 @@ class ReplenishmentReviewService
             'product_name_snapshot' => $product->name,
             'decision' => $decision,
             'evidence_snapshot' => $snapshot,
-            'evidence_hash' => $this->hash($snapshot),
+            'evidence_hash' => $this->evidence->hash($snapshot),
             'note' => filled($note) ? trim((string) $note) : null,
             'reviewed_at' => now(),
         ]));
@@ -90,7 +91,7 @@ class ReplenishmentReviewService
         $currentHashes = $this->replenishmentSuggestions
             ->suggestions()
             ->mapWithKeys(fn (array $suggestion): array => [
-                $suggestion['product']->id => $this->hash($this->snapshot($suggestion)),
+                $suggestion['product']->id => $this->evidence->hash($this->evidence->snapshot($suggestion)),
             ]);
         $query = $this->scopedQuery($user)->with('actor:id,name');
 
@@ -127,33 +128,6 @@ class ReplenishmentReviewService
         });
 
         return $events;
-    }
-
-    /** @return array<string, mixed> */
-    private function snapshot(array $suggestion): array
-    {
-        return [
-            'version' => 1,
-            'clinic_id' => (int) $suggestion['product']->clinic_id,
-            'product_id' => (int) $suggestion['product']->id,
-            'stock_quantity' => (float) $suggestion['stock_quantity'],
-            'minimum_stock' => (float) $suggestion['minimum_stock'],
-            'suggested_quantity' => (float) $suggestion['suggested_quantity'],
-            'unit_cost' => (float) $suggestion['unit_cost'],
-            'supplier_id' => $suggestion['last_supplier_id'] === null ? null : (int) $suggestion['last_supplier_id'],
-            'demand_window_days' => (int) $suggestion['demand_window_days'],
-            'net_demand_quantity' => (float) $suggestion['net_demand_quantity'],
-            'average_monthly_demand' => (float) $suggestion['average_monthly_demand'],
-            'lead_time_days' => $suggestion['coverage_lead_time_days'],
-            'coverage_days' => $suggestion['coverage_days'],
-            'coverage_margin_days' => $suggestion['coverage_margin_days'],
-            'coverage_risk' => $suggestion['coverage_risk'],
-        ];
-    }
-
-    private function hash(array $snapshot): string
-    {
-        return hash('sha256', json_encode($snapshot, JSON_THROW_ON_ERROR));
     }
 
     private function scopedQuery(User $user)

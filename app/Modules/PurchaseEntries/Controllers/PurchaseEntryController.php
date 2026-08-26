@@ -13,6 +13,7 @@ use App\Modules\PurchaseEntries\Services\NfeAccessKeyImportService;
 use App\Modules\PurchaseEntries\Services\NfeXmlImportService;
 use App\Modules\PurchaseEntries\Services\PurchaseEntryInsightService;
 use App\Modules\PurchaseEntries\Services\PurchaseEntryService;
+use App\Modules\PurchaseEntries\Services\ReplenishmentEvidenceService;
 use App\Modules\PurchaseEntries\Services\ReplenishmentReviewService;
 use App\Modules\Suppliers\Models\Supplier;
 use Illuminate\Http\JsonResponse;
@@ -30,6 +31,7 @@ class PurchaseEntryController extends Controller
         private readonly PurchaseEntryService $service,
         private readonly PurchaseEntryInsightService $insights,
         private readonly ReplenishmentReviewService $replenishmentReviews,
+        private readonly ReplenishmentEvidenceService $replenishmentEvidence,
     ) {}
 
     public function index()
@@ -309,6 +311,7 @@ class PurchaseEntryController extends Controller
             'intelligence_metadata' => [
                 'source' => 'smart_replenishment',
                 'generated_at' => now()->toDateTimeString(),
+                'evidence' => $this->replenishmentEvidence->envelope($suggestion),
                 'confidence' => $suggestion['confidence'],
                 'history_count' => $suggestion['history_count'],
                 'history_window_days' => $suggestion['history_window_days'],

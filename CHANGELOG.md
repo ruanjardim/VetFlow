@@ -13,6 +13,9 @@ This project follows the spirit of Keep a Changelog, with one practical adjustme
 
 ### Added
 
+- Canonical replenishment evidence service shared by human review and purchase
+  prefill, with versioned snapshots, SHA-256 fingerprints, HMAC signatures,
+  and tamper detection as the basis for later validation metrics.
 - Append-only human review history for replenishment suggestions, including
   reviewed/on-hold decisions, required hold notes, evidence snapshots,
   superseded-review detection, and clinic isolation without automatic buying.
