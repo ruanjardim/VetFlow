@@ -20,6 +20,8 @@ payables in the financial ledger.
 - Keep XML upload available as the operational fallback when the optional
   access-key integration is unavailable.
 - Prioritize low-stock products with explainable replenishment suggestions.
+- Record append-only human review decisions against the exact replenishment
+  evidence visible at the time.
 - Prefill a purchase entry from a suggestion while keeping the final quantity,
   supplier, cost, and save decision under operator control.
 
@@ -34,6 +36,7 @@ payables in the financial ledger.
 | `ProductDemandSignalService` | Read-only net demand from completed sales and returns. |
 | `SupplierProductSignalService` | Observed delivery, quantity, cost, and lead-time profile per supplier/product. |
 | `InventoryCoverageSignalService` | Explainable stock-coverage and observed lead-time comparison. |
+| `ReplenishmentReviewService` | Append-only human decisions, evidence snapshots, and stale-review detection. |
 | `NfeXmlImportService` | Parses NF-e XML payloads. |
 | `NfeAccessKeyImportService` | Reuses cached XML by access key. |
 | `PurchaseEntry` / `PurchaseEntryItem` | Purchase data models. |
@@ -42,6 +45,7 @@ payables in the financial ledger.
 
 - `purchase_entries`
 - `purchase_entry_items`
+- `replenishment_review_events`
 - `inventory_movements`
 - `financial_transactions`
 - `suppliers`
@@ -93,6 +97,14 @@ or below their minimum. The first explainable rule set is:
 - projected stock at receipt and the positive margin or negative gap are shown
   as calculation context, but coverage does not alter quantity, supplier, or
   purchase state automatically.
+- an operator can mark the current suggestion as reviewed or keep it on hold;
+  hold decisions require an observation;
+- every decision appends a new attributed event and preserves a normalized
+  snapshot plus its hash instead of overwriting the previous review;
+- a review becomes visibly superseded when stock, quantity, cost, demand,
+  supplier, lead-time, or coverage evidence changes;
+- the protected history remains scoped to the current clinic and has no
+  automatic purchase, stock, supplier, or financial side effect.
 
 The result is a suggestion, not a purchase order. Opening the purchase entry
 prefills the product, suggested quantity, reference cost, supplier, purchase

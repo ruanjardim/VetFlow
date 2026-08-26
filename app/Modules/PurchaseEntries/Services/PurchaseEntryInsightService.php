@@ -3,6 +3,7 @@
 namespace App\Modules\PurchaseEntries\Services;
 
 use App\Modules\Financial\Models\FinancialTransaction;
+use App\Models\User;
 use App\Modules\Products\Models\Product;
 use App\Modules\Products\Services\ProductLookupService;
 use App\Modules\Products\Support\Gtin;
@@ -14,7 +15,8 @@ class PurchaseEntryInsightService
 {
     public function __construct(
         private readonly ProductLookupService $lookupService,
-        private readonly ReplenishmentSuggestionService $replenishmentSuggestions
+        private readonly ReplenishmentSuggestionService $replenishmentSuggestions,
+        private readonly ReplenishmentReviewService $replenishmentReviews,
     ) {}
 
     public function dashboard(): array
@@ -58,9 +60,12 @@ class PurchaseEntryInsightService
         ];
     }
 
-    public function replenishmentData(): array
+    public function replenishmentData(User $user): array
     {
-        $items = $this->replenishmentSuggestions->suggestions();
+        $items = $this->replenishmentReviews->attachLatest(
+            $user,
+            $this->replenishmentSuggestions->suggestions(),
+        );
 
         return [
             'items' => $items,
@@ -93,6 +98,15 @@ class PurchaseEntryInsightService
                     ->count(),
                 'coverage_unmeasured' => $items
                     ->whereIn('coverage_risk', ['insufficient', 'unmeasured'])
+                    ->count(),
+                'reviews_current' => $items
+                    ->whereIn('review_status.key', ['reviewed', 'held'])
+                    ->count(),
+                'reviews_stale' => $items
+                    ->where('review_status.key', 'stale')
+                    ->count(),
+                'reviews_pending' => $items
+                    ->where('review_status.key', 'pending')
                     ->count(),
             ],
             'historyWindowDays' => ReplenishmentSuggestionService::HISTORY_WINDOW_DAYS,

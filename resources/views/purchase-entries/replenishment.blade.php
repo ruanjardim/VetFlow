@@ -10,6 +10,7 @@
     </div>
     <div class="actions">
       <a class="button secondary" href="{{ route('purchase-entries.index') }}">Entradas</a>
+      <a class="button secondary" href="{{ route('purchase-entries.replenishment-reviews') }}">Historico de revisoes</a>
       <a class="button" href="{{ route('purchase-entries.create') }}">Nova entrada</a>
     </div>
   </header>
@@ -59,7 +60,28 @@
       <span>Cobertura sem comparacao</span>
       <strong>{{ $stats['coverage_unmeasured'] ?? 0 }}</strong>
     </div>
+    <div class="stat">
+      <span>Revisoes vigentes</span>
+      <strong>{{ $stats['reviews_current'] ?? 0 }}</strong>
+    </div>
+    <div class="stat">
+      <span>Revisoes superadas</span>
+      <strong>{{ $stats['reviews_stale'] ?? 0 }}</strong>
+    </div>
+    <div class="stat">
+      <span>Aguardando revisao</span>
+      <strong>{{ $stats['reviews_pending'] ?? 0 }}</strong>
+    </div>
   </section>
+
+  @if($errors->any())
+    <div class="alert warning">
+      <strong>Nao foi possivel registrar a revisao.</strong>
+      <ul>
+        @foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach
+      </ul>
+    </div>
+  @endif
 
   <section class="panel">
     <div class="panel-heading">
@@ -98,26 +120,10 @@
                 default => 'Baixa',
               };
             @endphp
-            <tr>
+            <tr id="replenishment-product-{{ $item['product']->id }}">
               <td>
                 <span class="badge {{ $priorityBadge }}">{{ $item['priority_label'] }}</span>
                 <div class="muted">Confianca {{ $confidenceLabel }}</div>
-              </td>
-              <td>
-                <span class="badge {{ $item['coverage_risk_tone'] }}">{{ $item['coverage_risk_label'] }}</span>
-                @if($item['coverage_days'] !== null)
-                  <div class="muted">Cobertura estimada: {{ number_format((float) $item['coverage_days'], 1, ',', '.') }} dias</div>
-                @endif
-                @if($item['coverage_margin_days'] !== null)
-                  @if($item['coverage_margin_days'] < 0)
-                    <div class="muted">Deficit estimado: {{ number_format(abs((float) $item['coverage_margin_days']), 1, ',', '.') }} dias</div>
-                  @else
-                    <div class="muted">Margem observada: {{ number_format((float) $item['coverage_margin_days'], 1, ',', '.') }} dias</div>
-                  @endif
-                @endif
-                @if($item['projected_stock_at_receipt'] !== null)
-                  <div class="muted">Saldo projetado no recebimento: {{ number_format((float) $item['projected_stock_at_receipt'], 3, ',', '.') }} {{ $item['unit'] }}</div>
-                @endif
               </td>
               <td>
                 <strong>{{ $item['product']->name }}</strong>
@@ -158,6 +164,22 @@
                 @endif
               </td>
               <td>
+                <span class="badge {{ $item['coverage_risk_tone'] }}">{{ $item['coverage_risk_label'] }}</span>
+                @if($item['coverage_days'] !== null)
+                  <div class="muted">Cobertura estimada: {{ number_format((float) $item['coverage_days'], 1, ',', '.') }} dias</div>
+                @endif
+                @if($item['coverage_margin_days'] !== null)
+                  @if($item['coverage_margin_days'] < 0)
+                    <div class="muted">Deficit estimado: {{ number_format(abs((float) $item['coverage_margin_days']), 1, ',', '.') }} dias</div>
+                  @else
+                    <div class="muted">Margem observada: {{ number_format((float) $item['coverage_margin_days'], 1, ',', '.') }} dias</div>
+                  @endif
+                @endif
+                @if($item['projected_stock_at_receipt'] !== null)
+                  <div class="muted">Saldo projetado no recebimento: {{ number_format((float) $item['projected_stock_at_receipt'], 3, ',', '.') }} {{ $item['unit'] }}</div>
+                @endif
+              </td>
+              <td>
                 {{ $item['last_supplier_name'] ?: 'Fornecedor nao identificado' }}
                 <div class="muted">Custo de referencia: R$ {{ number_format((float) $item['unit_cost'], 2, ',', '.') }}</div>
                 @if($item['has_reference_supplier_history'])
@@ -180,6 +202,31 @@
                   <a class="button secondary" href="{{ $item['purchase_url'] }}">Revisar na entrada</a>
                   <a class="button secondary" href="{{ route('products.edit', $item['product']->id) }}">Editar produto</a>
                 </div>
+                <div class="alert-soft">
+                  <strong><span class="badge {{ $item['review_status']['tone'] }}">{{ $item['review_status']['label'] }}</span></strong>
+                  @if($item['review'])
+                    <small>
+                      {{ $item['review']['actor'] ?? 'Usuario removido' }} em
+                      {{ $item['review']['reviewed_at']->format('d/m/Y H:i') }}
+                    </small>
+                    @if($item['review']['note'])<small>{{ $item['review']['note'] }}</small>@endif
+                  @endif
+                </div>
+                <form method="POST" action="{{ route('purchase-entries.replenishment-reviews.store', $item['product']->id) }}" class="form-grid">
+                  @csrf
+                  <div class="field">
+                    <label for="review-decision-{{ $item['product']->id }}">Decisao</label>
+                    <select id="review-decision-{{ $item['product']->id }}" name="decision" required>
+                      <option value="reviewed">Marcar como revisada</option>
+                      <option value="held">Manter em espera</option>
+                    </select>
+                  </div>
+                  <div class="field">
+                    <label for="review-note-{{ $item['product']->id }}">Observacao</label>
+                    <input id="review-note-{{ $item['product']->id }}" name="note" maxlength="500" placeholder="Obrigatoria para manter em espera">
+                  </div>
+                  <button type="submit" class="secondary">Registrar revisao</button>
+                </form>
               </td>
             </tr>
           @empty

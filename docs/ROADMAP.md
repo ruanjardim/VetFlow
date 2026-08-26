@@ -1,6 +1,6 @@
 # VetFlow Roadmap
 
-Updated: 2026-08-25
+Updated: 2026-08-26
 
 This roadmap describes the product direction that should stay visible while VetFlow evolves. It is intentionally high-level and should be revised as implementation priorities change.
 
@@ -51,6 +51,9 @@ The product should feel different from a generic CRUD system by connecting the c
 - Current stock, net daily demand, and observed lead time now produce an
   explainable coverage margin or rupture warning while incomplete evidence
   remains explicitly inconclusive.
+- Human replenishment reviews are append-only and evidence-bound, with an
+  explicit on-hold path, tenant-safe history, and stale-state detection after
+  the underlying suggestion changes.
 - The selected KingHost staging candidate has a provider-specific runbook and
   a bounded, token-protected queue cron bridge that remains disabled by default.
 - Sales expose realized gross profitability by item type, category, and item,

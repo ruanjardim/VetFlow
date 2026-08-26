@@ -7,17 +7,20 @@ use App\Modules\Clinics\Models\Clinic;
 use App\Modules\Products\Models\Product;
 use App\Modules\PurchaseEntries\Exceptions\NfeAccessKeyLookupException;
 use App\Modules\PurchaseEntries\Requests\StorePurchaseEntryRequest;
+use App\Modules\PurchaseEntries\Requests\StoreReplenishmentReviewRequest;
 use App\Modules\PurchaseEntries\Requests\UpdatePurchaseEntryRequest;
 use App\Modules\PurchaseEntries\Services\NfeAccessKeyImportService;
 use App\Modules\PurchaseEntries\Services\NfeXmlImportService;
 use App\Modules\PurchaseEntries\Services\PurchaseEntryInsightService;
 use App\Modules\PurchaseEntries\Services\PurchaseEntryService;
+use App\Modules\PurchaseEntries\Services\ReplenishmentReviewService;
 use App\Modules\Suppliers\Models\Supplier;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
+use Illuminate\View\View;
 use InvalidArgumentException;
 use Throwable;
 
@@ -25,7 +28,8 @@ class PurchaseEntryController extends Controller
 {
     public function __construct(
         private readonly PurchaseEntryService $service,
-        private readonly PurchaseEntryInsightService $insights
+        private readonly PurchaseEntryInsightService $insights,
+        private readonly ReplenishmentReviewService $replenishmentReviews,
     ) {}
 
     public function index()
@@ -70,9 +74,44 @@ class PurchaseEntryController extends Controller
         ]);
     }
 
-    public function replenishment()
+    public function replenishment(Request $request): View
     {
-        return view('purchase-entries.replenishment', $this->insights->replenishmentData());
+        return view('purchase-entries.replenishment', $this->insights->replenishmentData($request->user()));
+    }
+
+    public function replenishmentReviews(Request $request): View
+    {
+        $validated = $request->validate([
+            'decision' => ['nullable', Rule::in(array_keys(ReplenishmentReviewService::DECISIONS))],
+            'q' => ['nullable', 'string', 'max:120'],
+        ]);
+
+        return view('purchase-entries.replenishment-reviews', [
+            'events' => $this->replenishmentReviews->history(
+                $request->user(),
+                $validated['decision'] ?? null,
+                $validated['q'] ?? null,
+            ),
+            'decisions' => ReplenishmentReviewService::DECISIONS,
+            'filters' => $validated,
+        ]);
+    }
+
+    public function storeReplenishmentReview(
+        StoreReplenishmentReviewRequest $request,
+        Product $product,
+    ): RedirectResponse {
+        $data = $request->validated();
+        $this->replenishmentReviews->record(
+            $request->user(),
+            $product,
+            $data['decision'],
+            $data['note'] ?? null,
+        );
+
+        return redirect()
+            ->to(route('purchase-entries.replenishment').'#replenishment-product-'.$product->id)
+            ->with('success', 'Revisão da sugestão registrada no histórico.');
     }
 
     public function lookupProduct(Request $request, string $gtin): JsonResponse

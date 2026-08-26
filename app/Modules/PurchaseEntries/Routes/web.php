@@ -6,6 +6,13 @@ use Illuminate\Support\Facades\Route;
 Route::get('purchase-entries/replenishment', [PurchaseEntryController::class, 'replenishment'])
     ->name('purchase-entries.replenishment');
 
+Route::get('purchase-entries/replenishment/reviews', [PurchaseEntryController::class, 'replenishmentReviews'])
+    ->name('purchase-entries.replenishment-reviews');
+
+Route::post('purchase-entries/replenishment/{product}/reviews', [PurchaseEntryController::class, 'storeReplenishmentReview'])
+    ->whereNumber('product')
+    ->name('purchase-entries.replenishment-reviews.store');
+
 Route::get('purchase-entries/product-lookup/{gtin}', [PurchaseEntryController::class, 'lookupProduct'])
     ->where('gtin', '[0-9A-Za-z-]+')
     ->name('purchase-entries.product-lookup');

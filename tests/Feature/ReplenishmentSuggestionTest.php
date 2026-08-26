@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Modules\Clinics\Models\Clinic;
 use App\Modules\Products\Models\Product;
 use App\Modules\PurchaseEntries\Models\PurchaseEntry;
+use App\Modules\PurchaseEntries\Models\ReplenishmentReviewEvent;
 use App\Modules\PurchaseEntries\Services\ReplenishmentSuggestionService;
 use App\Modules\Sales\Models\Sale;
 use App\Modules\Suppliers\Models\Supplier;
@@ -178,6 +179,116 @@ class ReplenishmentSuggestionTest extends TestCase
             ->assertSee('Cobertura estimada: 2,0 dias')
             ->assertSee('Deficit estimado: 5,0 dias')
             ->assertViewHas('stats', fn (array $stats): bool => $stats['coverage_risk'] === 1);
+    }
+
+    public function test_human_reviews_are_validated_and_appended_to_the_history(): void
+    {
+        $clinic = $this->clinic('Clinica Revisao Humana', '00000000000631');
+        $product = $this->product($clinic, 'Produto revisado manualmente', stock: 2, minimum: 5, cost: 10);
+        $user = $this->userForClinic($clinic);
+
+        $this->actingAs($user);
+
+        $this->post(route('purchase-entries.replenishment-reviews.store', $product), [
+            'decision' => 'held',
+            'note' => '',
+        ])->assertSessionHasErrors('note');
+
+        $this->assertDatabaseCount('replenishment_review_events', 0);
+
+        $this->post(route('purchase-entries.replenishment-reviews.store', $product), [
+            'decision' => 'reviewed',
+            'note' => 'Quantidade e custo conferidos.',
+        ])->assertRedirect(route('purchase-entries.replenishment').'#replenishment-product-'.$product->id);
+
+        $this->post(route('purchase-entries.replenishment-reviews.store', $product), [
+            'decision' => 'held',
+            'note' => 'Aguardar confirmacao do fornecedor.',
+        ])->assertRedirect(route('purchase-entries.replenishment').'#replenishment-product-'.$product->id);
+
+        $events = ReplenishmentReviewEvent::query()->orderBy('id')->get();
+
+        $this->assertCount(2, $events);
+        $this->assertSame('reviewed', $events[0]->decision);
+        $this->assertSame('held', $events[1]->decision);
+        $this->assertSame($events[0]->evidence_hash, $events[1]->evidence_hash);
+        $this->assertSame('Quantidade e custo conferidos.', $events[0]->note);
+        $this->assertSame('Aguardar confirmacao do fornecedor.', $events[1]->note);
+
+        $this->get(route('purchase-entries.replenishment-reviews'))
+            ->assertOk()
+            ->assertSeeText('Produto revisado manualmente')
+            ->assertSeeText('Revisada')
+            ->assertSeeText('Em espera')
+            ->assertSeeText('Quantidade e custo conferidos.')
+            ->assertSeeText('Aguardar confirmacao do fornecedor.');
+    }
+
+    public function test_review_becomes_stale_when_the_underlying_evidence_changes(): void
+    {
+        $clinic = $this->clinic('Clinica Evidencia de Revisao', '00000000000641');
+        $product = $this->product($clinic, 'Produto com evidencia mutavel', stock: 1, minimum: 5, cost: 10);
+        $user = $this->userForClinic($clinic);
+
+        $this->actingAs($user);
+
+        $this->post(route('purchase-entries.replenishment-reviews.store', $product), [
+            'decision' => 'reviewed',
+        ])->assertSessionHasNoErrors();
+
+        $this->get(route('purchase-entries.replenishment'))
+            ->assertOk()
+            ->assertSeeText('Revisada')
+            ->assertViewHas('stats', fn (array $stats): bool => $stats['reviews_current'] === 1
+                && $stats['reviews_stale'] === 0
+                && $stats['reviews_pending'] === 0);
+
+        $product->update(['stock_quantity' => 3]);
+
+        $this->get(route('purchase-entries.replenishment'))
+            ->assertOk()
+            ->assertSeeText('Revisão superada')
+            ->assertViewHas('stats', fn (array $stats): bool => $stats['reviews_current'] === 0
+                && $stats['reviews_stale'] === 1
+                && $stats['reviews_pending'] === 0);
+
+        $this->get(route('purchase-entries.replenishment-reviews'))
+            ->assertOk()
+            ->assertSeeText('Evidencia superada');
+    }
+
+    public function test_review_history_and_product_actions_are_isolated_by_clinic(): void
+    {
+        $clinicA = $this->clinic('Clinica Revisao Isolada A', '00000000000651');
+        $clinicB = $this->clinic('Clinica Revisao Isolada B', '00000000000652');
+        $productA = $this->product($clinicA, 'Produto local da revisao', stock: 1, minimum: 4, cost: 5);
+        $productB = $this->product($clinicB, 'Produto externo da revisao', stock: 1, minimum: 4, cost: 5);
+        $userA = $this->userForClinic($clinicA);
+        $userB = $this->userForClinic($clinicB);
+
+        $this->actingAs($userB)
+            ->post(route('purchase-entries.replenishment-reviews.store', $productB), [
+                'decision' => 'reviewed',
+                'note' => 'Registro exclusivo da clinica B.',
+            ])
+            ->assertSessionHasNoErrors();
+
+        $this->actingAs($userA);
+
+        $this->get(route('purchase-entries.replenishment-reviews'))
+            ->assertOk()
+            ->assertDontSeeText('Produto externo da revisao')
+            ->assertDontSeeText('Registro exclusivo da clinica B.');
+
+        $this->post(route('purchase-entries.replenishment-reviews.store', $productB), [
+            'decision' => 'reviewed',
+        ])->assertNotFound();
+
+        $this->post(route('purchase-entries.replenishment-reviews.store', $productA), [
+            'decision' => 'reviewed',
+        ])->assertSessionHasNoErrors();
+
+        $this->assertDatabaseCount('replenishment_review_events', 2);
     }
 
     private function clinic(string $name, string $cnpj): Clinic

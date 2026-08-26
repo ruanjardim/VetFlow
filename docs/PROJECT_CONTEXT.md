@@ -1,6 +1,6 @@
 # VetFlow Project Context
 
-Updated: 2026-08-24
+Updated: 2026-08-26
 
 ## Product
 
@@ -68,6 +68,10 @@ Current stock can now be compared with those signals through an explainable
 coverage projection. A rupture warning appears only when demand-derived coverage
 does not exceed the observed average lead time; absent demand or lead-time data
 remains explicitly inconclusive, and the projection never changes a purchase.
+Operators can now append a reviewed or on-hold decision to that exact
+replenishment evidence. The protected history preserves authorship and the
+calculation snapshot, and labels a decision as superseded when any source
+signal changes. Reviews never create a purchase or mutate inventory.
 Patient care now includes a permission-aware longitudinal
 profile that connects appointments, medical records, prescriptions,
 vaccinations, and hospitalizations while

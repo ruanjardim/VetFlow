@@ -1,6 +1,6 @@
 # VetFlow Status
 
-Updated: 2026-08-25
+Updated: 2026-08-26
 
 ## Current State
 
@@ -51,6 +51,9 @@ The local working tree was clean before this documentation pass.
 - Low-stock products now expose demand-derived coverage days, the projected
   balance at observed receipt time, and an explicit rupture/insufficient-data
   state without changing the purchase recommendation automatically.
+- Replenishment suggestions now accept append-only reviewed/on-hold decisions,
+  retain the attributed evidence snapshot, expose a clinic-scoped history, and
+  become visibly superseded after their source calculation changes.
 - An assisted appointment reminder queue that prepares WhatsApp contact and
   records operator-confirmed outcomes, status changes, and an auditable contact
   history without claiming automatic delivery.

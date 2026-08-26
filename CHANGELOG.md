@@ -8,6 +8,9 @@ This project follows the spirit of Keep a Changelog, with one practical adjustme
 
 ### Added
 
+- Append-only human review history for replenishment suggestions, including
+  reviewed/on-hold decisions, required hold notes, evidence snapshots,
+  superseded-review detection, and clinic isolation without automatic buying.
 - Tenant-scoped 90-day product demand signals in smart replenishment, with
   completed-sale counts, returned quantities, monthly averages, safe purchase
   prefill metadata, and no automatic quantity adjustment.
