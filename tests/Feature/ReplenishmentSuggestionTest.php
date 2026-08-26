@@ -232,12 +232,31 @@ class ReplenishmentSuggestionTest extends TestCase
             ->assertSeeText('+3,000')
             ->assertSeeText('+25,00%')
             ->assertSeeText('+R$ 1,00')
-            ->assertDontSeeText($prefill['intelligence_metadata']['evidence']['signature']);
+            ->assertSeeText('Adesão às sugestões')
+            ->assertSeeText('50,0%')
+            ->assertSeeText('Quantidade alterada: 1')
+            ->assertSeeText('Custo alterado: 1')
+            ->assertSeeText('Fornecedor alterado: 1')
+            ->assertSeeText('quantidade 12,50%;')
+            ->assertSeeText('custo 3,85%.')
+            ->assertDontSeeText($prefill['intelligence_metadata']['evidence']['signature'])
+            ->assertViewHas('stats', fn (array $stats): bool => $stats['total'] === 2
+                && $stats['comparable'] === 2
+                && $stats['kept'] === 1
+                && $stats['adjusted'] === 1
+                && $stats['unavailable'] === 0
+                && $stats['adherence_percent'] === 50.0
+                && $stats['quantity_adjusted'] === 1
+                && $stats['unit_cost_adjusted'] === 1
+                && $stats['supplier_adjusted'] === 1
+                && $stats['average_abs_quantity_delta_percent'] === 12.5
+                && $stats['average_abs_unit_cost_delta_percent'] === 3.85);
 
         $this->get(route('purchase-entries.replenishment-purchases', ['classification' => 'adjusted']))
             ->assertOk()
             ->assertSeeText($entry->code)
-            ->assertDontSeeText($keptEntry->code);
+            ->assertDontSeeText($keptEntry->code)
+            ->assertViewHas('stats', fn (array $stats): bool => $stats['total'] === 2);
 
         $this->get(route('purchase-entries.replenishment-purchases', ['classification' => 'kept']))
             ->assertOk()
@@ -292,7 +311,14 @@ class ReplenishmentSuggestionTest extends TestCase
             ->assertSeeText($entry->code)
             ->assertSeeText('Comparação indisponível')
             ->assertSeeText('Evidência inválida')
-            ->assertSeeText('Sugestão indisponível');
+            ->assertSeeText('Sugestão indisponível')
+            ->assertSeeText('Evidências indisponíveis')
+            ->assertViewHas('stats', fn (array $stats): bool => $stats['total'] === 1
+                && $stats['comparable'] === 0
+                && $stats['unavailable'] === 1
+                && $stats['adherence_percent'] === null
+                && $stats['average_abs_quantity_delta_percent'] === null
+                && $stats['average_abs_unit_cost_delta_percent'] === null);
     }
 
     public function test_suggestions_are_clinic_scoped_and_fall_back_to_the_minimum_stock_rule(): void
@@ -495,7 +521,10 @@ class ReplenishmentSuggestionTest extends TestCase
         $this->get(route('purchase-entries.replenishment-purchases'))
             ->assertOk()
             ->assertDontSeeText('ENT-DECISAO-EXTERNA')
-            ->assertDontSeeText('Produto externo da revisao');
+            ->assertDontSeeText('Produto externo da revisao')
+            ->assertViewHas('stats', fn (array $stats): bool => $stats['total'] === 0
+                && $stats['comparable'] === 0
+                && $stats['unavailable'] === 0);
 
         $this->post(route('purchase-entries.replenishment-reviews.store', $productB), [
             'decision' => 'reviewed',

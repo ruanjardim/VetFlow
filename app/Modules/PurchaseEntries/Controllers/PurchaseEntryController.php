@@ -119,6 +119,7 @@ class PurchaseEntryController extends Controller
             'classifications' => ReplenishmentPurchaseHistoryService::CLASSIFICATIONS,
             'purchaseStatuses' => ReplenishmentPurchaseHistoryService::PURCHASE_STATUSES,
             'filters' => $validated,
+            'stats' => $this->replenishmentPurchaseHistory->summary($request->user()),
         ]);
     }
 

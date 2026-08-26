@@ -14,6 +14,46 @@
     </div>
   </header>
 
+  <section class="grid stats inventory-lot-stats">
+    <div class="stat">
+      <span>Compras comparáveis</span>
+      <strong>{{ $stats['comparable'] }}</strong>
+    </div>
+    <div class="stat">
+      <span>Sugestões mantidas</span>
+      <strong>{{ $stats['kept'] }}</strong>
+    </div>
+    <div class="stat">
+      <span>Sugestões ajustadas</span>
+      <strong>{{ $stats['adjusted'] }}</strong>
+    </div>
+    <div class="stat">
+      <span>Adesão às sugestões</span>
+      <strong>{{ $stats['adherence_percent'] === null ? '—' : number_format($stats['adherence_percent'], 1, ',', '.').'%' }}</strong>
+    </div>
+    <div class="stat">
+      <span>Evidências indisponíveis</span>
+      <strong>{{ $stats['unavailable'] }}</strong>
+    </div>
+  </section>
+
+  <section class="intelligence-health">
+    <div>
+      <strong>Validação: {{ $stats['scope_label'] }}</strong>
+      <span>{{ $stats['total'] }} decisão(ões) registrada(s); somente evidências válidas entram nas métricas.</span>
+    </div>
+    <div class="badge-list">
+      <span class="badge muted-badge">Quantidade alterada: {{ $stats['quantity_adjusted'] }}</span>
+      <span class="badge muted-badge">Custo alterado: {{ $stats['unit_cost_adjusted'] }}</span>
+      <span class="badge muted-badge">Fornecedor alterado: {{ $stats['supplier_adjusted'] }}</span>
+    </div>
+    <div class="muted">
+      Desvio percentual médio absoluto:
+      quantidade {{ $stats['average_abs_quantity_delta_percent'] === null ? 'indisponível' : number_format($stats['average_abs_quantity_delta_percent'], 2, ',', '.').'%' }};
+      custo {{ $stats['average_abs_unit_cost_delta_percent'] === null ? 'indisponível' : number_format($stats['average_abs_unit_cost_delta_percent'], 2, ',', '.').'%' }}.
+    </div>
+  </section>
+
   <section class="panel">
     <div class="panel-body">
       <form method="GET" action="{{ route('purchase-entries.replenishment-purchases') }}" class="form-grid compact-filter-grid">

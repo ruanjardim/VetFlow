@@ -63,6 +63,9 @@ The local working tree was clean before this documentation pass.
 - A clinic-scoped decision-history interface now presents those purchase
   comparisons with filters, transparent deltas, supplier context, and source
   entry links while keeping signatures and raw metadata private.
+- Purchase-decision validation now consolidates comparable, kept, adjusted,
+  and unavailable totals, adherence, field-level adjustment counts, and mean
+  absolute deviations for the current clinic scope without automatic tuning.
 - An assisted appointment reminder queue that prepares WhatsApp contact and
   records operator-confirmed outcomes, status changes, and an auditable contact
   history without claiming automatic delivery.

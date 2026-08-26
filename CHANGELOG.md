@@ -13,6 +13,9 @@ This project follows the spirit of Keep a Changelog, with one practical adjustme
 
 ### Added
 
+- Clinic-scoped replenishment validation metrics covering comparable, kept,
+  adjusted, and unavailable purchase decisions, adherence, adjustment types,
+  and mean absolute quantity/cost deviations with no automatic rule tuning.
 - Clinic-scoped, read-only replenishment purchase-decision history with
   kept/adjusted/unavailable filters, transparent quantity and cost deltas,
   supplier comparison, source-entry links, and private evidence internals.

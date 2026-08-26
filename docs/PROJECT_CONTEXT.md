@@ -84,6 +84,11 @@ through the interface, with filters for decision and entry state, suggested
 versus actual values, and strict clinic isolation. Only the safe read model is
 rendered; signed envelopes, fingerprints, and raw intelligence metadata remain
 server-side.
+The same screen consolidates clinic-scoped validation totals, adherence among
+comparable decisions, field-level adjustment counts, and mean absolute
+quantity/cost deviations. Unverifiable records are counted separately and
+never enter the adherence or deviation calculations. These metrics remain
+observational and cannot tune the suggestion algorithm automatically.
 Patient care now includes a permission-aware longitudinal
 profile that connects appointments, medical records, prescriptions,
 vaccinations, and hospitalizations while

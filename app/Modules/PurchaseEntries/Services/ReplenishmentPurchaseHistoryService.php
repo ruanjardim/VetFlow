@@ -30,14 +30,7 @@ class ReplenishmentPurchaseHistoryService
         ?string $purchaseStatus = null,
         ?string $search = null,
     ): LengthAwarePaginator {
-        $query = PurchaseEntryItem::query()
-            ->where('intelligence_status', 'replenishment_suggestion')
-            ->whereHas('purchaseEntry', fn (Builder $entryQuery) => $entryQuery
-                ->when(
-                    $user->clinic_id !== null,
-                    fn (Builder $clinicQuery) => $clinicQuery->where('clinic_id', $user->clinic_id),
-                ))
-            ->with([
+        $query = $this->scopedQuery($user)->with([
                 'product:id,name,unit',
                 'purchaseEntry:id,clinic_id,supplier_id,code,status,purchased_at,received_at',
                 'purchaseEntry.supplier' => fn ($supplierQuery) => $supplierQuery
@@ -79,6 +72,97 @@ class ReplenishmentPurchaseHistoryService
         $items->through(fn (PurchaseEntryItem $item): array => $this->safeItem($item, $supplierNames));
 
         return $items;
+    }
+
+    /** @return array<string, int|float|string|null> */
+    public function summary(User $user): array
+    {
+        $stats = [
+            'scope_label' => $user->clinic?->trade_name
+                ?: $user->clinic?->corporate_name
+                ?: 'Todas as clínicas acessíveis',
+            'total' => 0,
+            'comparable' => 0,
+            'kept' => 0,
+            'adjusted' => 0,
+            'unavailable' => 0,
+            'adherence_percent' => null,
+            'quantity_adjusted' => 0,
+            'unit_cost_adjusted' => 0,
+            'supplier_adjusted' => 0,
+            'average_abs_quantity_delta_percent' => null,
+            'average_abs_unit_cost_delta_percent' => null,
+        ];
+        $quantityDeltaTotal = 0.0;
+        $quantityDeltaSamples = 0;
+        $unitCostDeltaTotal = 0.0;
+        $unitCostDeltaSamples = 0;
+
+        $this->scopedQuery($user)
+            ->select(['id', 'purchase_entry_id', 'intelligence_metadata'])
+            ->lazyById(500)
+            ->each(function (PurchaseEntryItem $item) use (
+                &$stats,
+                &$quantityDeltaTotal,
+                &$quantityDeltaSamples,
+                &$unitCostDeltaTotal,
+                &$unitCostDeltaSamples,
+            ): void {
+                $stats['total']++;
+                $decision = $this->decision($item);
+                $classification = $decision['classification'] ?? null;
+                $comparable = ($decision['evidence_status'] ?? null) === 'valid'
+                    && in_array($classification, ['kept', 'adjusted'], true);
+
+                if (! $comparable) {
+                    $stats['unavailable']++;
+
+                    return;
+                }
+
+                $stats['comparable']++;
+                $stats[$classification]++;
+
+                if (($decision['quantity']['changed'] ?? false) === true) {
+                    $stats['quantity_adjusted']++;
+                }
+
+                if (($decision['unit_cost']['changed'] ?? false) === true) {
+                    $stats['unit_cost_adjusted']++;
+                }
+
+                if (($decision['supplier']['status'] ?? null) === 'changed') {
+                    $stats['supplier_adjusted']++;
+                }
+
+                $quantityDelta = $this->numeric($decision, 'quantity', 'delta_percent');
+
+                if ($quantityDelta !== null) {
+                    $quantityDeltaTotal += abs($quantityDelta);
+                    $quantityDeltaSamples++;
+                }
+
+                $unitCostDelta = $this->numeric($decision, 'unit_cost', 'delta_percent');
+
+                if ($unitCostDelta !== null) {
+                    $unitCostDeltaTotal += abs($unitCostDelta);
+                    $unitCostDeltaSamples++;
+                }
+            });
+
+        if ($stats['comparable'] > 0) {
+            $stats['adherence_percent'] = round($stats['kept'] / $stats['comparable'] * 100, 1);
+        }
+
+        if ($quantityDeltaSamples > 0) {
+            $stats['average_abs_quantity_delta_percent'] = round($quantityDeltaTotal / $quantityDeltaSamples, 2);
+        }
+
+        if ($unitCostDeltaSamples > 0) {
+            $stats['average_abs_unit_cost_delta_percent'] = round($unitCostDeltaTotal / $unitCostDeltaSamples, 2);
+        }
+
+        return $stats;
     }
 
     /** @return array<int, string> */
@@ -197,5 +281,16 @@ class ReplenishmentPurchaseHistoryService
         } catch (Throwable) {
             return null;
         }
+    }
+
+    private function scopedQuery(User $user): Builder
+    {
+        return PurchaseEntryItem::query()
+            ->where('intelligence_status', 'replenishment_suggestion')
+            ->whereHas('purchaseEntry', fn (Builder $entryQuery) => $entryQuery
+                ->when(
+                    $user->clinic_id !== null,
+                    fn (Builder $clinicQuery) => $clinicQuery->where('clinic_id', $user->clinic_id),
+                ));
     }
 }

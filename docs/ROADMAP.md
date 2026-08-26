@@ -63,6 +63,9 @@ The product should feel different from a generic CRUD system by connecting the c
 - Purchase decision history is now visible through a tenant-safe read-only
   interface with classification/status filters and no exposure of signed
   evidence internals.
+- Clinic-scoped validation metrics now quantify suggestion adherence,
+  field-level adjustments, unavailable evidence, and mean absolute deviations
+  while remaining observational rather than self-tuning.
 - The selected KingHost staging candidate has a provider-specific runbook and
   a bounded, token-protected queue cron bridge that remains disabled by default.
 - Sales expose realized gross profitability by item type, category, and item,

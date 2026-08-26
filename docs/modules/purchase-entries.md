@@ -26,6 +26,8 @@ payables in the financial ledger.
   supplier, cost, and save decision under operator control.
 - Expose a clinic-scoped, read-only history of the resulting purchase decisions
   without returning signed envelopes or internal evidence metadata to the view.
+- Summarize valid purchase decisions into transparent clinic validation metrics
+  without automatically changing replenishment rules.
 
 ## Key Classes
 
@@ -127,6 +129,15 @@ or below their minimum. The first explainable rule set is:
 - history queries scope through the parent purchase entry because item rows do
   not carry `clinic_id`, and the read model omits signatures, hashes, and raw
   intelligence metadata.
+- the decision-history summary counts comparable, kept, adjusted, and
+  unavailable records for the current clinic scope;
+- adherence is `kept / comparable`, while unavailable evidence is excluded
+  from that denominator;
+- quantity, unit-cost, and supplier adjustment counts use only valid evidence;
+- mean quantity and cost deviations are absolute percentages, include valid
+  zero-delta decisions, and remain unavailable when there is no valid sample;
+- metrics are descriptive validation evidence and do not train, tune, approve,
+  or execute a replenishment rule automatically.
 
 The result is a suggestion, not a purchase order. Opening the purchase entry
 prefills the product, suggested quantity, reference cost, supplier, purchase
