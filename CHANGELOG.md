@@ -6,6 +6,11 @@ This project follows the spirit of Keep a Changelog, with one practical adjustme
 
 ## [Unreleased]
 
+### Security
+
+- Updated `league/commonmark` to 2.10.0, including the upstream fixes for the
+  August 2026 denial-of-service and unsafe-link parsing advisories.
+
 ### Added
 
 - Append-only human review history for replenishment suggestions, including
