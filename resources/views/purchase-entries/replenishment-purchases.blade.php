@@ -55,6 +55,73 @@
   </section>
 
   <section class="panel">
+    <div class="panel-heading">
+      <div>
+        <h2>Divergências por produto</h2>
+        <p>Produtos com mais ajustes no período selecionado, limitados aos 10 primeiros.</p>
+      </div>
+      <span class="badge muted-badge">{{ $stats['product_count'] }} produto(s) analisado(s)</span>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Produto</th>
+            <th>Decisões</th>
+            <th>Resultado comparável</th>
+            <th>Adesão</th>
+            <th>Campos alterados</th>
+            <th>Desvio médio absoluto</th>
+          </tr>
+        </thead>
+        <tbody>
+          @forelse($stats['products'] as $product)
+            <tr>
+              <td>
+                <strong>{{ $product['name'] }}</strong>
+                <div>
+                  <a href="{{ route('purchase-entries.replenishment-purchases', ['period' => $stats['period'], 'q' => $product['name']]) }}">Ver decisões</a>
+                </div>
+              </td>
+              <td>
+                <strong>{{ $product['total'] }}</strong>
+                @if($product['unavailable'] > 0)
+                  <div class="muted">{{ $product['unavailable'] }} sem comparação</div>
+                @endif
+              </td>
+              <td>
+                <span class="badge success">{{ $product['kept'] }} mantida(s)</span>
+                <span class="badge warning">{{ $product['adjusted'] }} ajustada(s)</span>
+              </td>
+              <td>
+                <strong>{{ $product['adherence_percent'] === null ? '—' : number_format($product['adherence_percent'], 1, ',', '.').'%' }}</strong>
+                @if($product['adjustment_rate_percent'] !== null)
+                  <div class="muted">Ajustes: {{ number_format($product['adjustment_rate_percent'], 1, ',', '.') }}%</div>
+                @endif
+              </td>
+              <td>
+                <div class="badge-list">
+                  <span class="badge muted-badge">Qtd: {{ $product['quantity_adjusted'] }}</span>
+                  <span class="badge muted-badge">Custo: {{ $product['unit_cost_adjusted'] }}</span>
+                  <span class="badge muted-badge">Fornecedor: {{ $product['supplier_adjusted'] }}</span>
+                </div>
+              </td>
+              <td>
+                <div>Qtd: {{ $product['average_abs_quantity_delta_percent'] === null ? '—' : number_format($product['average_abs_quantity_delta_percent'], 2, ',', '.').'%' }}</div>
+                <div>Custo: {{ $product['average_abs_unit_cost_delta_percent'] === null ? '—' : number_format($product['average_abs_unit_cost_delta_percent'], 2, ',', '.').'%' }}</div>
+              </td>
+            </tr>
+          @empty
+            <tr>
+              <td colspan="6" class="muted">Nenhum produto com decisão de compra no período selecionado.</td>
+            </tr>
+          @endforelse
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="panel">
     <div class="panel-body">
       <form method="GET" action="{{ route('purchase-entries.replenishment-purchases') }}" class="form-grid compact-filter-grid">
         <div class="field">

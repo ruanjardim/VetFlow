@@ -134,6 +134,9 @@ or below their minimum. The first explainable rule set is:
 - history and summary share a validated purchase-date window: the interface
   defaults to the latest 90 days and also offers 30, 180, or the complete
   history, making the cohort behind every metric explicit;
+- the same cohort produces a product breakdown, ordered by adjusted decisions,
+  with comparable/unavailable totals, adherence, adjustment rate, changed
+  fields, and mean absolute quantity/cost deviations for up to ten products;
 - adherence is `kept / comparable`, while unavailable evidence is excluded
   from that denominator;
 - quantity, unit-cost, and supplier adjustment counts use only valid evidence;

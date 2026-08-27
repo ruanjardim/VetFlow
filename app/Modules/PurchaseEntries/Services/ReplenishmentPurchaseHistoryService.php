@@ -84,7 +84,7 @@ class ReplenishmentPurchaseHistoryService
         return $items;
     }
 
-    /** @return array<string, int|float|string|null> */
+    /** @return array<string, mixed> */
     public function summary(User $user, string $period = self::DEFAULT_PERIOD): array
     {
         $stats = [
@@ -104,23 +104,34 @@ class ReplenishmentPurchaseHistoryService
             'supplier_adjusted' => 0,
             'average_abs_quantity_delta_percent' => null,
             'average_abs_unit_cost_delta_percent' => null,
+            'product_count' => 0,
+            'products' => [],
         ];
+        $products = [];
         $quantityDeltaTotal = 0.0;
         $quantityDeltaSamples = 0;
         $unitCostDeltaTotal = 0.0;
         $unitCostDeltaSamples = 0;
 
         $this->scopedQuery($user, $period)
-            ->select(['id', 'purchase_entry_id', 'intelligence_metadata'])
+            ->with('product:id,name')
+            ->select(['id', 'purchase_entry_id', 'product_id', 'description', 'intelligence_metadata'])
             ->lazyById(500)
             ->each(function (PurchaseEntryItem $item) use (
                 &$stats,
+                &$products,
                 &$quantityDeltaTotal,
                 &$quantityDeltaSamples,
                 &$unitCostDeltaTotal,
                 &$unitCostDeltaSamples,
             ): void {
                 $stats['total']++;
+                $productKey = $item->product_id === null
+                    ? 'description:'.mb_strtolower(trim((string) $item->description))
+                    : 'product:'.$item->product_id;
+                $products[$productKey] ??= $this->emptyProductStats($item);
+                $productStats = &$products[$productKey];
+                $productStats['total']++;
                 $decision = $this->decision($item);
                 $classification = $decision['classification'] ?? null;
                 $comparable = ($decision['evidence_status'] ?? null) === 'valid'
@@ -128,23 +139,29 @@ class ReplenishmentPurchaseHistoryService
 
                 if (! $comparable) {
                     $stats['unavailable']++;
+                    $productStats['unavailable']++;
 
                     return;
                 }
 
                 $stats['comparable']++;
                 $stats[$classification]++;
+                $productStats['comparable']++;
+                $productStats[$classification]++;
 
                 if (($decision['quantity']['changed'] ?? false) === true) {
                     $stats['quantity_adjusted']++;
+                    $productStats['quantity_adjusted']++;
                 }
 
                 if (($decision['unit_cost']['changed'] ?? false) === true) {
                     $stats['unit_cost_adjusted']++;
+                    $productStats['unit_cost_adjusted']++;
                 }
 
                 if (($decision['supplier']['status'] ?? null) === 'changed') {
                     $stats['supplier_adjusted']++;
+                    $productStats['supplier_adjusted']++;
                 }
 
                 $quantityDelta = $this->numeric($decision, 'quantity', 'delta_percent');
@@ -152,6 +169,8 @@ class ReplenishmentPurchaseHistoryService
                 if ($quantityDelta !== null) {
                     $quantityDeltaTotal += abs($quantityDelta);
                     $quantityDeltaSamples++;
+                    $productStats['quantity_delta_total'] += abs($quantityDelta);
+                    $productStats['quantity_delta_samples']++;
                 }
 
                 $unitCostDelta = $this->numeric($decision, 'unit_cost', 'delta_percent');
@@ -159,6 +178,8 @@ class ReplenishmentPurchaseHistoryService
                 if ($unitCostDelta !== null) {
                     $unitCostDeltaTotal += abs($unitCostDelta);
                     $unitCostDeltaSamples++;
+                    $productStats['unit_cost_delta_total'] += abs($unitCostDelta);
+                    $productStats['unit_cost_delta_samples']++;
                 }
             });
 
@@ -174,7 +195,78 @@ class ReplenishmentPurchaseHistoryService
             $stats['average_abs_unit_cost_delta_percent'] = round($unitCostDeltaTotal / $unitCostDeltaSamples, 2);
         }
 
+        $stats['product_count'] = count($products);
+        $stats['products'] = $this->finalizeProductStats($products);
+
         return $stats;
+    }
+
+    /** @return array<string, int|float|string|null> */
+    private function emptyProductStats(PurchaseEntryItem $item): array
+    {
+        return [
+            'name' => $item->product?->name ?: $item->description ?: 'Produto removido',
+            'total' => 0,
+            'comparable' => 0,
+            'kept' => 0,
+            'adjusted' => 0,
+            'unavailable' => 0,
+            'adherence_percent' => null,
+            'adjustment_rate_percent' => null,
+            'quantity_adjusted' => 0,
+            'unit_cost_adjusted' => 0,
+            'supplier_adjusted' => 0,
+            'average_abs_quantity_delta_percent' => null,
+            'average_abs_unit_cost_delta_percent' => null,
+            'quantity_delta_total' => 0.0,
+            'quantity_delta_samples' => 0,
+            'unit_cost_delta_total' => 0.0,
+            'unit_cost_delta_samples' => 0,
+        ];
+    }
+
+    /**
+     * @param  array<string, array<string, int|float|string|null>>  $products
+     * @return array<int, array<string, int|float|string|null>>
+     */
+    private function finalizeProductStats(array $products): array
+    {
+        foreach ($products as &$product) {
+            if ($product['comparable'] > 0) {
+                $product['adherence_percent'] = round($product['kept'] / $product['comparable'] * 100, 1);
+                $product['adjustment_rate_percent'] = round($product['adjusted'] / $product['comparable'] * 100, 1);
+            }
+
+            if ($product['quantity_delta_samples'] > 0) {
+                $product['average_abs_quantity_delta_percent'] = round(
+                    $product['quantity_delta_total'] / $product['quantity_delta_samples'],
+                    2,
+                );
+            }
+
+            if ($product['unit_cost_delta_samples'] > 0) {
+                $product['average_abs_unit_cost_delta_percent'] = round(
+                    $product['unit_cost_delta_total'] / $product['unit_cost_delta_samples'],
+                    2,
+                );
+            }
+
+            unset(
+                $product['quantity_delta_total'],
+                $product['quantity_delta_samples'],
+                $product['unit_cost_delta_total'],
+                $product['unit_cost_delta_samples'],
+            );
+        }
+        unset($product);
+
+        usort($products, function (array $left, array $right): int {
+            return ($right['adjusted'] <=> $left['adjusted'])
+                ?: ($right['comparable'] <=> $left['comparable'])
+                ?: strcasecmp((string) $left['name'], (string) $right['name']);
+        });
+
+        return array_slice(array_values($products), 0, 10);
     }
 
     /** @return array<int, string> */

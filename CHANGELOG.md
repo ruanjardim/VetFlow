@@ -15,6 +15,9 @@ This project follows the spirit of Keep a Changelog, with one practical adjustme
 
 ### Added
 
+- Product-level replenishment validation ranked by adjusted decisions, with
+  per-product adherence, adjustment rate, changed fields, unavailable evidence,
+  mean deviations, and direct links to the underlying decision list.
 - Explicit purchase-date windows for replenishment validation (30, 90, 180
   days, or complete history), applied consistently to the clinic-scoped list
   and summary with a 90-day pilot default.

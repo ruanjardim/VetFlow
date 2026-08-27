@@ -10,6 +10,7 @@ use App\Modules\Products\Models\Product;
 use App\Modules\PurchaseEntries\Models\PurchaseEntry;
 use App\Modules\PurchaseEntries\Models\ReplenishmentReviewEvent;
 use App\Modules\PurchaseEntries\Services\ReplenishmentEvidenceService;
+use App\Modules\PurchaseEntries\Services\ReplenishmentPurchaseHistoryService;
 use App\Modules\PurchaseEntries\Services\ReplenishmentSuggestionService;
 use App\Modules\Sales\Models\Sale;
 use App\Modules\Suppliers\Models\Supplier;
@@ -238,6 +239,14 @@ class ReplenishmentSuggestionTest extends TestCase
             ->assertSeeText('Custo alterado: 1')
             ->assertSeeText('Fornecedor alterado: 1')
             ->assertSeeText('Últimos 90 dias, pela data da compra')
+            ->assertSeeText('Divergências por produto')
+            ->assertSeeText('1 produto(s) analisado(s)')
+            ->assertSeeText('1 mantida(s)')
+            ->assertSeeText('1 ajustada(s)')
+            ->assertSeeText('Ajustes: 50,0%')
+            ->assertSeeText('Qtd: 1')
+            ->assertSeeText('Custo: 1')
+            ->assertSeeText('Fornecedor: 1')
             ->assertSeeText('quantidade 12,50%;')
             ->assertSeeText('custo 3,85%.')
             ->assertDontSeeText($prefill['intelligence_metadata']['evidence']['signature'])
@@ -251,7 +260,20 @@ class ReplenishmentSuggestionTest extends TestCase
                 && $stats['unit_cost_adjusted'] === 1
                 && $stats['supplier_adjusted'] === 1
                 && $stats['average_abs_quantity_delta_percent'] === 12.5
-                && $stats['average_abs_unit_cost_delta_percent'] === 3.85);
+                && $stats['average_abs_unit_cost_delta_percent'] === 3.85
+                && $stats['product_count'] === 1
+                && count($stats['products']) === 1
+                && $stats['products'][0]['name'] === 'Produto com decisao medida'
+                && $stats['products'][0]['total'] === 2
+                && $stats['products'][0]['kept'] === 1
+                && $stats['products'][0]['adjusted'] === 1
+                && $stats['products'][0]['adherence_percent'] === 50.0
+                && $stats['products'][0]['adjustment_rate_percent'] === 50.0
+                && $stats['products'][0]['quantity_adjusted'] === 1
+                && $stats['products'][0]['unit_cost_adjusted'] === 1
+                && $stats['products'][0]['supplier_adjusted'] === 1
+                && $stats['products'][0]['average_abs_quantity_delta_percent'] === 12.5
+                && $stats['products'][0]['average_abs_unit_cost_delta_percent'] === 3.85);
 
         $this->get(route('purchase-entries.replenishment-purchases', ['classification' => 'adjusted']))
             ->assertOk()
@@ -281,7 +303,9 @@ class ReplenishmentSuggestionTest extends TestCase
                 && $stats['total'] === 1
                 && $stats['comparable'] === 1
                 && $stats['kept'] === 1
-                && $stats['adherence_percent'] === 100.0);
+                && $stats['adherence_percent'] === 100.0
+                && $stats['products'][0]['total'] === 1
+                && $stats['products'][0]['adjusted'] === 0);
 
         $this->get(route('purchase-entries.replenishment-purchases', ['period' => 'all']))
             ->assertOk()
@@ -292,7 +316,9 @@ class ReplenishmentSuggestionTest extends TestCase
             ->assertViewHas('stats', fn (array $stats): bool => $stats['period'] === 'all'
                 && $stats['total'] === 2
                 && $stats['comparable'] === 2
-                && $stats['adherence_percent'] === 50.0);
+                && $stats['adherence_percent'] === 50.0
+                && $stats['products'][0]['total'] === 2
+                && $stats['products'][0]['adjusted'] === 1);
 
         $this->get(route('purchase-entries.replenishment-purchases', ['period' => '365']))
             ->assertSessionHasErrors('period');
@@ -345,9 +371,72 @@ class ReplenishmentSuggestionTest extends TestCase
             ->assertViewHas('stats', fn (array $stats): bool => $stats['total'] === 1
                 && $stats['comparable'] === 0
                 && $stats['unavailable'] === 1
+                && $stats['product_count'] === 1
+                && $stats['products'][0]['unavailable'] === 1
                 && $stats['adherence_percent'] === null
                 && $stats['average_abs_quantity_delta_percent'] === null
                 && $stats['average_abs_unit_cost_delta_percent'] === null);
+    }
+
+    public function test_product_breakdown_prioritizes_products_with_adjusted_decisions(): void
+    {
+        $clinic = $this->clinic('Clinica Analise por Produto', '00000000000610');
+        $adjustedProduct = $this->product($clinic, 'Produto com maior divergencia', stock: 2, minimum: 5, cost: 9);
+        $keptProduct = $this->product($clinic, 'Produto com decisao mantida', stock: 2, minimum: 5, cost: 9);
+        $user = $this->userForClinic($clinic);
+        $entry = PurchaseEntry::query()->create([
+            'clinic_id' => $clinic->id,
+            'code' => 'ENT-ANALISE-PRODUTO',
+            'status' => 'draft',
+            'purchased_at' => now(),
+            'subtotal' => 27,
+            'total' => 27,
+        ]);
+
+        foreach ([
+            [$adjustedProduct, 'adjusted', 12.0, 10.0, true, 20.0],
+            [$keptProduct, 'kept', 10.0, 10.0, false, 0.0],
+        ] as [$product, $classification, $actual, $suggested, $changed, $deltaPercent]) {
+            $entry->items()->create([
+                'product_id' => $product->id,
+                'description' => $product->name,
+                'quantity' => $actual,
+                'unit_cost' => 9,
+                'total_cost' => $actual * 9,
+                'intelligence_status' => 'replenishment_suggestion',
+                'intelligence_metadata' => [
+                    'replenishment_decision' => [
+                        'evidence_status' => 'valid',
+                        'classification' => $classification,
+                        'quantity' => [
+                            'suggested' => $suggested,
+                            'actual' => $actual,
+                            'delta_percent' => $deltaPercent,
+                            'changed' => $changed,
+                        ],
+                        'unit_cost' => [
+                            'suggested' => 9,
+                            'actual' => 9,
+                            'delta_percent' => 0,
+                            'changed' => false,
+                        ],
+                        'supplier' => ['status' => 'unavailable'],
+                    ],
+                ],
+            ]);
+        }
+
+        $stats = app(ReplenishmentPurchaseHistoryService::class)->summary($user);
+
+        $this->assertSame(2, $stats['product_count']);
+        $this->assertCount(2, $stats['products']);
+        $this->assertSame('Produto com maior divergencia', $stats['products'][0]['name']);
+        $this->assertSame(1, $stats['products'][0]['adjusted']);
+        $this->assertSame(100.0, $stats['products'][0]['adjustment_rate_percent']);
+        $this->assertSame(20.0, $stats['products'][0]['average_abs_quantity_delta_percent']);
+        $this->assertSame('Produto com decisao mantida', $stats['products'][1]['name']);
+        $this->assertSame(1, $stats['products'][1]['kept']);
+        $this->assertSame(100.0, $stats['products'][1]['adherence_percent']);
     }
 
     public function test_suggestions_are_clinic_scoped_and_fall_back_to_the_minimum_stock_rule(): void
@@ -553,7 +642,9 @@ class ReplenishmentSuggestionTest extends TestCase
             ->assertDontSeeText('Produto externo da revisao')
             ->assertViewHas('stats', fn (array $stats): bool => $stats['total'] === 0
                 && $stats['comparable'] === 0
-                && $stats['unavailable'] === 0);
+                && $stats['unavailable'] === 0
+                && $stats['product_count'] === 0
+                && $stats['products'] === []);
 
         $this->post(route('purchase-entries.replenishment-reviews.store', $productB), [
             'decision' => 'reviewed',

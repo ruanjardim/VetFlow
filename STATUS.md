@@ -69,6 +69,9 @@ The local working tree was clean before this documentation pass.
 - Purchase-decision history and metrics now share an explicit purchase-date
   cohort (30, 90, 180 days, or all), defaulting to the latest 90 days so pilot
   indicators cannot be silently distorted by old purchases.
+- The validation screen ranks up to ten products by adjusted purchase decisions
+  and exposes their adherence, adjustment rate, changed fields, unavailable
+  evidence, and mean quantity/cost deviations within the selected cohort.
 - An assisted appointment reminder queue that prepares WhatsApp contact and
   records operator-confirmed outcomes, status changes, and an auditable contact
   history without claiming automatic delivery.

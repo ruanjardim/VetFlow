@@ -92,6 +92,9 @@ observational and cannot tune the suggestion algorithm automatically.
 Both the history and its summary use the same explicit purchase-date cohort.
 The default is the latest 90 days, with 30-day, 180-day, and complete-history
 options so older decisions do not silently distort current pilot validation.
+Within that cohort, a product breakdown surfaces the ten items with the most
+adjusted decisions and shows adherence, adjustment types, unavailable evidence,
+and mean quantity/cost deviations without changing any replenishment rule.
 Patient care now includes a permission-aware longitudinal
 profile that connects appointments, medical records, prescriptions,
 vaccinations, and hospitalizations while
