@@ -237,6 +237,7 @@ class ReplenishmentSuggestionTest extends TestCase
             ->assertSeeText('Quantidade alterada: 1')
             ->assertSeeText('Custo alterado: 1')
             ->assertSeeText('Fornecedor alterado: 1')
+            ->assertSeeText('Últimos 90 dias, pela data da compra')
             ->assertSeeText('quantidade 12,50%;')
             ->assertSeeText('custo 3,85%.')
             ->assertDontSeeText($prefill['intelligence_metadata']['evidence']['signature'])
@@ -267,6 +268,34 @@ class ReplenishmentSuggestionTest extends TestCase
             ->assertOk()
             ->assertSeeText($entry->code)
             ->assertDontSeeText($keptEntry->code);
+
+        $entry->update(['purchased_at' => now()->subDays(120)]);
+
+        $this->get(route('purchase-entries.replenishment-purchases'))
+            ->assertOk()
+            ->assertDontSeeText($entry->code)
+            ->assertSeeText($keptEntry->code)
+            ->assertViewHas('filters', fn (array $filters): bool => $filters['period'] === '90')
+            ->assertViewHas('stats', fn (array $stats): bool => $stats['period'] === '90'
+                && $stats['period_label'] === 'Últimos 90 dias'
+                && $stats['total'] === 1
+                && $stats['comparable'] === 1
+                && $stats['kept'] === 1
+                && $stats['adherence_percent'] === 100.0);
+
+        $this->get(route('purchase-entries.replenishment-purchases', ['period' => 'all']))
+            ->assertOk()
+            ->assertSeeText($entry->code)
+            ->assertSeeText($keptEntry->code)
+            ->assertSeeText('Todo o histórico, pela data da compra')
+            ->assertViewHas('filters', fn (array $filters): bool => $filters['period'] === 'all')
+            ->assertViewHas('stats', fn (array $stats): bool => $stats['period'] === 'all'
+                && $stats['total'] === 2
+                && $stats['comparable'] === 2
+                && $stats['adherence_percent'] === 50.0);
+
+        $this->get(route('purchase-entries.replenishment-purchases', ['period' => '365']))
+            ->assertSessionHasErrors('period');
     }
 
     public function test_invalid_replenishment_evidence_is_excluded_from_purchase_comparison(): void

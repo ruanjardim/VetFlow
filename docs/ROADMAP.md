@@ -66,6 +66,9 @@ The product should feel different from a generic CRUD system by connecting the c
 - Clinic-scoped validation metrics now quantify suggestion adherence,
   field-level adjustments, unavailable evidence, and mean absolute deviations
   while remaining observational rather than self-tuning.
+- Replenishment validation now supports explicit 30-, 90-, and 180-day or
+  complete purchase cohorts, with the selected window shared by history and
+  summary and visible to the operator.
 - The selected KingHost staging candidate has a provider-specific runbook and
   a bounded, token-protected queue cron bridge that remains disabled by default.
 - Sales expose realized gross profitability by item type, category, and item,

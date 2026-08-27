@@ -40,7 +40,7 @@
   <section class="intelligence-health">
     <div>
       <strong>Validação: {{ $stats['scope_label'] }}</strong>
-      <span>{{ $stats['total'] }} decisão(ões) registrada(s); somente evidências válidas entram nas métricas.</span>
+      <span>{{ $stats['period_label'] }}, pela data da compra: {{ $stats['total'] }} decisão(ões) registrada(s); somente evidências válidas entram nas métricas.</span>
     </div>
     <div class="badge-list">
       <span class="badge muted-badge">Quantidade alterada: {{ $stats['quantity_adjusted'] }}</span>
@@ -60,6 +60,14 @@
         <div class="field">
           <label for="replenishment-purchase-q">Produto ou entrada</label>
           <input id="replenishment-purchase-q" name="q" value="{{ $filters['q'] ?? '' }}" maxlength="120" placeholder="Nome do produto ou código">
+        </div>
+        <div class="field">
+          <label for="replenishment-purchase-period">Período analisado</label>
+          <select id="replenishment-purchase-period" name="period">
+            @foreach($periods as $key => $label)
+              <option value="{{ $key }}" @selected(($filters['period'] ?? null) === $key)>{{ $label }}</option>
+            @endforeach
+          </select>
         </div>
         <div class="field">
           <label for="replenishment-purchase-classification">Decisão</label>

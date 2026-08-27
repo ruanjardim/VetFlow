@@ -15,6 +15,9 @@ This project follows the spirit of Keep a Changelog, with one practical adjustme
 
 ### Added
 
+- Explicit purchase-date windows for replenishment validation (30, 90, 180
+  days, or complete history), applied consistently to the clinic-scoped list
+  and summary with a 90-day pilot default.
 - Clinic-scoped replenishment validation metrics covering comparable, kept,
   adjusted, and unavailable purchase decisions, adherence, adjustment types,
   and mean absolute quantity/cost deviations with no automatic rule tuning.

@@ -89,6 +89,9 @@ comparable decisions, field-level adjustment counts, and mean absolute
 quantity/cost deviations. Unverifiable records are counted separately and
 never enter the adherence or deviation calculations. These metrics remain
 observational and cannot tune the suggestion algorithm automatically.
+Both the history and its summary use the same explicit purchase-date cohort.
+The default is the latest 90 days, with 30-day, 180-day, and complete-history
+options so older decisions do not silently distort current pilot validation.
 Patient care now includes a permission-aware longitudinal
 profile that connects appointments, medical records, prescriptions,
 vaccinations, and hospitalizations while

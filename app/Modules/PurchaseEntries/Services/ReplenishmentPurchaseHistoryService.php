@@ -12,6 +12,15 @@ use Throwable;
 
 class ReplenishmentPurchaseHistoryService
 {
+    public const DEFAULT_PERIOD = '90';
+
+    public const PERIODS = [
+        '30' => 'Últimos 30 dias',
+        '90' => 'Últimos 90 dias',
+        '180' => 'Últimos 180 dias',
+        'all' => 'Todo o histórico',
+    ];
+
     public const CLASSIFICATIONS = [
         'kept' => 'Mantida',
         'adjusted' => 'Ajustada',
@@ -29,8 +38,9 @@ class ReplenishmentPurchaseHistoryService
         ?string $classification = null,
         ?string $purchaseStatus = null,
         ?string $search = null,
+        string $period = self::DEFAULT_PERIOD,
     ): LengthAwarePaginator {
-        $query = $this->scopedQuery($user)->with([
+        $query = $this->scopedQuery($user, $period)->with([
                 'product:id,name,unit',
                 'purchaseEntry:id,clinic_id,supplier_id,code,status,purchased_at,received_at',
                 'purchaseEntry.supplier' => fn ($supplierQuery) => $supplierQuery
@@ -75,12 +85,14 @@ class ReplenishmentPurchaseHistoryService
     }
 
     /** @return array<string, int|float|string|null> */
-    public function summary(User $user): array
+    public function summary(User $user, string $period = self::DEFAULT_PERIOD): array
     {
         $stats = [
             'scope_label' => $user->clinic?->trade_name
                 ?: $user->clinic?->corporate_name
                 ?: 'Todas as clínicas acessíveis',
+            'period' => $period,
+            'period_label' => self::PERIODS[$period] ?? self::PERIODS[self::DEFAULT_PERIOD],
             'total' => 0,
             'comparable' => 0,
             'kept' => 0,
@@ -98,7 +110,7 @@ class ReplenishmentPurchaseHistoryService
         $unitCostDeltaTotal = 0.0;
         $unitCostDeltaSamples = 0;
 
-        $this->scopedQuery($user)
+        $this->scopedQuery($user, $period)
             ->select(['id', 'purchase_entry_id', 'intelligence_metadata'])
             ->lazyById(500)
             ->each(function (PurchaseEntryItem $item) use (
@@ -283,14 +295,24 @@ class ReplenishmentPurchaseHistoryService
         }
     }
 
-    private function scopedQuery(User $user): Builder
+    private function scopedQuery(User $user, string $period): Builder
     {
+        $periodDays = $period === 'all' ? null : (int) $period;
+
         return PurchaseEntryItem::query()
             ->where('intelligence_status', 'replenishment_suggestion')
-            ->whereHas('purchaseEntry', fn (Builder $entryQuery) => $entryQuery
-                ->when(
+            ->whereHas('purchaseEntry', function (Builder $entryQuery) use ($user, $periodDays): void {
+                $entryQuery->when(
                     $user->clinic_id !== null,
                     fn (Builder $clinicQuery) => $clinicQuery->where('clinic_id', $user->clinic_id),
-                ));
+                );
+
+                if ($periodDays !== null) {
+                    $entryQuery->whereBetween('purchased_at', [
+                        now()->subDays($periodDays)->startOfDay(),
+                        now()->endOfDay(),
+                    ]);
+                }
+            });
     }
 }

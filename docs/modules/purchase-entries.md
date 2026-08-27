@@ -131,6 +131,9 @@ or below their minimum. The first explainable rule set is:
   intelligence metadata.
 - the decision-history summary counts comparable, kept, adjusted, and
   unavailable records for the current clinic scope;
+- history and summary share a validated purchase-date window: the interface
+  defaults to the latest 90 days and also offers 30, 180, or the complete
+  history, making the cohort behind every metric explicit;
 - adherence is `kept / comparable`, while unavailable evidence is excluded
   from that denominator;
 - quantity, unit-cost, and supplier adjustment counts use only valid evidence;

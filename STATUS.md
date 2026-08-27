@@ -1,6 +1,6 @@
 # VetFlow Status
 
-Updated: 2026-08-26
+Updated: 2026-08-27
 
 ## Current State
 
@@ -66,6 +66,9 @@ The local working tree was clean before this documentation pass.
 - Purchase-decision validation now consolidates comparable, kept, adjusted,
   and unavailable totals, adherence, field-level adjustment counts, and mean
   absolute deviations for the current clinic scope without automatic tuning.
+- Purchase-decision history and metrics now share an explicit purchase-date
+  cohort (30, 90, 180 days, or all), defaulting to the latest 90 days so pilot
+  indicators cannot be silently distorted by old purchases.
 - An assisted appointment reminder queue that prepares WhatsApp contact and
   records operator-confirmed outcomes, status changes, and an auditable contact
   history without claiming automatic delivery.

@@ -106,8 +106,11 @@ class PurchaseEntryController extends Controller
         $validated = $request->validate([
             'classification' => ['nullable', Rule::in(array_keys(ReplenishmentPurchaseHistoryService::CLASSIFICATIONS))],
             'status' => ['nullable', Rule::in(array_keys(ReplenishmentPurchaseHistoryService::PURCHASE_STATUSES))],
+            'period' => ['nullable', Rule::in(array_keys(ReplenishmentPurchaseHistoryService::PERIODS))],
             'q' => ['nullable', 'string', 'max:120'],
         ]);
+        $period = $validated['period'] ?? ReplenishmentPurchaseHistoryService::DEFAULT_PERIOD;
+        $validated['period'] = $period;
 
         return view('purchase-entries.replenishment-purchases', [
             'items' => $this->replenishmentPurchaseHistory->history(
@@ -115,11 +118,13 @@ class PurchaseEntryController extends Controller
                 $validated['classification'] ?? null,
                 $validated['status'] ?? null,
                 $validated['q'] ?? null,
+                $period,
             ),
             'classifications' => ReplenishmentPurchaseHistoryService::CLASSIFICATIONS,
             'purchaseStatuses' => ReplenishmentPurchaseHistoryService::PURCHASE_STATUSES,
+            'periods' => ReplenishmentPurchaseHistoryService::PERIODS,
             'filters' => $validated,
-            'stats' => $this->replenishmentPurchaseHistory->summary($request->user()),
+            'stats' => $this->replenishmentPurchaseHistory->summary($request->user(), $period),
         ]);
     }
 
