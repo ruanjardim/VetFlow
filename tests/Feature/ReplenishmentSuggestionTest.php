@@ -155,11 +155,14 @@ class ReplenishmentSuggestionTest extends TestCase
         $this->actingAs($user);
 
         $suggestion = app(ReplenishmentSuggestionService::class)->suggestionFor($product);
-        $prefill = $this->get($suggestion['purchase_url'])
+        $prefillResponse = $this->get($suggestion['purchase_url'])
             ->assertOk()
-            ->viewData('suggestedItem');
+            ->assertSeeText('Justificativa das alterações da reposição')
+            ->assertSeeText('Preço, prazo ou condição comercial')
+            ->assertSee('replenishment-adjustment-reason-0');
+        $prefill = $prefillResponse->viewData('suggestedItem');
 
-        $this->post(route('purchase-entries.store'), [
+        $adjustedPurchase = [
             'supplier_id' => $selectedSupplier->id,
             'status' => 'draft',
             'purchased_at' => now()->format('Y-m-d'),
@@ -172,12 +175,29 @@ class ReplenishmentSuggestionTest extends TestCase
                 'intelligence_status' => $prefill['intelligence_status'],
                 'intelligence_metadata' => json_encode($prefill['intelligence_metadata'], JSON_THROW_ON_ERROR),
             ]],
-        ])->assertRedirect(route('purchase-entries.index'));
+        ];
+
+        $this->post(route('purchase-entries.store'), $adjustedPurchase)
+            ->assertSessionHasErrors('items.0.replenishment_adjustment_reason');
+        $this->assertSame(2, PurchaseEntry::query()->count());
+
+        $adjustedPurchase['items'][0]['replenishment_adjustment_reason'] = 'other';
+
+        $this->post(route('purchase-entries.store'), $adjustedPurchase)
+            ->assertSessionHasErrors('items.0.replenishment_adjustment_note');
+        $this->assertSame(2, PurchaseEntry::query()->count());
+
+        $adjustedPurchase['items'][0]['replenishment_adjustment_reason'] = 'commercial_terms';
+        $adjustedPurchase['items'][0]['replenishment_adjustment_note'] = 'Condição negociada diretamente com o fornecedor.';
+
+        $this->post(route('purchase-entries.store'), $adjustedPurchase)
+            ->assertRedirect(route('purchase-entries.index'));
 
         $entry = PurchaseEntry::query()->latest('id')->firstOrFail();
         $decision = $entry->items()->sole()->intelligence_metadata['replenishment_decision'];
 
         $this->assertSame('valid', $decision['evidence_status']);
+        $this->assertSame(2, $decision['version']);
         $this->assertSame('adjusted', $decision['classification']);
         $this->assertEquals(12.0, $decision['quantity']['suggested']);
         $this->assertEquals(15.0, $decision['quantity']['actual']);
@@ -192,6 +212,12 @@ class ReplenishmentSuggestionTest extends TestCase
         $this->assertSame($suggestedSupplier->id, $decision['supplier']['suggested_id']);
         $this->assertSame($selectedSupplier->id, $decision['supplier']['actual_id']);
         $this->assertSame('changed', $decision['supplier']['status']);
+        $this->assertSame('commercial_terms', $decision['adjustment_reason']['code']);
+        $this->assertSame('Preço, prazo ou condição comercial', $decision['adjustment_reason']['label']);
+        $this->assertSame(
+            'Condição negociada diretamente com o fornecedor.',
+            $decision['adjustment_reason']['note'],
+        );
         $this->assertSame(
             $prefill['intelligence_metadata']['evidence']['hash'],
             $decision['evidence_hash'],
@@ -219,6 +245,11 @@ class ReplenishmentSuggestionTest extends TestCase
         $this->assertFalse($kept['quantity']['changed']);
         $this->assertFalse($kept['unit_cost']['changed']);
         $this->assertSame('kept', $kept['supplier']['status']);
+        $this->assertNull($kept['adjustment_reason']);
+
+        $this->get(route('purchase-entries.edit', $entry))
+            ->assertOk()
+            ->assertSeeText('Condição negociada diretamente com o fornecedor.');
 
         $this->get(route('purchase-entries.replenishment-purchases'))
             ->assertOk()
@@ -230,6 +261,9 @@ class ReplenishmentSuggestionTest extends TestCase
             ->assertSeeText('Mantida')
             ->assertSeeText('Fornecedor escolhido')
             ->assertSeeText('Fornecedor sugerido')
+            ->assertSeeText('Motivo do ajuste')
+            ->assertSeeText('Preço, prazo ou condição comercial')
+            ->assertSeeText('Condição negociada diretamente com o fornecedor.')
             ->assertSeeText('+3,000')
             ->assertSeeText('+25,00%')
             ->assertSeeText('+R$ 1,00')

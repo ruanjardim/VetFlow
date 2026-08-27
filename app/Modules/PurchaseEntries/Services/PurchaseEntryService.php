@@ -178,6 +178,8 @@ class PurchaseEntryService
             $unitCost,
             $metadata,
             $intelligenceStatus,
+            $item['replenishment_adjustment_reason'] ?? null,
+            $item['replenishment_adjustment_note'] ?? null,
         );
 
         return [

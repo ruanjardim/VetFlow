@@ -15,6 +15,9 @@ This project follows the spirit of Keep a Changelog, with one practical adjustme
 
 ### Added
 
+- Required, controlled reasons for valid replenishment purchase adjustments,
+  including a bounded note for `other`, decision schema version 2 persistence,
+  edit restoration, and safe reason visibility in purchase-decision history.
 - Product-level replenishment validation ranked by adjusted decisions, with
   per-product adherence, adjustment rate, changed fields, unavailable evidence,
   mean deviations, and direct links to the underlying decision list.

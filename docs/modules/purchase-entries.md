@@ -137,6 +137,14 @@ or below their minimum. The first explainable rule set is:
 - the same cohort produces a product breakdown, ordered by adjusted decisions,
   with comparable/unavailable totals, adherence, adjustment rate, changed
   fields, and mean absolute quantity/cost deviations for up to ten products;
+- a valid replenishment purchase that changes quantity, cost, or the suggested
+  supplier requires a controlled adjustment reason; `other` additionally
+  requires a note of up to 500 characters;
+- the backend derives the reason label from the controlled code, stores the
+  reason with decision schema version 2, restores it on purchase editing, and
+  exposes only the safe label/note in decision history. Kept or unverifiable
+  decisions do not require a reason, and legacy adjusted records remain visibly
+  marked when they have no reason;
 - adherence is `kept / comparable`, while unavailable evidence is excluded
   from that denominator;
 - quantity, unit-cost, and supplier adjustment counts use only valid evidence;

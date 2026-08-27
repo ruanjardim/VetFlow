@@ -305,6 +305,11 @@ class ReplenishmentPurchaseHistoryService
             : 'unavailable';
         $evidenceStatus = (string) ($decision['evidence_status'] ?? 'invalid');
         $suggestedSupplierId = $this->suggestedSupplierId($item);
+        $adjustmentReasonCode = $decision['adjustment_reason']['code'] ?? null;
+        $adjustmentReasonLabel = is_string($adjustmentReasonCode)
+            ? (ReplenishmentPurchaseDecisionService::ADJUSTMENT_REASONS[$adjustmentReasonCode] ?? null)
+            : null;
+        $adjustmentReasonNote = $decision['adjustment_reason']['note'] ?? null;
 
         return [
             'entry_id' => $entry->id,
@@ -348,6 +353,10 @@ class ReplenishmentPurchaseHistoryService
             'supplier_suggested_name' => $suggestedSupplierId === null
                 ? 'Sem fornecedor sugerido'
                 : ($supplierNames[$suggestedSupplierId] ?? 'Fornecedor removido'),
+            'adjustment_reason_label' => $adjustmentReasonLabel,
+            'adjustment_reason_note' => is_string($adjustmentReasonNote) && trim($adjustmentReasonNote) !== ''
+                ? trim($adjustmentReasonNote)
+                : null,
         ];
     }
 

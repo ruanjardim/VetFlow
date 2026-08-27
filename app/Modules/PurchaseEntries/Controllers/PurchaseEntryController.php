@@ -14,6 +14,7 @@ use App\Modules\PurchaseEntries\Services\NfeXmlImportService;
 use App\Modules\PurchaseEntries\Services\PurchaseEntryInsightService;
 use App\Modules\PurchaseEntries\Services\PurchaseEntryService;
 use App\Modules\PurchaseEntries\Services\ReplenishmentEvidenceService;
+use App\Modules\PurchaseEntries\Services\ReplenishmentPurchaseDecisionService;
 use App\Modules\PurchaseEntries\Services\ReplenishmentPurchaseHistoryService;
 use App\Modules\PurchaseEntries\Services\ReplenishmentReviewService;
 use App\Modules\Suppliers\Models\Supplier;
@@ -54,6 +55,7 @@ class PurchaseEntryController extends Controller
             'purchaseInsights' => $this->insights->dashboard(),
             'scanGtin' => $request->query('scan') ?: $request->query('gtin'),
             'suggestedItem' => $this->replenishmentPrefill($request),
+            'replenishmentAdjustmentReasons' => ReplenishmentPurchaseDecisionService::ADJUSTMENT_REASONS,
         ]);
     }
 
@@ -75,6 +77,7 @@ class PurchaseEntryController extends Controller
             'suppliers' => $this->suppliers(),
             'purchaseInsights' => $this->insights->dashboard(),
             'scanGtin' => null,
+            'replenishmentAdjustmentReasons' => ReplenishmentPurchaseDecisionService::ADJUSTMENT_REASONS,
         ]);
     }
 

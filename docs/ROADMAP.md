@@ -72,6 +72,9 @@ The product should feel different from a generic CRUD system by connecting the c
 - Product-level validation now highlights the ten products with the most
   adjusted decisions and breaks down adherence, changed fields, unavailable
   evidence, and mean deviations within the selected cohort.
+- Adjusted signed replenishment purchases now require a controlled operational
+  reason, with a bounded explanation for `other`, backend-derived labels, and a
+  safe reason trail in the purchase-decision interface.
 - The selected KingHost staging candidate has a provider-specific runbook and
   a bounded, token-protected queue cron bridge that remains disabled by default.
 - Sales expose realized gross profitability by item type, category, and item,

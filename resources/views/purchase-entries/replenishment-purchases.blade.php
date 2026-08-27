@@ -173,6 +173,7 @@
             <th>Quantidade</th>
             <th>Custo unitário</th>
             <th>Fornecedor</th>
+            <th>Motivo do ajuste</th>
             <th>Evidência</th>
           </tr>
         </thead>
@@ -229,6 +230,18 @@
                 @endif
               </td>
               <td>
+                @if($item['adjustment_reason_label'])
+                  <strong>{{ $item['adjustment_reason_label'] }}</strong>
+                  @if($item['adjustment_reason_note'])
+                    <div class="muted">{{ $item['adjustment_reason_note'] }}</div>
+                  @endif
+                @elseif($item['classification'] === 'adjusted')
+                  <span class="badge warning">Motivo não registrado</span>
+                @else
+                  <span class="muted">Não se aplica</span>
+                @endif
+              </td>
+              <td>
                 <span class="badge {{ $item['evidence_tone'] }}">{{ $item['evidence_label'] }}</span>
                 @if($item['evaluated_at'])
                   <div class="muted">Registrada em {{ $item['evaluated_at']->format('d/m/Y H:i') }}</div>
@@ -237,7 +250,7 @@
             </tr>
           @empty
             <tr>
-              <td colspan="7" class="muted">Nenhuma decisão de compra encontrada.</td>
+              <td colspan="8" class="muted">Nenhuma decisão de compra encontrada.</td>
             </tr>
           @endforelse
         </tbody>

@@ -95,6 +95,11 @@ options so older decisions do not silently distort current pilot validation.
 Within that cohort, a product breakdown surfaces the ten items with the most
 adjusted decisions and shows adherence, adjustment types, unavailable evidence,
 and mean quantity/cost deviations without changing any replenishment rule.
+Valid signed suggestions now require a controlled reason when the saved
+quantity, cost, or supplier is changed. The server stores the attributed reason
+with decision schema version 2, requires a bounded note for the `other` option,
+and renders the safe label/note in the purchase history. Kept and unverifiable
+decisions are not burdened with this requirement.
 Patient care now includes a permission-aware longitudinal
 profile that connects appointments, medical records, prescriptions,
 vaccinations, and hospitalizations while

@@ -72,6 +72,10 @@ The local working tree was clean before this documentation pass.
 - The validation screen ranks up to ten products by adjusted purchase decisions
   and exposes their adherence, adjustment rate, changed fields, unavailable
   evidence, and mean quantity/cost deviations within the selected cohort.
+- Signed replenishment purchases now require a controlled reason when quantity,
+  cost, or supplier is adjusted. The reason and bounded optional note are saved
+  in decision schema version 2, restored on editing, and shown safely in history;
+  legacy adjusted records without a reason remain explicit.
 - An assisted appointment reminder queue that prepares WhatsApp contact and
   records operator-confirmed outcomes, status changes, and an auditable contact
   history without claiming automatic delivery.
