@@ -75,6 +75,9 @@ The product should feel different from a generic CRUD system by connecting the c
 - Adjusted signed replenishment purchases now require a controlled operational
   reason, with a bounded explanation for `other`, backend-derived labels, and a
   safe reason trail in the purchase-decision interface.
+- Pilot validation now exposes an advisory maturity state and next action based
+  on explicit decision-volume, product-coverage, evidence-quality, and reason-
+  completeness references, without implying statistical proof or self-tuning.
 - The selected KingHost staging candidate has a provider-specific runbook and
   a bounded, token-protected queue cron bridge that remains disabled by default.
 - Sales expose realized gross profitability by item type, category, and item,

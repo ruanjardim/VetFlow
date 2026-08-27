@@ -12,6 +12,14 @@ use Throwable;
 
 class ReplenishmentPurchaseHistoryService
 {
+    public const MATURITY_MIN_COMPARABLE_DECISIONS = 20;
+
+    public const MATURITY_MIN_COMPARABLE_PRODUCTS = 5;
+
+    public const MATURITY_MIN_EVIDENCE_PERCENT = 90.0;
+
+    public const MATURITY_MIN_REASON_PERCENT = 100.0;
+
     public const DEFAULT_PERIOD = '90';
 
     public const PERIODS = [
@@ -102,10 +110,15 @@ class ReplenishmentPurchaseHistoryService
             'quantity_adjusted' => 0,
             'unit_cost_adjusted' => 0,
             'supplier_adjusted' => 0,
+            'adjustments_with_reason' => 0,
+            'evidence_coverage_percent' => null,
+            'adjustment_reason_coverage_percent' => null,
             'average_abs_quantity_delta_percent' => null,
             'average_abs_unit_cost_delta_percent' => null,
             'product_count' => 0,
+            'comparable_product_count' => 0,
             'products' => [],
+            'maturity' => [],
         ];
         $products = [];
         $quantityDeltaTotal = 0.0;
@@ -149,6 +162,15 @@ class ReplenishmentPurchaseHistoryService
                 $productStats['comparable']++;
                 $productStats[$classification]++;
 
+                if ($classification === 'adjusted') {
+                    $reasonCode = $decision['adjustment_reason']['code'] ?? null;
+
+                    if (is_string($reasonCode)
+                        && array_key_exists($reasonCode, ReplenishmentPurchaseDecisionService::ADJUSTMENT_REASONS)) {
+                        $stats['adjustments_with_reason']++;
+                    }
+                }
+
                 if (($decision['quantity']['changed'] ?? false) === true) {
                     $stats['quantity_adjusted']++;
                     $productStats['quantity_adjusted']++;
@@ -187,6 +209,17 @@ class ReplenishmentPurchaseHistoryService
             $stats['adherence_percent'] = round($stats['kept'] / $stats['comparable'] * 100, 1);
         }
 
+        if ($stats['total'] > 0) {
+            $stats['evidence_coverage_percent'] = round($stats['comparable'] / $stats['total'] * 100, 1);
+        }
+
+        if ($stats['adjusted'] > 0) {
+            $stats['adjustment_reason_coverage_percent'] = round(
+                $stats['adjustments_with_reason'] / $stats['adjusted'] * 100,
+                1,
+            );
+        }
+
         if ($quantityDeltaSamples > 0) {
             $stats['average_abs_quantity_delta_percent'] = round($quantityDeltaTotal / $quantityDeltaSamples, 2);
         }
@@ -196,9 +229,97 @@ class ReplenishmentPurchaseHistoryService
         }
 
         $stats['product_count'] = count($products);
+        $stats['comparable_product_count'] = count(array_filter(
+            $products,
+            fn (array $product): bool => $product['comparable'] > 0,
+        ));
         $stats['products'] = $this->finalizeProductStats($products);
+        $stats['maturity'] = $this->maturity($stats);
 
         return $stats;
+    }
+
+    /**
+     * @param  array<string, mixed>  $stats
+     * @return array<string, mixed>
+     */
+    private function maturity(array $stats): array
+    {
+        $reasonCoverage = $stats['adjustment_reason_coverage_percent'];
+        $criteria = [
+            'decisions' => [
+                'label' => 'Decisões comparáveis',
+                'current' => $stats['comparable'],
+                'target' => self::MATURITY_MIN_COMPARABLE_DECISIONS,
+                'met' => $stats['comparable'] >= self::MATURITY_MIN_COMPARABLE_DECISIONS,
+            ],
+            'products' => [
+                'label' => 'Produtos comparáveis',
+                'current' => $stats['comparable_product_count'],
+                'target' => self::MATURITY_MIN_COMPARABLE_PRODUCTS,
+                'met' => $stats['comparable_product_count'] >= self::MATURITY_MIN_COMPARABLE_PRODUCTS,
+            ],
+            'evidence' => [
+                'label' => 'Evidência válida',
+                'current' => $stats['evidence_coverage_percent'],
+                'target' => self::MATURITY_MIN_EVIDENCE_PERCENT,
+                'met' => $stats['evidence_coverage_percent'] !== null
+                    && $stats['evidence_coverage_percent'] >= self::MATURITY_MIN_EVIDENCE_PERCENT,
+            ],
+            'reasons' => [
+                'label' => 'Motivos registrados',
+                'current' => $reasonCoverage,
+                'target' => self::MATURITY_MIN_REASON_PERCENT,
+                'met' => ($stats['adjusted'] === 0
+                    && $stats['comparable'] >= self::MATURITY_MIN_COMPARABLE_DECISIONS)
+                    || ($reasonCoverage !== null && $reasonCoverage >= self::MATURITY_MIN_REASON_PERCENT),
+            ],
+        ];
+        $criteriaMet = count(array_filter($criteria, fn (array $criterion): bool => $criterion['met']));
+        $ready = $criteriaMet === count($criteria);
+
+        return [
+            'status' => $ready ? 'ready' : ($stats['total'] === 0 ? 'empty' : 'building'),
+            'status_label' => $ready
+                ? 'Base operacional atingida'
+                : ($stats['total'] === 0 ? 'Sem amostra no período' : 'Amostra em formação'),
+            'status_tone' => $ready ? 'success' : ($stats['total'] === 0 ? 'muted-badge' : 'warning'),
+            'criteria_met' => $criteriaMet,
+            'criteria_total' => count($criteria),
+            'criteria' => $criteria,
+            'next_action' => $this->maturityNextAction($stats, $criteria, $ready),
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $stats
+     * @param  array<string, array<string, mixed>>  $criteria
+     */
+    private function maturityNextAction(array $stats, array $criteria, bool $ready): string
+    {
+        if ($ready) {
+            return 'A referência operacional inicial foi atingida. Mantenha a coleta e faça revisão humana antes de alterar qualquer regra.';
+        }
+
+        if (! $criteria['decisions']['met']) {
+            $remaining = self::MATURITY_MIN_COMPARABLE_DECISIONS - $stats['comparable'];
+
+            return "Registre mais {$remaining} decisão(ões) comparável(is) no período selecionado.";
+        }
+
+        if (! $criteria['products']['met']) {
+            $remaining = self::MATURITY_MIN_COMPARABLE_PRODUCTS - $stats['comparable_product_count'];
+
+            return "Inclua decisões comparáveis de mais {$remaining} produto(s).";
+        }
+
+        if (! $criteria['evidence']['met']) {
+            return 'Revise as evidências indisponíveis até que ao menos 90% das decisões sejam comparáveis.';
+        }
+
+        $missingReasons = $stats['adjusted'] - $stats['adjustments_with_reason'];
+
+        return "Complete o motivo de {$missingReasons} ajuste(s) legado(s).";
     }
 
     /** @return array<string, int|float|string|null> */

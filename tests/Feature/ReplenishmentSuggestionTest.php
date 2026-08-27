@@ -273,6 +273,11 @@ class ReplenishmentSuggestionTest extends TestCase
             ->assertSeeText('Custo alterado: 1')
             ->assertSeeText('Fornecedor alterado: 1')
             ->assertSeeText('Últimos 90 dias, pela data da compra')
+            ->assertSeeText('Maturidade da amostra do piloto')
+            ->assertSeeText('Amostra em formação')
+            ->assertSeeText('2 de 4 critérios atendidos')
+            ->assertSeeText('Registre mais 18 decisão(ões) comparável(is)')
+            ->assertSeeText('não comprova significância estatística')
             ->assertSeeText('Divergências por produto')
             ->assertSeeText('1 produto(s) analisado(s)')
             ->assertSeeText('1 mantida(s)')
@@ -293,9 +298,18 @@ class ReplenishmentSuggestionTest extends TestCase
                 && $stats['quantity_adjusted'] === 1
                 && $stats['unit_cost_adjusted'] === 1
                 && $stats['supplier_adjusted'] === 1
+                && $stats['adjustments_with_reason'] === 1
+                && $stats['evidence_coverage_percent'] === 100.0
+                && $stats['adjustment_reason_coverage_percent'] === 100.0
                 && $stats['average_abs_quantity_delta_percent'] === 12.5
                 && $stats['average_abs_unit_cost_delta_percent'] === 3.85
                 && $stats['product_count'] === 1
+                && $stats['comparable_product_count'] === 1
+                && $stats['maturity']['status'] === 'building'
+                && $stats['maturity']['criteria_met'] === 2
+                && $stats['maturity']['criteria']['decisions']['current'] === 2
+                && $stats['maturity']['criteria']['decisions']['target'] === 20
+                && $stats['maturity']['criteria']['products']['target'] === 5
                 && count($stats['products']) === 1
                 && $stats['products'][0]['name'] === 'Produto com decisao medida'
                 && $stats['products'][0]['total'] === 2
@@ -406,7 +420,10 @@ class ReplenishmentSuggestionTest extends TestCase
                 && $stats['comparable'] === 0
                 && $stats['unavailable'] === 1
                 && $stats['product_count'] === 1
+                && $stats['comparable_product_count'] === 0
                 && $stats['products'][0]['unavailable'] === 1
+                && $stats['evidence_coverage_percent'] === 0.0
+                && $stats['maturity']['status'] === 'building'
                 && $stats['adherence_percent'] === null
                 && $stats['average_abs_quantity_delta_percent'] === null
                 && $stats['average_abs_unit_cost_delta_percent'] === null);
@@ -471,6 +488,78 @@ class ReplenishmentSuggestionTest extends TestCase
         $this->assertSame('Produto com decisao mantida', $stats['products'][1]['name']);
         $this->assertSame(1, $stats['products'][1]['kept']);
         $this->assertSame(100.0, $stats['products'][1]['adherence_percent']);
+    }
+
+    public function test_pilot_sample_reaches_the_advisory_operational_reference(): void
+    {
+        $clinic = $this->clinic('Clinica Amostra Madura', '00000000000613');
+        $user = $this->userForClinic($clinic);
+        $entry = PurchaseEntry::query()->create([
+            'clinic_id' => $clinic->id,
+            'code' => 'ENT-AMOSTRA-MADURA',
+            'status' => 'draft',
+            'purchased_at' => now(),
+            'subtotal' => 1800,
+            'total' => 1800,
+        ]);
+
+        for ($productIndex = 1; $productIndex <= 5; $productIndex++) {
+            $product = $this->product(
+                $clinic,
+                'Produto da amostra '.$productIndex,
+                stock: 2,
+                minimum: 5,
+                cost: 9,
+            );
+
+            for ($decisionIndex = 1; $decisionIndex <= 4; $decisionIndex++) {
+                $entry->items()->create([
+                    'product_id' => $product->id,
+                    'description' => $product->name,
+                    'quantity' => 10,
+                    'unit_cost' => 9,
+                    'total_cost' => 90,
+                    'intelligence_status' => 'replenishment_suggestion',
+                    'intelligence_metadata' => [
+                        'replenishment_decision' => [
+                            'evidence_status' => 'valid',
+                            'classification' => 'kept',
+                            'quantity' => [
+                                'suggested' => 10,
+                                'actual' => 10,
+                                'delta_percent' => 0,
+                                'changed' => false,
+                            ],
+                            'unit_cost' => [
+                                'suggested' => 9,
+                                'actual' => 9,
+                                'delta_percent' => 0,
+                                'changed' => false,
+                            ],
+                            'supplier' => ['status' => 'unavailable'],
+                        ],
+                    ],
+                ]);
+            }
+        }
+
+        $stats = app(ReplenishmentPurchaseHistoryService::class)->summary($user);
+
+        $this->assertSame(20, $stats['comparable']);
+        $this->assertSame(5, $stats['comparable_product_count']);
+        $this->assertSame(100.0, $stats['evidence_coverage_percent']);
+        $this->assertNull($stats['adjustment_reason_coverage_percent']);
+        $this->assertSame('ready', $stats['maturity']['status']);
+        $this->assertSame(4, $stats['maturity']['criteria_met']);
+        $this->assertTrue($stats['maturity']['criteria']['reasons']['met']);
+
+        $this->actingAs($user)
+            ->get(route('purchase-entries.replenishment-purchases'))
+            ->assertOk()
+            ->assertSeeText('Base operacional atingida')
+            ->assertSeeText('4 de 4 critérios atendidos')
+            ->assertSeeText('Não se aplica')
+            ->assertSeeText('faça revisão humana antes de alterar qualquer regra');
     }
 
     public function test_suggestions_are_clinic_scoped_and_fall_back_to_the_minimum_stock_rule(): void

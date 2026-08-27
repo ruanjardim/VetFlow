@@ -57,6 +57,51 @@
   <section class="panel">
     <div class="panel-heading">
       <div>
+        <h2>Maturidade da amostra do piloto</h2>
+        <p>Referência operacional inicial para decidir quando revisar os resultados com segurança.</p>
+      </div>
+      <span class="badge {{ $stats['maturity']['status_tone'] }}">{{ $stats['maturity']['status_label'] }}</span>
+    </div>
+    <div class="panel-body">
+      <div class="grid stats inventory-lot-stats">
+        <div class="stat">
+          <span>Decisões comparáveis</span>
+          <strong>{{ $stats['maturity']['criteria']['decisions']['current'] }} / {{ $stats['maturity']['criteria']['decisions']['target'] }}</strong>
+        </div>
+        <div class="stat">
+          <span>Produtos comparáveis</span>
+          <strong>{{ $stats['maturity']['criteria']['products']['current'] }} / {{ $stats['maturity']['criteria']['products']['target'] }}</strong>
+        </div>
+        <div class="stat">
+          <span>Evidência válida</span>
+          <strong>
+            {{ $stats['maturity']['criteria']['evidence']['current'] === null ? '—' : number_format($stats['maturity']['criteria']['evidence']['current'], 1, ',', '.').'%' }}
+            / {{ number_format($stats['maturity']['criteria']['evidence']['target'], 0, ',', '.') }}%
+          </strong>
+        </div>
+        <div class="stat">
+          <span>Motivos registrados</span>
+          <strong>
+            {{ $stats['maturity']['criteria']['reasons']['current'] === null ? 'Não se aplica' : number_format($stats['maturity']['criteria']['reasons']['current'], 1, ',', '.').'%' }}
+            @if($stats['maturity']['criteria']['reasons']['current'] !== null)
+              / {{ number_format($stats['maturity']['criteria']['reasons']['target'], 0, ',', '.') }}%
+            @endif
+          </strong>
+        </div>
+      </div>
+      <div class="intelligence-health">
+        <div>
+          <strong>{{ $stats['maturity']['criteria_met'] }} de {{ $stats['maturity']['criteria_total'] }} critérios atendidos</strong>
+          <span>{{ $stats['maturity']['next_action'] }}</span>
+        </div>
+      </div>
+      <p class="muted">Esta referência organiza a validação do piloto; não comprova significância estatística, não aprova fornecedor e não altera sugestões automaticamente.</p>
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-heading">
+      <div>
         <h2>Divergências por produto</h2>
         <p>Produtos com mais ajustes no período selecionado, limitados aos 10 primeiros.</p>
       </div>

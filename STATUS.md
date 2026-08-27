@@ -76,6 +76,10 @@ The local working tree was clean before this documentation pass.
   cost, or supplier is adjusted. The reason and bounded optional note are saved
   in decision schema version 2, restored on editing, and shown safely in history;
   legacy adjusted records without a reason remain explicit.
+- An advisory pilot-maturity panel evaluates the selected cohort against visible
+  initial references (20 comparable decisions, 5 products, 90% valid evidence,
+  and complete adjustment reasons), identifies the next missing action, and
+  explicitly avoids statistical or automatic-rule claims.
 - An assisted appointment reminder queue that prepares WhatsApp contact and
   records operator-confirmed outcomes, status changes, and an auditable contact
   history without claiming automatic delivery.

@@ -145,6 +145,14 @@ or below their minimum. The first explainable rule set is:
   exposes only the safe label/note in decision history. Kept or unverifiable
   decisions do not require a reason, and legacy adjusted records remain visibly
   marked when they have no reason;
+- an advisory pilot-maturity panel evaluates the selected clinic/date cohort
+  against four explicit initial references: 20 comparable decisions, 5
+  comparable products, at least 90% valid evidence, and a reason on 100% of
+  adjusted decisions. A cohort with no adjustments satisfies the reason gate
+  only after reaching the comparable-decision reference;
+- the panel reports the next missing action and labels the cohort as empty,
+  forming, or operationally ready. It is not a statistical-significance claim,
+  supplier approval, or permission to tune rules automatically;
 - adherence is `kept / comparable`, while unavailable evidence is excluded
   from that denominator;
 - quantity, unit-cost, and supplier adjustment counts use only valid evidence;

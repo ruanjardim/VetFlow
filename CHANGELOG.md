@@ -15,6 +15,9 @@ This project follows the spirit of Keep a Changelog, with one practical adjustme
 
 ### Added
 
+- Advisory replenishment pilot-maturity panel with explicit comparable-decision,
+  product-coverage, evidence-quality, and reason-completeness references, plus
+  the next missing action and clear non-statistical/non-automatic boundaries.
 - Required, controlled reasons for valid replenishment purchase adjustments,
   including a bounded note for `other`, decision schema version 2 persistence,
   edit restoration, and safe reason visibility in purchase-decision history.
