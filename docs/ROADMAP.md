@@ -1,6 +1,6 @@
 # VetFlow Roadmap
 
-Updated: 2026-08-26
+Updated: 2026-08-29
 
 This roadmap describes the product direction that should stay visible while VetFlow evolves. It is intentionally high-level and should be revised as implementation priorities change.
 
@@ -78,6 +78,9 @@ The product should feel different from a generic CRUD system by connecting the c
 - Pilot validation now exposes an advisory maturity state and next action based
   on explicit decision-volume, product-coverage, evidence-quality, and reason-
   completeness references, without implying statistical proof or self-tuning.
+- The selected replenishment validation cohort can be exported as a versioned,
+  no-cache, allowlisted JSON report for human pilot review without exposing
+  signed evidence internals or changing any recommendation rule.
 - The selected KingHost staging candidate has a provider-specific runbook and
   a bounded, token-protected queue cron bridge that remains disabled by default.
 - Sales expose realized gross profitability by item type, category, and item,

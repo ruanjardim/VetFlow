@@ -49,12 +49,12 @@ class ReplenishmentPurchaseHistoryService
         string $period = self::DEFAULT_PERIOD,
     ): LengthAwarePaginator {
         $query = $this->scopedQuery($user, $period)->with([
-                'product:id,name,unit',
-                'purchaseEntry:id,clinic_id,supplier_id,code,status,purchased_at,received_at',
-                'purchaseEntry.supplier' => fn ($supplierQuery) => $supplierQuery
-                    ->withTrashed()
-                    ->select(['id', 'name']),
-            ]);
+            'product:id,name,unit',
+            'purchaseEntry:id,clinic_id,supplier_id,code,status,purchased_at,received_at',
+            'purchaseEntry.supplier' => fn ($supplierQuery) => $supplierQuery
+                ->withTrashed()
+                ->select(['id', 'name']),
+        ]);
 
         if (array_key_exists((string) $classification, self::CLASSIFICATIONS)) {
             $query->where(
@@ -237,6 +237,50 @@ class ReplenishmentPurchaseHistoryService
         $stats['maturity'] = $this->maturity($stats);
 
         return $stats;
+    }
+
+    /** @return array<string, mixed> */
+    public function report(User $user, string $period = self::DEFAULT_PERIOD): array
+    {
+        $stats = $this->summary($user, $period);
+
+        return [
+            'schema_version' => 1,
+            'generated_at' => now()->utc()->toIso8601String(),
+            'scope' => [
+                'clinic_id' => $user->clinic_id,
+                'label' => $stats['scope_label'],
+                'period' => $stats['period'],
+                'period_label' => $stats['period_label'],
+            ],
+            'metrics' => [
+                'total' => $stats['total'],
+                'comparable' => $stats['comparable'],
+                'kept' => $stats['kept'],
+                'adjusted' => $stats['adjusted'],
+                'unavailable' => $stats['unavailable'],
+                'adherence_percent' => $stats['adherence_percent'],
+                'evidence_coverage_percent' => $stats['evidence_coverage_percent'],
+                'adjustment_reason_coverage_percent' => $stats['adjustment_reason_coverage_percent'],
+                'quantity_adjusted' => $stats['quantity_adjusted'],
+                'unit_cost_adjusted' => $stats['unit_cost_adjusted'],
+                'supplier_adjusted' => $stats['supplier_adjusted'],
+                'average_abs_quantity_delta_percent' => $stats['average_abs_quantity_delta_percent'],
+                'average_abs_unit_cost_delta_percent' => $stats['average_abs_unit_cost_delta_percent'],
+                'product_count' => $stats['product_count'],
+                'comparable_product_count' => $stats['comparable_product_count'],
+            ],
+            'maturity' => [
+                'status' => $stats['maturity']['status'],
+                'status_label' => $stats['maturity']['status_label'],
+                'criteria_met' => $stats['maturity']['criteria_met'],
+                'criteria_total' => $stats['maturity']['criteria_total'],
+                'criteria' => $stats['maturity']['criteria'],
+                'next_action' => $stats['maturity']['next_action'],
+            ],
+            'products' => $stats['products'],
+            'disclaimer' => 'Relatório observacional para revisão humana. Não comprova significância estatística, não aprova fornecedores e não altera regras automaticamente.',
+        ];
     }
 
     /**

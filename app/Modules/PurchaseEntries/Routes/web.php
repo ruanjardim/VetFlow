@@ -12,6 +12,9 @@ Route::get('purchase-entries/replenishment/reviews', [PurchaseEntryController::c
 Route::get('purchase-entries/replenishment/purchases', [PurchaseEntryController::class, 'replenishmentPurchases'])
     ->name('purchase-entries.replenishment-purchases');
 
+Route::get('purchase-entries/replenishment/purchases/report', [PurchaseEntryController::class, 'replenishmentPurchasesReport'])
+    ->name('purchase-entries.replenishment-purchases.report');
+
 Route::post('purchase-entries/replenishment/{product}/reviews', [PurchaseEntryController::class, 'storeReplenishmentReview'])
     ->whereNumber('product')
     ->name('purchase-entries.replenishment-reviews.store');

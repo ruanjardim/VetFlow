@@ -28,6 +28,8 @@ payables in the financial ledger.
   without returning signed envelopes or internal evidence metadata to the view.
 - Summarize valid purchase decisions into transparent clinic validation metrics
   without automatically changing replenishment rules.
+- Export an allowlisted, no-cache JSON report of the selected validation cohort
+  for human pilot review without exposing signed evidence internals.
 
 ## Key Classes
 
@@ -160,6 +162,10 @@ or below their minimum. The first explainable rule set is:
   zero-delta decisions, and remain unavailable when there is no valid sample;
 - metrics are descriptive validation evidence and do not train, tune, approve,
   or execute a replenishment rule automatically.
+- the selected period can be downloaded as a versioned JSON validation report;
+  the export is generated from the same summary service as the interface, uses
+  an explicit allowlist, and omits signatures, hashes, raw metadata, entry
+  details, and free-form adjustment notes.
 
 The result is a suggestion, not a purchase order. Opening the purchase entry
 prefills the product, suggested quantity, reference cost, supplier, purchase

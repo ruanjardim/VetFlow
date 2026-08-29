@@ -1,6 +1,6 @@
 # VetFlow Status
 
-Updated: 2026-08-27
+Updated: 2026-08-29
 
 ## Current State
 
@@ -80,6 +80,9 @@ The local working tree was clean before this documentation pass.
   initial references (20 comparable decisions, 5 products, 90% valid evidence,
   and complete adjustment reasons), identifies the next missing action, and
   explicitly avoids statistical or automatic-rule claims.
+- Replenishment pilot validation can now export the selected cohort as a
+  versioned, no-cache JSON report whose explicit allowlist excludes signed
+  evidence internals, raw item metadata, and free-form decision notes.
 - An assisted appointment reminder queue that prepares WhatsApp contact and
   records operator-confirmed outcomes, status changes, and an auditable contact
   history without claiming automatic delivery.

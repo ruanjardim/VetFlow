@@ -9,6 +9,7 @@
       <p>Compare o que o VetFlow sugeriu com a quantidade, o custo e o fornecedor registrados pela equipe.</p>
     </div>
     <div class="actions">
+      <a class="button secondary" href="{{ route('purchase-entries.replenishment-purchases.report', ['period' => $stats['period']]) }}">Baixar relatório JSON</a>
       <a class="button secondary" href="{{ route('purchase-entries.replenishment-reviews') }}">Histórico de revisões</a>
       <a class="button secondary" href="{{ route('purchase-entries.replenishment') }}">Voltar à reposição</a>
     </div>

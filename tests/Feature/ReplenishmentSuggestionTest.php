@@ -274,6 +274,7 @@ class ReplenishmentSuggestionTest extends TestCase
             ->assertSeeText('Fornecedor alterado: 1')
             ->assertSeeText('Últimos 90 dias, pela data da compra')
             ->assertSeeText('Maturidade da amostra do piloto')
+            ->assertSeeText('Baixar relatório JSON')
             ->assertSeeText('Amostra em formação')
             ->assertSeeText('2 de 4 critérios atendidos')
             ->assertSeeText('Registre mais 18 decisão(ões) comparável(is)')
@@ -367,6 +368,31 @@ class ReplenishmentSuggestionTest extends TestCase
                 && $stats['adherence_percent'] === 50.0
                 && $stats['products'][0]['total'] === 2
                 && $stats['products'][0]['adjusted'] === 1);
+
+        $report = $this->getJson(route('purchase-entries.replenishment-purchases.report', ['period' => 'all']))
+            ->assertOk()
+            ->assertHeader('Cache-Control', 'max-age=0, no-store, private')
+            ->assertHeader('X-Content-Type-Options', 'nosniff')
+            ->assertJsonPath('schema_version', 1)
+            ->assertJsonPath('scope.clinic_id', $clinic->id)
+            ->assertJsonPath('scope.period', 'all')
+            ->assertJsonPath('metrics.total', 2)
+            ->assertJsonPath('metrics.comparable', 2)
+            ->assertJsonPath('metrics.kept', 1)
+            ->assertJsonPath('metrics.adjusted', 1)
+            ->assertJsonPath('maturity.status', 'building')
+            ->assertJsonPath('maturity.criteria.decisions.current', 2)
+            ->assertJsonCount(1, 'products')
+            ->assertJsonPath('products.0.name', 'Produto com decisao medida');
+
+        $reportContent = $report->getContent();
+        $this->assertStringNotContainsString($prefill['intelligence_metadata']['evidence']['signature'], $reportContent);
+        $this->assertStringNotContainsString('intelligence_metadata', $reportContent);
+        $this->assertStringNotContainsString('adjustment_reason_note', $reportContent);
+
+        $this->getJson(route('purchase-entries.replenishment-purchases.report', ['period' => '365']))
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('period');
 
         $this->get(route('purchase-entries.replenishment-purchases', ['period' => '365']))
             ->assertSessionHasErrors('period');

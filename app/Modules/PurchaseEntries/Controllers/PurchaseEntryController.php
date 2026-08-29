@@ -131,6 +131,26 @@ class PurchaseEntryController extends Controller
         ]);
     }
 
+    public function replenishmentPurchasesReport(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'period' => ['nullable', Rule::in(array_keys(ReplenishmentPurchaseHistoryService::PERIODS))],
+        ]);
+        $period = $validated['period'] ?? ReplenishmentPurchaseHistoryService::DEFAULT_PERIOD;
+        $filename = 'vetflow-replenishment-validation-'.$period.'-'.now()->format('Ymd-His').'.json';
+
+        return response()->json(
+            $this->replenishmentPurchaseHistory->report($request->user(), $period),
+            200,
+            [
+                'Cache-Control' => 'private, no-store, max-age=0',
+                'Content-Disposition' => 'attachment; filename="'.$filename.'"',
+                'X-Content-Type-Options' => 'nosniff',
+            ],
+            JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES,
+        );
+    }
+
     public function storeReplenishmentReview(
         StoreReplenishmentReviewRequest $request,
         Product $product,
