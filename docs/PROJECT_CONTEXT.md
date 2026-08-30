@@ -105,6 +105,10 @@ selected cohort. Its visible initial references are 20 comparable decisions,
 5 comparable products, 90% valid evidence, and complete reasons for adjusted
 decisions. It identifies the next missing action and never claims statistical
 significance, approves suppliers, or changes an algorithm automatically.
+An operator can append a reviewed or follow-up-required decision for the
+selected period. The event stores only a stable allowlisted report snapshot and
+its hash; when the metrics, maturity, or product breakdown changes, the latest
+decision is shown as stale and must be reviewed again.
 Patient care now includes a permission-aware longitudinal
 profile that connects appointments, medical records, prescriptions,
 vaccinations, and hospitalizations while

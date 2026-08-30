@@ -10,7 +10,7 @@
     </div>
     <div class="actions">
       <a class="button secondary" href="{{ route('purchase-entries.replenishment-purchases.report', ['period' => $stats['period']]) }}">Baixar relatório JSON</a>
-      <a class="button secondary" href="{{ route('purchase-entries.replenishment-reviews') }}">Histórico de revisões</a>
+      <a class="button secondary" href="{{ route('purchase-entries.replenishment-reviews') }}">Revisões das sugestões</a>
       <a class="button secondary" href="{{ route('purchase-entries.replenishment') }}">Voltar à reposição</a>
     </div>
   </header>
@@ -52,6 +52,55 @@
       Desvio percentual médio absoluto:
       quantidade {{ $stats['average_abs_quantity_delta_percent'] === null ? 'indisponível' : number_format($stats['average_abs_quantity_delta_percent'], 2, ',', '.').'%' }};
       custo {{ $stats['average_abs_unit_cost_delta_percent'] === null ? 'indisponível' : number_format($stats['average_abs_unit_cost_delta_percent'], 2, ',', '.').'%' }}.
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-heading">
+      <div>
+        <h2>Revisão humana do período</h2>
+        <p>Registre a leitura responsável do relatório de {{ mb_strtolower($stats['period_label']) }}.</p>
+      </div>
+      <span class="badge {{ $pilotReview['status']['tone'] }}">{{ $pilotReview['status']['label'] }}</span>
+    </div>
+    <div class="panel-body">
+      <div class="intelligence-health">
+        <div>
+          <strong>{{ $pilotReview['status']['description'] }}</strong>
+          @if($pilotReview['decision'])
+            <span>
+              Última decisão: {{ $pilotReview['decision']['label'] }}
+              por {{ $pilotReview['decision']['actor'] ?? 'usuário removido' }}
+              em {{ $pilotReview['decision']['reviewed_at']->format('d/m/Y H:i') }}.
+            </span>
+          @else
+            <span>A revisão ficará vinculada ao conteúdo atual do relatório, não apenas à data de geração.</span>
+          @endif
+        </div>
+      </div>
+      @if($pilotReview['decision']['note'] ?? null)
+        <p><strong>Observação registrada:</strong> {{ $pilotReview['decision']['note'] }}</p>
+      @endif
+      <form method="POST" action="{{ route('purchase-entries.replenishment-purchases.reviews.store') }}" class="form-grid">
+        @csrf
+        <input type="hidden" name="period" value="{{ $stats['period'] }}">
+        <div class="field">
+          <label for="replenishment-pilot-review-decision">Decisão humana</label>
+          <select id="replenishment-pilot-review-decision" name="decision" required>
+            @foreach($pilotReviewDecisions as $key => $label)
+              <option value="{{ $key }}" @selected(old('decision') === $key)>{{ $label }}</option>
+            @endforeach
+          </select>
+        </div>
+        <div class="field">
+          <label for="replenishment-pilot-review-note">Observação</label>
+          <textarea id="replenishment-pilot-review-note" name="note" rows="3" maxlength="500" placeholder="Obrigatória quando houver acompanhamento pendente">{{ old('note') }}</textarea>
+        </div>
+        <div class="field implementation-portfolio-filter-actions">
+          <button type="submit">Registrar revisão do período</button>
+        </div>
+      </form>
+      <p class="muted">A revisão é append-only, fica desatualizada quando o relatório muda e não altera regras de reposição automaticamente.</p>
     </div>
   </section>
 

@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Modules\Clinics\Models\Clinic;
 use App\Modules\Products\Models\Product;
 use App\Modules\PurchaseEntries\Models\PurchaseEntry;
+use App\Modules\PurchaseEntries\Models\ReplenishmentPilotReviewEvent;
 use App\Modules\PurchaseEntries\Models\ReplenishmentReviewEvent;
 use App\Modules\PurchaseEntries\Services\ReplenishmentEvidenceService;
 use App\Modules\PurchaseEntries\Services\ReplenishmentPurchaseHistoryService;
@@ -396,6 +397,151 @@ class ReplenishmentSuggestionTest extends TestCase
 
         $this->get(route('purchase-entries.replenishment-purchases', ['period' => '365']))
             ->assertSessionHasErrors('period');
+    }
+
+    public function test_pilot_period_review_is_evidence_bound_append_only_and_clinic_scoped(): void
+    {
+        $clinic = $this->clinic('Clinica Revisao do Piloto', '00000000000614');
+        $product = $this->product($clinic, 'Produto revisado no piloto', stock: 2, minimum: 5, cost: 9);
+        $user = $this->userForClinic($clinic);
+        $entry = PurchaseEntry::query()->create([
+            'clinic_id' => $clinic->id,
+            'code' => 'ENT-REVISAO-PILOTO',
+            'status' => 'draft',
+            'purchased_at' => now(),
+            'subtotal' => 90,
+            'total' => 90,
+        ]);
+        $entry->items()->create([
+            'product_id' => $product->id,
+            'description' => $product->name,
+            'quantity' => 10,
+            'unit_cost' => 9,
+            'total_cost' => 90,
+            'intelligence_status' => 'replenishment_suggestion',
+            'intelligence_metadata' => [
+                'replenishment_decision' => [
+                    'evidence_status' => 'valid',
+                    'classification' => 'kept',
+                    'quantity' => [
+                        'suggested' => 10,
+                        'actual' => 10,
+                        'delta_percent' => 0,
+                        'changed' => false,
+                    ],
+                    'unit_cost' => [
+                        'suggested' => 9,
+                        'actual' => 9,
+                        'delta_percent' => 0,
+                        'changed' => false,
+                    ],
+                    'supplier' => ['status' => 'unavailable'],
+                ],
+            ],
+        ]);
+
+        $this->actingAs($user);
+
+        $this->get(route('purchase-entries.replenishment-purchases'))
+            ->assertOk()
+            ->assertSeeText('Revisão humana do período')
+            ->assertSeeText('Sem revisão do período')
+            ->assertSeeText('Registrar revisão do período');
+
+        $this->post(route('purchase-entries.replenishment-purchases.reviews.store'), [
+            'period' => '365',
+            'decision' => 'reviewed',
+        ])->assertSessionHasErrors('period');
+
+        $this->post(route('purchase-entries.replenishment-purchases.reviews.store'), [
+            'period' => '90',
+            'decision' => 'approved',
+        ])->assertSessionHasErrors('decision');
+
+        $this->post(route('purchase-entries.replenishment-purchases.reviews.store'), [
+            'period' => '90',
+            'decision' => 'held',
+        ])->assertSessionHasErrors('note');
+        $this->assertDatabaseCount('replenishment_pilot_review_events', 0);
+
+        $this->post(route('purchase-entries.replenishment-purchases.reviews.store'), [
+            'period' => '90',
+            'decision' => 'reviewed',
+        ])->assertRedirect(route('purchase-entries.replenishment-purchases', ['period' => '90']));
+
+        $event = ReplenishmentPilotReviewEvent::query()->sole();
+        $this->assertSame($clinic->id, $event->clinic_id);
+        $this->assertSame($user->id, $event->actor_user_id);
+        $this->assertSame('90', $event->period);
+        $this->assertSame('reviewed', $event->decision);
+        $this->assertSame(64, strlen($event->evidence_hash));
+        $this->assertSame(1, $event->evidence_snapshot['schema_version']);
+        $this->assertSame(1, $event->evidence_snapshot['metrics']['total']);
+        $snapshot = json_encode($event->evidence_snapshot, JSON_THROW_ON_ERROR);
+        $this->assertStringNotContainsString('generated_at', $snapshot);
+        $this->assertStringNotContainsString('intelligence_metadata', $snapshot);
+        $this->assertStringNotContainsString('adjustment_reason_note', $snapshot);
+
+        $this->get(route('purchase-entries.replenishment-purchases'))
+            ->assertOk()
+            ->assertSeeText('Revisão atual')
+            ->assertSeeText('Última decisão: Revisado')
+            ->assertSeeText($user->name)
+            ->assertViewHas('pilotReview', fn (array $review): bool => $review['status']['key'] === 'reviewed'
+                && $review['decision']['current'] === true);
+
+        $entry->items()->create([
+            'product_id' => $product->id,
+            'description' => $product->name,
+            'quantity' => 12,
+            'unit_cost' => 9,
+            'total_cost' => 108,
+            'intelligence_status' => 'replenishment_suggestion',
+            'intelligence_metadata' => [
+                'replenishment_decision' => [
+                    'evidence_status' => 'valid',
+                    'classification' => 'adjusted',
+                    'quantity' => [
+                        'suggested' => 10,
+                        'actual' => 12,
+                        'delta_percent' => 20,
+                        'changed' => true,
+                    ],
+                    'unit_cost' => [
+                        'suggested' => 9,
+                        'actual' => 9,
+                        'delta_percent' => 0,
+                        'changed' => false,
+                    ],
+                    'supplier' => ['status' => 'unavailable'],
+                    'adjustment_reason' => ['code' => 'stock_count'],
+                ],
+            ],
+        ]);
+
+        $this->get(route('purchase-entries.replenishment-purchases'))
+            ->assertOk()
+            ->assertSeeText('Revisão superada')
+            ->assertSeeText('Os dados do período mudaram; registre uma nova revisão.')
+            ->assertViewHas('pilotReview', fn (array $review): bool => $review['status']['key'] === 'stale'
+                && $review['decision']['current'] === false);
+
+        $this->post(route('purchase-entries.replenishment-purchases.reviews.store'), [
+            'period' => '90',
+            'decision' => 'held',
+            'note' => 'Confirmar a contagem física antes de avaliar o ajuste.',
+        ])->assertSessionHasNoErrors();
+        $this->assertDatabaseCount('replenishment_pilot_review_events', 2);
+
+        $clinicB = $this->clinic('Clinica Externa da Revisao', '00000000000615');
+        $userB = $this->userForClinic($clinicB);
+
+        $this->actingAs($userB)
+            ->get(route('purchase-entries.replenishment-purchases'))
+            ->assertOk()
+            ->assertDontSeeText('Confirmar a contagem física antes de avaliar o ajuste.')
+            ->assertViewHas('pilotReview', fn (array $review): bool => $review['status']['key'] === 'pending'
+                && $review['decision'] === null);
     }
 
     public function test_invalid_replenishment_evidence_is_excluded_from_purchase_comparison(): void

@@ -242,8 +242,15 @@ class ReplenishmentPurchaseHistoryService
     /** @return array<string, mixed> */
     public function report(User $user, string $period = self::DEFAULT_PERIOD): array
     {
-        $stats = $this->summary($user, $period);
+        return $this->reportFromSummary($user, $this->summary($user, $period));
+    }
 
+    /**
+     * @param  array<string, mixed>  $stats
+     * @return array<string, mixed>
+     */
+    public function reportFromSummary(User $user, array $stats): array
+    {
         return [
             'schema_version' => 1,
             'generated_at' => now()->utc()->toIso8601String(),

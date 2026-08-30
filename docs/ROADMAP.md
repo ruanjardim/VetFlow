@@ -81,6 +81,9 @@ The product should feel different from a generic CRUD system by connecting the c
 - The selected replenishment validation cohort can be exported as a versioned,
   no-cache, allowlisted JSON report for human pilot review without exposing
   signed evidence internals or changing any recommendation rule.
+- Human review of each replenishment validation period is append-only,
+  clinic-scoped, and bound to the allowlisted report hash so changed metrics or
+  product evidence make the previous decision visibly stale.
 - The selected KingHost staging candidate has a provider-specific runbook and
   a bounded, token-protected queue cron bridge that remains disabled by default.
 - Sales expose realized gross profitability by item type, category, and item,

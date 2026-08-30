@@ -83,6 +83,9 @@ The local working tree was clean before this documentation pass.
 - Replenishment pilot validation can now export the selected cohort as a
   versioned, no-cache JSON report whose explicit allowlist excludes signed
   evidence internals, raw item metadata, and free-form decision notes.
+- Each validation period now accepts append-only human review or hold events
+  bound to the allowlisted report hash. The latest decision is clinic-scoped
+  and becomes visibly stale whenever its underlying validation facts change.
 - An assisted appointment reminder queue that prepares WhatsApp contact and
   records operator-confirmed outcomes, status changes, and an auditable contact
   history without claiming automatic delivery.

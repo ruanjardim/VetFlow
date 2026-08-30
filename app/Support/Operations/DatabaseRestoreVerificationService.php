@@ -47,6 +47,7 @@ class DatabaseRestoreVerificationService
         'purchase_entries',
         'purchase_entry_items',
         'replenishment_review_events',
+        'replenishment_pilot_review_events',
         'petshop_services',
         'service_orders',
         'service_order_items',

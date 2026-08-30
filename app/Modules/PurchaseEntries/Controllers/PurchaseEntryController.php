@@ -7,6 +7,7 @@ use App\Modules\Clinics\Models\Clinic;
 use App\Modules\Products\Models\Product;
 use App\Modules\PurchaseEntries\Exceptions\NfeAccessKeyLookupException;
 use App\Modules\PurchaseEntries\Requests\StorePurchaseEntryRequest;
+use App\Modules\PurchaseEntries\Requests\StoreReplenishmentPilotReviewRequest;
 use App\Modules\PurchaseEntries\Requests\StoreReplenishmentReviewRequest;
 use App\Modules\PurchaseEntries\Requests\UpdatePurchaseEntryRequest;
 use App\Modules\PurchaseEntries\Services\NfeAccessKeyImportService;
@@ -14,6 +15,7 @@ use App\Modules\PurchaseEntries\Services\NfeXmlImportService;
 use App\Modules\PurchaseEntries\Services\PurchaseEntryInsightService;
 use App\Modules\PurchaseEntries\Services\PurchaseEntryService;
 use App\Modules\PurchaseEntries\Services\ReplenishmentEvidenceService;
+use App\Modules\PurchaseEntries\Services\ReplenishmentPilotReviewService;
 use App\Modules\PurchaseEntries\Services\ReplenishmentPurchaseDecisionService;
 use App\Modules\PurchaseEntries\Services\ReplenishmentPurchaseHistoryService;
 use App\Modules\PurchaseEntries\Services\ReplenishmentReviewService;
@@ -35,6 +37,7 @@ class PurchaseEntryController extends Controller
         private readonly ReplenishmentReviewService $replenishmentReviews,
         private readonly ReplenishmentEvidenceService $replenishmentEvidence,
         private readonly ReplenishmentPurchaseHistoryService $replenishmentPurchaseHistory,
+        private readonly ReplenishmentPilotReviewService $replenishmentPilotReviews,
     ) {}
 
     public function index()
@@ -114,6 +117,7 @@ class PurchaseEntryController extends Controller
         ]);
         $period = $validated['period'] ?? ReplenishmentPurchaseHistoryService::DEFAULT_PERIOD;
         $validated['period'] = $period;
+        $stats = $this->replenishmentPurchaseHistory->summary($request->user(), $period);
 
         return view('purchase-entries.replenishment-purchases', [
             'items' => $this->replenishmentPurchaseHistory->history(
@@ -127,7 +131,13 @@ class PurchaseEntryController extends Controller
             'purchaseStatuses' => ReplenishmentPurchaseHistoryService::PURCHASE_STATUSES,
             'periods' => ReplenishmentPurchaseHistoryService::PERIODS,
             'filters' => $validated,
-            'stats' => $this->replenishmentPurchaseHistory->summary($request->user(), $period),
+            'stats' => $stats,
+            'pilotReview' => $this->replenishmentPilotReviews->state(
+                $request->user(),
+                $period,
+                $stats,
+            ),
+            'pilotReviewDecisions' => ReplenishmentPilotReviewService::DECISIONS,
         ]);
     }
 
@@ -149,6 +159,22 @@ class PurchaseEntryController extends Controller
             ],
             JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES,
         );
+    }
+
+    public function storeReplenishmentPilotReview(
+        StoreReplenishmentPilotReviewRequest $request,
+    ): RedirectResponse {
+        $data = $request->validated();
+        $this->replenishmentPilotReviews->record(
+            $request->user(),
+            $data['period'],
+            $data['decision'],
+            $data['note'] ?? null,
+        );
+
+        return redirect()
+            ->route('purchase-entries.replenishment-purchases', ['period' => $data['period']])
+            ->with('success', 'Revisão humana do período registrada com a evidência atual.');
     }
 
     public function storeReplenishmentReview(

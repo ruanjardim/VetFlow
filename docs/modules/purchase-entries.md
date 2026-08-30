@@ -30,6 +30,8 @@ payables in the financial ledger.
   without automatically changing replenishment rules.
 - Export an allowlisted, no-cache JSON report of the selected validation cohort
   for human pilot review without exposing signed evidence internals.
+- Record append-only, clinic-scoped human reviews of that cohort and mark them
+  stale when the allowlisted report facts change.
 
 ## Key Classes
 
@@ -45,6 +47,7 @@ payables in the financial ledger.
 | `ReplenishmentEvidenceService` | Canonical evidence snapshots, hashes, and HMAC-signed purchase envelopes. |
 | `ReplenishmentPurchaseDecisionService` | Validates signed evidence and measures saved operator adjustments. |
 | `ReplenishmentPurchaseHistoryService` | Filters and presents safe purchase-decision comparisons. |
+| `ReplenishmentPilotReviewService` | Binds period reviews to allowlisted report evidence and detects staleness. |
 | `ReplenishmentReviewService` | Append-only human decisions, evidence snapshots, and stale-review detection. |
 | `NfeXmlImportService` | Parses NF-e XML payloads. |
 | `NfeAccessKeyImportService` | Reuses cached XML by access key. |
@@ -55,6 +58,7 @@ payables in the financial ledger.
 - `purchase_entries`
 - `purchase_entry_items`
 - `replenishment_review_events`
+- `replenishment_pilot_review_events`
 - `inventory_movements`
 - `financial_transactions`
 - `suppliers`
@@ -166,6 +170,10 @@ or below their minimum. The first explainable rule set is:
   the export is generated from the same summary service as the interface, uses
   an explicit allowlist, and omits signatures, hashes, raw metadata, entry
   details, and free-form adjustment notes.
+- a human review or follow-up-required decision for the selected period is
+  append-only and bound to a stable subset of that allowlisted report; a change
+  to its scope, metrics, maturity, or product breakdown makes the latest review
+  visibly stale without changing any replenishment rule.
 
 The result is a suggestion, not a purchase order. Opening the purchase entry
 prefills the product, suggested quantity, reference cost, supplier, purchase

@@ -15,6 +15,9 @@ This project follows the spirit of Keep a Changelog, with one practical adjustme
 
 ### Added
 
+- Append-only human reviews for each replenishment validation period, bound to
+  an allowlisted report hash, isolated by clinic, and marked stale whenever the
+  underlying metrics, maturity, or product breakdown changes.
 - Advisory replenishment pilot-maturity panel with explicit comparable-decision,
   product-coverage, evidence-quality, and reason-completeness references, plus
   the next missing action and clear non-statistical/non-automatic boundaries.
