@@ -491,6 +491,12 @@ class ReplenishmentSuggestionTest extends TestCase
             ->assertViewHas('pilotReview', fn (array $review): bool => $review['status']['key'] === 'reviewed'
                 && $review['decision']['current'] === true);
 
+        $this->post(route('purchase-entries.replenishment-purchases.reviews.store'), [
+            'period' => '30',
+            'decision' => 'reviewed',
+        ])->assertSessionHasNoErrors();
+        $this->assertDatabaseCount('replenishment_pilot_review_events', 2);
+
         $entry->items()->create([
             'product_id' => $product->id,
             'description' => $product->name,
@@ -532,22 +538,41 @@ class ReplenishmentSuggestionTest extends TestCase
             'decision' => 'held',
             'note' => 'Confirmar a contagem física antes de avaliar o ajuste.',
         ])->assertSessionHasNoErrors();
-        $this->assertDatabaseCount('replenishment_pilot_review_events', 2);
+        $this->assertDatabaseCount('replenishment_pilot_review_events', 3);
 
         $this->post(route('purchase-entries.replenishment-purchases.reviews.store'), [
             'period' => 'all',
             'decision' => 'reviewed',
         ])->assertSessionHasNoErrors();
-        $this->assertDatabaseCount('replenishment_pilot_review_events', 3);
+        $this->assertDatabaseCount('replenishment_pilot_review_events', 4);
 
         $this->get(route('purchase-entries.replenishment-purchases.reviews'))
             ->assertOk()
             ->assertSeeText('Histórico de revisão do piloto')
+            ->assertSeeText('Situação consolidada dos períodos')
+            ->assertSeeText('Revisados e atuais')
+            ->assertSeeText('Com acompanhamento')
+            ->assertSeeText('Revisões superadas')
+            ->assertSeeText('Os períodos se sobrepõem e não representam amostras independentes.')
             ->assertSeeText('Confirmar a contagem física antes de avaliar o ajuste.')
             ->assertSeeText('Evidência atual')
             ->assertSeeText('Evidência superada')
             ->assertSeeText('Todo o histórico')
-            ->assertViewHas('events', fn ($events): bool => $events->total() === 3
+            ->assertViewHas('portfolio', function (array $portfolio): bool {
+                $items = collect($portfolio['items'])->keyBy('period');
+
+                return $portfolio['counts'] === [
+                    'reviewed' => 1,
+                    'held' => 1,
+                    'stale' => 1,
+                    'pending' => 1,
+                ]
+                    && $items->get('30')['review_status']['key'] === 'stale'
+                    && $items->get('90')['review_status']['key'] === 'held'
+                    && $items->get('180')['review_status']['key'] === 'pending'
+                    && $items->get('all')['review_status']['key'] === 'reviewed';
+            })
+            ->assertViewHas('events', fn ($events): bool => $events->total() === 4
                 && $events->getCollection()->first()['period'] === 'all'
                 && $events->getCollection()->last()['decision'] === 'reviewed'
                 && $events->getCollection()->last()['evidence_current'] === false);
@@ -584,7 +609,8 @@ class ReplenishmentSuggestionTest extends TestCase
         $this->get(route('purchase-entries.replenishment-purchases.reviews'))
             ->assertOk()
             ->assertDontSeeText('Confirmar a contagem física antes de avaliar o ajuste.')
-            ->assertViewHas('events', fn ($events): bool => $events->total() === 0);
+            ->assertViewHas('events', fn ($events): bool => $events->total() === 0)
+            ->assertViewHas('portfolio', fn (array $portfolio): bool => $portfolio['counts']['pending'] === 4);
     }
 
     public function test_invalid_replenishment_evidence_is_excluded_from_purchase_comparison(): void

@@ -113,6 +113,10 @@ The full review trail is available as a clinic-scoped, reverse-chronological
 history. Operators can filter by validation period or decision and see whether
 each event still matches current evidence without receiving its hash or stored
 snapshot.
+Above that trail, a four-period portfolio consolidates the 30-, 90-, and
+180-day windows plus complete history. It shows sample size, evidence coverage,
+maturity and latest-review status, with an explicit warning that the cohorts
+overlap and must not be interpreted as independent statistical samples.
 Patient care now includes a permission-aware longitudinal
 profile that connects appointments, medical records, prescriptions,
 vaccinations, and hospitalizations while

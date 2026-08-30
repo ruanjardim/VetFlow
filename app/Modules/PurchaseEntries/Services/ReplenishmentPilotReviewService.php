@@ -15,6 +15,9 @@ class ReplenishmentPilotReviewService
         'held' => 'Requer acompanhamento',
     ];
 
+    /** @var array<string, string> */
+    private array $currentHashes = [];
+
     public function __construct(
         private readonly ReplenishmentPurchaseHistoryService $purchaseHistory,
     ) {}
@@ -26,8 +29,7 @@ class ReplenishmentPilotReviewService
     public function state(User $user, string $period, ?array $stats = null): array
     {
         $stats ??= $this->purchaseHistory->summary($user, $period);
-        $snapshot = $this->snapshot($user, $stats);
-        $hash = $this->hash($snapshot);
+        $hash = $this->currentHash($user, $period, $stats);
         $event = $this->latest($user, $period);
         $current = $event !== null && hash_equals($event->evidence_hash, $hash);
 
@@ -66,6 +68,45 @@ class ReplenishmentPilotReviewService
         ]));
     }
 
+    /** @return array{items: array<int, array<string, mixed>>, counts: array<string, int>} */
+    public function portfolio(User $user): array
+    {
+        $counts = array_fill_keys(['reviewed', 'held', 'stale', 'pending'], 0);
+        $items = collect(ReplenishmentPurchaseHistoryService::PERIODS)
+            ->map(function (string $label, string $period) use ($user, &$counts): array {
+                $stats = $this->purchaseHistory->summary($user, $period);
+                $review = $this->state($user, $period, $stats);
+                $counts[$review['status']['key']]++;
+
+                return [
+                    'period' => $period,
+                    'period_label' => $label,
+                    'metrics' => [
+                        'total' => $stats['total'],
+                        'comparable' => $stats['comparable'],
+                        'adherence_percent' => $stats['adherence_percent'],
+                        'evidence_coverage_percent' => $stats['evidence_coverage_percent'],
+                    ],
+                    'maturity' => [
+                        'status' => $stats['maturity']['status'],
+                        'label' => $stats['maturity']['status_label'],
+                        'tone' => $stats['maturity']['status_tone'],
+                        'criteria_met' => $stats['maturity']['criteria_met'],
+                        'criteria_total' => $stats['maturity']['criteria_total'],
+                    ],
+                    'review_status' => $review['status'],
+                    'review' => $review['decision'],
+                ];
+            })
+            ->values()
+            ->all();
+
+        return [
+            'items' => $items,
+            'counts' => $counts,
+        ];
+    }
+
     public function history(
         User $user,
         ?string $period = null,
@@ -89,11 +130,9 @@ class ReplenishmentPilotReviewService
         $currentHashes = $events->getCollection()
             ->pluck('period')
             ->unique()
-            ->mapWithKeys(function (string $eventPeriod) use ($user): array {
-                $stats = $this->purchaseHistory->summary($user, $eventPeriod);
-
-                return [$eventPeriod => $this->hash($this->snapshot($user, $stats))];
-            });
+            ->mapWithKeys(fn (string $eventPeriod): array => [
+                $eventPeriod => $this->currentHash($user, $eventPeriod),
+            ]);
 
         $events->through(function (ReplenishmentPilotReviewEvent $event) use ($currentHashes): array {
             $currentHash = $currentHashes->get($event->period);
@@ -202,5 +241,18 @@ class ReplenishmentPilotReviewService
     private function hash(array $snapshot): string
     {
         return hash('sha256', json_encode($snapshot, JSON_THROW_ON_ERROR));
+    }
+
+    /** @param array<string, mixed>|null $stats */
+    private function currentHash(User $user, string $period, ?array $stats = null): string
+    {
+        $key = $user->id.':'.($user->clinic_id ?? 'global').':'.$period;
+
+        if ($stats !== null || ! isset($this->currentHashes[$key])) {
+            $stats ??= $this->purchaseHistory->summary($user, $period);
+            $this->currentHashes[$key] = $this->hash($this->snapshot($user, $stats));
+        }
+
+        return $this->currentHashes[$key];
     }
 }

@@ -34,6 +34,8 @@ payables in the financial ledger.
   stale when the allowlisted report facts change.
 - Present the period-review trail with safe filters and recalculated evidence
   freshness while keeping hashes and snapshots server-side.
+- Consolidate the four supported periods into an operational review portfolio
+  without presenting overlapping cohorts as independent samples.
 
 ## Key Classes
 
@@ -179,6 +181,10 @@ or below their minimum. The first explainable rule set is:
 - the pilot-review history is reverse chronological, clinic-scoped, and
   filterable by period or decision; evidence freshness is recalculated from the
   current report, while stored hashes and snapshots are never rendered.
+- a four-period portfolio summarizes total/comparable decisions, adherence,
+  evidence coverage, maturity, and latest-review status for 30, 90, and 180
+  days plus complete history. Its visible disclaimer states that the windows
+  overlap and are not independent statistical samples.
 
 The result is a suggestion, not a purchase order. Opening the purchase entry
 prefills the product, suggested quantity, reference cost, supplier, purchase

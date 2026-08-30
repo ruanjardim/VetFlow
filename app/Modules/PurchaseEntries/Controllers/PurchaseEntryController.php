@@ -147,6 +147,7 @@ class PurchaseEntryController extends Controller
             'period' => ['nullable', Rule::in(array_keys(ReplenishmentPurchaseHistoryService::PERIODS))],
             'decision' => ['nullable', Rule::in(array_keys(ReplenishmentPilotReviewService::DECISIONS))],
         ]);
+        $portfolio = $this->replenishmentPilotReviews->portfolio($request->user());
 
         return view('purchase-entries.replenishment-pilot-reviews', [
             'events' => $this->replenishmentPilotReviews->history(
@@ -157,6 +158,7 @@ class PurchaseEntryController extends Controller
             'periods' => ReplenishmentPurchaseHistoryService::PERIODS,
             'decisions' => ReplenishmentPilotReviewService::DECISIONS,
             'filters' => $validated,
+            'portfolio' => $portfolio,
         ]);
     }
 

@@ -1,6 +1,6 @@
 # VetFlow Roadmap
 
-Updated: 2026-08-29
+Updated: 2026-08-30
 
 This roadmap describes the product direction that should stay visible while VetFlow evolves. It is intentionally high-level and should be revised as implementation priorities change.
 
@@ -87,6 +87,9 @@ The product should feel different from a generic CRUD system by connecting the c
 - Those period reviews are available in a reverse-chronological, tenant-safe
   history with period/decision filters and recalculated evidence freshness,
   while private hashes and snapshots stay server-side.
+- A consolidated four-period view now brings together validation volume,
+  evidence coverage, maturity, and latest human-review status. It explicitly
+  treats the date windows as overlapping rather than independent samples.
 - The selected KingHost staging candidate has a provider-specific runbook and
   a bounded, token-protected queue cron bridge that remains disabled by default.
 - Sales expose realized gross profitability by item type, category, and item,

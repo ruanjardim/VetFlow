@@ -1,6 +1,6 @@
 # VetFlow Status
 
-Updated: 2026-08-29
+Updated: 2026-08-30
 
 ## Current State
 
@@ -89,6 +89,9 @@ The local working tree was clean before this documentation pass.
 - A read-only pilot-review history lists those events in reverse chronological
   order, filters them by period or decision, and recalculates current/stale
   evidence status without returning stored hashes or snapshots to the view.
+- The pilot-review history now opens with a four-period portfolio covering 30,
+  90, and 180 days plus complete history. It consolidates sample size, evidence
+  coverage, maturity, and latest-review status while warning that windows overlap.
 - An assisted appointment reminder queue that prepares WhatsApp contact and
   records operator-confirmed outcomes, status changes, and an auditable contact
   history without claiming automatic delivery.

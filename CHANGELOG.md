@@ -15,6 +15,9 @@ This project follows the spirit of Keep a Changelog, with one practical adjustme
 
 ### Added
 
+- Consolidated replenishment pilot portfolio for the 30-, 90-, and 180-day
+  windows plus complete history, combining sample metrics, maturity and latest
+  human-review freshness while explicitly warning that cohorts overlap.
 - Reverse-chronological, clinic-scoped replenishment pilot-review history with
   period/decision filters and current-versus-stale evidence status, without
   exposing stored hashes or snapshots.
