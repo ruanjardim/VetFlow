@@ -86,6 +86,9 @@ The local working tree was clean before this documentation pass.
 - Each validation period now accepts append-only human review or hold events
   bound to the allowlisted report hash. The latest decision is clinic-scoped
   and becomes visibly stale whenever its underlying validation facts change.
+- A read-only pilot-review history lists those events in reverse chronological
+  order, filters them by period or decision, and recalculates current/stale
+  evidence status without returning stored hashes or snapshots to the view.
 - An assisted appointment reminder queue that prepares WhatsApp contact and
   records operator-confirmed outcomes, status changes, and an auditable contact
   history without claiming automatic delivery.

@@ -32,6 +32,8 @@ payables in the financial ledger.
   for human pilot review without exposing signed evidence internals.
 - Record append-only, clinic-scoped human reviews of that cohort and mark them
   stale when the allowlisted report facts change.
+- Present the period-review trail with safe filters and recalculated evidence
+  freshness while keeping hashes and snapshots server-side.
 
 ## Key Classes
 
@@ -47,7 +49,7 @@ payables in the financial ledger.
 | `ReplenishmentEvidenceService` | Canonical evidence snapshots, hashes, and HMAC-signed purchase envelopes. |
 | `ReplenishmentPurchaseDecisionService` | Validates signed evidence and measures saved operator adjustments. |
 | `ReplenishmentPurchaseHistoryService` | Filters and presents safe purchase-decision comparisons. |
-| `ReplenishmentPilotReviewService` | Binds period reviews to allowlisted report evidence and detects staleness. |
+| `ReplenishmentPilotReviewService` | Binds period reviews to allowlisted report evidence, detects staleness, and exposes safe history. |
 | `ReplenishmentReviewService` | Append-only human decisions, evidence snapshots, and stale-review detection. |
 | `NfeXmlImportService` | Parses NF-e XML payloads. |
 | `NfeAccessKeyImportService` | Reuses cached XML by access key. |
@@ -174,6 +176,9 @@ or below their minimum. The first explainable rule set is:
   append-only and bound to a stable subset of that allowlisted report; a change
   to its scope, metrics, maturity, or product breakdown makes the latest review
   visibly stale without changing any replenishment rule.
+- the pilot-review history is reverse chronological, clinic-scoped, and
+  filterable by period or decision; evidence freshness is recalculated from the
+  current report, while stored hashes and snapshots are never rendered.
 
 The result is a suggestion, not a purchase order. Opening the purchase entry
 prefills the product, suggested quantity, reference cost, supplier, purchase

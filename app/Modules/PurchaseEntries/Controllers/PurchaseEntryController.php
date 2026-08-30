@@ -141,6 +141,25 @@ class PurchaseEntryController extends Controller
         ]);
     }
 
+    public function replenishmentPilotReviews(Request $request): View
+    {
+        $validated = $request->validate([
+            'period' => ['nullable', Rule::in(array_keys(ReplenishmentPurchaseHistoryService::PERIODS))],
+            'decision' => ['nullable', Rule::in(array_keys(ReplenishmentPilotReviewService::DECISIONS))],
+        ]);
+
+        return view('purchase-entries.replenishment-pilot-reviews', [
+            'events' => $this->replenishmentPilotReviews->history(
+                $request->user(),
+                $validated['period'] ?? null,
+                $validated['decision'] ?? null,
+            ),
+            'periods' => ReplenishmentPurchaseHistoryService::PERIODS,
+            'decisions' => ReplenishmentPilotReviewService::DECISIONS,
+            'filters' => $validated,
+        ]);
+    }
+
     public function replenishmentPurchasesReport(Request $request): JsonResponse
     {
         $validated = $request->validate([

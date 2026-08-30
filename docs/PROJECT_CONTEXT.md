@@ -109,6 +109,10 @@ An operator can append a reviewed or follow-up-required decision for the
 selected period. The event stores only a stable allowlisted report snapshot and
 its hash; when the metrics, maturity, or product breakdown changes, the latest
 decision is shown as stale and must be reviewed again.
+The full review trail is available as a clinic-scoped, reverse-chronological
+history. Operators can filter by validation period or decision and see whether
+each event still matches current evidence without receiving its hash or stored
+snapshot.
 Patient care now includes a permission-aware longitudinal
 profile that connects appointments, medical records, prescriptions,
 vaccinations, and hospitalizations while

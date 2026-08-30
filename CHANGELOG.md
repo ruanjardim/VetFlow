@@ -15,6 +15,9 @@ This project follows the spirit of Keep a Changelog, with one practical adjustme
 
 ### Added
 
+- Reverse-chronological, clinic-scoped replenishment pilot-review history with
+  period/decision filters and current-versus-stale evidence status, without
+  exposing stored hashes or snapshots.
 - Append-only human reviews for each replenishment validation period, bound to
   an allowlisted report hash, isolated by clinic, and marked stale whenever the
   underlying metrics, maturity, or product breakdown changes.

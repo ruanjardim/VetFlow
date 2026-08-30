@@ -84,6 +84,9 @@ The product should feel different from a generic CRUD system by connecting the c
 - Human review of each replenishment validation period is append-only,
   clinic-scoped, and bound to the allowlisted report hash so changed metrics or
   product evidence make the previous decision visibly stale.
+- Those period reviews are available in a reverse-chronological, tenant-safe
+  history with period/decision filters and recalculated evidence freshness,
+  while private hashes and snapshots stay server-side.
 - The selected KingHost staging candidate has a provider-specific runbook and
   a bounded, token-protected queue cron bridge that remains disabled by default.
 - Sales expose realized gross profitability by item type, category, and item,

@@ -446,6 +446,7 @@ class ReplenishmentSuggestionTest extends TestCase
             ->assertOk()
             ->assertSeeText('Revisão humana do período')
             ->assertSeeText('Sem revisão do período')
+            ->assertSeeText('Histórico do piloto')
             ->assertSeeText('Registrar revisão do período');
 
         $this->post(route('purchase-entries.replenishment-purchases.reviews.store'), [
@@ -533,6 +534,43 @@ class ReplenishmentSuggestionTest extends TestCase
         ])->assertSessionHasNoErrors();
         $this->assertDatabaseCount('replenishment_pilot_review_events', 2);
 
+        $this->post(route('purchase-entries.replenishment-purchases.reviews.store'), [
+            'period' => 'all',
+            'decision' => 'reviewed',
+        ])->assertSessionHasNoErrors();
+        $this->assertDatabaseCount('replenishment_pilot_review_events', 3);
+
+        $this->get(route('purchase-entries.replenishment-purchases.reviews'))
+            ->assertOk()
+            ->assertSeeText('Histórico de revisão do piloto')
+            ->assertSeeText('Confirmar a contagem física antes de avaliar o ajuste.')
+            ->assertSeeText('Evidência atual')
+            ->assertSeeText('Evidência superada')
+            ->assertSeeText('Todo o histórico')
+            ->assertViewHas('events', fn ($events): bool => $events->total() === 3
+                && $events->getCollection()->first()['period'] === 'all'
+                && $events->getCollection()->last()['decision'] === 'reviewed'
+                && $events->getCollection()->last()['evidence_current'] === false);
+
+        $this->get(route('purchase-entries.replenishment-purchases.reviews', [
+            'period' => '90',
+            'decision' => 'held',
+        ]))
+            ->assertOk()
+            ->assertViewHas('events', fn ($events): bool => $events->total() === 1
+                && $events->first()['period'] === '90'
+                && $events->first()['decision'] === 'held'
+                && $events->first()['evidence_current'] === true);
+
+        $this->get(route('purchase-entries.replenishment-purchases.reviews', ['period' => 'all']))
+            ->assertOk()
+            ->assertViewHas('events', fn ($events): bool => $events->total() === 1
+                && $events->first()['period'] === 'all'
+                && $events->first()['decision'] === 'reviewed');
+
+        $this->get(route('purchase-entries.replenishment-purchases.reviews', ['period' => '365']))
+            ->assertSessionHasErrors('period');
+
         $clinicB = $this->clinic('Clinica Externa da Revisao', '00000000000615');
         $userB = $this->userForClinic($clinicB);
 
@@ -542,6 +580,11 @@ class ReplenishmentSuggestionTest extends TestCase
             ->assertDontSeeText('Confirmar a contagem física antes de avaliar o ajuste.')
             ->assertViewHas('pilotReview', fn (array $review): bool => $review['status']['key'] === 'pending'
                 && $review['decision'] === null);
+
+        $this->get(route('purchase-entries.replenishment-purchases.reviews'))
+            ->assertOk()
+            ->assertDontSeeText('Confirmar a contagem física antes de avaliar o ajuste.')
+            ->assertViewHas('events', fn ($events): bool => $events->total() === 0);
     }
 
     public function test_invalid_replenishment_evidence_is_excluded_from_purchase_comparison(): void

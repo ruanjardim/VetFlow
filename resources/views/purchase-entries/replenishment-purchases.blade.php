@@ -10,6 +10,7 @@
     </div>
     <div class="actions">
       <a class="button secondary" href="{{ route('purchase-entries.replenishment-purchases.report', ['period' => $stats['period']]) }}">Baixar relatório JSON</a>
+      <a class="button secondary" href="{{ route('purchase-entries.replenishment-purchases.reviews', ['period' => $stats['period']]) }}">Histórico do piloto</a>
       <a class="button secondary" href="{{ route('purchase-entries.replenishment-reviews') }}">Revisões das sugestões</a>
       <a class="button secondary" href="{{ route('purchase-entries.replenishment') }}">Voltar à reposição</a>
     </div>
