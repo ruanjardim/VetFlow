@@ -1,6 +1,6 @@
 # VetFlow Status
 
-Updated: 2026-08-30
+Updated: 2026-08-31
 
 ## Current State
 
@@ -35,6 +35,11 @@ The local working tree was clean before this documentation pass.
 - A release-readiness diagnostic for application configuration, database and
   migrations, logging, queues, storage, and explicit production backup
   confirmation.
+- A clinic-scoped Stock Radar that translates current balance, configured
+  minimum, cost value, product age, and 90-day net demand into explicit,
+  mutually exclusive review signals. The first rules label replenishment,
+  no-recent-demand, high-coverage, new, adequate, and unparameterized products
+  without moving stock or creating purchases automatically.
 - A standalone operational guide for the global Clinics registry, with an
   explicit global-administrator boundary on clinic management.
 - A provider-specific KingHost staging runbook and a disabled-by-default,

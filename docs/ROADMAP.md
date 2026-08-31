@@ -1,6 +1,6 @@
 # VetFlow Roadmap
 
-Updated: 2026-08-30
+Updated: 2026-08-31
 
 This roadmap describes the product direction that should stay visible while VetFlow evolves. It is intentionally high-level and should be revised as implementation priorities change.
 
@@ -35,6 +35,9 @@ The product should feel different from a generic CRUD system by connecting the c
   documentation.
 - Product lookup and NF-e intake degrade safely during provider outages.
 - The dashboard presents ordered operational priorities.
+- The Stock Radar presents clinic-scoped product counts and cost value through
+  explicit replenishment, no-recent-demand, high-coverage, new, adequate, and
+  unparameterized signals without automatic stock or purchase actions.
 - Six clinic-safe role presets are available through the Access module.
 - Demo fixtures have a controlled local reset/reseed path.
 - A release checklist and automated runtime diagnostic are available.

@@ -3,6 +3,9 @@
 use App\Modules\Inventory\Controllers\InventoryMovementController;
 use Illuminate\Support\Facades\Route;
 
+Route::get('inventory-movements/radar', [InventoryMovementController::class, 'radar'])
+    ->name('inventory-movements.radar');
+
 Route::get('inventory-movements/alerts', [InventoryMovementController::class, 'alerts'])
     ->name('inventory-movements.alerts');
 

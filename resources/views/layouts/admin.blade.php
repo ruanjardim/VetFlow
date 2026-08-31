@@ -77,6 +77,7 @@
             <div class="nav-submenu">
               @can('products.manage')<a class="{{ request()->routeIs('products.*') ? 'is-active' : '' }}" href="{{ route('products.index') }}">Produtos</a>@endcan
               @can('inventory.manage')
+                <a class="{{ request()->routeIs('inventory-movements.radar') ? 'is-active' : '' }}" href="{{ route('inventory-movements.radar') }}">Radar de estoque</a>
                 <a class="{{ request()->routeIs('inventory-movements.index', 'inventory-movements.create', 'inventory-movements.edit') ? 'is-active' : '' }}" href="{{ route('inventory-movements.index') }}">Movimentações</a>
                 <a class="{{ request()->routeIs('inventory-movements.alerts') ? 'is-active' : '' }}" href="{{ route('inventory-movements.alerts') }}">Alertas</a>
               @endcan

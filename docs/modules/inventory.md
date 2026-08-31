@@ -17,6 +17,8 @@ movements to `products.stock_quantity`.
 - Store lot and expiration data when available.
 - Connect stock movements to sales and purchase entries.
 - Provide low-stock and stock-alert support.
+- Present a read-only Stock Radar with cost-value summaries and transparent
+  demand/coverage signals.
 - Import initial Stock by Product GTIN or SKU through audited entry movements.
 
 ## Key Classes
@@ -27,6 +29,7 @@ movements to `products.stock_quantity`.
 | `InventoryMovementService` | Applies and reverses stock effects. |
 | `ProductLotService` | Lot allocation support for sales. |
 | `StockAlertService` | Low-stock alert support. |
+| `StockRadarService` | Clinic-scoped stock classification, summaries, filters, and pagination. |
 | `InventoryMovement` | Stock ledger model. |
 
 ## Tables
@@ -60,6 +63,19 @@ Known movement sources include:
 - CSV initial Stock uses source `implementation_csv` and the same
   `InventoryMovementService` used by operational flows.
 - Product and Stock CSV imports never write `products.stock_quantity` directly.
+- The Stock Radar is read-only and classifies every active product once, in
+  this priority order: configured-minimum replenishment, new product, positive
+  stock without 90-day net demand, coverage above 180 days, missing minimum,
+  and adequate.
+- "New" means a product created in the latest 30 days. "Coverage high" means
+  more than 180 days at the net demand observed in the same 90-day sales window
+  used by smart replenishment. These are visible initial references, not
+  automatic purchasing or inventory rules.
+- Stock value uses the non-negative current balance multiplied by the clinic's
+  current unit cost. Missing or non-positive cost contributes zero rather than
+  an inferred value.
+- Radar filters never change the consolidated category cards and never create
+  inventory movements, purchase entries, or supplier choices.
 
 ## Tenant Rules
 
@@ -72,4 +88,7 @@ Protected by `inventory.manage`.
 
 ## Tests
 
-Relevant coverage is present in `tests/Feature/OperationalFlowTest.php`.
+Relevant coverage is present in:
+
+- `tests/Feature/OperationalFlowTest.php`
+- `tests/Feature/StockRadarTest.php`

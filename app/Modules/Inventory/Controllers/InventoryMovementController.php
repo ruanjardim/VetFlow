@@ -3,17 +3,20 @@
 namespace App\Modules\Inventory\Controllers;
 
 use App\Core\Base\BaseCrudController;
+use App\Modules\Inventory\Requests\StockRadarRequest;
 use App\Modules\Inventory\Requests\StoreInventoryMovementRequest;
 use App\Modules\Inventory\Requests\UpdateInventoryMovementRequest;
 use App\Modules\Inventory\Services\InventoryMovementService;
 use App\Modules\Inventory\Services\ProductLotService;
 use App\Modules\Inventory\Services\StockAlertService;
+use App\Modules\Inventory\Services\StockRadarService;
 use App\Modules\Products\Models\Product;
 use App\Modules\Products\Services\ProductLookupService;
 use App\Modules\Products\Support\Gtin;
-use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\View\View;
 
 class InventoryMovementController extends BaseCrudController
 {
@@ -49,6 +52,11 @@ class InventoryMovementController extends BaseCrudController
     public function alerts(StockAlertService $alertService)
     {
         return view("{$this->viewPath}.alerts", $alertService->data());
+    }
+
+    public function radar(StockRadarRequest $request, StockRadarService $radarService): View
+    {
+        return view("{$this->viewPath}.radar", $radarService->data($request->validated()));
     }
 
     public function create()

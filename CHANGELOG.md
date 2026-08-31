@@ -15,6 +15,10 @@ This project follows the spirit of Keep a Changelog, with one practical adjustme
 
 ### Added
 
+- Clinic-scoped Stock Radar with mutually exclusive replenishment, no-recent-
+  demand, high-coverage, new, adequate, and unparameterized signals; cost-value
+  summaries, catalog filters, explicit 30/90/180-day references, and no stock
+  or purchase side effects.
 - Consolidated replenishment pilot portfolio for the 30-, 90-, and 180-day
   windows plus complete history, combining sample metrics, maturity and latest
   human-review freshness while explicitly warning that cohorts overlap.
