@@ -38,6 +38,9 @@ The product should feel different from a generic CRUD system by connecting the c
 - The Stock Radar presents clinic-scoped product counts and cost value through
   explicit replenishment, no-recent-demand, high-coverage, new, adequate, and
   unparameterized signals without automatic stock or purchase actions.
+- Product ABC analysis ranks return-adjusted net revenue into transparent
+  cumulative A/B/C bands for 30-, 90-, or 180-day windows and keeps current
+  stock value visible without automating assortment or purchasing decisions.
 - Six clinic-safe role presets are available through the Access module.
 - Demo fixtures have a controlled local reset/reseed path.
 - A release checklist and automated runtime diagnostic are available.

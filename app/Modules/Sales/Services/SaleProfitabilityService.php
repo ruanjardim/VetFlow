@@ -84,6 +84,7 @@ class SaleProfitabilityService
                 'sale_id' => $sale->id,
                 'clinic_id' => $sale->clinic_id,
                 'clinic_name' => $sale->clinic?->trade_name ?: $sale->clinic?->corporate_name,
+                'product_id' => $item->product_id,
                 'type' => $item->type,
                 'type_label' => self::TYPE_LABELS[$item->type] ?? ucfirst($item->type),
                 'catalog_key' => $this->catalogKey($item),
@@ -114,6 +115,8 @@ class SaleProfitabilityService
                 return array_merge($this->aggregate($group), [
                     'clinic_id' => $first['clinic_id'],
                     'clinic_name' => $first['clinic_name'],
+                    'product_id' => $first['product_id'],
+                    'catalog_key' => $first['catalog_key'],
                     'type' => $first['type'],
                     'type_label' => $first['type_label'],
                     'description' => $first['description'],

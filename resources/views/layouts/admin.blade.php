@@ -64,6 +64,7 @@
                 <a class="{{ request()->routeIs('sales.index', 'sales.create', 'sales.edit') ? 'is-active' : '' }}" href="{{ route('sales.index') }}">Ponto de venda</a>
                 <a class="{{ request()->routeIs('sales.cashier', 'sales.cashier.close') ? 'is-active' : '' }}" href="{{ route('sales.cashier') }}">Movimentos de caixa</a>
                 <a class="{{ request()->routeIs('sales.profitability') ? 'is-active' : '' }}" href="{{ route('sales.profitability') }}">Rentabilidade</a>
+                <a class="{{ request()->routeIs('sales.product-abc') ? 'is-active' : '' }}" href="{{ route('sales.product-abc') }}">Curva ABC</a>
               @endcan
               @can('service-orders.manage')<a class="{{ request()->routeIs('service-orders.*') ? 'is-active' : '' }}" href="{{ route('service-orders.index') }}">Comandas</a>@endcan
               @can('petshop-services.manage')<a class="{{ request()->routeIs('petshop-services.*') ? 'is-active' : '' }}" href="{{ route('petshop-services.index') }}">Serviços PetShop</a>@endcan

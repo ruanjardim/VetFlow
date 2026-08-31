@@ -13,6 +13,9 @@ Route::get('sales/cashier', [SaleController::class, 'cashier'])
 Route::get('sales/profitability', [SaleController::class, 'profitability'])
     ->name('sales.profitability');
 
+Route::get('sales/product-abc', [SaleController::class, 'productAbc'])
+    ->name('sales.product-abc');
+
 Route::get('sales/cashier/close', [SaleController::class, 'cashierClose'])
     ->name('sales.cashier.close');
 

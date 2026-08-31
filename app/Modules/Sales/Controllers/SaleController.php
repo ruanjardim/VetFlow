@@ -9,9 +9,11 @@ use App\Modules\PetShopServices\Models\PetShopService;
 use App\Modules\Products\Models\Product;
 use App\Modules\Products\Services\ProductLookupService;
 use App\Modules\Products\Support\Gtin;
+use App\Modules\Sales\Requests\ProductAbcAnalysisRequest;
 use App\Modules\Sales\Requests\StoreSalePaymentRequest;
 use App\Modules\Sales\Requests\StoreSaleRequest;
 use App\Modules\Sales\Requests\UpdateSaleRequest;
+use App\Modules\Sales\Services\ProductAbcAnalysisService;
 use App\Modules\Sales\Services\SaleProfitabilityService;
 use App\Modules\Sales\Services\SaleService;
 use App\Modules\ServiceOrders\Models\ServiceOrder;
@@ -19,6 +21,7 @@ use App\Modules\Tutors\Models\Tutor;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use Illuminate\View\View;
 
 class SaleController extends BaseCrudController
 {
@@ -68,6 +71,11 @@ class SaleController extends BaseCrudController
             ),
             'typeLabels' => SaleProfitabilityService::TYPE_LABELS,
         ]);
+    }
+
+    public function productAbc(ProductAbcAnalysisRequest $request, ProductAbcAnalysisService $analysis): View
+    {
+        return view("{$this->viewPath}.product-abc", $analysis->data($request->validated()));
     }
 
     public function cashierClose(Request $request)

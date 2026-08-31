@@ -15,6 +15,9 @@ This project follows the spirit of Keep a Changelog, with one practical adjustme
 
 ### Added
 
+- Clinic-scoped product ABC analysis for the latest 30, 90, or 180 days,
+  ranking return-adjusted net revenue into explicit A/B/C cumulative bands and
+  showing current stock value as read-only purchasing and assortment context.
 - Clinic-scoped Stock Radar with mutually exclusive replenishment, no-recent-
   demand, high-coverage, new, adequate, and unparameterized signals; cost-value
   summaries, catalog filters, explicit 30/90/180-day references, and no stock

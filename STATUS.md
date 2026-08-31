@@ -40,6 +40,10 @@ The local working tree was clean before this documentation pass.
   mutually exclusive review signals. The first rules label replenishment,
   no-recent-demand, high-coverage, new, adequate, and unparameterized products
   without moving stock or creating purchases automatically.
+- A clinic-scoped product ABC analysis that ranks return-adjusted net revenue
+  over explicit 30-, 90-, or 180-day periods, preserves the original classes
+  while filtering, and places current stock value beside each product without
+  changing price, purchase, supplier, or inventory state.
 - A standalone operational guide for the global Clinics registry, with an
   explicit global-administrator boundary on clinic management.
 - A provider-specific KingHost staging runbook and a disabled-by-default,
