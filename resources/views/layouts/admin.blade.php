@@ -76,7 +76,10 @@
           <details class="nav-group" @if(request()->routeIs('products.*', 'global-products.*', 'inventory-movements.*', 'purchase-entries.*', 'suppliers.*')) open @endif>
             <summary><span>Estoque e compras</span><span class="nav-chevron">⌄</span></summary>
             <div class="nav-submenu">
-              @can('products.manage')<a class="{{ request()->routeIs('products.*') ? 'is-active' : '' }}" href="{{ route('products.index') }}">Produtos</a>@endcan
+              @can('products.manage')
+                <a class="{{ request()->routeIs('products.index', 'products.create', 'products.edit', 'products.diagnostics') ? 'is-active' : '' }}" href="{{ route('products.index') }}">Produtos</a>
+                <a class="{{ request()->routeIs('products.pricing-radar') ? 'is-active' : '' }}" href="{{ route('products.pricing-radar') }}">Radar de preços</a>
+              @endcan
               @can('inventory.manage')
                 <a class="{{ request()->routeIs('inventory-movements.radar') ? 'is-active' : '' }}" href="{{ route('inventory-movements.radar') }}">Radar de estoque</a>
                 <a class="{{ request()->routeIs('inventory-movements.index', 'inventory-movements.create', 'inventory-movements.edit') ? 'is-active' : '' }}" href="{{ route('inventory-movements.index') }}">Movimentações</a>

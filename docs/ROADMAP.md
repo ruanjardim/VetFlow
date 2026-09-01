@@ -1,6 +1,6 @@
 # VetFlow Roadmap
 
-Updated: 2026-08-31
+Updated: 2026-09-01
 
 This roadmap describes the product direction that should stay visible while VetFlow evolves. It is intentionally high-level and should be revised as implementation priorities change.
 
@@ -41,6 +41,9 @@ The product should feel different from a generic CRUD system by connecting the c
 - Product ABC analysis ranks return-adjusted net revenue into transparent
   cumulative A/B/C bands for 30-, 90-, or 180-day windows and keeps current
   stock value visible without automating assortment or purchasing decisions.
+- The Pricing Radar classifies active products through explicit cost, price,
+  and initial 20% gross-margin references while exposing current stock value
+  and potential revenue without automatically changing catalog decisions.
 - Six clinic-safe role presets are available through the Access module.
 - Demo fixtures have a controlled local reset/reseed path.
 - A release checklist and automated runtime diagnostic are available.

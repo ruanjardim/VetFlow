@@ -4,11 +4,14 @@ namespace App\Modules\Products\Controllers;
 
 use App\Core\Base\BaseCrudController;
 use App\Modules\Products\Models\Product;
+use App\Modules\Products\Requests\ProductPricingRadarRequest;
 use App\Modules\Products\Requests\StoreProductRequest;
 use App\Modules\Products\Requests\UpdateProductRequest;
 use App\Modules\Products\Services\ProductIntelligenceAuditService;
+use App\Modules\Products\Services\ProductPricingRadarService;
 use App\Modules\Products\Services\ProductService;
 use Illuminate\Http\Request;
+use Illuminate\View\View;
 use InvalidArgumentException;
 
 class ProductController extends BaseCrudController
@@ -32,6 +35,11 @@ class ProductController extends BaseCrudController
     public function diagnostics(Request $request, ProductIntelligenceAuditService $auditService)
     {
         return view('products.diagnostics', $auditService->diagnosticsData($request));
+    }
+
+    public function pricingRadar(ProductPricingRadarRequest $request, ProductPricingRadarService $radar): View
+    {
+        return view('products.pricing-radar', $radar->data($request->validated()));
     }
 
     public function store(Request $request)

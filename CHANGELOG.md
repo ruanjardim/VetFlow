@@ -15,6 +15,9 @@ This project follows the spirit of Keep a Changelog, with one practical adjustme
 
 ### Added
 
+- Clinic-scoped Pricing Radar for active products with mutually exclusive
+  missing-cost, missing-price, below-cost, break-even, low-margin, and adequate
+  signals plus current stock exposure, without automatic price changes.
 - Clinic-scoped product ABC analysis for the latest 30, 90, or 180 days,
   ranking return-adjusted net revenue into explicit A/B/C cumulative bands and
   showing current stock value as read-only purchasing and assortment context.

@@ -1,6 +1,6 @@
 # VetFlow Status
 
-Updated: 2026-08-31
+Updated: 2026-09-01
 
 ## Current State
 
@@ -44,6 +44,10 @@ The local working tree was clean before this documentation pass.
   over explicit 30-, 90-, or 180-day periods, preserves the original classes
   while filtering, and places current stock value beside each product without
   changing price, purchase, supplier, or inventory state.
+- A clinic-scoped Pricing Radar that makes missing cost, missing price,
+  below-cost, break-even, low-margin, and adequate active products explicit,
+  with current stock cost, potential revenue, and known gross-margin exposure
+  kept observational rather than changing catalog prices automatically.
 - A standalone operational guide for the global Clinics registry, with an
   explicit global-administrator boundary on clinic management.
 - A provider-specific KingHost staging runbook and a disabled-by-default,
