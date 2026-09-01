@@ -104,6 +104,9 @@ The product should feel different from a generic CRUD system by connecting the c
 - Sales expose realized gross profitability by item type, category, and item,
   adjusted for discounts and returns while preserving historical cost
   snapshots.
+- Inventory supports clinic-scoped cycle counts with opening snapshots,
+  progressive physical entry, stale-balance protection, immutable completion,
+  auditable variance movements, and side-effect-free cancellation.
 - Appointments have an assisted reminder queue with prepared WhatsApp contact,
   explicit operator-recorded outcomes, status synchronization, and a
   clinic-scoped audit history.

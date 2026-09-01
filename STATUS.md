@@ -48,6 +48,11 @@ The local working tree was clean before this documentation pass.
   below-cost, break-even, low-margin, and adequate active products explicit,
   with current stock cost, potential revenue, and known gross-margin exposure
   kept observational rather than changing catalog prices automatically.
+- A clinic-scoped cycle-count workflow that snapshots active product balances,
+  saves physical quantities progressively, blocks stale finalization after any
+  intervening movement, and turns only confirmed variances into protected,
+  auditable inventory entries or exits. Finalization is single-use and
+  cancellation never changes stock.
 - A standalone operational guide for the global Clinics registry, with an
   explicit global-administrator boundary on clinic management.
 - A provider-specific KingHost staging runbook and a disabled-by-default,

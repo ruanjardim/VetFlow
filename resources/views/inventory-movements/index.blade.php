@@ -9,6 +9,7 @@
       <p>Entradas, saidas e ajustes de produtos.</p>
     </div>
     <div class="actions">
+      <a class="button secondary" href="{{ route('inventory-counts.index') }}">Contagens</a>
       <a class="button secondary" href="{{ route('inventory-movements.alerts') }}">Ver alertas</a>
       <a class="button" href="{{ route('inventory-movements.create') }}">Nova movimentacao</a>
     </div>
@@ -172,6 +173,8 @@
                   <a href="{{ route('purchase-entries.edit', $movement->purchase_entry_id) }}">
                     Entrada {{ $movement->purchaseEntry->code }}
                   </a>
+                @elseif($movement->source === 'inventory_count')
+                  Inventário rotativo
                 @elseif($movement->source === 'implementation_csv')
                   Implantacao por planilha
                 @else

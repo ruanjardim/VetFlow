@@ -15,6 +15,7 @@
       @can('purchase-entries.manage')
         <a class="button secondary" href="{{ route('purchase-entries.replenishment') }}">Reposição inteligente</a>
       @endcan
+      <a class="button secondary" href="{{ route('inventory-counts.index') }}">Contagens</a>
       <a class="button secondary" href="{{ route('inventory-movements.alerts') }}">Alertas</a>
       <a class="button" href="{{ route('inventory-movements.index') }}">Movimentações</a>
     </div>

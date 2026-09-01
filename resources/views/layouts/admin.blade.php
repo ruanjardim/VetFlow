@@ -73,7 +73,7 @@
         @endcanany
 
         @canany(['products.manage', 'global-products.manage', 'inventory.manage', 'purchase-entries.manage', 'suppliers.manage'])
-          <details class="nav-group" @if(request()->routeIs('products.*', 'global-products.*', 'inventory-movements.*', 'purchase-entries.*', 'suppliers.*')) open @endif>
+          <details class="nav-group" @if(request()->routeIs('products.*', 'global-products.*', 'inventory-movements.*', 'inventory-counts.*', 'purchase-entries.*', 'suppliers.*')) open @endif>
             <summary><span>Estoque e compras</span><span class="nav-chevron">⌄</span></summary>
             <div class="nav-submenu">
               @can('products.manage')
@@ -82,6 +82,7 @@
               @endcan
               @can('inventory.manage')
                 <a class="{{ request()->routeIs('inventory-movements.radar') ? 'is-active' : '' }}" href="{{ route('inventory-movements.radar') }}">Radar de estoque</a>
+                <a class="{{ request()->routeIs('inventory-counts.*') ? 'is-active' : '' }}" href="{{ route('inventory-counts.index') }}">Contagens</a>
                 <a class="{{ request()->routeIs('inventory-movements.index', 'inventory-movements.create', 'inventory-movements.edit') ? 'is-active' : '' }}" href="{{ route('inventory-movements.index') }}">Movimentações</a>
                 <a class="{{ request()->routeIs('inventory-movements.alerts') ? 'is-active' : '' }}" href="{{ route('inventory-movements.alerts') }}">Alertas</a>
               @endcan

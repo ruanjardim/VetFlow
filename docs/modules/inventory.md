@@ -19,6 +19,8 @@ movements to `products.stock_quantity`.
 - Provide low-stock and stock-alert support.
 - Present a read-only Stock Radar with cost-value summaries and transparent
   demand/coverage signals.
+- Open clinic-scoped cycle counts from an immutable stock snapshot, record
+  physical quantities, and finalize traceable variance adjustments.
 - Import initial Stock by Product GTIN or SKU through audited entry movements.
 
 ## Key Classes
@@ -30,11 +32,17 @@ movements to `products.stock_quantity`.
 | `ProductLotService` | Lot allocation support for sales. |
 | `StockAlertService` | Low-stock alert support. |
 | `StockRadarService` | Clinic-scoped stock classification, summaries, filters, and pagination. |
+| `InventoryCountController` | Thin web flow for opening, saving, finalizing, and cancelling counts. |
+| `InventoryCountService` | Snapshot, concurrency protection, variance calculation, and audited adjustments. |
 | `InventoryMovement` | Stock ledger model. |
+| `InventoryCount` | Count header, scope, status, actors, and lifecycle timestamps. |
+| `InventoryCountItem` | Per-product expected, physical, variance, cost, and generated movement link. |
 
 ## Tables
 
 - `inventory_movements`
+- `inventory_counts`
+- `inventory_count_items`
 - `products`
 
 ## Movement Sources
@@ -46,6 +54,7 @@ Known movement sources include:
 - `sale`
 - `sale_return`
 - `sale_cancellation`
+- `inventory_count`
 
 ## Important Behavior
 
@@ -76,11 +85,28 @@ Known movement sources include:
   an inferred value.
 - Radar filters never change the consolidated category cards and never create
   inventory movements, purchase entries, or supplier choices.
+- Opening a count snapshots every active product in the selected clinic and
+  optional category, including its current quantity and unit cost.
+- Draft counts may be saved progressively. Finalization requires a physical
+  quantity for every snapshotted product and can happen only once.
+- Before finalization, the service locks and compares every current product
+  balance with the opening snapshot. Any intervening stock movement blocks the
+  complete operation so the count cannot overwrite a legitimate sale or entry.
+- Opening snapshots and inventory-movement creation lock the affected product
+  rows, establishing a consistent order between a count and concurrent sales,
+  entries, returns, or manual movements.
+- Each non-zero variance produces a protected `entry` or `exit` movement with
+  source `inventory_count`, before/after balances, count/item identifiers, and
+  expected/counted quantities in metadata. Equal quantities create no movement.
+- Finalized and cancelled counts are immutable. Cancellation records actor,
+  time, and reason and never changes stock.
 
 ## Tenant Rules
 
 Inventory movements are tenant-scoped through `clinic_id`. Requests reject
-products from another clinic before side effects are applied.
+products from another clinic before side effects are applied. Count headers are
+tenant-scoped through the same rule; their items are reached only from a scoped
+header. Global operators must choose an active clinic when opening a count.
 
 ## Permissions
 
@@ -92,3 +118,4 @@ Relevant coverage is present in:
 
 - `tests/Feature/OperationalFlowTest.php`
 - `tests/Feature/StockRadarTest.php`
+- `tests/Feature/InventoryCountFlowTest.php`

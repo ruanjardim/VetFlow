@@ -15,6 +15,10 @@ This project follows the spirit of Keep a Changelog, with one practical adjustme
 
 ### Added
 
+- Clinic-scoped cycle counts with immutable opening snapshots, category scope,
+  progressive physical quantities, concurrent-stock-change protection,
+  single-use finalization, protected variance movements, and auditable
+  cancellation without stock side effects.
 - Clinic-scoped Pricing Radar for active products with mutually exclusive
   missing-cost, missing-price, below-cost, break-even, low-margin, and adequate
   signals plus current stock exposure, without automatic price changes.

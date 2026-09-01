@@ -74,6 +74,7 @@ class InventoryMovement extends Model
             'sale',
             'sale_return',
             'sale_cancellation',
+            'inventory_count',
         ], true);
     }
 }
