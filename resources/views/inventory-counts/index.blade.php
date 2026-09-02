@@ -9,6 +9,7 @@
       <p>Contagens físicas com fotografia do saldo, ajustes automáticos e trilha de auditoria.</p>
     </div>
     <div class="actions">
+      <a class="button secondary" href="{{ route('inventory-counts.variance-report') }}">Ver divergências</a>
       <a class="button secondary" href="{{ route('inventory-movements.index') }}">Movimentações</a>
       <a class="button secondary" href="{{ route('inventory-movements.radar') }}">Radar de estoque</a>
       <a class="button" href="{{ route('inventory-counts.create') }}">Nova contagem</a>

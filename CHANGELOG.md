@@ -15,6 +15,10 @@ This project follows the spirit of Keep a Changelog, with one practical adjustme
 
 ### Added
 
+- Tenant-safe inventory-variance report for finalized cycle counts with
+  30/90/180-day or complete-history filters, line accuracy, preserved-cost
+  surplus/shortage impact, aggregated product ranking, soft-deleted history,
+  and a no-cache, formula-safe CSV export.
 - Clinic-scoped cycle counts with immutable opening snapshots, category scope,
   progressive physical quantities, concurrent-stock-change protection,
   single-use finalization, protected variance movements, and auditable

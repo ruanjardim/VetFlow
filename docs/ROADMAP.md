@@ -107,6 +107,9 @@ The product should feel different from a generic CRUD system by connecting the c
 - Inventory supports clinic-scoped cycle counts with opening snapshots,
   progressive physical entry, stale-balance protection, immutable completion,
   auditable variance movements, and side-effect-free cancellation.
+- Finalized cycle counts feed a filterable product-divergence report with
+  line-level accuracy, preserved-cost impact, historical product retention,
+  and tenant-safe CSV export without changing inventory state.
 - Appointments have an assisted reminder queue with prepared WhatsApp contact,
   explicit operator-recorded outcomes, status synchronization, and a
   clinic-scoped audit history.

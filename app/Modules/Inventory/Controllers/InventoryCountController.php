@@ -5,16 +5,20 @@ namespace App\Modules\Inventory\Controllers;
 use App\Http\Controllers\Controller;
 use App\Modules\Inventory\Requests\CancelInventoryCountRequest;
 use App\Modules\Inventory\Requests\InventoryCountIndexRequest;
+use App\Modules\Inventory\Requests\InventoryVarianceReportRequest;
 use App\Modules\Inventory\Requests\StoreInventoryCountRequest;
 use App\Modules\Inventory\Requests\UpdateInventoryCountRequest;
 use App\Modules\Inventory\Services\InventoryCountService;
+use App\Modules\Inventory\Services\InventoryVarianceReportService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\View\View;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class InventoryCountController extends Controller
 {
     public function __construct(
-        private readonly InventoryCountService $service
+        private readonly InventoryCountService $service,
+        private readonly InventoryVarianceReportService $varianceReportService
     ) {}
 
     public function index(InventoryCountIndexRequest $request): View
@@ -25,6 +29,16 @@ class InventoryCountController extends Controller
     public function create(): View
     {
         return view('inventory-counts.create', $this->service->createData());
+    }
+
+    public function varianceReport(InventoryVarianceReportRequest $request): View
+    {
+        return view('inventory-counts.variance-report', $this->varianceReportService->data($request->validated()));
+    }
+
+    public function exportVarianceReport(InventoryVarianceReportRequest $request): StreamedResponse
+    {
+        return $this->varianceReportService->export($request->safe()->except('page'));
     }
 
     public function store(StoreInventoryCountRequest $request): RedirectResponse

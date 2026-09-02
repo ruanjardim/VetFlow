@@ -8,6 +8,10 @@ Route::get('inventory-counts', [InventoryCountController::class, 'index'])
     ->name('inventory-counts.index');
 Route::get('inventory-counts/create', [InventoryCountController::class, 'create'])
     ->name('inventory-counts.create');
+Route::get('inventory-counts/variance-report', [InventoryCountController::class, 'varianceReport'])
+    ->name('inventory-counts.variance-report');
+Route::get('inventory-counts/variance-report.csv', [InventoryCountController::class, 'exportVarianceReport'])
+    ->name('inventory-counts.variance-report.export');
 Route::post('inventory-counts', [InventoryCountController::class, 'store'])
     ->name('inventory-counts.store');
 Route::get('inventory-counts/{inventoryCount}', [InventoryCountController::class, 'show'])

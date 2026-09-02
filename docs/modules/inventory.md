@@ -21,6 +21,8 @@ movements to `products.stock_quantity`.
   demand/coverage signals.
 - Open clinic-scoped cycle counts from an immutable stock snapshot, record
   physical quantities, and finalize traceable variance adjustments.
+- Consolidate finalized-count accuracy and cost impact in a filterable product
+  ranking with a safe, tenant-scoped CSV export.
 - Import initial Stock by Product GTIN or SKU through audited entry movements.
 
 ## Key Classes
@@ -34,6 +36,7 @@ movements to `products.stock_quantity`.
 | `StockRadarService` | Clinic-scoped stock classification, summaries, filters, and pagination. |
 | `InventoryCountController` | Thin web flow for opening, saving, finalizing, and cancelling counts. |
 | `InventoryCountService` | Snapshot, concurrency protection, variance calculation, and audited adjustments. |
+| `InventoryVarianceReportService` | Period summaries, product ranking, filters, and sanitized CSV export. |
 | `InventoryMovement` | Stock ledger model. |
 | `InventoryCount` | Count header, scope, status, actors, and lifecycle timestamps. |
 | `InventoryCountItem` | Per-product expected, physical, variance, cost, and generated movement link. |
@@ -100,6 +103,17 @@ Known movement sources include:
   expected/counted quantities in metadata. Equal quantities create no movement.
 - Finalized and cancelled counts are immutable. Cancellation records actor,
   time, and reason and never changes stock.
+- The variance report considers only finalized counts. Its default 90-day
+  period can be changed to 30, 180, or complete history; search and category
+  constrain both cards and ranking, while direction constrains only the ranking.
+- Accuracy is the percentage of counted product lines whose absolute variance
+  is below `0.0005`. It is an operational reconciliation indicator, not an
+  automatic assessment of employees, process quality, shrinkage, or fraud.
+- Surplus and shortage values use each count item's preserved unit cost.
+  Absolute impact adds both directions; net impact subtracts shortages from
+  surpluses. Historical soft-deleted products remain represented.
+- The CSV uses the same visible filters, sends no count metadata or internal
+  identifiers, disables caching, and neutralizes formula-like catalog text.
 
 ## Tenant Rules
 
@@ -119,3 +133,4 @@ Relevant coverage is present in:
 - `tests/Feature/OperationalFlowTest.php`
 - `tests/Feature/StockRadarTest.php`
 - `tests/Feature/InventoryCountFlowTest.php`
+- `tests/Feature/InventoryVarianceReportTest.php`

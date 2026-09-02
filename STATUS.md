@@ -53,6 +53,10 @@ The local working tree was clean before this documentation pass.
   intervening movement, and turns only confirmed variances into protected,
   auditable inventory entries or exits. Finalization is single-use and
   cancellation never changes stock.
+- A tenant-safe inventory-variance report that measures line-level count
+  accuracy, separates surplus and shortage values using snapshotted costs,
+  ranks repeated product divergences, retains soft-deleted history, and exports
+  the filtered result as a no-cache, formula-safe CSV.
 - A standalone operational guide for the global Clinics registry, with an
   explicit global-administrator boundary on clinic management.
 - A provider-specific KingHost staging runbook and a disabled-by-default,
