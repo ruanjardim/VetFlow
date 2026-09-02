@@ -9,6 +9,7 @@
       <p>Fechamento de produtos, servicos e comandas com baixa de estoque e caixa.</p>
     </div>
     <div class="actions">
+      <a class="button secondary" href="{{ route('sales.profitability') }}">Rentabilidade</a>
       <a class="button secondary" href="{{ route('sales.cashier') }}">Caixa do dia</a>
       <a class="button" href="{{ route('sales.create') }}">Nova venda</a>
     </div>
@@ -36,7 +37,7 @@
         <thead>
           <tr>
             <th>Codigo</th>
-            <th>Tutor</th>
+            <th>Responsável</th>
             <th>Pet</th>
             <th>Comanda</th>
             <th>Status</th>

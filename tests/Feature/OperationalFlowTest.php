@@ -6,11 +6,16 @@ use App\Models\Permission;
 use App\Models\Role;
 use App\Models\User;
 use App\Modules\Clinics\Models\Clinic;
+use App\Modules\Commissions\Models\CommissionRule;
+use App\Modules\Commissions\Services\CommissionService;
 use App\Modules\Financial\Models\FinancialTransaction;
 use App\Modules\Inventory\Models\InventoryMovement;
+use App\Modules\PetShopServices\Models\PetShopService;
 use App\Modules\Products\Models\Product;
+use App\Modules\Sales\Models\CashRegisterClosure;
 use App\Modules\Sales\Models\Sale;
 use App\Modules\Sales\Models\SaleEvent;
+use App\Modules\Sales\Services\SaleProfitabilityService;
 use App\Modules\Sales\Services\SaleService;
 use App\Modules\Suppliers\Models\Supplier;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -74,6 +79,505 @@ class OperationalFlowTest extends TestCase
         $this->assertSame('income', $financialTransaction->type);
         $this->assertSame('paid', $financialTransaction->status);
         $this->assertEquals(50.0, (float) $financialTransaction->amount);
+    }
+
+    public function test_pending_payment_only_counts_after_a_later_receipt_is_registered(): void
+    {
+        $clinic = $this->clinic('Clinica Recebimentos', '00000000000202');
+        $product = $this->product($clinic, 'Antiparasitario', stock: 5, costPrice: 12, salePrice: 50);
+        $user = $this->userForClinic($clinic, ['sales.manage']);
+
+        $this->actingAs($user)->post(route('sales.store'), [
+            'status' => 'completed',
+            'items' => [
+                [
+                    'type' => 'product',
+                    'product_id' => $product->id,
+                    'description' => 'Antiparasitario',
+                    'quantity' => '1',
+                    'unit_price' => '50',
+                ],
+            ],
+            'payments' => [
+                [
+                    'method' => 'pix',
+                    'amount' => '50',
+                    'status' => 'pending',
+                ],
+            ],
+        ])->assertRedirect(route('sales.index'));
+
+        $sale = Sale::query()->with(['payments', 'financialTransaction'])->firstOrFail();
+
+        $this->assertSame('pending', $sale->payment_status);
+        $this->assertEquals(0.0, (float) $sale->paid_total);
+        $this->assertNull($sale->payments->first()->paid_at);
+        $this->assertSame('pending', $sale->financialTransaction->status);
+
+        $summary = app(SaleService::class)->cashierSummary(today()->toDateString(), today()->toDateString());
+
+        $this->assertEquals(0.0, (float) $summary['stats']['received']);
+        $this->assertEquals(50.0, (float) $summary['stats']['pending']);
+
+        $this->post(route('sales.payments.store', $sale->id), [
+            'method' => 'pix',
+            'amount' => '20,00',
+            'reference' => 'PIX-PARCIAL-1',
+        ])->assertRedirect(route('sales.edit', $sale->id));
+
+        $sale->refresh()->load(['payments', 'financialTransaction']);
+
+        $this->assertSame('partial', $sale->payment_status);
+        $this->assertEquals(20.0, (float) $sale->paid_total);
+        $this->assertSame('pending', $sale->financialTransaction->status);
+        $this->assertSame(1, $sale->payments->where('status', 'paid')->count());
+        $this->assertDatabaseHas('sale_events', [
+            'sale_id' => $sale->id,
+            'event_type' => 'payment_received',
+            'amount' => 20,
+        ]);
+
+        $this->post(route('sales.payments.store', $sale->id), [
+            'method' => 'cash',
+            'amount' => '30',
+            'reference' => 'CAIXA-1',
+        ])->assertRedirect(route('sales.edit', $sale->id));
+
+        $sale->refresh()->load(['payments', 'financialTransaction']);
+
+        $this->assertSame('paid', $sale->payment_status);
+        $this->assertEquals(50.0, (float) $sale->paid_total);
+        $this->assertSame('paid', $sale->financialTransaction->status);
+        $this->assertNotNull($sale->financialTransaction->paid_at);
+
+        $summary = app(SaleService::class)->cashierSummary(today()->toDateString(), today()->toDateString());
+
+        $this->assertEquals(50.0, (float) $summary['stats']['received']);
+        $this->assertEquals(30.0, (float) $summary['stats']['cash_received']);
+        $this->assertEquals(0.0, (float) $summary['stats']['pending']);
+    }
+
+    public function test_cashier_summary_groups_sales_and_receipts_by_seller(): void
+    {
+        $clinic = $this->clinic('Clinica Operadores', '00000000000203');
+        $product = $this->product($clinic, 'Servico com operador', stock: 10, costPrice: 10, salePrice: 30);
+        $sellerA = $this->userForClinic($clinic, ['sales.manage']);
+        $sellerB = $this->userForClinic($clinic, ['sales.manage']);
+
+        $this->actingAs($sellerA)->post(route('sales.store'), [
+            'status' => 'completed',
+            'items' => [[
+                'type' => 'product',
+                'product_id' => $product->id,
+                'description' => 'Servico com operador',
+                'quantity' => '1',
+                'unit_price' => '30',
+            ]],
+            'payments' => [[
+                'method' => 'pix',
+                'amount' => '30',
+            ]],
+        ])->assertRedirect(route('sales.index'));
+
+        $this->actingAs($sellerB)->post(route('sales.store'), [
+            'status' => 'completed',
+            'items' => [[
+                'type' => 'product',
+                'product_id' => $product->id,
+                'description' => 'Servico com operador',
+                'quantity' => '1',
+                'unit_price' => '30',
+            ]],
+            'payments' => [[
+                'method' => 'pix',
+                'amount' => '30',
+                'status' => 'pending',
+            ]],
+        ])->assertRedirect(route('sales.index'));
+
+        $saleB = Sale::query()->where('seller_user_id', $sellerB->id)->firstOrFail();
+
+        $this->actingAs($sellerB)->post(route('sales.payments.store', $saleB->id), [
+            'method' => 'cash',
+            'amount' => '10',
+        ])->assertRedirect(route('sales.edit', $saleB->id));
+
+        $summary = app(SaleService::class)->cashierSummary(today()->toDateString(), today()->toDateString());
+        $performance = collect($summary['seller_performance'])->keyBy('seller_user_id');
+
+        $this->assertEquals(30.0, (float) $performance[$sellerA->id]['sold_total']);
+        $this->assertEquals(30.0, (float) $performance[$sellerA->id]['received']);
+        $this->assertEquals(0.0, (float) $performance[$sellerA->id]['pending']);
+        $this->assertEquals(20.0, (float) $performance[$sellerA->id]['gross_profit']);
+
+        $this->assertEquals(30.0, (float) $performance[$sellerB->id]['sold_total']);
+        $this->assertEquals(10.0, (float) $performance[$sellerB->id]['received']);
+        $this->assertEquals(20.0, (float) $performance[$sellerB->id]['pending']);
+        $this->assertEquals(20.0, (float) $performance[$sellerB->id]['gross_profit']);
+    }
+
+    public function test_cashier_closure_reconciles_each_payment_method_after_change_and_refunds(): void
+    {
+        $clinic = $this->clinic('Clinica Conferencia', '00000000000205');
+        $cashProduct = $this->product($clinic, 'Produto dinheiro', stock: 5, costPrice: 10, salePrice: 50);
+        $pixProduct = $this->product($clinic, 'Produto pix', stock: 5, costPrice: 10, salePrice: 40);
+        $user = $this->userForClinic($clinic, ['sales.manage']);
+
+        $this->actingAs($user)->post(route('sales.store'), [
+            'status' => 'completed',
+            'items' => [[
+                'type' => 'product',
+                'product_id' => $cashProduct->id,
+                'description' => 'Produto dinheiro',
+                'quantity' => '1',
+                'unit_price' => '50',
+            ]],
+            'payments' => [[
+                'method' => 'cash',
+                'amount' => '60',
+            ]],
+        ])->assertRedirect(route('sales.index'));
+
+        $this->post(route('sales.store'), [
+            'status' => 'completed',
+            'items' => [[
+                'type' => 'product',
+                'product_id' => $pixProduct->id,
+                'description' => 'Produto pix',
+                'quantity' => '2',
+                'unit_price' => '40',
+            ]],
+            'payments' => [[
+                'method' => 'pix',
+                'amount' => '80',
+            ]],
+        ])->assertRedirect(route('sales.index'));
+
+        $pixSale = Sale::query()
+            ->with('items')
+            ->where('total', 80)
+            ->firstOrFail();
+
+        $this->post(route('sales.returns.store', $pixSale->id), [
+            'reason' => 'Estorno parcial no Pix',
+            'refund_method' => 'pix',
+            'refund_amount' => '10',
+            'items' => [
+                $pixSale->items->first()->id => ['quantity' => '1'],
+            ],
+        ])->assertRedirect(route('sales.edit', $pixSale->id));
+
+        $summary = app(SaleService::class)->cashierSummary(today()->toDateString(), today()->toDateString());
+        $methods = collect($summary['payment_reconciliation'])->keyBy('method');
+
+        $this->assertEquals(50.0, (float) $methods['cash']['expected']);
+        $this->assertEquals(60.0, (float) $methods['cash']['received']);
+        $this->assertEquals(10.0, (float) $methods['cash']['change']);
+        $this->assertEquals(70.0, (float) $methods['pix']['expected']);
+        $this->assertEquals(10.0, (float) $methods['pix']['refunds']);
+        $this->assertEquals(120.0, (float) $summary['stats']['reconciled_total']);
+
+        $this->post(route('sales.cashier.close.store'), [
+            'period_from' => today()->toDateString(),
+            'period_to' => today()->toDateString(),
+            'counted_methods' => [
+                'cash' => '48,00',
+                'pix' => '70,00',
+                'debit_card' => '0',
+                'credit_card' => '0',
+                'transfer' => '0',
+                'other' => '0',
+            ],
+            'notes' => 'Diferenca de dinheiro conferida.',
+        ])
+            ->assertRedirect(route('sales.cashier', [
+                'from' => today()->toDateString(),
+                'to' => today()->toDateString(),
+            ]))
+            ->assertSessionDoesntHaveErrors();
+
+        $closure = CashRegisterClosure::query()->firstOrFail();
+        $closureMethods = collect($closure->metadata['payment_reconciliation'])->keyBy('method');
+
+        $this->assertSame($clinic->id, (int) $closure->clinic_id);
+        $this->assertSame($user->id, (int) $closure->closed_by_user_id);
+        $this->assertSame('difference', $closure->status);
+        $this->assertEquals(120.0, (float) $closure->expected_total);
+        $this->assertEquals(118.0, (float) $closure->counted_total);
+        $this->assertEquals(-2.0, (float) $closure->total_difference);
+        $this->assertEquals(-2.0, (float) $closureMethods['cash']['difference']);
+        $this->assertEquals(0.0, (float) $closureMethods['pix']['difference']);
+        $this->assertSame('by_method', $closure->metadata['reconciliation_source']);
+    }
+
+    public function test_cashier_closure_requires_sales_permission(): void
+    {
+        $clinic = $this->clinic('Clinica Sem Caixa', '00000000000206');
+        $user = $this->userForClinic($clinic, []);
+
+        $this->actingAs($user)
+            ->get(route('sales.cashier.close'))
+            ->assertForbidden();
+
+        $this->post(route('sales.cashier.close.store'), [
+            'counted_methods' => ['cash' => '0'],
+        ])->assertForbidden();
+
+        $this->assertDatabaseCount('cash_register_closures', 0);
+    }
+
+    public function test_cashier_closure_history_is_isolated_by_clinic(): void
+    {
+        $clinicA = $this->clinic('Clinica Fechamento A', '00000000000207');
+        $clinicB = $this->clinic('Clinica Fechamento B', '00000000000208');
+        $userA = $this->userForClinic($clinicA, ['sales.manage']);
+        $userB = $this->userForClinic($clinicB, ['sales.manage']);
+        $emptyConference = [
+            'cash' => '0',
+            'pix' => '0',
+            'debit_card' => '0',
+            'credit_card' => '0',
+            'transfer' => '0',
+            'other' => '0',
+        ];
+
+        $this->actingAs($userA)->post(route('sales.cashier.close.store'), [
+            'counted_methods' => $emptyConference,
+            'notes' => 'Fechamento A',
+        ])->assertSessionDoesntHaveErrors();
+
+        $this->actingAs($userB)->post(route('sales.cashier.close.store'), [
+            'counted_methods' => $emptyConference,
+            'notes' => 'Fechamento B',
+        ])->assertSessionDoesntHaveErrors();
+
+        $this->actingAs($userA);
+        $summaryA = app(SaleService::class)->cashierSummary();
+
+        $this->assertCount(1, $summaryA['closures']);
+        $this->assertSame($clinicA->id, (int) $summaryA['closures']->first()->clinic_id);
+        $this->assertSame('Fechamento A', $summaryA['closures']->first()->notes);
+
+        $this->actingAs($userB);
+        $summaryB = app(SaleService::class)->cashierSummary();
+
+        $this->assertCount(1, $summaryB['closures']);
+        $this->assertSame($clinicB->id, (int) $summaryB['closures']->first()->clinic_id);
+        $this->assertSame('Fechamento B', $summaryB['closures']->first()->notes);
+    }
+
+    public function test_profitability_report_uses_sale_snapshots_and_adjusts_partial_returns(): void
+    {
+        $clinic = $this->clinic('Clinica Rentabilidade', '00000000000209');
+        $product = $this->product($clinic, 'Racao rentavel', stock: 10, costPrice: 10, salePrice: 30);
+        $service = PetShopService::query()->create([
+            'clinic_id' => $clinic->id,
+            'name' => 'Banho rentavel',
+            'category' => 'Banho e tosa',
+            'base_price' => 40,
+            'active' => true,
+        ]);
+        $user = $this->userForClinic($clinic, ['sales.manage']);
+
+        $this->actingAs($user)->post(route('sales.store'), [
+            'status' => 'completed',
+            'discount_total' => '10',
+            'items' => [
+                [
+                    'type' => 'product',
+                    'product_id' => $product->id,
+                    'description' => $product->name,
+                    'quantity' => '2',
+                    'unit_price' => '30',
+                ],
+                [
+                    'type' => 'service',
+                    'petshop_service_id' => $service->id,
+                    'description' => $service->name,
+                    'quantity' => '1',
+                    'unit_price' => '40',
+                ],
+            ],
+            'payments' => [[
+                'method' => 'pix',
+                'amount' => '90',
+            ]],
+        ])->assertRedirect(route('sales.index'));
+
+        $sale = Sale::query()->with('items')->firstOrFail();
+        $productItem = $sale->items->firstWhere('type', 'product');
+
+        $this->post(route('sales.returns.store', $sale->id), [
+            'reason' => 'Devolucao para validar margem',
+            'refund_method' => 'pix',
+            'refund_amount' => '30',
+            'items' => [
+                $productItem->id => ['quantity' => '1'],
+            ],
+        ])->assertRedirect(route('sales.edit', $sale->id));
+
+        $summary = app(SaleProfitabilityService::class)->summary(
+            today()->toDateString(),
+            today()->toDateString()
+        );
+        $items = $summary['items']->keyBy('description');
+        $types = $summary['by_type']->keyBy('type');
+
+        $this->assertSame(1, $summary['stats']['sales_count']);
+        $this->assertEquals(90.0, (float) $summary['stats']['gross_revenue']);
+        $this->assertEquals(30.0, (float) $summary['stats']['returns']);
+        $this->assertEquals(60.0, (float) $summary['stats']['net_revenue']);
+        $this->assertEquals(10.0, (float) $summary['stats']['cost']);
+        $this->assertEquals(50.0, (float) $summary['stats']['gross_profit']);
+        $this->assertEquals(83.33, (float) $summary['stats']['gross_margin_percent']);
+
+        $this->assertEquals(24.0, (float) $items['Racao rentavel']['net_revenue']);
+        $this->assertEquals(10.0, (float) $items['Racao rentavel']['cost']);
+        $this->assertEquals(14.0, (float) $items['Racao rentavel']['gross_profit']);
+        $this->assertEquals(36.0, (float) $items['Banho rentavel']['gross_profit']);
+        $this->assertEquals(14.0, (float) $types['product']['gross_profit']);
+        $this->assertEquals(36.0, (float) $types['service']['gross_profit']);
+
+        $this->get(route('sales.profitability', [
+            'from' => today()->toDateString(),
+            'to' => today()->toDateString(),
+            'type' => 'service',
+        ]))
+            ->assertOk()
+            ->assertSee('Rentabilidade das vendas')
+            ->assertSee('Banho rentavel')
+            ->assertDontSee('Racao rentavel');
+    }
+
+    public function test_profitability_report_requires_sales_permission_and_is_isolated_by_clinic(): void
+    {
+        $clinicA = $this->clinic('Clinica Margem A', '00000000000210');
+        $clinicB = $this->clinic('Clinica Margem B', '00000000000211');
+        $productA = $this->product($clinicA, 'Produto margem A', stock: 5, costPrice: 10, salePrice: 30);
+        $productB = $this->product($clinicB, 'Produto margem B', stock: 5, costPrice: 20, salePrice: 60);
+        $userA = $this->userForClinic($clinicA, ['sales.manage']);
+        $userB = $this->userForClinic($clinicB, ['sales.manage']);
+        $userWithoutPermission = $this->userForClinic($clinicA, []);
+
+        foreach ([[$userA, $productA], [$userB, $productB]] as [$user, $product]) {
+            $this->actingAs($user)->post(route('sales.store'), [
+                'status' => 'completed',
+                'items' => [[
+                    'type' => 'product',
+                    'product_id' => $product->id,
+                    'description' => $product->name,
+                    'quantity' => '1',
+                    'unit_price' => (string) $product->sale_price,
+                ]],
+                'payments' => [[
+                    'method' => 'cash',
+                    'amount' => (string) $product->sale_price,
+                ]],
+            ])->assertRedirect(route('sales.index'));
+        }
+
+        $this->actingAs($userA);
+        $summary = app(SaleProfitabilityService::class)->summary();
+
+        $this->assertSame(1, $summary['stats']['sales_count']);
+        $this->assertSame(['Produto margem A'], $summary['items']->pluck('description')->all());
+        $this->assertEquals(30.0, (float) $summary['stats']['net_revenue']);
+
+        $this->actingAs($userWithoutPermission)
+            ->get(route('sales.profitability'))
+            ->assertForbidden();
+    }
+
+    public function test_commission_preview_uses_paid_sales_and_partial_receipts_according_to_each_rule(): void
+    {
+        $clinic = $this->clinic('Clinica Comissoes', '00000000000204');
+        $product = $this->product($clinic, 'Produto comissao', stock: 10, costPrice: 60, salePrice: 100);
+        $administrator = $this->userForClinic($clinic, ['sales.manage', 'commissions.manage']);
+        $sellerA = $this->userForClinic($clinic, ['sales.manage']);
+        $sellerB = $this->userForClinic($clinic, ['sales.manage']);
+
+        $this->actingAs($sellerA)->post(route('sales.store'), [
+            'status' => 'completed',
+            'items' => [[
+                'type' => 'product',
+                'product_id' => $product->id,
+                'description' => 'Produto comissao',
+                'quantity' => '1',
+                'unit_price' => '100',
+            ]],
+            'payments' => [[
+                'method' => 'pix',
+                'amount' => '100',
+            ]],
+        ])->assertRedirect(route('sales.index'));
+
+        $this->actingAs($sellerB)->post(route('sales.store'), [
+            'status' => 'completed',
+            'items' => [[
+                'type' => 'product',
+                'product_id' => $product->id,
+                'description' => 'Produto comissao',
+                'quantity' => '1',
+                'unit_price' => '100',
+            ]],
+            'payments' => [[
+                'method' => 'pix',
+                'amount' => '100',
+                'status' => 'pending',
+            ]],
+        ])->assertRedirect(route('sales.index'));
+
+        $pendingSale = Sale::query()->where('seller_user_id', $sellerB->id)->firstOrFail();
+
+        $this->actingAs($sellerB)->post(route('sales.payments.store', $pendingSale->id), [
+            'method' => 'pix',
+            'amount' => '50',
+            'paid_at' => now()->format('Y-m-d\\TH:i'),
+        ])->assertRedirect(route('sales.edit', $pendingSale->id));
+
+        $this->actingAs($administrator)->post(route('commissions.store'), [
+            'seller_user_id' => $sellerA->id,
+            'name' => 'Margem vendedor A',
+            'percentage' => '10,00',
+            'basis' => 'gross_profit',
+            'recognition' => 'sale_date',
+            'requires_paid' => '1',
+            'starts_on' => today()->toDateString(),
+            'active' => '1',
+        ])->assertRedirect(route('commissions.index'));
+
+        $this->post(route('commissions.store'), [
+            'seller_user_id' => $sellerB->id,
+            'name' => 'Recebimentos vendedor B',
+            'percentage' => '10',
+            'basis' => 'sold_total',
+            'recognition' => 'receipt_date',
+            'requires_paid' => '0',
+            'starts_on' => today()->toDateString(),
+            'active' => '1',
+        ])->assertRedirect(route('commissions.index'));
+
+        $preview = app(CommissionService::class)->preview(today()->toDateString(), today()->toDateString());
+        $rows = $preview['rules']->keyBy(fn (array $row) => $row['rule']->seller_user_id);
+
+        $this->assertEquals(40.0, (float) $rows[$sellerA->id]['base_amount']);
+        $this->assertEquals(4.0, (float) $rows[$sellerA->id]['commission_amount']);
+        $this->assertEquals(50.0, (float) $rows[$sellerB->id]['base_amount']);
+        $this->assertEquals(5.0, (float) $rows[$sellerB->id]['commission_amount']);
+        $this->assertSame(2, $preview['summary']['rules_count']);
+
+        $this->post(route('commissions.store'), [
+            'seller_user_id' => $sellerA->id,
+            'name' => 'Regra concorrente',
+            'percentage' => '5',
+            'basis' => 'sold_total',
+            'recognition' => 'sale_date',
+            'requires_paid' => '1',
+            'starts_on' => today()->toDateString(),
+            'active' => '1',
+        ])->assertSessionHasErrors('starts_on');
+
+        $this->assertSame(2, CommissionRule::query()->count());
     }
 
     public function test_global_user_sale_keeps_financial_record_inside_selected_clinic(): void
@@ -471,6 +975,52 @@ class OperationalFlowTest extends TestCase
         );
     }
 
+    public function test_inventory_movements_created_by_sales_cannot_be_changed_from_stock_screen(): void
+    {
+        $clinic = $this->clinic('Clinica Rastreabilidade Estoque', '00000000000223');
+        $product = $this->product($clinic, 'Medicamento rastreado', stock: 5, costPrice: 10, salePrice: 30);
+        $user = $this->userForClinic($clinic, ['inventory.manage', 'sales.manage']);
+
+        $this->actingAs($user)->post(route('sales.store'), [
+            'status' => 'completed',
+            'items' => [[
+                'type' => 'product',
+                'product_id' => $product->id,
+                'description' => $product->name,
+                'quantity' => '1',
+                'unit_price' => '30',
+            ]],
+            'payments' => [[
+                'method' => 'pix',
+                'amount' => '30',
+                'installments' => 1,
+            ]],
+        ])->assertRedirect(route('sales.index'));
+
+        $movement = InventoryMovement::query()
+            ->where('product_id', $product->id)
+            ->where('source', 'sale')
+            ->firstOrFail();
+
+        $this->get(route('inventory-movements.edit', $movement->id))
+            ->assertRedirect(route('inventory-movements.index'))
+            ->assertSessionHas('error');
+
+        $this->patch(route('inventory-movements.update', $movement->id), [
+            'product_id' => $product->id,
+            'type' => 'entry',
+            'quantity' => '5',
+        ])->assertRedirect(route('inventory-movements.index'))
+            ->assertSessionHas('error');
+
+        $this->delete(route('inventory-movements.destroy', $movement->id))
+            ->assertRedirect(route('inventory-movements.index'))
+            ->assertSessionHas('error');
+
+        $this->assertSame('exit', $movement->fresh()->type);
+        $this->assertEquals(4.0, (float) $product->fresh()->stock_quantity);
+    }
+
     public function test_financial_transactions_are_created_and_updated_only_inside_current_clinic(): void
     {
         $clinicA = $this->clinic('Clinica Operacional F', '00000000000231');
@@ -527,6 +1077,73 @@ class OperationalFlowTest extends TestCase
             'pending',
             DB::table('financial_transactions')->where('id', $otherTransaction->id)->value('status')
         );
+    }
+
+    public function test_sale_generated_income_is_managed_only_from_the_sale_flow(): void
+    {
+        $clinic = $this->clinic('Clinica Financeiro PDV', '00000000000233');
+        $product = $this->product($clinic, 'Produto recebido depois', stock: 4, costPrice: 20, salePrice: 60);
+        $user = $this->userForClinic($clinic, ['sales.manage', 'financial.manage']);
+
+        $this->actingAs($user)->post(route('sales.store'), [
+            'status' => 'completed',
+            'items' => [[
+                'type' => 'product',
+                'product_id' => $product->id,
+                'description' => 'Produto recebido depois',
+                'quantity' => '1',
+                'unit_price' => '60',
+            ]],
+            'payments' => [[
+                'method' => 'pix',
+                'amount' => '60',
+                'status' => 'pending',
+            ]],
+        ])->assertRedirect(route('sales.index'));
+
+        $sale = Sale::query()->with('financialTransaction')->firstOrFail();
+        $transaction = $sale->financialTransaction;
+
+        $this->assertNotNull($transaction);
+
+        $this->get(route('financial-transactions.index'))
+            ->assertOk()
+            ->assertSee('Gerenciado pela venda '.$sale->code.'.')
+            ->assertSee(route('sales.edit', $sale->id));
+
+        $this->get(route('financial-transactions.edit', $transaction->id))
+            ->assertRedirect(route('sales.edit', $sale->id))
+            ->assertSessionHas('error');
+
+        $this->from(route('financial-transactions.index'))
+            ->patch(route('financial-transactions.update', $transaction->id), [
+                'type' => 'income',
+                'description' => 'Tentativa de ajuste indevido',
+                'amount' => '60',
+                'status' => 'paid',
+            ])
+            ->assertRedirect(route('financial-transactions.index'))
+            ->assertSessionHasErrors('transaction');
+
+        $this->from(route('financial-transactions.index'))
+            ->patch(route('financial-transactions.pay', $transaction->id))
+            ->assertRedirect(route('financial-transactions.index'))
+            ->assertSessionHasErrors('transaction');
+
+        $this->from(route('financial-transactions.index'))
+            ->patch(route('financial-transactions.cancel', $transaction->id))
+            ->assertRedirect(route('financial-transactions.index'))
+            ->assertSessionHasErrors('transaction');
+
+        $this->from(route('financial-transactions.index'))
+            ->delete(route('financial-transactions.destroy', $transaction->id))
+            ->assertRedirect(route('financial-transactions.index'))
+            ->assertSessionHasErrors('transaction');
+
+        $transaction->refresh();
+        $this->assertSame('pending', $transaction->status);
+        $this->assertNull($transaction->paid_at);
+        $this->assertNull($transaction->deleted_at);
     }
 
     private function clinic(string $name, string $cnpj): Clinic

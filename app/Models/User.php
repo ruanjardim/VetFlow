@@ -5,6 +5,7 @@ namespace App\Models;
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 
 use App\Modules\Clinics\Models\Clinic;
+use App\Modules\Patients\Models\AnimalSpecies;
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -68,6 +69,14 @@ class User extends Authenticatable
             ->withTimestamps();
     }
 
+    public function animalSpeciesPreferences(): BelongsToMany
+    {
+        return $this->belongsToMany(
+            AnimalSpecies::class,
+            'user_animal_species'
+        )->withTimestamps();
+    }
+
     public function hasRole(string $role): bool
     {
         return $this->roles()
@@ -82,7 +91,7 @@ class User extends Authenticatable
     }
 
     /**
-     * @param array<int, string> $permissions
+     * @param  array<int, string>  $permissions
      */
     public function hasAnyPermission(array $permissions): bool
     {

@@ -3,15 +3,20 @@
 namespace App\Modules\Inventory\Controllers;
 
 use App\Core\Base\BaseCrudController;
+use App\Modules\Inventory\Requests\StockRadarRequest;
 use App\Modules\Inventory\Requests\StoreInventoryMovementRequest;
 use App\Modules\Inventory\Requests\UpdateInventoryMovementRequest;
 use App\Modules\Inventory\Services\InventoryMovementService;
 use App\Modules\Inventory\Services\ProductLotService;
 use App\Modules\Inventory\Services\StockAlertService;
+use App\Modules\Inventory\Services\StockRadarService;
 use App\Modules\Products\Models\Product;
 use App\Modules\Products\Services\ProductLookupService;
 use App\Modules\Products\Support\Gtin;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+use Illuminate\View\View;
 
 class InventoryMovementController extends BaseCrudController
 {
@@ -49,6 +54,11 @@ class InventoryMovementController extends BaseCrudController
         return view("{$this->viewPath}.alerts", $alertService->data());
     }
 
+    public function radar(StockRadarRequest $request, StockRadarService $radarService): View
+    {
+        return view("{$this->viewPath}.radar", $radarService->data($request->validated()));
+    }
+
     public function create()
     {
         return view("{$this->viewPath}.create", [
@@ -58,10 +68,38 @@ class InventoryMovementController extends BaseCrudController
 
     public function edit(int $id)
     {
+        $movement = $this->service->findOrFail($id);
+
+        if ($movement->isSystemManaged()) {
+            return $this->systemMovementRedirect();
+        }
+
         return view("{$this->viewPath}.edit", [
-            'item' => $this->service->findOrFail($id),
+            'item' => $movement,
             'products' => $this->products(),
         ]);
+    }
+
+    public function update(Request $request, int $id)
+    {
+        $movement = $this->service->findOrFail($id);
+
+        if ($movement->isSystemManaged()) {
+            return $this->systemMovementRedirect();
+        }
+
+        return parent::update($request, $id);
+    }
+
+    public function destroy(int $id)
+    {
+        $movement = $this->service->findOrFail($id);
+
+        if ($movement->isSystemManaged()) {
+            return $this->systemMovementRedirect();
+        }
+
+        return parent::destroy($id);
     }
 
     public function lookupProduct(string $gtin, ProductLookupService $lookupService): JsonResponse
@@ -168,5 +206,12 @@ class InventoryMovementController extends BaseCrudController
             ->active()
             ->orderBy('name')
             ->get();
+    }
+
+    private function systemMovementRedirect(): RedirectResponse
+    {
+        return redirect()
+            ->route('inventory-movements.index')
+            ->with('error', 'Esta movimentacao foi gerada automaticamente. Corrija a venda, devolucao ou entrada que a originou para manter o estoque e o financeiro consistentes.');
     }
 }

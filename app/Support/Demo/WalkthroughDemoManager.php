@@ -21,6 +21,23 @@ class WalkthroughDemoManager
 
         return DB::transaction(function () use ($clinic): array {
             $summary = $this->emptySummary();
+
+            $summary['implementation_pilot_decisions'] = DB::table('implementation_pilot_decisions')
+                ->where('clinic_id', $clinic->id)
+                ->where('notes', WalkthroughDemoFixture::IMPLEMENTATION_NOTE)
+                ->delete();
+            $summary['implementation_pilot_releases'] = DB::table('implementation_pilot_releases')
+                ->where('clinic_id', $clinic->id)
+                ->where('release_notes', WalkthroughDemoFixture::PILOT_RELEASE_NOTES)
+                ->delete();
+            $summary['implementation_pilot_checks'] = DB::table('implementation_pilot_checks')
+                ->where('clinic_id', $clinic->id)
+                ->where('notes', WalkthroughDemoFixture::IMPLEMENTATION_NOTE)
+                ->delete();
+            $summary['implementation_imports'] = DB::table('implementation_imports')
+                ->where('clinic_id', $clinic->id)
+                ->whereIn('file_name', array_values(WalkthroughDemoFixture::IMPLEMENTATION_IMPORT_FILES))
+                ->delete();
             $saleIds = DB::table('sales')
                 ->where('clinic_id', $clinic->id)
                 ->where('code', WalkthroughDemoFixture::SALE_CODE)
@@ -81,6 +98,11 @@ class WalkthroughDemoManager
             $summary['tutors'] = DB::table('tutors')
                 ->where('clinic_id', $clinic->id)
                 ->where('email', WalkthroughDemoFixture::TUTOR_EMAIL)
+                ->delete();
+
+            $summary['suppliers'] = DB::table('suppliers')
+                ->where('clinic_id', $clinic->id)
+                ->where('document', WalkthroughDemoFixture::SUPPLIER_DOCUMENT)
                 ->delete();
 
             $demoUser = User::query()
@@ -144,8 +166,13 @@ class WalkthroughDemoManager
     private function emptySummary(): array
     {
         return [
+            'implementation_pilot_decisions' => 0,
+            'implementation_pilot_releases' => 0,
+            'implementation_pilot_checks' => 0,
+            'implementation_imports' => 0,
             'users' => 0,
             'tutors' => 0,
+            'suppliers' => 0,
             'patients' => 0,
             'appointments' => 0,
             'products' => 0,

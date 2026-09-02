@@ -4,6 +4,7 @@ use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Auth\NewPasswordController;
 use App\Http\Controllers\Auth\PasswordResetLinkController;
 use App\Http\Controllers\Operations\QueueCronController;
+use App\Http\Controllers\Operations\ReleaseIdentityController;
 use App\Http\Middleware\EnsureUserHasPermission;
 use App\Http\Middleware\EnsureUserIsActive;
 use App\Modules\Dashboard\Http\Controllers\DashboardController;
@@ -32,6 +33,10 @@ Route::get('/assets/app.js', function () {
 Route::get('/ops/cron/queue', QueueCronController::class)
     ->middleware('throttle:6,1')
     ->name('operations.queue-cron');
+
+Route::get('/ops/release', ReleaseIdentityController::class)
+    ->middleware('throttle:30,1')
+    ->name('operations.release');
 
 Route::middleware('guest')->group(function () {
     Route::get('/login', [AuthenticatedSessionController::class, 'create'])->name('login');
@@ -91,21 +96,29 @@ Route::middleware(['auth', EnsureUserIsActive::class])->group(function () {
     });
 
     $moduleRoutes = [
+        'audit.manage' => app_path('Modules/Audit/Routes/web.php'),
         'appointments.manage' => app_path('Modules/Appointments/Routes/web.php'),
         'clinics.manage' => app_path('Modules/Clinics/Routes/web.php'),
+        'clinic-branding.manage' => app_path('Modules/Clinics/Routes/branding.php'),
+        'commissions.manage' => app_path('Modules/Commissions/Routes/web.php'),
         'users.manage' => app_path('Modules/Access/Routes/web.php'),
         'implementation.manage' => app_path('Modules/Implementation/Routes/web.php'),
+        'operations.readiness' => app_path('Modules/Operations/Routes/web.php'),
         'financial.manage' => app_path('Modules/Financial/Routes/web.php'),
+        'hospitalizations.manage' => app_path('Modules/Hospitalizations/Routes/web.php'),
         'inventory.manage' => app_path('Modules/Inventory/Routes/web.php'),
+        'medical-records.manage' => app_path('Modules/MedicalRecords/Routes/web.php'),
         'patients.manage' => app_path('Modules/Patients/Routes/web.php'),
         'petshop-services.manage' => app_path('Modules/PetShopServices/Routes/web.php'),
         'products.manage' => app_path('Modules/Products/Routes/web.php'),
+        'prescriptions.manage' => app_path('Modules/Prescriptions/Routes/web.php'),
         'purchase-entries.manage' => app_path('Modules/PurchaseEntries/Routes/web.php'),
         'sales.manage' => app_path('Modules/Sales/Routes/web.php'),
         'schedules.manage' => app_path('Modules/Schedules/Routes/web.php'),
         'service-orders.manage' => app_path('Modules/ServiceOrders/Routes/web.php'),
         'suppliers.manage' => app_path('Modules/Suppliers/Routes/web.php'),
         'tutors.manage' => app_path('Modules/Tutors/Routes/web.php'),
+        'vaccinations.manage' => app_path('Modules/Vaccinations/Routes/web.php'),
     ];
 
     foreach ($moduleRoutes as $permission => $routeFile) {

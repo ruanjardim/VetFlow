@@ -34,6 +34,7 @@
       <option value="0" @selected(! old('active', $clinic->active ?? true))>Inativa</option>
     </select>
   </div>
+  @include('clinics.branding-fields')
   <div class="field full">
     <div class="actions">
       <button type="submit">Salvar</button>

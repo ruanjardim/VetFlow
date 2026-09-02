@@ -7,17 +7,25 @@ use App\Modules\Clinics\Models\Clinic;
 use App\Modules\Products\Models\Product;
 use App\Modules\PurchaseEntries\Exceptions\NfeAccessKeyLookupException;
 use App\Modules\PurchaseEntries\Requests\StorePurchaseEntryRequest;
+use App\Modules\PurchaseEntries\Requests\StoreReplenishmentPilotReviewRequest;
+use App\Modules\PurchaseEntries\Requests\StoreReplenishmentReviewRequest;
 use App\Modules\PurchaseEntries\Requests\UpdatePurchaseEntryRequest;
 use App\Modules\PurchaseEntries\Services\NfeAccessKeyImportService;
 use App\Modules\PurchaseEntries\Services\NfeXmlImportService;
 use App\Modules\PurchaseEntries\Services\PurchaseEntryInsightService;
 use App\Modules\PurchaseEntries\Services\PurchaseEntryService;
+use App\Modules\PurchaseEntries\Services\ReplenishmentEvidenceService;
+use App\Modules\PurchaseEntries\Services\ReplenishmentPilotReviewService;
+use App\Modules\PurchaseEntries\Services\ReplenishmentPurchaseDecisionService;
+use App\Modules\PurchaseEntries\Services\ReplenishmentPurchaseHistoryService;
+use App\Modules\PurchaseEntries\Services\ReplenishmentReviewService;
 use App\Modules\Suppliers\Models\Supplier;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
+use Illuminate\View\View;
 use InvalidArgumentException;
 use Throwable;
 
@@ -25,7 +33,11 @@ class PurchaseEntryController extends Controller
 {
     public function __construct(
         private readonly PurchaseEntryService $service,
-        private readonly PurchaseEntryInsightService $insights
+        private readonly PurchaseEntryInsightService $insights,
+        private readonly ReplenishmentReviewService $replenishmentReviews,
+        private readonly ReplenishmentEvidenceService $replenishmentEvidence,
+        private readonly ReplenishmentPurchaseHistoryService $replenishmentPurchaseHistory,
+        private readonly ReplenishmentPilotReviewService $replenishmentPilotReviews,
     ) {}
 
     public function index()
@@ -46,6 +58,7 @@ class PurchaseEntryController extends Controller
             'purchaseInsights' => $this->insights->dashboard(),
             'scanGtin' => $request->query('scan') ?: $request->query('gtin'),
             'suggestedItem' => $this->replenishmentPrefill($request),
+            'replenishmentAdjustmentReasons' => ReplenishmentPurchaseDecisionService::ADJUSTMENT_REASONS,
         ]);
     }
 
@@ -67,12 +80,139 @@ class PurchaseEntryController extends Controller
             'suppliers' => $this->suppliers(),
             'purchaseInsights' => $this->insights->dashboard(),
             'scanGtin' => null,
+            'replenishmentAdjustmentReasons' => ReplenishmentPurchaseDecisionService::ADJUSTMENT_REASONS,
         ]);
     }
 
-    public function replenishment()
+    public function replenishment(Request $request): View
     {
-        return view('purchase-entries.replenishment', $this->insights->replenishmentData());
+        return view('purchase-entries.replenishment', $this->insights->replenishmentData($request->user()));
+    }
+
+    public function replenishmentReviews(Request $request): View
+    {
+        $validated = $request->validate([
+            'decision' => ['nullable', Rule::in(array_keys(ReplenishmentReviewService::DECISIONS))],
+            'q' => ['nullable', 'string', 'max:120'],
+        ]);
+
+        return view('purchase-entries.replenishment-reviews', [
+            'events' => $this->replenishmentReviews->history(
+                $request->user(),
+                $validated['decision'] ?? null,
+                $validated['q'] ?? null,
+            ),
+            'decisions' => ReplenishmentReviewService::DECISIONS,
+            'filters' => $validated,
+        ]);
+    }
+
+    public function replenishmentPurchases(Request $request): View
+    {
+        $validated = $request->validate([
+            'classification' => ['nullable', Rule::in(array_keys(ReplenishmentPurchaseHistoryService::CLASSIFICATIONS))],
+            'status' => ['nullable', Rule::in(array_keys(ReplenishmentPurchaseHistoryService::PURCHASE_STATUSES))],
+            'period' => ['nullable', Rule::in(array_keys(ReplenishmentPurchaseHistoryService::PERIODS))],
+            'q' => ['nullable', 'string', 'max:120'],
+        ]);
+        $period = $validated['period'] ?? ReplenishmentPurchaseHistoryService::DEFAULT_PERIOD;
+        $validated['period'] = $period;
+        $stats = $this->replenishmentPurchaseHistory->summary($request->user(), $period);
+
+        return view('purchase-entries.replenishment-purchases', [
+            'items' => $this->replenishmentPurchaseHistory->history(
+                $request->user(),
+                $validated['classification'] ?? null,
+                $validated['status'] ?? null,
+                $validated['q'] ?? null,
+                $period,
+            ),
+            'classifications' => ReplenishmentPurchaseHistoryService::CLASSIFICATIONS,
+            'purchaseStatuses' => ReplenishmentPurchaseHistoryService::PURCHASE_STATUSES,
+            'periods' => ReplenishmentPurchaseHistoryService::PERIODS,
+            'filters' => $validated,
+            'stats' => $stats,
+            'pilotReview' => $this->replenishmentPilotReviews->state(
+                $request->user(),
+                $period,
+                $stats,
+            ),
+            'pilotReviewDecisions' => ReplenishmentPilotReviewService::DECISIONS,
+        ]);
+    }
+
+    public function replenishmentPilotReviews(Request $request): View
+    {
+        $validated = $request->validate([
+            'period' => ['nullable', Rule::in(array_keys(ReplenishmentPurchaseHistoryService::PERIODS))],
+            'decision' => ['nullable', Rule::in(array_keys(ReplenishmentPilotReviewService::DECISIONS))],
+        ]);
+        $portfolio = $this->replenishmentPilotReviews->portfolio($request->user());
+
+        return view('purchase-entries.replenishment-pilot-reviews', [
+            'events' => $this->replenishmentPilotReviews->history(
+                $request->user(),
+                $validated['period'] ?? null,
+                $validated['decision'] ?? null,
+            ),
+            'periods' => ReplenishmentPurchaseHistoryService::PERIODS,
+            'decisions' => ReplenishmentPilotReviewService::DECISIONS,
+            'filters' => $validated,
+            'portfolio' => $portfolio,
+        ]);
+    }
+
+    public function replenishmentPurchasesReport(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'period' => ['nullable', Rule::in(array_keys(ReplenishmentPurchaseHistoryService::PERIODS))],
+        ]);
+        $period = $validated['period'] ?? ReplenishmentPurchaseHistoryService::DEFAULT_PERIOD;
+        $filename = 'vetflow-replenishment-validation-'.$period.'-'.now()->format('Ymd-His').'.json';
+
+        return response()->json(
+            $this->replenishmentPurchaseHistory->report($request->user(), $period),
+            200,
+            [
+                'Cache-Control' => 'private, no-store, max-age=0',
+                'Content-Disposition' => 'attachment; filename="'.$filename.'"',
+                'X-Content-Type-Options' => 'nosniff',
+            ],
+            JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES,
+        );
+    }
+
+    public function storeReplenishmentPilotReview(
+        StoreReplenishmentPilotReviewRequest $request,
+    ): RedirectResponse {
+        $data = $request->validated();
+        $this->replenishmentPilotReviews->record(
+            $request->user(),
+            $data['period'],
+            $data['decision'],
+            $data['note'] ?? null,
+        );
+
+        return redirect()
+            ->route('purchase-entries.replenishment-purchases', ['period' => $data['period']])
+            ->with('success', 'Revisão humana do período registrada com a evidência atual.');
+    }
+
+    public function storeReplenishmentReview(
+        StoreReplenishmentReviewRequest $request,
+        Product $product,
+    ): RedirectResponse {
+        $data = $request->validated();
+        $this->replenishmentReviews->record(
+            $request->user(),
+            $product,
+            $data['decision'],
+            $data['note'] ?? null,
+        );
+
+        return redirect()
+            ->to(route('purchase-entries.replenishment').'#replenishment-product-'.$product->id)
+            ->with('success', 'Revisão da sugestão registrada no histórico.');
     }
 
     public function lookupProduct(Request $request, string $gtin): JsonResponse
@@ -270,12 +410,30 @@ class PurchaseEntryController extends Controller
             'intelligence_metadata' => [
                 'source' => 'smart_replenishment',
                 'generated_at' => now()->toDateTimeString(),
+                'evidence' => $this->replenishmentEvidence->envelope($suggestion),
                 'confidence' => $suggestion['confidence'],
                 'history_count' => $suggestion['history_count'],
                 'history_window_days' => $suggestion['history_window_days'],
                 'baseline_quantity' => $suggestion['baseline_quantity'],
                 'suggested_quantity' => $suggestion['suggested_quantity'],
                 'uses_purchase_history' => $suggestion['uses_purchase_history'],
+                'demand_window_days' => $suggestion['demand_window_days'],
+                'demand_sales_count' => $suggestion['demand_sales_count'],
+                'net_demand_quantity' => $suggestion['net_demand_quantity'],
+                'average_monthly_demand' => $suggestion['average_monthly_demand'],
+                'reference_supplier_deliveries' => $suggestion['reference_supplier_deliveries'],
+                'reference_supplier_quantity_received' => $suggestion['reference_supplier_quantity_received'],
+                'reference_supplier_average_unit_cost' => $suggestion['reference_supplier_average_unit_cost'],
+                'reference_supplier_lead_time_samples' => $suggestion['reference_supplier_lead_time_samples'],
+                'reference_supplier_average_lead_time_days' => $suggestion['reference_supplier_average_lead_time_days'],
+                'reference_supplier_minimum_lead_time_days' => $suggestion['reference_supplier_minimum_lead_time_days'],
+                'reference_supplier_maximum_lead_time_days' => $suggestion['reference_supplier_maximum_lead_time_days'],
+                'daily_demand_quantity' => $suggestion['daily_demand_quantity'],
+                'coverage_days' => $suggestion['coverage_days'],
+                'coverage_lead_time_days' => $suggestion['coverage_lead_time_days'],
+                'coverage_margin_days' => $suggestion['coverage_margin_days'],
+                'projected_stock_at_receipt' => $suggestion['projected_stock_at_receipt'],
+                'coverage_risk' => $suggestion['coverage_risk'],
                 'reason' => $suggestion['reason'],
             ],
         ];

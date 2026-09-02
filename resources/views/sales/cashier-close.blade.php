@@ -6,6 +6,7 @@
   @php
     $period = $summary['period'];
     $stats = $summary['stats'];
+    $paymentReconciliation = $summary['payment_reconciliation'];
     $money = fn ($value) => 'R$ '.number_format((float) $value, 2, ',', '.');
   @endphp
 
@@ -34,8 +35,8 @@
       <strong>{{ $money($stats['refunds']) }}</strong>
     </div>
     <div class="stat">
-      <span>Recebido liquido</span>
-      <strong>{{ $money($stats['net_received']) }}</strong>
+      <span>Total esperado para conferencia</span>
+      <strong>{{ $money($stats['reconciled_total']) }}</strong>
     </div>
   </div>
 
@@ -43,7 +44,7 @@
     <div class="panel-heading">
       <div>
         <h2>Conferencia</h2>
-        <p>Informe o dinheiro contado na gaveta e, se desejar, o total conferido de todos os meios.</p>
+        <p>Informe o valor conferido em cada meio. O VetFlow compara com recebimentos, estornos e troco do periodo.</p>
       </div>
     </div>
     <div class="panel-body">
@@ -52,14 +53,29 @@
         <input type="hidden" name="period_from" value="{{ $period['from'] }}">
         <input type="hidden" name="period_to" value="{{ $period['to'] }}">
 
-        <div class="field">
-          <label for="counted_cash">Dinheiro contado</label>
-          <input id="counted_cash" name="counted_cash" type="text" inputmode="decimal" value="{{ number_format((float) $stats['cash_drawer'], 2, ',', '.') }}" data-money-input required>
-        </div>
-        <div class="field">
-          <label for="counted_total">Total conferido</label>
-          <input id="counted_total" name="counted_total" type="text" inputmode="decimal" value="{{ number_format((float) $stats['net_received'], 2, ',', '.') }}" data-money-input>
-        </div>
+        @foreach($paymentReconciliation as $method)
+          <div class="field">
+            <label for="counted_method_{{ $method['method'] }}">{{ $method['label'] }} conferido</label>
+            <input
+              id="counted_method_{{ $method['method'] }}"
+              name="counted_methods[{{ $method['method'] }}]"
+              type="text"
+              inputmode="decimal"
+              value="{{ old('counted_methods.'.$method['method'], number_format((float) $method['expected'], 2, ',', '.')) }}"
+              data-money-input
+              required
+            >
+            <div class="field-hint">
+              Esperado: {{ $money($method['expected']) }}
+              @if((float) $method['refunds'] > 0)
+                · Estornos: {{ $money($method['refunds']) }}
+              @endif
+              @if((float) $method['change'] > 0)
+                · Troco: {{ $money($method['change']) }}
+              @endif
+            </div>
+          </div>
+        @endforeach
         <div class="field full">
           <label for="notes">Observacoes</label>
           <textarea id="notes" name="notes"></textarea>
@@ -86,9 +102,10 @@
         <thead>
           <tr>
             <th>Periodo</th>
-            <th>Dinheiro esperado</th>
-            <th>Dinheiro contado</th>
-            <th>Diferenca</th>
+            <th>Total esperado</th>
+            <th>Total conferido</th>
+            <th>Diferenca total</th>
+            <th>Por forma</th>
             <th>Status</th>
             <th>Fechado em</th>
           </tr>
@@ -97,9 +114,24 @@
           @forelse($summary['closures'] as $closure)
             <tr>
               <td>{{ $closure->period_from->format('d/m/Y') }} a {{ $closure->period_to->format('d/m/Y') }}</td>
-              <td>{{ $money($closure->expected_cash) }}</td>
-              <td>{{ $money($closure->counted_cash) }}</td>
-              <td>{{ $money($closure->cash_difference) }}</td>
+              <td>{{ $money($closure->expected_total) }}</td>
+              <td>{{ $money($closure->counted_total) }}</td>
+              <td>{{ $money($closure->total_difference) }}</td>
+              <td>
+                @forelse(data_get($closure->metadata, 'payment_reconciliation', []) as $method)
+                  @if(abs((float) ($method['expected'] ?? 0)) >= 0.01 || abs((float) ($method['counted'] ?? 0)) >= 0.01 || abs((float) ($method['difference'] ?? 0)) >= 0.01)
+                    <div>
+                      <strong>{{ $method['label'] ?? $method['method'] }}:</strong>
+                      {{ $money($method['counted'] ?? 0) }}
+                      @if(abs((float) ($method['difference'] ?? 0)) >= 0.01)
+                        <span class="badge warning">{{ $money($method['difference']) }}</span>
+                      @endif
+                    </div>
+                  @endif
+                @empty
+                  <span class="muted">Fechamento anterior</span>
+                @endforelse
+              </td>
               <td>
                 @if($closure->status === 'balanced')
                   <span class="badge success">Conferido</span>
@@ -111,7 +143,7 @@
             </tr>
           @empty
             <tr>
-              <td colspan="6" class="muted">Nenhum fechamento registrado ainda.</td>
+              <td colspan="7" class="muted">Nenhum fechamento registrado ainda.</td>
             </tr>
           @endforelse
         </tbody>

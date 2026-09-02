@@ -56,7 +56,7 @@
           <strong>{{ $sale->clinic?->trade_name ?? $sale->clinic?->corporate_name ?? '-' }}</strong>
         </div>
         <div>
-          <span>Tutor</span>
+          <span>Responsável</span>
           <strong>{{ $sale->tutor?->name ?? '-' }}</strong>
         </div>
         <div>
@@ -148,6 +148,7 @@
                 <th>Valor</th>
                 <th>Parcelas</th>
                 <th>Cartao</th>
+                <th>Status</th>
                 <th>Data</th>
                 <th>Referencia</th>
               </tr>
@@ -159,12 +160,13 @@
                   <td>{{ $money($payment->amount) }}</td>
                   <td>{{ $payment->installments ?? 1 }}x</td>
                   <td>{{ trim(($payment->card_brand ?: '').' '.($payment->acquirer ?: '')) ?: '-' }}</td>
+                  <td>{{ $payment->status === 'paid' ? 'Recebido' : ucfirst($payment->status ?? 'pendente') }}</td>
                   <td>{{ optional($payment->paid_at)->format('d/m/Y H:i') ?: '-' }}</td>
                   <td>{{ $payment->reference ?: $payment->transaction_reference ?: '-' }}</td>
                 </tr>
               @empty
                 <tr>
-                  <td colspan="6" class="muted">Nenhum pagamento registrado.</td>
+                  <td colspan="7" class="muted">Nenhum pagamento registrado.</td>
                 </tr>
               @endforelse
             </tbody>

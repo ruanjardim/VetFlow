@@ -6,17 +6,26 @@ use App\Core\Base\BaseCrudController;
 use App\Modules\Patients\Models\Patient;
 use App\Modules\Schedules\Requests\StoreScheduleRequest;
 use App\Modules\Schedules\Requests\UpdateScheduleRequest;
+use App\Modules\Schedules\Services\ScheduleCalendarService;
 use App\Modules\Schedules\Services\ScheduleService;
 use App\Modules\Tutors\Models\Tutor;
 
 class ScheduleController extends BaseCrudController
 {
-    public function __construct(ScheduleService $service)
+    public function __construct(ScheduleService $service, private readonly ScheduleCalendarService $calendar)
     {
         $this->service = $service;
         $this->viewPath = 'schedules';
         $this->routeName = 'schedules';
         $this->viewVariable = 'schedules';
+    }
+
+    public function index()
+    {
+        return view('schedules.index', $this->calendar->calendarData(
+            request()->query('date'),
+            request()->query('view')
+        ));
     }
 
     public function create()
@@ -46,6 +55,8 @@ class ScheduleController extends BaseCrudController
         return [
             'patients' => Patient::query()->orderBy('name')->get(),
             'tutors' => Tutor::query()->orderBy('name')->get(),
+            'preselectedPatientId' => (int) request()->query('patient_id'),
+            'preselectedTutorId' => (int) request()->query('tutor_id'),
         ];
     }
 }

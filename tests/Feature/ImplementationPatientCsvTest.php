@@ -40,7 +40,7 @@ class ImplementationPatientCsvTest extends TestCase
 
         $this->get(route('implementation.index', ['step' => 4]))
             ->assertOk()
-            ->assertSee('CPF do tutor responsável')
+            ->assertSee('CPF do responsável')
             ->assertSee('Nome do paciente')
             ->assertSee('Detectada');
 
@@ -120,7 +120,7 @@ class ImplementationPatientCsvTest extends TestCase
             ->assertSee('Informe o nome do paciente.')
             ->assertSee('Informe o nascimento em DD/MM/AAAA ou AAAA-MM-DD.')
             ->assertSee('Informe um peso válido.')
-            ->assertSee('Nenhum tutor com este CPF foi encontrado')
+            ->assertSee('Nenhum responsável com este CPF foi encontrado')
             ->assertSee('A data de nascimento não pode estar no futuro.')
             ->assertSee('O peso deve ser maior que zero.')
             ->assertSee('Substituir CSV');
@@ -153,7 +153,7 @@ class ImplementationPatientCsvTest extends TestCase
 
         $this->get(route('implementation.index', ['step' => 5]))
             ->assertOk()
-            ->assertSee('Nenhum tutor com este CPF foi encontrado');
+            ->assertSee('Nenhum responsável com este CPF foi encontrado');
 
         $this->assertDatabaseCount('patients', 0);
     }

@@ -19,7 +19,7 @@ class FinancialTransactionService extends BaseService
     public function paginate(int $perPage = 15, array $filters = []): LengthAwarePaginator
     {
         return FinancialTransaction::query()
-            ->with(['supplier', 'purchaseEntry'])
+            ->with(['supplier', 'purchaseEntry', 'sale'])
             ->when($filters['purchase_entry_id'] ?? null, fn ($query, $purchaseEntryId) => $query->where('purchase_entry_id', $purchaseEntryId))
             ->when($filters['supplier_id'] ?? null, fn ($query, $supplierId) => $query->where('supplier_id', $supplierId))
             ->when($filters['status'] ?? null, fn ($query, $status) => $query->where('status', $status))
@@ -33,13 +33,30 @@ class FinancialTransactionService extends BaseService
     public function findOrFail(int $id): Model
     {
         return FinancialTransaction::query()
-            ->with(['supplier', 'purchaseEntry'])
+            ->with(['supplier', 'purchaseEntry', 'sale'])
             ->findOrFail($id);
+    }
+
+    public function update(int $id, array $data): Model
+    {
+        $transaction = FinancialTransaction::query()->with('sale')->findOrFail($id);
+        $this->ensureNotManagedBySale($transaction);
+
+        return parent::update($transaction->id, $data);
+    }
+
+    public function delete(int $id): bool
+    {
+        $transaction = FinancialTransaction::query()->with('sale')->findOrFail($id);
+        $this->ensureNotManagedBySale($transaction);
+
+        return parent::delete($transaction->id);
     }
 
     public function markAsPaid(int $id): FinancialTransaction
     {
-        $transaction = FinancialTransaction::query()->findOrFail($id);
+        $transaction = FinancialTransaction::query()->with('sale')->findOrFail($id);
+        $this->ensureNotManagedBySale($transaction);
 
         $transaction->update([
             'status' => 'paid',
@@ -51,7 +68,8 @@ class FinancialTransactionService extends BaseService
 
     public function cancel(int $id): FinancialTransaction
     {
-        $transaction = FinancialTransaction::query()->findOrFail($id);
+        $transaction = FinancialTransaction::query()->with('sale')->findOrFail($id);
+        $this->ensureNotManagedBySale($transaction);
 
         $transaction->update([
             'status' => 'cancelled',
@@ -132,7 +150,7 @@ class FinancialTransactionService extends BaseService
     private function upcomingTransactions(): Collection
     {
         return FinancialTransaction::query()
-            ->with(['supplier', 'purchaseEntry'])
+            ->with(['supplier', 'purchaseEntry', 'sale'])
             ->where('status', 'pending')
             ->whereBetween('due_date', [today(), today()->addDays(15)])
             ->orderBy('due_date')
@@ -143,7 +161,7 @@ class FinancialTransactionService extends BaseService
     private function overdueTransactions(): Collection
     {
         return FinancialTransaction::query()
-            ->with(['supplier', 'purchaseEntry'])
+            ->with(['supplier', 'purchaseEntry', 'sale'])
             ->where(function ($query) {
                 $query
                     ->where('status', 'overdue')
@@ -156,5 +174,16 @@ class FinancialTransactionService extends BaseService
             ->orderBy('due_date')
             ->limit(12)
             ->get();
+    }
+
+    private function ensureNotManagedBySale(FinancialTransaction $transaction): void
+    {
+        if (! $transaction->sale) {
+            return;
+        }
+
+        throw \Illuminate\Validation\ValidationException::withMessages([
+            'transaction' => 'Este recebimento pertence a uma venda. Registre recebimentos, devolucoes ou cancelamentos pelo PDV.',
+        ]);
     }
 }

@@ -13,9 +13,10 @@ use Illuminate\Support\Facades\DB;
 
 class PurchaseEntryService
 {
-    public function __construct(private readonly InventoryMovementService $inventoryMovementService)
-    {
-    }
+    public function __construct(
+        private readonly InventoryMovementService $inventoryMovementService,
+        private readonly ReplenishmentPurchaseDecisionService $replenishmentDecisions,
+    ) {}
 
     public function paginate(int $perPage = 15): LengthAwarePaginator
     {
@@ -127,7 +128,7 @@ class PurchaseEntryService
                 continue;
             }
 
-            $normalized = $this->normalizeItem($item);
+            $normalized = $this->normalizeItem($entry, $item);
 
             if ($normalized === null) {
                 continue;
@@ -137,7 +138,7 @@ class PurchaseEntryService
         }
     }
 
-    private function normalizeItem(array $item): ?array
+    private function normalizeItem(PurchaseEntry $entry, array $item): ?array
     {
         $productId = $item['product_id'] ?? null;
         $quantity = (float) ($item['quantity'] ?? 0);
@@ -169,6 +170,17 @@ class PurchaseEntryService
             ? (float) $minimumStock
             : null;
         $metadata = $this->decodeMetadata($item['intelligence_metadata'] ?? null);
+        $intelligenceStatus = trim((string) ($item['intelligence_status'] ?? '')) ?: null;
+        $metadata = $this->replenishmentDecisions->evaluate(
+            $entry,
+            $product,
+            $quantity,
+            $unitCost,
+            $metadata,
+            $intelligenceStatus,
+            $item['replenishment_adjustment_reason'] ?? null,
+            $item['replenishment_adjustment_note'] ?? null,
+        );
 
         return [
             'product_id' => $product->id,
@@ -182,7 +194,7 @@ class PurchaseEntryService
             'margin_percent' => $marginPercent,
             'update_sale_price' => (bool) ($item['update_sale_price'] ?? false),
             'minimum_stock_after_entry' => $minimumStock,
-            'intelligence_status' => trim((string) ($item['intelligence_status'] ?? '')) ?: null,
+            'intelligence_status' => $intelligenceStatus,
             'intelligence_metadata' => array_merge($metadata, [
                 'normalized_at' => now()->toDateTimeString(),
                 'product_cost_before_entry' => (float) $product->cost_price,

@@ -6,6 +6,7 @@ use App\Core\Support\DocumentNormalizer;
 use App\Core\Validation\Rules\ValidCpf;
 use App\Modules\Implementation\Contracts\CsvImportService;
 use App\Modules\Patients\Models\Patient;
+use App\Modules\Patients\Services\PatientTaxonomyService;
 use App\Modules\Tutors\Models\Tutor;
 use DateTimeImmutable;
 use DomainException;
@@ -24,7 +25,7 @@ class PatientCsvImportService implements CsvImportService
         'tutor_documento' => [
             'field' => 'tutor_document',
             'source_label' => 'tutor_documento',
-            'target_label' => 'CPF do tutor responsável',
+            'target_label' => 'CPF do responsável',
         ],
         'nome_pet' => [
             'field' => 'name',
@@ -62,6 +63,10 @@ class PatientCsvImportService implements CsvImportService
             'target_label' => 'Observações',
         ],
     ];
+
+    public function __construct(private readonly PatientTaxonomyService $taxonomy)
+    {
+    }
 
     /**
      * @return array<int, array<string, string>>
@@ -155,7 +160,7 @@ class PatientCsvImportService implements CsvImportService
                     : null;
 
                 if ($values['tutor_document'] !== null && $tutor === null) {
-                    $rowErrors[] = 'Nenhum tutor com este CPF foi encontrado na clínica selecionada.';
+                    $rowErrors[] = 'Nenhum responsável com este CPF foi encontrado na clínica selecionada.';
                 }
 
                 $values['tutor_id'] = $tutor?->id;
@@ -230,19 +235,26 @@ class PatientCsvImportService implements CsvImportService
                     ->first();
 
                 if ($tutor === null) {
-                    $errors[] = 'O tutor responsável não está mais disponível para esta clínica.';
+                    $errors[] = 'O responsável não está mais disponível para esta clínica.';
                 }
 
                 if ($errors !== []) {
                     throw new DomainException(implode(' ', array_unique($errors)));
                 }
 
+                $taxonomy = $this->taxonomy->applyToPatientData([
+                    'species' => $values['species'],
+                    'breed' => $values['breed'],
+                ], $clinicId);
+
                 Patient::query()->create([
                     'clinic_id' => $clinicId,
                     'tutor_id' => $tutor->id,
                     'name' => $values['name'],
-                    'species' => $values['species'],
-                    'breed' => $values['breed'],
+                    'animal_species_id' => $taxonomy['animal_species_id'],
+                    'species' => $taxonomy['species'],
+                    'animal_breed_id' => $taxonomy['animal_breed_id'],
+                    'breed' => $taxonomy['breed'],
                     'gender' => $values['gender'],
                     'birth_date' => $values['birth_date'],
                     'weight' => $values['weight'],
@@ -358,7 +370,7 @@ class PatientCsvImportService implements CsvImportService
                 'notes' => ['nullable', 'string', 'max:5000'],
             ],
             [
-                'tutor_document.required' => 'Informe o CPF do tutor responsável.',
+                'tutor_document.required' => 'Informe o CPF do responsável.',
                 'name.required' => 'Informe o nome do paciente.',
                 'name.max' => 'O nome deve ter no máximo 255 caracteres.',
                 'species.max' => 'A espécie deve ter no máximo 255 caracteres.',

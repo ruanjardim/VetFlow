@@ -33,6 +33,7 @@ QUEUE_CONNECTION=database
 FILESYSTEM_DISK=local
 VETFLOW_SEED_DEMO_USER=false
 VETFLOW_QUEUE_MODE=worker
+VETFLOW_RELEASE_SHA=<full-40-character-git-sha>
 ```
 
 Generate a real `APP_KEY` during provisioning:
@@ -82,17 +83,33 @@ Laravel filesystem. In production:
 Run the automated runtime check after migrations and caches are ready:
 
 ```bash
-php artisan vetflow:release:check --backup-confirmed
+php artisan vetflow:runtime:probe
+php artisan vetflow:runtime:probe --verify --probe=<ULID> \
+  --evidence=/secure/evidence/runtime-evidence.json
+php artisan vetflow:release:check \
+  --runtime-evidence=/secure/evidence/runtime-evidence.json \
+  --backup-evidence=/secure/evidence/restore-evidence.json
 ```
 
-Use `--backup-confirmed` only after an operator has verified that a restorable
-database backup exists for the release. The command also checks the application
+Follow the [backup restore drill](deployment/backup-restore-drill.md) and prefer
+its generated evidence. Use `--backup-confirmed` only as a documented manual
+fallback after an operator has verified that a restorable database backup
+exists for the release. The command also checks the application
 key, production debug/HTTPS settings, database connectivity, pending
 migrations, logging, queue configuration, the `jobs` table when applicable,
-and a temporary write/delete probe on the configured storage disk.
+and a temporary write/delete probe on the configured storage disk. The
+[runtime operations probe](deployment/runtime-operations-probe.md) separately
+proves that a real asynchronous job can read the prepared persistent marker and
+write a verifiable result.
+
+The release gate also requires a complete Git SHA in staging and production.
+Set `VETFLOW_RELEASE_SHA` in a generic provider. On Render, the application
+automatically falls back to the platform-provided `RENDER_GIT_COMMIT`.
 
 After deployment:
 
+- request `/up` and confirm a successful health response;
+- request `/ops/release` and compare `release.sha` with the intended commit;
 - login as an active administrator;
 - confirm clinic selection/context;
 - run one product lookup without requiring paid providers;

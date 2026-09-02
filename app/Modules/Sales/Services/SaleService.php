@@ -23,6 +23,15 @@ use Illuminate\Validation\ValidationException;
 
 class SaleService extends BaseService
 {
+    public const PAYMENT_METHOD_LABELS = [
+        'cash' => 'Dinheiro',
+        'pix' => 'Pix',
+        'debit_card' => 'Cartao debito',
+        'credit_card' => 'Cartao credito',
+        'transfer' => 'Transferencia',
+        'other' => 'Outro',
+    ];
+
     public function __construct(
         SaleRepositoryInterface $repository,
         private readonly InventoryMovementService $inventoryMovementService,
@@ -363,19 +372,86 @@ class SaleService extends BaseService
         });
     }
 
+    public function addPayment(int $id, array $data): Sale
+    {
+        return DB::transaction(function () use ($id, $data) {
+            /** @var Sale $sale */
+            $sale = Sale::query()
+                ->with(['items', 'payments', 'financialTransaction'])
+                ->findOrFail($id);
+
+            if ($sale->status !== 'completed' || (float) $sale->return_total > 0) {
+                throw ValidationException::withMessages([
+                    'sale' => 'Registre recebimentos apenas para vendas concluidas sem devolucoes.',
+                ]);
+            }
+
+            $outstanding = round(max(0, (float) $sale->total - (float) $sale->paid_total), 2);
+            $amount = round((float) $data['amount'], 2);
+
+            if ($outstanding <= 0) {
+                throw ValidationException::withMessages([
+                    'sale' => 'Esta venda ja esta totalmente quitada.',
+                ]);
+            }
+
+            if ($amount > $outstanding) {
+                throw ValidationException::withMessages([
+                    'amount' => 'O recebimento nao pode ser maior que o saldo pendente de R$ '.number_format($outstanding, 2, ',', '.').'.',
+                ]);
+            }
+
+            $payment = $sale->payments()->create([
+                'method' => $data['method'],
+                'amount' => $amount,
+                'installments' => max(1, (int) ($data['installments'] ?? 1)),
+                'card_brand' => $data['card_brand'] ?? null,
+                'acquirer' => $data['acquirer'] ?? null,
+                'paid_at' => $data['paid_at'] ?? now(),
+                'reference' => $data['reference'] ?? null,
+                'transaction_reference' => $data['transaction_reference'] ?? $data['reference'] ?? null,
+                'status' => 'paid',
+                'notes' => $data['notes'] ?? null,
+            ]);
+
+            $this->recalculateTotals($sale->refresh());
+
+            $sale = $sale->refresh()->load('financialTransaction');
+            $this->syncFinancialTransactionPaymentStatus($sale, $payment->paid_at);
+
+            $this->recordSaleEvent(
+                $sale,
+                'payment_received',
+                null,
+                null,
+                $amount,
+                'Recebimento registrado',
+                null,
+                [
+                    'payment_id' => $payment->id,
+                    'method' => $payment->method,
+                    'reference' => $payment->reference,
+                ],
+                false
+            );
+
+            return $sale->refresh();
+        });
+    }
+
     public function cashierSummary(?string $from = null, ?string $to = null): array
     {
         [$start, $end] = $this->cashierRange($from, $to);
 
         $sales = Sale::query()
-            ->with(['items', 'payments', 'tutor', 'patient', 'serviceOrder'])
+            ->with(['items', 'payments', 'tutor', 'patient', 'serviceOrder', 'seller'])
             ->where('status', 'completed')
             ->whereBetween('sold_at', [$start, $end])
             ->latest('sold_at')
             ->get();
 
         $payments = SalePayment::query()
-            ->with('sale')
+            ->with('sale.seller')
             ->whereBetween('paid_at', [$start, $end])
             ->whereHas('sale', fn ($query) => $query->where('status', 'completed'))
             ->where('status', 'paid')
@@ -412,6 +488,8 @@ class SaleService extends BaseService
         $refunds = $refundEvents->sum(fn (SaleEvent $event) => (float) $event->amount);
         $change = $sales->sum(fn (Sale $sale) => (float) $sale->change_total);
         $pending = $sales->sum(fn (Sale $sale) => max(0, (float) $sale->total - (float) $sale->paid_total));
+        $paymentReconciliation = $this->paymentReconciliation($payments, $refundEvents, $change);
+        $reconciledTotal = collect($paymentReconciliation)->sum('expected');
 
         return [
             'period' => [
@@ -438,10 +516,13 @@ class SaleService extends BaseService
                 'non_cash_received' => max(0, $received - $cashReceived),
                 'change' => $change,
                 'cash_drawer' => max(0, $cashReceived - $change - $cashRefunds),
+                'reconciled_total' => $reconciledTotal,
                 'pending' => $pending,
                 'average_ticket' => $sales->count() > 0 ? $total / $sales->count() : 0,
             ],
             'payments_by_method' => $this->paymentsByMethod($payments),
+            'payment_reconciliation' => $paymentReconciliation,
+            'seller_performance' => $this->sellerPerformance($sales, $payments),
             'recent_sales' => $sales->take(20)->values(),
             'open_sales' => $openSales,
             'top_items' => $this->topSoldItems($sales),
@@ -462,11 +543,31 @@ class SaleService extends BaseService
             $periodFrom = Carbon::parse($period['from'])->startOfDay();
             $periodTo = Carbon::parse($period['to'])->endOfDay();
             $expectedCash = round((float) $stats['cash_drawer'], 2);
-            $expectedTotal = round((float) $stats['net_received'], 2);
-            $countedCash = round((float) ($data['counted_cash'] ?? 0), 2);
-            $countedTotal = round((float) ($data['counted_total'] ?? $expectedTotal), 2);
+            $expectedTotal = round((float) $stats['reconciled_total'], 2);
+            $hasMethodReconciliation = isset($data['counted_methods']) && is_array($data['counted_methods']);
+            $methodReconciliation = collect($summary['payment_reconciliation'])
+                ->map(function (array $method) use ($data, $hasMethodReconciliation) {
+                    $counted = $hasMethodReconciliation
+                        ? (float) ($data['counted_methods'][$method['method']] ?? 0)
+                        : ($method['method'] === 'cash'
+                            ? (float) ($data['counted_cash'] ?? 0)
+                            : (float) $method['expected']);
+
+                    return array_merge($method, [
+                        'counted' => round($counted, 2),
+                        'difference' => round($counted - (float) $method['expected'], 2),
+                    ]);
+                })
+                ->values()
+                ->all();
+            $countedCash = round((float) collect($methodReconciliation)->firstWhere('method', 'cash')['counted'], 2);
+            $countedTotal = $hasMethodReconciliation
+                ? round((float) collect($methodReconciliation)->sum('counted'), 2)
+                : round((float) ($data['counted_total'] ?? $expectedTotal), 2);
             $cashDifference = round($countedCash - $expectedCash, 2);
             $totalDifference = round($countedTotal - $expectedTotal, 2);
+            $methodsBalanced = collect($methodReconciliation)
+                ->every(fn (array $method) => abs((float) $method['difference']) < 0.01);
 
             return CashRegisterClosure::query()->create([
                 'clinic_id' => $data['clinic_id'] ?? null,
@@ -481,7 +582,9 @@ class SaleService extends BaseService
                 'expected_total' => $expectedTotal,
                 'counted_total' => $countedTotal,
                 'total_difference' => $totalDifference,
-                'status' => abs($cashDifference) < 0.01 && abs($totalDifference) < 0.01
+                'status' => abs($cashDifference) < 0.01
+                    && abs($totalDifference) < 0.01
+                    && (! $hasMethodReconciliation || $methodsBalanced)
                     ? 'balanced'
                     : 'difference',
                 'notes' => $data['notes'] ?? null,
@@ -493,6 +596,9 @@ class SaleService extends BaseService
                     'cash_received' => $stats['cash_received'],
                     'cash_refunds' => $stats['cash_refunds'],
                     'change' => $stats['change'],
+                    'payment_reconciliation_version' => 1,
+                    'payment_reconciliation' => $methodReconciliation,
+                    'reconciliation_source' => $hasMethodReconciliation ? 'by_method' : 'legacy_totals',
                 ],
             ]);
         });
@@ -649,16 +755,18 @@ class SaleService extends BaseService
                 continue;
             }
 
+            $status = $payment['status'] ?? 'paid';
+
             $sale->payments()->create([
                 'method' => $method,
                 'amount' => $amount,
                 'installments' => max(1, (int) ($payment['installments'] ?? 1)),
                 'card_brand' => $payment['card_brand'] ?? null,
                 'acquirer' => $payment['acquirer'] ?? null,
-                'paid_at' => $payment['paid_at'] ?? now(),
+                'paid_at' => $status === 'paid' ? ($payment['paid_at'] ?? now()) : null,
                 'reference' => $payment['reference'] ?? null,
                 'transaction_reference' => $payment['transaction_reference'] ?? $payment['reference'] ?? null,
-                'status' => $payment['status'] ?? 'paid',
+                'status' => $status,
                 'notes' => $payment['notes'] ?? null,
             ]);
         }
@@ -672,7 +780,9 @@ class SaleService extends BaseService
         $discount = (float) ($sale->discount_total ?? 0);
         $additions = (float) ($sale->additions_total ?? 0);
         $total = max(0, $subtotal + $additions - $discount);
-        $paid = (float) $sale->payments->sum('amount');
+        $paid = (float) $sale->payments
+            ->filter(fn (SalePayment $payment) => ($payment->status ?? 'paid') === 'paid')
+            ->sum('amount');
         $itemCostTotal = (float) $sale->items->sum(fn ($item) => (float) $item->cost_unit_price * (float) $item->quantity);
         $grossProfit = round($total - $itemCostTotal, 2);
 
@@ -752,6 +862,22 @@ class SaleService extends BaseService
         }
 
         $this->recordSaleEvent($sale, 'completed', null, null, (float) $sale->total, 'Venda concluida');
+    }
+
+    private function syncFinancialTransactionPaymentStatus(Sale $sale, mixed $paidAt): void
+    {
+        $financialTransaction = $sale->financialTransaction;
+
+        if (! $financialTransaction) {
+            return;
+        }
+
+        $isPaid = $sale->payment_status === 'paid';
+
+        $financialTransaction->update([
+            'status' => $isPaid ? 'paid' : 'pending',
+            'paid_at' => $isPaid ? $paidAt : null,
+        ]);
     }
 
     private function applyStockMovements(Sale $sale): void
@@ -1040,6 +1166,77 @@ class SaleService extends BaseService
             ->all();
     }
 
+    private function paymentReconciliation($payments, $refundEvents, float $change): array
+    {
+        $receivedByMethod = $payments
+            ->groupBy('method')
+            ->map(fn ($items) => round((float) $items->sum('amount'), 2));
+        $refundsByMethod = $refundEvents
+            ->groupBy(fn (SaleEvent $event) => $event->metadata['refund_method'] ?? 'other')
+            ->map(fn ($items) => round((float) $items->sum('amount'), 2));
+
+        return collect(self::PAYMENT_METHOD_LABELS)
+            ->map(function (string $label, string $method) use ($receivedByMethod, $refundsByMethod, $change) {
+                $received = (float) $receivedByMethod->get($method, 0);
+                $refunds = (float) $refundsByMethod->get($method, 0);
+                $cashChange = $method === 'cash' ? $change : 0;
+
+                return [
+                    'method' => $method,
+                    'label' => $label,
+                    'received' => round($received, 2),
+                    'refunds' => round($refunds, 2),
+                    'change' => round($cashChange, 2),
+                    'expected' => round(max(0, $received - $refunds - $cashChange), 2),
+                ];
+            })
+            ->values()
+            ->all();
+    }
+
+    private function sellerPerformance($sales, $payments): array
+    {
+        $salesBySeller = $sales->groupBy(
+            fn (Sale $sale) => $sale->seller_user_id ?: 'unassigned'
+        );
+        $paymentsBySeller = $payments->groupBy(
+            fn (SalePayment $payment) => $payment->sale?->seller_user_id ?: 'unassigned'
+        );
+
+        return $salesBySeller
+            ->keys()
+            ->merge($paymentsBySeller->keys())
+            ->unique()
+            ->map(function ($sellerKey) use ($salesBySeller, $paymentsBySeller) {
+                $sellerSales = $salesBySeller->get($sellerKey, collect());
+                $sellerPayments = $paymentsBySeller->get($sellerKey, collect());
+                $seller = $sellerSales->first()?->seller
+                    ?? $sellerPayments->first()?->sale?->seller;
+                $soldTotal = $sellerSales->sum(fn (Sale $sale) => (float) $sale->total);
+                $grossProfit = $sellerSales->sum(fn (Sale $sale) => (float) $sale->gross_profit_total);
+
+                return [
+                    'seller_user_id' => $sellerKey === 'unassigned' ? null : (int) $sellerKey,
+                    'seller_name' => $seller?->name ?? 'Sem operador informado',
+                    'sales_count' => $sellerSales->count(),
+                    'sold_total' => $soldTotal,
+                    'received' => $sellerPayments->sum(
+                        fn (SalePayment $payment) => (float) $payment->amount
+                    ),
+                    'pending' => $sellerSales->sum(
+                        fn (Sale $sale) => max(0, (float) $sale->total - (float) $sale->paid_total)
+                    ),
+                    'gross_profit' => $grossProfit,
+                    'gross_margin_percent' => $soldTotal > 0
+                        ? round(($grossProfit / $soldTotal) * 100, 2)
+                        : null,
+                ];
+            })
+            ->sortByDesc(fn (array $seller) => max($seller['sold_total'], $seller['received']))
+            ->values()
+            ->all();
+    }
+
     private function topSoldItems($sales): array
     {
         return $sales
@@ -1059,13 +1256,6 @@ class SaleService extends BaseService
 
     private function paymentMethodLabel(string $method): string
     {
-        return match ($method) {
-            'cash' => 'Dinheiro',
-            'pix' => 'Pix',
-            'debit_card' => 'Cartao debito',
-            'credit_card' => 'Cartao credito',
-            'transfer' => 'Transferencia',
-            default => 'Outro',
-        };
+        return self::PAYMENT_METHOD_LABELS[$method] ?? 'Outro';
     }
 }

@@ -1,6 +1,6 @@
 # KingHost Staging Runbook
 
-Updated: 2026-08-01
+Updated: 2026-08-23
 
 This runbook prepares the first VetFlow staging environment on KingHost shared
 Linux hosting. It is intentionally limited to fictitious staging data. It does
@@ -153,8 +153,14 @@ After any change to the queue settings:
 
 ```bash
 php artisan config:cache
-php artisan vetflow:queue:drain --max-jobs=1 --max-time=5 --timeout=3 --tries=1
+php artisan vetflow:runtime:probe
 ```
+
+Record the printed ULID, let the authenticated cron cycle process it, and then
+generate evidence as described in the
+[runtime operations probe](runtime-operations-probe.md). Preparing before a
+normal deploy and processing afterward also verifies the configured storage
+across that lifecycle boundary.
 
 ## 7. Backup And Restore Drill
 
@@ -170,13 +176,18 @@ Before the first migration against staging:
 6. Record the backup identifier, restore time, result, operator, and cleanup
    decision without recording credentials.
 
-Only after the isolated restore succeeds may the operator attest:
+Use the repository's [backup restore drill](backup-restore-drill.md) to capture
+control totals and produce a recent evidence file. Only after the isolated
+restore and runtime probe succeed may the operator run:
 
 ```bash
-php artisan vetflow:release:check --backup-confirmed
+php artisan vetflow:release:check \
+  --runtime-evidence=/secure/evidence/runtime-evidence.json \
+  --backup-evidence=/secure/evidence/restore-evidence.json
 ```
 
-The flag is an attestation; it does not create or restore a backup.
+The commands do not create or import the provider backup; they verify the
+restored database without changing its records.
 
 ## 8. Smoke Tests
 
@@ -187,9 +198,10 @@ Follow the repository release checklist and additionally confirm:
   accessible;
 - an invalid cron token receives `403` and the valid KingHost job receives
   `204`;
-- a harmless queued job disappears from the `jobs` table;
+- the runtime-probe job disappears from the `jobs` table and produces approved
+  evidence;
 - `failed_jobs` remains empty after the queue probe;
-- a disposable uploaded image survives a normal deploy and can be deleted;
+- the runtime-probe sentinel crosses the selected restart/deploy boundary;
 - only fictitious records exist in the staging clinic.
 
 ## 9. Rollback

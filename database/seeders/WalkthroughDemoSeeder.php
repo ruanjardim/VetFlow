@@ -7,6 +7,9 @@ use App\Models\User;
 use App\Modules\Appointments\Models\Appointment;
 use App\Modules\Clinics\Models\Clinic;
 use App\Modules\Financial\Models\FinancialTransaction;
+use App\Modules\Implementation\Models\ImplementationImport;
+use App\Modules\Implementation\Models\ImplementationPilotCheck;
+use App\Modules\Implementation\Models\ImplementationPilotRelease;
 use App\Modules\Inventory\Models\InventoryMovement;
 use App\Modules\Patients\Models\Patient;
 use App\Modules\ProductIntelligence\Models\GlobalProduct;
@@ -16,6 +19,7 @@ use App\Modules\Products\Models\Product;
 use App\Modules\Sales\Models\Sale;
 use App\Modules\Sales\Models\SaleItem;
 use App\Modules\Sales\Models\SalePayment;
+use App\Modules\Suppliers\Models\Supplier;
 use App\Modules\Tutors\Models\Tutor;
 use App\Support\Demo\WalkthroughDemoFixture;
 use Illuminate\Database\Seeder;
@@ -31,15 +35,22 @@ class WalkthroughDemoSeeder extends Seeder
 
     public function run(): void
     {
-        $this->call(AuthorizationSeeder::class);
+        if (! Role::query()
+            ->whereNull('clinic_id')
+            ->where('slug', 'administrador')
+            ->exists()) {
+            $this->call(AuthorizationSeeder::class);
+        }
 
         DB::transaction(function (): void {
             $clinic = $this->seedClinic();
             $user = $this->seedUser($clinic);
             $this->seedTutorJourney($clinic);
+            $this->seedSupplier($clinic);
             $products = $this->seedProductIntelligence($clinic);
             $this->seedInventory($clinic, $products);
             $this->seedCommercialFlow($clinic, $user, $products);
+            $this->seedImplementationPilot($clinic, $user);
         });
     }
 
@@ -164,6 +175,27 @@ class WalkthroughDemoSeeder extends Seeder
                 'description' => 'Revisao pos-vacina e orientacao nutricional.',
                 'scheduled_at' => now()->addHours(3)->minute(0),
                 'status' => 'scheduled',
+            ]
+        );
+    }
+
+    private function seedSupplier(Clinic $clinic): void
+    {
+        Supplier::query()->updateOrCreate(
+            [
+                'clinic_id' => $clinic->id,
+                'document' => WalkthroughDemoFixture::SUPPLIER_DOCUMENT,
+            ],
+            [
+                'name' => 'Distribuidora Saude Animal Demo',
+                'contact_name' => 'Paula Ribeiro',
+                'email' => 'fornecedor.demo@vetflow.local',
+                'phone' => '(11) 4002-8901',
+                'whatsapp' => '(11) 94002-8901',
+                'city' => 'Sao Paulo',
+                'state' => 'SP',
+                'notes' => 'Fornecedor ficticio para validacao do piloto.',
+                'active' => true,
             ]
         );
     }
@@ -511,5 +543,84 @@ class WalkthroughDemoSeeder extends Seeder
                 'notes' => 'Conta a pagar ficticia para fluxo de caixa.',
             ]
         );
+    }
+
+    private function seedImplementationPilot(Clinic $clinic, User $user): void
+    {
+        $imports = [
+            'tutors' => ['Responsáveis', 1],
+            'patients' => ['Pacientes', 1],
+            'suppliers' => ['Fornecedores', 1],
+            'products' => ['Produtos', 3],
+            'stock' => ['Estoque inicial', 3],
+            'financial' => ['Financeiro', 2],
+        ];
+
+        foreach ($imports as $type => [$label, $count]) {
+            ImplementationImport::query()->updateOrCreate(
+                [
+                    'clinic_id' => $clinic->id,
+                    'entity_type' => $type,
+                    'file_name' => WalkthroughDemoFixture::IMPLEMENTATION_IMPORT_FILES[$type],
+                ],
+                [
+                    'user_id' => $user->id,
+                    'clinic_name' => $clinic->trade_name,
+                    'user_name' => $user->name,
+                    'entity_label' => $label,
+                    'data_source' => 'csv',
+                    'total_rows' => $count,
+                    'imported_count' => $count,
+                    'invalid_rows' => 0,
+                    'completed_at' => now()->subDay(),
+                ]
+            );
+        }
+
+        $checks = [
+            'data_reviewed' => 'Dados importados revisados',
+            'access_validated' => 'Acessos da equipe validados',
+            'training_completed' => 'Treinamento operacional realizado',
+        ];
+
+        foreach ($checks as $key => $label) {
+            ImplementationPilotCheck::query()->updateOrCreate(
+                [
+                    'clinic_id' => $clinic->id,
+                    'check_key' => $key,
+                    'notes' => WalkthroughDemoFixture::IMPLEMENTATION_NOTE,
+                ],
+                [
+                    'user_id' => $user->id,
+                    'clinic_name' => $clinic->trade_name,
+                    'user_name' => $user->name,
+                    'check_label' => $label,
+                    'completed' => true,
+                    'decided_at' => now()->subHours(12),
+                ]
+            );
+        }
+
+        $release = ImplementationPilotRelease::query()->firstOrNew([
+            'clinic_id' => $clinic->id,
+            'release_notes' => WalkthroughDemoFixture::PILOT_RELEASE_NOTES,
+        ]);
+
+        if (! $release->exists) {
+            $release->revision = ((int) ImplementationPilotRelease::query()
+                ->where('clinic_id', $clinic->id)
+                ->max('revision')) + 1;
+        }
+
+        $release->fill([
+            'user_id' => $user->id,
+            'clinic_name' => $clinic->trade_name,
+            'user_name' => $user->name,
+            'release_owner' => 'Admin Walkthrough',
+            'support_owner' => 'Suporte VetFlow Demo',
+            'planned_start_date' => today()->addWeek(),
+            'scope' => 'Cadastros, agenda, estoque, venda e financeiro com dados ficticios.',
+            'recorded_at' => now()->subHours(6),
+        ])->save();
     }
 }

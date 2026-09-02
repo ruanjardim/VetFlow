@@ -72,6 +72,11 @@ an explicit synchronization flow:
 There is no destructive delete action in this module. Administrators deactivate
 a collaborator when access must be blocked.
 
+Creation and updates also write an `audit_events` entry in the same transaction.
+The snapshot includes profile, status, clinic, and role slugs. A password change
+is acknowledged without retaining the password or its hash. Reading those
+events requires the separate `audit.manage` permission.
+
 ## Deployment
 
 Run `AuthorizationSeeder` after migrations in every environment so that new
@@ -93,3 +98,6 @@ php artisan db:seed --class=AuthorizationSeeder --force
 - rejection of custom or inactive roles;
 - soft-deleted role link restoration;
 - protection against administrator self-lockout.
+
+`tests/Feature/AdministrativeAuditTrailTest.php` additionally covers the safe,
+tenant-scoped audit snapshots produced by this module.

@@ -6,8 +6,119 @@ This project follows the spirit of Keep a Changelog, with one practical adjustme
 
 ## [Unreleased]
 
+### Security
+
+- Updated the frontend build chain to `nanoid` 3.3.18 and `postcss` 8.5.26,
+  clearing the current high/moderate npm advisories before the demo release.
+- Updated `league/commonmark` to 2.10.0, including the upstream fixes for the
+  August 2026 denial-of-service and unsafe-link parsing advisories.
+
 ### Added
 
+- Tenant-safe inventory-variance report for finalized cycle counts with
+  30/90/180-day or complete-history filters, line accuracy, preserved-cost
+  surplus/shortage impact, aggregated product ranking, soft-deleted history,
+  and a no-cache, formula-safe CSV export.
+- Clinic-scoped cycle counts with immutable opening snapshots, category scope,
+  progressive physical quantities, concurrent-stock-change protection,
+  single-use finalization, protected variance movements, and auditable
+  cancellation without stock side effects.
+- Clinic-scoped Pricing Radar for active products with mutually exclusive
+  missing-cost, missing-price, below-cost, break-even, low-margin, and adequate
+  signals plus current stock exposure, without automatic price changes.
+- Clinic-scoped product ABC analysis for the latest 30, 90, or 180 days,
+  ranking return-adjusted net revenue into explicit A/B/C cumulative bands and
+  showing current stock value as read-only purchasing and assortment context.
+- Clinic-scoped Stock Radar with mutually exclusive replenishment, no-recent-
+  demand, high-coverage, new, adequate, and unparameterized signals; cost-value
+  summaries, catalog filters, explicit 30/90/180-day references, and no stock
+  or purchase side effects.
+- Consolidated replenishment pilot portfolio for the 30-, 90-, and 180-day
+  windows plus complete history, combining sample metrics, maturity and latest
+  human-review freshness while explicitly warning that cohorts overlap.
+- Reverse-chronological, clinic-scoped replenishment pilot-review history with
+  period/decision filters and current-versus-stale evidence status, without
+  exposing stored hashes or snapshots.
+- Append-only human reviews for each replenishment validation period, bound to
+  an allowlisted report hash, isolated by clinic, and marked stale whenever the
+  underlying metrics, maturity, or product breakdown changes.
+- Advisory replenishment pilot-maturity panel with explicit comparable-decision,
+  product-coverage, evidence-quality, and reason-completeness references, plus
+  the next missing action and clear non-statistical/non-automatic boundaries.
+- Required, controlled reasons for valid replenishment purchase adjustments,
+  including a bounded note for `other`, decision schema version 2 persistence,
+  edit restoration, and safe reason visibility in purchase-decision history.
+- Product-level replenishment validation ranked by adjusted decisions, with
+  per-product adherence, adjustment rate, changed fields, unavailable evidence,
+  mean deviations, and direct links to the underlying decision list.
+- Explicit purchase-date windows for replenishment validation (30, 90, 180
+  days, or complete history), applied consistently to the clinic-scoped list
+  and summary with a 90-day pilot default.
+- Clinic-scoped replenishment validation metrics covering comparable, kept,
+  adjusted, and unavailable purchase decisions, adherence, adjustment types,
+  and mean absolute quantity/cost deviations with no automatic rule tuning.
+- Clinic-scoped, read-only replenishment purchase-decision history with
+  kept/adjusted/unavailable filters, transparent quantity and cost deltas,
+  supplier comparison, source-entry links, and private evidence internals.
+- Backend comparison of signed replenishment suggestions with saved purchase
+  quantity, unit cost, and supplier, including kept/adjusted classification,
+  transparent deltas, and exclusion of invalid or mismatched evidence.
+- Canonical replenishment evidence service shared by human review and purchase
+  prefill, with versioned snapshots, SHA-256 fingerprints, HMAC signatures,
+  and tamper detection as the basis for later validation metrics.
+- Append-only human review history for replenishment suggestions, including
+  reviewed/on-hold decisions, required hold notes, evidence snapshots,
+  superseded-review detection, and clinic isolation without automatic buying.
+- Tenant-scoped 90-day product demand signals in smart replenishment, with
+  completed-sale counts, returned quantities, monthly averages, safe purchase
+  prefill metadata, and no automatic quantity adjustment.
+- Supplier/product observations for recent received purchases, including
+  delivery count, received quantity, weighted cost, and valid lead-time samples
+  without automatic supplier ranking or promised-date claims.
+- Explainable stock coverage and rupture signals derived from current balance,
+  net daily demand, and observed supplier lead time, including explicit
+  insufficient-data states and no automatic purchase adjustment.
+- Evidence-validity indicators for backup and runtime probes, including safe
+  expiration deadlines, near-expiry warnings, invalid future-date detection,
+  and the same privacy-safe metadata in the readiness JSON report.
+- Permission-aware guided release plan in the Operations Center, translating
+  each current gate into a safe next step, suggested responsibility, and direct
+  interface anchor without executing changes or automating human approval.
+- Unified, read-only operational timeline for runtime probes, restore evidence,
+  smoke checks, and release decisions, with clinic/release filters and private
+  notes, hashes, paths, and evidence contents excluded from the interface.
+- Sanitized restore-evidence intake in the Operations Center, with a 512 KB
+  JSON boundary, freshness/shape validation, append-only tenant/release history,
+  duplicate detection, and a separate execution permission.
+- Interface-assisted runtime probe preparation and verification with an
+  append-only, clinic/release-scoped execution history and private evidence
+  output shared with the CLI release gate.
+- Protected Operations Center with shared CLI/UI release diagnostics, safe
+  backup/runtime evidence discovery, an append-only clinic-scoped smoke
+  checklist, evidence-bound human decisions, stale-decision detection, and
+  print-friendly/no-cache JSON reports.
+- Tenant-safe guided onboarding coverage in the Implementation assistant,
+  derived from the latest successful execution of each supported import block.
+- Read-only onboarding data-quality review for completed import blocks, with
+  transparent pending-record counts and the same accessible-clinic boundary.
+- Append-only clinic pilot checklist with attributed completion and reopening
+  decisions for data review, quality, access, backup, and training.
+- Versioned clinic pilot-release plans with operational and support owners,
+  planned date, functional scope, release notes, and attributed revisions.
+- Consolidated pilot-readiness gates with explicit human approval or hold,
+  immutable evidence snapshots, SHA-256 binding, and stale-decision detection.
+- Public no-cache release identity endpoint backed by a normalized full Git
+  SHA, with Render runtime detection and production release-gate validation.
+- End-to-end runtime operations probe that carries a synthetic persistent
+  storage sentinel through the real asynchronous queue, removes its temporary
+  artifacts after verification, and supplies fresh evidence to the release gate.
+- Read-only backup snapshot and isolated restore verification commands with
+  privacy-safe control totals, JSON evidence, and an evidence-aware release gate.
+- Tenant-scoped administrative audit trail for collaborator access and clinic
+  branding changes, with filtered read-only history and password redaction.
+- Clinic-scoped animal icon branding beside the VetFlow sidebar title, with
+  automatic species-based resolution, manual selection, an off mode, and a
+  dedicated administrator permission.
 - Root README with product overview, stack, setup, validation, and documentation links.
 - Root project status file.
 - Root agent guidance file.
@@ -56,6 +167,7 @@ This project follows the spirit of Keep a Changelog, with one practical adjustme
 - Release-readiness command covering application configuration, database,
   migrations, logging, queue, storage, and production backup confirmation.
 - Operational release checklist with rollback gates and smoke tests.
+
 - Explainable stock replenishment suggestions that combine current balance,
   minimum stock, and the last 180 days of received purchase history, with
   priority, confidence, supplier/cost context, and purchase-entry prefill.
@@ -64,8 +176,56 @@ This project follows the spirit of Keep a Changelog, with one practical adjustme
   smoke-test, and rollback procedures.
 - Disabled-by-default authenticated queue cron endpoint and bounded queue-drain
   command for low-volume shared-hosting staging.
+- Sales profitability report with period and item-type filters, proportional
+  sale-discount allocation, return-adjusted revenue and cost, category/item
+  breakdowns, and missing-cost or negative-margin alerts.
+- Assisted appointment reminder queue with prepared WhatsApp messages, contact
+  outcome tracking, appointment confirmation/cancellation synchronization,
+  destination snapshots, and clinic-scoped audit history.
+- Expandable permission-aware sidebar navigation grouped by clinical care,
+  agenda, sales and services, stock and purchasing, finance, catalogs, and
+  administration.
+- Extensible species and breed catalog for companion, exotic, wildlife, aquatic,
+  and large-animal care, with clinic-owned `Other` entries and structured
+  patient links that preserve legacy text snapshots.
+- Species-aware coat and pattern catalog covering coats, plumage, coloration,
+  and morphs, with automatic form filtering, clinic-owned `Other` entries,
+  structured patient links, search, and catalog navigation.
+- Searchable pathology catalog for companion, production, exotic, wildlife,
+  and aquatic species, with clinic-owned additions, automatic species
+  filtering, tenant-safe medical-record links, and preservation of the
+  free-text diagnosis.
+- Clinic-scoped hospitalization workflow for admissions, discharge records,
+  accommodation, operational follow-up, and patient-profile history without
+  altering the original medical record.
+- Structured clinical prescriptions linked to medical records, with repeatable
+  medication instructions, draft review, immutable finalization, auditable
+  cancellation, print layout, dedicated permission, and patient-profile
+  integration.
+- Tenant-safe exam results linked to structured requests, with reviewable
+  drafts, immutable finalization, auditable cancellation, source-request
+  protection, and an explicit no-automatic-interpretation boundary.
+- Append-only hospitalization evolutions with observation time, author,
+  optional vital-sign snapshots, tenant isolation, and write protection after
+  discharge or cancellation.
+- Auditable patient clinical alerts with active/resolved states, required
+  resolution notes, tenant isolation, and active visibility in the patient
+  profile, medical record, prescription, and hospitalization flows without
+  automatic severity or interpretation.
+- Permission-aware patient clinical timeline that orders appointments,
+  medical records, exam results, prescriptions, vaccinations,
+  hospitalization events/evolutions, and clinical alerts without duplicating
+  or interpreting their source records.
+
+### Fixed
+
+- Weekly schedule queries now include dated events on the final day of the
+  displayed range across SQLite, MySQL, and PostgreSQL date representations.
 
 ### Changed
+
+- Patient taxonomy administration now uses global accent-insensitive
+  alphabetical ordering and history-aware back navigation with safe fallbacks.
 
 - Filled the previously empty engineering process document with the current development workflow.
 - Replaced the database overview with a migration-aligned current model summary.

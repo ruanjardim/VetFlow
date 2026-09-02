@@ -6,6 +6,7 @@ use App\Models\Permission;
 use App\Models\Role;
 use App\Models\User;
 use App\Modules\Clinics\Models\Clinic;
+use App\Modules\Patients\Models\Patient;
 use App\Modules\Tutors\Models\Tutor;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -75,6 +76,49 @@ class PatientTutorFoundationTest extends TestCase
             'tutor_id' => $tutor->id,
             'name' => 'Thor',
         ]);
+    }
+
+    public function test_clinic_user_can_update_patient_with_any_species_for_an_own_tutor(): void
+    {
+        $clinic = $this->clinic('Clínica Própria', '12345678000193');
+        $otherClinic = $this->clinic('Clínica Externa', '12345678000194');
+        $originalTutor = $this->tutor($clinic, 'Tutor Original', '52998224725');
+        $replacementTutor = $this->tutor($clinic, 'Tutor Atualizado', '11144477735');
+        $otherTutor = $this->tutor($otherClinic, 'Tutor Externo', '93541134780');
+        $user = $this->authorizedUser($clinic);
+        $patient = Patient::query()->create([
+            'clinic_id' => $clinic->id,
+            'tutor_id' => $originalTutor->id,
+            'name' => 'Luna',
+            'species' => 'Canino',
+        ]);
+
+        $this->actingAs($user)
+            ->put(route('patients.update', $patient), [
+                'tutor_id' => $replacementTutor->id,
+                'name' => 'Estrela',
+                'species' => 'Equino',
+                'breed' => 'Mangalarga',
+                'gender' => 'Fêmea',
+                'birth_date' => '2020-01-15',
+                'weight' => 450.50,
+                'notes' => 'Paciente de grande porte.',
+            ])
+            ->assertRedirect(route('patients.index'));
+
+        $this->assertDatabaseHas('patients', [
+            'id' => $patient->id,
+            'clinic_id' => $clinic->id,
+            'tutor_id' => $replacementTutor->id,
+            'name' => 'Estrela',
+            'species' => 'Equino',
+            'breed' => 'Mangalarga',
+        ]);
+
+        $this->put(route('patients.update', $patient), [
+            'tutor_id' => $otherTutor->id,
+            'name' => 'Estrela',
+        ])->assertSessionHasErrors('tutor_id');
     }
 
     private function clinic(string $name, string $cnpj): Clinic

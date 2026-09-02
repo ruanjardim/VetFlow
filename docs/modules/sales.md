@@ -14,12 +14,19 @@ financial income, returns, refunds, cancellations, and sale event history.
   gross profit, and margin.
 - Snapshot product/service fields into sale items.
 - Register payment methods and card/acquirer references.
+- Register later receipts for completed sales that remain pending or partial.
 - Apply stock exits when a sale is completed.
 - Create financial income when a sale is completed.
 - Finish linked service orders after completed sales.
 - Cancel sales and reverse stock/financial effects.
 - Process partial/full returns and refunds.
 - Generate cashier summaries and closure records.
+- Group sales, receipts, balances, and gross margin by the operator responsible
+  for each sale.
+- Present realized gross profitability by period, item type, category, and
+  catalog item.
+- Present a product ABC analysis from return-adjusted net revenue with current
+  stock value as read-only context.
 
 ## Key Classes
 
@@ -27,6 +34,8 @@ financial income, returns, refunds, cancellations, and sale event history.
 | --- | --- |
 | `SaleController` | Web sales, cancellation, returns, cashier, and closure flows. |
 | `SaleService` | Sale orchestration and side effects. |
+| `SaleProfitabilityService` | Return-adjusted gross profitability reporting. |
+| `ProductAbcAnalysisService` | Product revenue ranking, cumulative ABC bands, filters, and pagination. |
 | `SaleRepository` | Data access. |
 | `Sale`, `SaleItem`, `SalePayment`, `SaleEvent` | Sale domain models. |
 | `CashRegisterClosure` | Cashier closure model. |
@@ -55,6 +64,37 @@ financial income, returns, refunds, cancellations, and sale event history.
   cancelling the original income record.
 - Cashier summary uses completed sales, paid payments, refunds, change, and
   pending totals for the selected period.
+- Cashier closure reconciles each supported payment method separately. The
+  expected value deducts refunds recorded in that method and, for cash, also
+  deducts change. Expected, counted, and difference values are preserved in
+  closure metadata so existing closure columns and records remain compatible.
+- Pending, cancelled, and refunded payment rows never compose the amount paid
+  on a sale or the cash received by the cashier.
+- The cashier report exposes operator performance for operational review. It is
+  not a commission calculation: commission rates, eligibility, and settlement
+  rules must be configured in a future dedicated step.
+- Later receipts are recorded as separate paid payment rows and keep an event
+  in the sale history. The linked financial income becomes paid only when the
+  sale balance is fully settled.
+- The profitability report uses the price and cost snapshots stored on sale
+  items. Sale-level discounts and additions are allocated proportionally among
+  the items, and returned quantities remove both their revenue and product
+  cost from the realized result.
+- Profitability is gross and operational: taxes, general expenses, and
+  commissions are not deducted. Services and custom lines do not currently
+  carry a cost snapshot, while products with a zero cost are highlighted for
+  review.
+- Historical periods reflect returns registered later because the report
+  presents the current realized outcome of the sales that originated in the
+  selected period.
+- Product ABC analysis supports explicit 30-, 90-, and 180-day windows. It
+  orders product snapshots by realized net revenue after refunds, then assigns
+  each item according to the cumulative share before that item: class A starts
+  below 80%, B from 80% to below 95%, and C from 95% onward. The item crossing
+  a threshold closes the band it started in, and zero-revenue items are C.
+- ABC filters never recalculate the original curve. Current product stock and
+  cost value are context only; the analysis does not change prices, suppliers,
+  purchases, product status, or inventory movements.
 
 ## Status Concepts
 
@@ -85,4 +125,7 @@ Protected by `sales.manage`.
 
 ## Tests
 
-Relevant coverage is present in `tests/Feature/OperationalFlowTest.php`.
+Relevant coverage is present in:
+
+- `tests/Feature/OperationalFlowTest.php`
+- `tests/Feature/ProductAbcAnalysisTest.php`
