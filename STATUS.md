@@ -19,6 +19,9 @@ The local working tree was clean before this documentation pass.
 - Authentication and password reset flows.
 - Active-user and permission middleware.
 - Clinics, access management, tutors, patients, schedules, appointments, inventory, products, product intelligence, purchase entries, suppliers, pet shop services, service orders, sales, financial, dashboard, and validation modules.
+- A reception-oriented quick PDV for PetShop and grooming, with service cards,
+  explicit size-price selection, responsible/pet filtering, compact cart, and
+  common payment shortcuts while retaining the advanced sale form.
 - Database migrations for the current operational model.
 - Feature tests for authentication, authorization, clinic tenant isolation, initial admin setup, and operational purchase/clinical flows.
 - Existing architecture and audit documentation under `docs/`.

@@ -545,6 +545,16 @@ document.addEventListener('DOMContentLoaded', () => {
     const paymentAmounts = Array.from(document.querySelectorAll('[data-sale-payment-amount]'));
     const paymentMethods = Array.from(document.querySelectorAll('[data-sale-payment-method]'));
     const receivedAmountInput = document.querySelector('[data-sale-received-amount]');
+    const quickItemButtons = Array.from(document.querySelectorAll('[data-sale-quick-item]'));
+    const quickCards = Array.from(document.querySelectorAll('[data-sale-quick-card]'));
+    const quickStatus = document.querySelector('[data-sale-quick-status]');
+    const quickCartEmpty = document.querySelector('[data-sale-cart-empty]');
+    const paymentShortcuts = Array.from(document.querySelectorAll('[data-sale-payment-shortcut]'));
+    const removeItemButtons = Array.from(document.querySelectorAll('[data-sale-remove-item]'));
+    const clinicSelect = document.querySelector('[data-sale-clinic-select]');
+    const tutorSelect = document.querySelector('[data-sale-tutor-select]');
+    const patientSelect = document.querySelector('[data-sale-patient-select]');
+    const serviceOrderSelect = document.querySelector('#service_order_id');
     const moneyInputs = [
       discountInput,
       additionsInput,
@@ -554,6 +564,7 @@ document.addEventListener('DOMContentLoaded', () => {
       ...paymentAmounts,
     ].filter(Boolean);
     const isLocked = saleForm?.dataset.saleLocked === '1';
+    const isQuickMode = saleForm?.dataset.saleMode === 'quick';
     let scanTimer = null;
 
     const toNumber = (value) => {
@@ -676,6 +687,8 @@ document.addEventListener('DOMContentLoaded', () => {
           setLookupStatus(checkoutStatus, 'Venda pronta para finalizar.', 'success');
         }
       }
+
+      refreshQuickCart();
 
       return { balance, paid, subtotal, total };
     };
@@ -861,6 +874,16 @@ document.addEventListener('DOMContentLoaded', () => {
       return type?.value === 'product' && product?.value === String(productId);
     });
 
+    const findServiceRow = (serviceId, unitPrice) => rows.find((row) => {
+      const type = rowField(row, '[data-sale-item-type]');
+      const service = rowField(row, '[data-sale-service-select]');
+      const price = rowField(row, '[data-sale-unit-price]');
+
+      return type?.value === 'service'
+        && service?.value === String(serviceId)
+        && Math.abs(toNumber(price?.value) - toNumber(unitPrice)) < 0.005;
+    });
+
     const findScannedRow = (item) => {
       const barcode = item.gtin || item.barcode;
 
@@ -872,6 +895,45 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const firstEmptyRow = () => rows.find(isEmptyRow);
+
+    const refreshQuickCart = () => {
+      if (!isQuickMode) {
+        return;
+      }
+
+      const hasItems = rows.some((row) => !isEmptyRow(row));
+
+      rows.forEach((row) => {
+        row.hidden = isEmptyRow(row);
+      });
+
+      if (quickCartEmpty) {
+        quickCartEmpty.hidden = hasItems;
+      }
+    };
+
+    const clearSaleRow = (row, recalculate = true) => {
+      const type = rowField(row, '[data-sale-item-type]');
+      const product = rowField(row, '[data-sale-product-select]');
+      const service = rowField(row, '[data-sale-service-select]');
+      const description = rowField(row, '[data-sale-description]');
+      const quantity = rowField(row, '[data-sale-quantity]');
+      const unitPrice = rowField(row, '[data-sale-unit-price]');
+      const itemDiscount = rowField(row, '[data-sale-item-discount]');
+
+      if (type) type.value = 'product';
+      if (product) product.value = '';
+      if (service) service.value = '';
+      if (description) description.value = '';
+      if (quantity) quantity.value = '';
+      if (unitPrice) unitPrice.value = '';
+      if (itemDiscount) itemDiscount.value = '';
+      row.dataset.saleGtin = '';
+
+      if (recalculate) {
+        calculateSaleTotals();
+      }
+    };
 
     const ensureProductOption = (select, item) => {
       if (!select || !item.product_id || select.querySelector(`option[value="${item.product_id}"]`)) {
@@ -933,6 +995,15 @@ document.addEventListener('DOMContentLoaded', () => {
     const addSaleItem = (item) => {
       if (item.type === 'product' && item.product_id) {
         const existingRow = findProductRow(item.product_id);
+
+        if (existingRow) {
+          fillSaleRow(existingRow, item, true);
+          return 'incremented';
+        }
+      }
+
+      if (item.type === 'service' && item.petshop_service_id) {
+        const existingRow = findServiceRow(item.petshop_service_id, item.unit_price);
 
         if (existingRow) {
           fillSaleRow(existingRow, item, true);
@@ -1048,6 +1119,142 @@ document.addEventListener('DOMContentLoaded', () => {
       applyManualRowDefaults(row);
     });
 
+    quickItemButtons.forEach((button) => button.addEventListener('click', () => {
+      const card = button.closest('[data-sale-quick-card]');
+      const price = card?.querySelector('[data-sale-quick-price]')?.value || '0';
+      const result = addSaleItem({
+        type: button.dataset.saleQuickType || 'service',
+        petshop_service_id: button.dataset.saleQuickId || null,
+        product_id: null,
+        description: button.dataset.saleQuickDescription || 'Servico PetShop',
+        quantity: 1,
+        unit_price: toNumber(price),
+      });
+
+      if (result === 'full') {
+        setLookupStatus(quickStatus, 'O carrinho esta cheio. Remova um item antes de continuar.', 'error');
+        return;
+      }
+
+      setLookupStatus(
+        quickStatus,
+        result === 'incremented' ? 'Quantidade do servico atualizada.' : 'Servico adicionado ao carrinho.',
+        'success',
+      );
+    }));
+
+    removeItemButtons.forEach((button) => button.addEventListener('click', () => {
+      const row = button.closest('[data-sale-item-row]');
+
+      if (row) {
+        clearSaleRow(row);
+        setLookupStatus(quickStatus, 'Item removido do carrinho.');
+      }
+    }));
+
+    const currentClinicId = () => String(clinicSelect?.value || saleForm?.dataset.saleClinicId || '');
+
+    const optionMatchesClinic = (option, clinicId) => {
+      if (!option.value || !option.dataset.clinicId) {
+        return true;
+      }
+
+      return clinicId !== '' && option.dataset.clinicId === clinicId;
+    };
+
+    const filterSelectByClinic = (select, clinicId) => {
+      if (!select) {
+        return;
+      }
+
+      Array.from(select.options).forEach((option) => {
+        const visible = optionMatchesClinic(option, clinicId);
+        option.hidden = !visible;
+        option.disabled = !visible;
+      });
+
+      if (select.selectedOptions[0]?.disabled) {
+        select.value = '';
+      }
+    };
+
+    const filterPatients = () => {
+      if (!patientSelect) {
+        return;
+      }
+
+      const clinicId = currentClinicId();
+      const tutorId = String(tutorSelect?.value || '');
+
+      Array.from(patientSelect.options).forEach((option) => {
+        const matchesClinic = optionMatchesClinic(option, clinicId);
+        const matchesTutor = !option.value || !tutorId || option.dataset.tutorId === tutorId;
+        const visible = matchesClinic && matchesTutor;
+        option.hidden = !visible;
+        option.disabled = !visible;
+      });
+
+      if (patientSelect.selectedOptions[0]?.disabled) {
+        patientSelect.value = '';
+      }
+    };
+
+    const filterSaleCatalog = () => {
+      const clinicId = currentClinicId();
+
+      filterSelectByClinic(tutorSelect, clinicId);
+      filterSelectByClinic(serviceOrderSelect, clinicId);
+      rows.forEach((row) => {
+        const product = rowField(row, '[data-sale-product-select]');
+        const service = rowField(row, '[data-sale-service-select]');
+        const previousProduct = product?.value || '';
+        const previousService = service?.value || '';
+
+        filterSelectByClinic(product, clinicId);
+        filterSelectByClinic(service, clinicId);
+
+        if ((previousProduct && !product?.value) || (previousService && !service?.value)) {
+          clearSaleRow(row, false);
+        }
+      });
+      quickCards.forEach((card) => {
+        card.hidden = !clinicId || card.dataset.clinicId !== clinicId;
+      });
+      filterPatients();
+      calculateSaleTotals();
+    };
+
+    clinicSelect?.addEventListener('change', filterSaleCatalog);
+    tutorSelect?.addEventListener('change', filterPatients);
+    patientSelect?.addEventListener('change', () => {
+      const tutorId = patientSelect.selectedOptions[0]?.dataset.tutorId || '';
+
+      if (tutorSelect && tutorId && !tutorSelect.value) {
+        tutorSelect.value = tutorId;
+        filterPatients();
+      }
+    });
+
+    const syncPaymentShortcuts = () => {
+      const selectedMethod = paymentMethods.find((select) => select.value)?.value || '';
+
+      paymentShortcuts.forEach((button) => {
+        button.classList.toggle('is-selected', button.dataset.salePaymentShortcut === selectedMethod);
+      });
+    };
+
+    paymentShortcuts.forEach((button) => button.addEventListener('click', () => {
+      const method = button.dataset.salePaymentShortcut || '';
+
+      if (paymentMethods[0]) {
+        paymentMethods[0].value = method;
+      }
+
+      fillBalancePayment();
+      syncPaymentShortcuts();
+    }));
+    paymentMethods.forEach((select) => select.addEventListener('change', syncPaymentShortcuts));
+
     moneyInputs.forEach((input) => formatMoneyInput(input, false));
     discountInput?.addEventListener('input', (event) => {
       applyMoneyMask(event.target);
@@ -1095,6 +1302,8 @@ document.addEventListener('DOMContentLoaded', () => {
       lookupSaleProduct();
     }
 
+    filterSaleCatalog();
+    syncPaymentShortcuts();
     calculateSaleTotals();
   }
 

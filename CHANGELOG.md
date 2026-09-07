@@ -15,6 +15,10 @@ This project follows the spirit of Keep a Changelog, with one practical adjustme
 
 ### Added
 
+- Reception-oriented quick PDV for PetShop and grooming, with active-service
+  cards, explicit base/size price choice, tenant-aware responsible/pet filters,
+  a compact removable cart, and common payment shortcuts while retaining the
+  advanced sale form.
 - Tenant-safe inventory-variance report for finalized cycle counts with
   30/90/180-day or complete-history filters, line accuracy, preserved-cost
   surplus/shortage impact, aggregated product ranking, soft-deleted history,

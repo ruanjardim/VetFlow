@@ -10,6 +10,8 @@ financial income, returns, refunds, cancellations, and sale event history.
 ## Main Responsibilities
 
 - Create sales from direct items or service-order items.
+- Offer a reception-oriented quick PDV for PetShop and grooming services while
+  retaining the advanced sale form for exceptional adjustments.
 - Calculate subtotal, discounts, additions, total, paid amount, change, cost,
   gross profit, and margin.
 - Snapshot product/service fields into sale items.
@@ -53,6 +55,11 @@ financial income, returns, refunds, cancellations, and sale event history.
 ## Important Behavior
 
 - Sale codes are generated as `VEN-000001`, `VEN-000002`, and so on.
+- New sales open in quick PDV mode by default. Active PetShop services can be
+  added as cards with an explicit base or size-specific price, patients are
+  filtered by responsible person, and common payment methods are available as
+  shortcuts. The advanced mode continues to use the same validated sale
+  workflow and persistence model.
 - Completed sales apply stock and financial effects once using
   `stock_applied` and `financial_applied`.
 - Draft sales can be updated before effects are applied.

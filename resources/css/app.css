@@ -1301,6 +1301,93 @@ textarea {
   gap: 8px;
 }
 
+.sale-form--quick textarea {
+  min-height: 72px;
+}
+
+.sale-quick-services {
+  background: linear-gradient(135deg, #f0fdfa 0%, #f8fafc 100%);
+  border: 1px solid #99f6e4;
+  border-radius: 12px;
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+}
+
+.sale-quick-services-header {
+  align-items: center;
+  display: flex;
+  gap: 16px;
+  justify-content: space-between;
+}
+
+.sale-quick-services-header h2,
+.sale-quick-services-header p {
+  margin: 0;
+}
+
+.sale-quick-services-header h2 {
+  font-size: 20px;
+}
+
+.sale-quick-services-header p {
+  color: #475569;
+  font-size: 13px;
+  margin-top: 3px;
+}
+
+.sale-quick-service-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.sale-quick-service-card {
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+}
+
+.sale-quick-service-card > div:first-child {
+  display: grid;
+  gap: 3px;
+}
+
+.sale-quick-service-card strong {
+  color: #0f172a;
+  font-size: 16px;
+}
+
+.sale-quick-service-card span,
+.sale-quick-service-card small {
+  color: #64748b;
+}
+
+.sale-quick-service-card label {
+  display: grid;
+  gap: 5px;
+}
+
+.sale-quick-service-card label span {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.sale-quick-cart th:nth-child(-n+3),
+.sale-quick-cart td:nth-child(-n+3) {
+  display: none;
+}
+
+.sale-quick-cart-empty {
+  color: #64748b;
+  margin: 14px 0 4px;
+  text-align: center;
+}
+
 .sale-checkout {
   background: #0f172a;
   border-radius: 8px;
@@ -1363,6 +1450,44 @@ textarea {
 
 .sale-checkout-payment input {
   color: #19202a;
+}
+
+.sale-payment-shortcuts {
+  display: grid;
+  gap: 8px;
+}
+
+.sale-payment-shortcuts > span {
+  color: #cbd5e1;
+  font-size: 12px;
+  text-transform: uppercase;
+}
+
+.sale-payment-shortcuts > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.sale-payment-shortcuts button.is-selected {
+  background: #14b8a6;
+  border-color: #2dd4bf;
+  color: #042f2e;
+}
+
+.sale-payment-details {
+  border: 1px solid #dbe3ee;
+  border-radius: 8px;
+  padding: 12px;
+}
+
+.sale-payment-details summary {
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.sale-payment-details > p {
+  margin: 8px 0 12px;
 }
 
 .sale-checkout .lookup-status {
