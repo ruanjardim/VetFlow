@@ -8,14 +8,22 @@ use App\Modules\Appointments\Contracts\AppointmentRepositoryInterface;
 use App\Modules\Appointments\Repositories\AppointmentRepository;
 use App\Modules\Clinics\Contracts\ClinicRepositoryInterface;
 use App\Modules\Clinics\Repositories\ClinicRepository;
+use App\Modules\Commissions\Contracts\CommissionRuleRepositoryInterface;
+use App\Modules\Commissions\Repositories\CommissionRuleRepository;
 use App\Modules\Financial\Contracts\FinancialTransactionRepositoryInterface;
 use App\Modules\Financial\Repositories\FinancialTransactionRepository;
+use App\Modules\Hospitalizations\Contracts\HospitalizationRepositoryInterface;
+use App\Modules\Hospitalizations\Repositories\HospitalizationRepository;
 use App\Modules\Inventory\Contracts\InventoryMovementRepositoryInterface;
 use App\Modules\Inventory\Repositories\InventoryMovementRepository;
+use App\Modules\MedicalRecords\Contracts\MedicalRecordRepositoryInterface;
+use App\Modules\MedicalRecords\Repositories\MedicalRecordRepository;
 use App\Modules\Patients\Contracts\PatientRepositoryInterface;
 use App\Modules\Patients\Repositories\PatientRepository;
 use App\Modules\PetShopServices\Contracts\PetShopServiceRepositoryInterface;
 use App\Modules\PetShopServices\Repositories\PetShopServiceRepository;
+use App\Modules\Prescriptions\Contracts\PrescriptionRepositoryInterface;
+use App\Modules\Prescriptions\Repositories\PrescriptionRepository;
 use App\Modules\Products\Contracts\ProductRepositoryInterface;
 use App\Modules\Products\Repositories\ProductRepository;
 use App\Modules\Sales\Contracts\SaleRepositoryInterface;
@@ -28,6 +36,8 @@ use App\Modules\Suppliers\Contracts\SupplierRepositoryInterface;
 use App\Modules\Suppliers\Repositories\SupplierRepository;
 use App\Modules\Tutors\Contracts\TutorRepositoryInterface;
 use App\Modules\Tutors\Repositories\TutorRepository;
+use App\Modules\Vaccinations\Contracts\VaccinationRepositoryInterface;
+use App\Modules\Vaccinations\Repositories\VaccinationRepository;
 use Illuminate\Support\ServiceProvider;
 
 class RepositoryServiceProvider extends ServiceProvider
@@ -50,6 +60,11 @@ class RepositoryServiceProvider extends ServiceProvider
         );
 
         $this->app->bind(
+            CommissionRuleRepositoryInterface::class,
+            CommissionRuleRepository::class
+        );
+
+        $this->app->bind(
             FinancialTransactionRepositoryInterface::class,
             FinancialTransactionRepository::class
         );
@@ -57,6 +72,16 @@ class RepositoryServiceProvider extends ServiceProvider
         $this->app->bind(
             InventoryMovementRepositoryInterface::class,
             InventoryMovementRepository::class
+        );
+
+        $this->app->bind(
+            HospitalizationRepositoryInterface::class,
+            HospitalizationRepository::class
+        );
+
+        $this->app->bind(
+            MedicalRecordRepositoryInterface::class,
+            MedicalRecordRepository::class
         );
 
         $this->app->bind(
@@ -72,6 +97,11 @@ class RepositoryServiceProvider extends ServiceProvider
         $this->app->bind(
             ProductRepositoryInterface::class,
             ProductRepository::class
+        );
+
+        $this->app->bind(
+            PrescriptionRepositoryInterface::class,
+            PrescriptionRepository::class
         );
 
         $this->app->bind(
@@ -92,6 +122,11 @@ class RepositoryServiceProvider extends ServiceProvider
         $this->app->bind(
             TutorRepositoryInterface::class,
             TutorRepository::class
+        );
+
+        $this->app->bind(
+            VaccinationRepositoryInterface::class,
+            VaccinationRepository::class
         );
 
         $this->app->bind(

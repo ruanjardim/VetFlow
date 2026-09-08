@@ -435,7 +435,7 @@ class PurchaseAndClinicalFlowTest extends TestCase
             'patient_id' => $localPatient->id,
             'tutor_id' => $localTutor->id,
             'title' => 'Agenda local listada',
-            'scheduled_date' => today()->addDay(),
+            'scheduled_date' => today()->endOfWeek(\Carbon\Carbon::SUNDAY),
             'scheduled_time' => '10:00',
             'status' => 'agendado',
         ]);

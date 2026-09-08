@@ -17,7 +17,7 @@ class InventoryMovementRepository extends BaseRepository implements InventoryMov
     public function paginate(int $perPage = 15): LengthAwarePaginator
     {
         return $this->model
-            ->with(['product', 'clinic'])
+            ->with(['product', 'clinic', 'sale', 'purchaseEntry'])
             ->latest('occurred_at')
             ->paginate($perPage);
     }

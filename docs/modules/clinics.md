@@ -13,6 +13,8 @@ operational data through `clinic_id`.
 - Create, list, update, and soft-delete clinic records.
 - Store the legal identity, trade name, CNPJ, contact, location, locale, and
   active status of each clinic.
+- Store the clinic's sidebar animal-icon preference independently from each
+  user's account.
 - Generate a stable ULID when a clinic is created.
 - Provide clinic choices to global workflows that require an explicit tenant,
   including implementation, purchases, sales, and financial operations.
@@ -33,6 +35,12 @@ operational data through `clinic_id`.
    Deletion is a soft delete and hides the record from normal registry queries
    while preserving its operational references.
 
+Clinic-scoped administrators with `clinic-branding.manage` can also open
+`/settings/branding`. They may let VetFlow choose the icon from the clinic
+users' species-of-practice preferences, select a fixed icon, or hide it. The
+automatic mode shows a species-specific icon only when the configured practice
+maps to one icon family; mixed or empty selections use the generic paw.
+
 Creating at least one clinic is a prerequisite for global users to start
 purchase-entry and sales workflows. Those screens link back to clinic creation
 when the registry is empty.
@@ -43,6 +51,8 @@ when the registry is empty.
 | --- | --- |
 | `ClinicController` | Thin CRUD controller using the shared base controller. |
 | `ClinicService` | Coordinates CRUD behavior through the repository contract. |
+| `ClinicBrandingController` | Updates only the authenticated tenant's visual identity. |
+| `ClinicBrandingService` | Resolves automatic and manual sidebar icons without duplicating the species catalog. |
 | `ClinicRepository` | Data access for the global clinic registry. |
 | `ClinicRepositoryInterface` | Repository contract registered by `ClinicServiceProvider`. |
 | `StoreClinicRequest` | Validates clinic creation. |
@@ -63,6 +73,8 @@ global user (`users.clinic_id` must be null).
 | `GET` | `/clinics/{clinic}/edit` | Edit form. |
 | `PUT` | `/clinics/{clinic}` | Update a clinic. |
 | `DELETE` | `/clinics/{clinic}` | Soft-delete a clinic. |
+| `GET` | `/settings/branding` | Open the current clinic's identity settings. |
+| `PUT` | `/settings/branding` | Update the current clinic's identity settings. |
 
 There is no public detail/show route.
 
@@ -82,7 +94,7 @@ Important validation rules:
   corresponding optional values are omitted.
 
 The current web form exposes legal name, trade name, CNPJ, email, phone, city,
-state, and active status. The model and request also support CRMV, technical
+state, active status, and animal-icon branding. The model and request also support CRMV, technical
 manager, WhatsApp, website, full address, timezone, currency, and language,
 but those fields are not yet exposed by the form. Parent clinic and logo are
 model/database capabilities without a current UI workflow.
@@ -127,11 +139,17 @@ Protected by `clinics.manage` plus the global-user middleware. The permission is
 part of the Administrator preset, but clinic-scoped administrators still cannot
 enter the global registry.
 
+The tenant branding page is separately protected by `clinic-branding.manage`.
+It never accepts a clinic identifier from the request and always updates the
+clinic attached to the authenticated user. Global administrators configure the
+same fields through the protected clinic registry form.
+
 ## Tests
 
 Relevant coverage is present in:
 
 - `tests/Feature/ClinicTenantIsolationTest.php`
+- `tests/Feature/ClinicBrandingTest.php`
 - `tests/Feature/AuthorizationTest.php`
 - `tests/Feature/AccessManagementTest.php`
 - `tests/Feature/PurchaseAndClinicalFlowTest.php`

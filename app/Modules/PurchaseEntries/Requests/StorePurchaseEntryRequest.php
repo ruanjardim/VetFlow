@@ -3,6 +3,8 @@
 namespace App\Modules\PurchaseEntries\Requests;
 
 use App\Http\Requests\Concerns\ValidatesTenantScopedReferences;
+use App\Modules\Products\Models\Product;
+use App\Modules\PurchaseEntries\Services\ReplenishmentPurchaseDecisionService;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
@@ -31,6 +33,8 @@ class StorePurchaseEntryRequest extends FormRequest
                 $item['sale_price'] = $this->normalizeDecimalValue($item['sale_price'] ?? null);
                 $item['margin_percent'] = $this->normalizeDecimalValue($item['margin_percent'] ?? null);
                 $item['minimum_stock_after_entry'] = $this->normalizeDecimalValue($item['minimum_stock_after_entry'] ?? null);
+                $item['replenishment_adjustment_reason'] = trim((string) ($item['replenishment_adjustment_reason'] ?? '')) ?: null;
+                $item['replenishment_adjustment_note'] = trim((string) ($item['replenishment_adjustment_note'] ?? '')) ?: null;
 
                 return $item;
             }, $data['items']);
@@ -71,6 +75,12 @@ class StorePurchaseEntryRequest extends FormRequest
             'items.*.supplier_sku' => ['nullable', 'string', 'max:255'],
             'items.*.intelligence_status' => ['nullable', 'string', 'max:255'],
             'items.*.intelligence_metadata' => ['nullable'],
+            'items.*.replenishment_adjustment_reason' => [
+                'nullable',
+                'string',
+                Rule::in(array_keys(ReplenishmentPurchaseDecisionService::ADJUSTMENT_REASONS)),
+            ],
+            'items.*.replenishment_adjustment_note' => ['nullable', 'string', 'max:500'],
             'items.*.lot_number' => ['nullable', 'string', 'max:255'],
             'items.*.expires_at' => ['nullable', 'date'],
             'items.*.notes' => ['nullable', 'string'],
@@ -87,6 +97,8 @@ class StorePurchaseEntryRequest extends FormRequest
             'items.*.product_id.exists' => 'Um dos produtos informados nao foi encontrado.',
             'items.*.quantity.min' => 'A quantidade de cada item precisa ser maior que zero.',
             'items.*.expires_at.date' => 'Informe uma validade valida para o lote.',
+            'items.*.replenishment_adjustment_reason.in' => 'Selecione um motivo de ajuste valido.',
+            'items.*.replenishment_adjustment_note.max' => 'A observacao do ajuste deve ter no maximo 500 caracteres.',
             'payment_status.in' => 'Informe um status de pagamento valido.',
             'payment_method.in' => 'Informe uma forma de pagamento valida.',
             'installments_count.min' => 'Informe pelo menos uma parcela.',
@@ -102,7 +114,82 @@ class StorePurchaseEntryRequest extends FormRequest
             if ($this->billableItems() === []) {
                 $validator->errors()->add('items', 'Inclua pelo menos um produto com quantidade na entrada.');
             }
+
+            $this->validateReplenishmentAdjustmentReasons($validator);
         });
+    }
+
+    private function validateReplenishmentAdjustmentReasons(Validator $validator): void
+    {
+        $clinicId = (int) ($this->user()?->clinic_id ?: $this->input('clinic_id'));
+        $supplierId = $this->filled('supplier_id') ? (int) $this->input('supplier_id') : null;
+        $decisions = app(ReplenishmentPurchaseDecisionService::class);
+
+        foreach ($this->input('items', []) as $index => $item) {
+            if (! is_array($item) || empty($item['product_id'])) {
+                continue;
+            }
+
+            $quantity = (float) ($item['quantity'] ?? 0);
+
+            if ($quantity <= 0) {
+                continue;
+            }
+
+            $product = Product::query()
+                ->where('clinic_id', $clinicId)
+                ->find((int) $item['product_id']);
+            $unitCost = filled($item['unit_cost'] ?? null)
+                ? (float) $item['unit_cost']
+                : (float) ($product?->cost_price ?? 0);
+
+            $metadata = $this->decodeMetadata($item['intelligence_metadata'] ?? null);
+            $requiresReason = $decisions->requiresAdjustmentReason(
+                $clinicId,
+                (int) $item['product_id'],
+                $supplierId,
+                $quantity,
+                $unitCost,
+                $metadata,
+                $item['intelligence_status'] ?? null,
+            );
+
+            if (! $requiresReason) {
+                continue;
+            }
+
+            $reason = trim((string) ($item['replenishment_adjustment_reason'] ?? ''));
+
+            if ($reason === '') {
+                $validator->errors()->add(
+                    "items.$index.replenishment_adjustment_reason",
+                    'Informe por que a sugestao de reposicao foi ajustada.',
+                );
+            }
+
+            if ($reason === 'other' && blank($item['replenishment_adjustment_note'] ?? null)) {
+                $validator->errors()->add(
+                    "items.$index.replenishment_adjustment_note",
+                    'Descreva o outro motivo do ajuste.',
+                );
+            }
+        }
+    }
+
+    /** @return array<string, mixed> */
+    private function decodeMetadata(mixed $metadata): array
+    {
+        if (is_array($metadata)) {
+            return $metadata;
+        }
+
+        if (! is_string($metadata) || trim($metadata) === '') {
+            return [];
+        }
+
+        $decoded = json_decode($metadata, true);
+
+        return is_array($decoded) ? $decoded : [];
     }
 
     private function billableItems(): array

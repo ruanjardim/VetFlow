@@ -2,9 +2,9 @@
 
 namespace App\Modules\Clinics\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Support\Str;
 
 class Clinic extends Model
@@ -33,6 +33,8 @@ class Clinic extends Model
         'number',
         'complement',
         'logo',
+        'brand_icon_mode',
+        'brand_icon_key',
         'timezone',
         'currency',
         'language',

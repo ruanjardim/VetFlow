@@ -14,7 +14,10 @@ This directory contains the working documentation for VetFlow.
 - [Continuous integration](ci.md)
 - [Deployment guide](deployment.md)
 - [KingHost staging runbook](deployment/kinghost-staging.md)
+- [Render demonstration deployment](deploy/render.md)
 - [Release checklist](release-checklist.md)
+- [Backup restore drill](deployment/backup-restore-drill.md)
+- [Runtime operations probe](deployment/runtime-operations-probe.md)
 - [Roadmap](ROADMAP.md)
 
 ## Database Notes
@@ -41,6 +44,11 @@ The employee/access note documents the current decision to use `users`,
 - [Sales](modules/sales.md)
 - [Financial](modules/financial.md)
 - [Clinical Core](modules/clinical-core.md)
+- [Patient Clinical Alerts](modules/patient-clinical-alerts.md)
+- [Patient Clinical Timeline](modules/patient-clinical-timeline.md)
+- [Exam Results](modules/exam-results.md)
+- [Hospitalizations](modules/hospitalizations.md)
+- [Prescriptions](modules/prescriptions.md)
 - [Validation](modules/validation.md)
 
 ## Audits

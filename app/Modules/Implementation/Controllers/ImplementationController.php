@@ -8,11 +8,22 @@ use App\Modules\Clinics\Models\Clinic;
 use App\Modules\Implementation\Contracts\CsvImportService;
 use App\Modules\Implementation\Requests\SelectClinicRequest;
 use App\Modules\Implementation\Requests\SelectSourceRequest;
+use App\Modules\Implementation\Requests\StoreImplementationPilotCheckRequest;
+use App\Modules\Implementation\Requests\StoreImplementationPilotDecisionRequest;
+use App\Modules\Implementation\Requests\StoreImplementationPilotReleaseRequest;
 use App\Modules\Implementation\Requests\UploadImplementationFileRequest;
 use App\Modules\Implementation\Services\ExcelTemplateService;
 use App\Modules\Implementation\Services\FinancialCsvImportService;
+use App\Modules\Implementation\Services\ImplementationDataQualityService;
 use App\Modules\Implementation\Services\ImplementationFileAnalyzer;
 use App\Modules\Implementation\Services\ImplementationImportService;
+use App\Modules\Implementation\Services\ImplementationPilotChecklistService;
+use App\Modules\Implementation\Services\ImplementationPilotHistoryService;
+use App\Modules\Implementation\Services\ImplementationPilotPortfolioService;
+use App\Modules\Implementation\Services\ImplementationPilotReadinessService;
+use App\Modules\Implementation\Services\ImplementationPilotReleaseService;
+use App\Modules\Implementation\Services\ImplementationPilotReportService;
+use App\Modules\Implementation\Services\ImplementationReadinessService;
 use App\Modules\Implementation\Services\ImplementationWorkflowService;
 use App\Modules\Implementation\Services\PatientCsvImportService;
 use App\Modules\Implementation\Services\ProductCsvImportService;
@@ -26,16 +37,17 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Str;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ImplementationController extends Controller
 {
     private const IMPORTS = [
         'tutors' => [
-            'label' => 'Tutores',
-            'singular' => 'Tutor',
+            'label' => 'Responsáveis',
+            'singular' => 'Responsável',
             'template' => 'tutors',
-            'template_label' => 'Tutores CSV',
+            'template_label' => 'Responsáveis CSV',
             'upload_route' => 'implementation.tutors.upload',
             'import_route' => 'implementation.tutors.import',
             'input_name' => 'tutors_file',
@@ -63,7 +75,7 @@ class ImplementationController extends Controller
             'expected_columns' => 'tutor_documento, nome_pet, especie, raca, sexo, nascimento, peso e observacoes',
             'preview_columns' => [
                 ['key' => 'name', 'label' => 'Nome'],
-                ['key' => 'tutor_name', 'label' => 'Tutor'],
+                ['key' => 'tutor_name', 'label' => 'Responsável'],
                 ['key' => 'species', 'label' => 'Espécie'],
                 ['key' => 'breed', 'label' => 'Raça'],
                 ['key' => 'birth_date', 'label' => 'Nascimento'],
@@ -276,6 +288,14 @@ class ImplementationController extends Controller
         private readonly StockCsvImportService $stockCsvImporter,
         private readonly FinancialCsvImportService $financialCsvImporter,
         private readonly ImplementationImportService $implementationImporter,
+        private readonly ImplementationReadinessService $implementationReadiness,
+        private readonly ImplementationDataQualityService $implementationDataQuality,
+        private readonly ImplementationPilotChecklistService $pilotChecklist,
+        private readonly ImplementationPilotHistoryService $pilotHistory,
+        private readonly ImplementationPilotPortfolioService $pilotPortfolio,
+        private readonly ImplementationPilotReleaseService $pilotRelease,
+        private readonly ImplementationPilotReadinessService $pilotReadiness,
+        private readonly ImplementationPilotReportService $pilotReport,
         private readonly ImplementationFileAnalyzer $fileAnalyzer,
         private readonly ExcelTemplateService $excelTemplates
     ) {}
@@ -316,6 +336,24 @@ class ImplementationController extends Controller
             : 'csv';
         /** @var User $user */
         $user = $request->user();
+        $onboardingReadiness = $this->implementationReadiness->forClinics($clinics);
+        $onboardingQuality = $this->implementationDataQuality->forClinics(
+            $clinics,
+            $onboardingReadiness
+        );
+        $pilotChecklists = $this->pilotChecklist->forClinics($clinics);
+        $pilotReleases = $this->pilotRelease->forClinics($clinics);
+        $pilotReadiness = $this->pilotReadiness->forClinics(
+            $clinics,
+            $onboardingReadiness,
+            $onboardingQuality,
+            $pilotChecklists,
+            $pilotReleases
+        );
+        $pilotPortfolio = $this->pilotPortfolio->summarize(
+            $pilotReadiness,
+            $request->string('pilot_status')->toString()
+        );
 
         return view('implementation.index', [
             'clinics' => $clinics,
@@ -339,7 +377,7 @@ class ImplementationController extends Controller
                 ($currentStep / count(self::WIZARD_STEPS)) * 100
             ),
             'migrationBlocks' => [
-                ['label' => 'Tutores e contatos', 'available' => true],
+                ['label' => 'Responsáveis e contatos', 'available' => true],
                 ['label' => 'Pacientes e histórico básico', 'available' => true],
                 ['label' => 'Fornecedores', 'available' => true],
                 ['label' => 'Produtos', 'available' => true],
@@ -361,7 +399,155 @@ class ImplementationController extends Controller
             'mappingDefinitions' => $importer->mappingDefinitions(),
             'completedSummary' => $state['completed'] ?? null,
             'recentImports' => $this->implementationImporter->recentFor($user),
+            'onboardingReadiness' => $onboardingReadiness,
+            'onboardingQuality' => $onboardingQuality,
+            'pilotChecklists' => $pilotChecklists,
+            'pilotReleases' => $pilotReleases,
+            'pilotReadiness' => $pilotPortfolio['items'],
+            'pilotPortfolio' => $pilotPortfolio,
         ]);
+    }
+
+    public function storePilotCheck(
+        StoreImplementationPilotCheckRequest $request
+    ): RedirectResponse {
+        $validated = $request->validated();
+        $clinic = $this->accessibleClinics($request)
+            ->findOrFail((int) $validated['clinic_id']);
+        /** @var User $user */
+        $user = $request->user();
+
+        $this->pilotChecklist->record(
+            $clinic,
+            $user,
+            $validated['check_key'],
+            $request->boolean('completed'),
+            $validated['notes'] ?? null
+        );
+
+        return redirect()
+            ->route('implementation.index')
+            ->with('success', 'Checklist do piloto atualizado com histórico preservado.');
+    }
+
+    public function qualityIssues(
+        Request $request,
+        int $clinic,
+        string $type
+    ): View {
+        abort_unless(in_array($type, ImplementationDataQualityService::types(), true), 404);
+
+        $accessibleClinic = $this->accessibleClinics($request)->findOrFail($clinic);
+
+        return view('implementation.quality-issues', [
+            'clinic' => $accessibleClinic,
+            'quality' => $this->implementationDataQuality->issuesForClinic(
+                $accessibleClinic,
+                $type
+            ),
+        ]);
+    }
+
+    public function pilotHistory(Request $request, int $clinic): View
+    {
+        $accessibleClinic = $this->accessibleClinics($request)->findOrFail($clinic);
+
+        return view('implementation.pilot-history', [
+            'clinic' => $accessibleClinic,
+            'history' => $this->pilotHistory->forClinic($accessibleClinic),
+        ]);
+    }
+
+    public function pilotReport(Request $request, int $clinic): View
+    {
+        $accessibleClinic = $this->accessibleClinics($request)->findOrFail($clinic);
+
+        return view('implementation.pilot-report', [
+            'report' => $this->pilotReport->forClinic($accessibleClinic),
+        ]);
+    }
+
+    public function pilotReportJson(Request $request, int $clinic): StreamedResponse
+    {
+        $accessibleClinic = $this->accessibleClinics($request)->findOrFail($clinic);
+        $report = $this->pilotReport->forClinic($accessibleClinic);
+        $fileName = 'vetflow-piloto-'
+            .Str::slug($accessibleClinic->trade_name)
+            .'-'.now()->format('Ymd-His').'.json';
+
+        return response()->streamDownload(
+            fn () => print json_encode(
+                $report,
+                JSON_PRETTY_PRINT
+                    | JSON_UNESCAPED_UNICODE
+                    | JSON_UNESCAPED_SLASHES
+                    | JSON_THROW_ON_ERROR
+            ),
+            $fileName,
+            [
+                'Content-Type' => 'application/json; charset=UTF-8',
+                'Cache-Control' => 'no-store, private',
+            ]
+        );
+    }
+
+    public function storePilotRelease(
+        StoreImplementationPilotReleaseRequest $request
+    ): RedirectResponse {
+        $validated = $request->validated();
+        $clinic = $this->accessibleClinics($request)
+            ->findOrFail((int) $validated['clinic_id']);
+        /** @var User $user */
+        $user = $request->user();
+
+        $release = $this->pilotRelease->record($clinic, $user, $validated);
+
+        return redirect()
+            ->route('implementation.index')
+            ->with(
+                'success',
+                "Plano do piloto salvo como revisão {$release->revision}."
+            );
+    }
+
+    public function storePilotDecision(
+        StoreImplementationPilotDecisionRequest $request
+    ): RedirectResponse {
+        $validated = $request->validated();
+        $clinic = $this->accessibleClinics($request)
+            ->findOrFail((int) $validated['clinic_id']);
+        /** @var User $user */
+        $user = $request->user();
+        $clinics = collect([$clinic]);
+        $coverage = $this->implementationReadiness->forClinics($clinics);
+        $quality = $this->implementationDataQuality->forClinics($clinics, $coverage);
+        $checklists = $this->pilotChecklist->forClinics($clinics);
+        $releases = $this->pilotRelease->forClinics($clinics);
+        $readiness = $this->pilotReadiness->forClinics(
+            $clinics,
+            $coverage,
+            $quality,
+            $checklists,
+            $releases
+        )[0];
+
+        try {
+            $this->pilotReadiness->record(
+                $clinic,
+                $user,
+                $validated['decision'],
+                $validated['notes'] ?? null,
+                $readiness
+            );
+        } catch (DomainException $exception) {
+            return redirect()
+                ->route('implementation.index')
+                ->with('error', $exception->getMessage());
+        }
+
+        return redirect()
+            ->route('implementation.index')
+            ->with('success', 'Decisão de prontidão registrada com as evidências atuais.');
     }
 
     public function selectClinic(SelectClinicRequest $request): RedirectResponse

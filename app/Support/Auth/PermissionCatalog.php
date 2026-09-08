@@ -23,10 +23,34 @@ class PermissionCatalog
                 'description' => 'Permite acessar cadastro e manutencao de clinicas.',
             ],
             [
+                'slug' => 'clinic-branding.manage',
+                'name' => 'Gerenciar identidade visual',
+                'group' => 'Administrativo',
+                'description' => 'Permite escolher o ícone da clínica exibido no menu do VetFlow.',
+            ],
+            [
+                'slug' => 'audit.manage',
+                'name' => 'Consultar auditoria',
+                'group' => 'Administrativo',
+                'description' => 'Permite consultar alterações administrativas sensíveis da clínica.',
+            ],
+            [
                 'slug' => 'implementation.manage',
                 'name' => 'Gerenciar implantacao',
                 'group' => 'Administrativo',
                 'description' => 'Permite acessar o roteiro de implantacao e migracao de dados da clinica.',
+            ],
+            [
+                'slug' => 'operations.readiness',
+                'name' => 'Consultar prontidao operacional',
+                'group' => 'Administrativo',
+                'description' => 'Permite consultar identidade da release e sinais tecnicos seguros do ambiente.',
+            ],
+            [
+                'slug' => 'operations.execute',
+                'name' => 'Executar controles operacionais',
+                'group' => 'Administrativo',
+                'description' => 'Permite registrar decisões, smoke tests e evidências operacionais da release.',
             ],
             [
                 'slug' => 'users.manage',
@@ -57,6 +81,30 @@ class PermissionCatalog
                 'name' => 'Gerenciar consultas',
                 'group' => 'Atendimento',
                 'description' => 'Permite acessar consultas e atendimentos clinicos.',
+            ],
+            [
+                'slug' => 'medical-records.manage',
+                'name' => 'Gerenciar prontuários',
+                'group' => 'Atendimento',
+                'description' => 'Permite registrar e consultar prontuários clínicos.',
+            ],
+            [
+                'slug' => 'vaccinations.manage',
+                'name' => 'Gerenciar vacinação',
+                'group' => 'Atendimento',
+                'description' => 'Permite registrar e acompanhar a carteira de vacinação.',
+            ],
+            [
+                'slug' => 'hospitalizations.manage',
+                'name' => 'Gerenciar internações',
+                'group' => 'Atendimento',
+                'description' => 'Permite registrar e acompanhar internações clínicas.',
+            ],
+            [
+                'slug' => 'prescriptions.manage',
+                'name' => 'Gerenciar prescrições',
+                'group' => 'Atendimento',
+                'description' => 'Permite elaborar, finalizar, consultar e cancelar prescrições clínicas.',
             ],
             [
                 'slug' => 'petshop-services.manage',
@@ -112,6 +160,12 @@ class PermissionCatalog
                 'group' => 'Financeiro',
                 'description' => 'Permite acessar contas, fluxo de caixa, baixas e cancelamentos.',
             ],
+            [
+                'slug' => 'commissions.manage',
+                'name' => 'Gerenciar comissoes',
+                'group' => 'Financeiro',
+                'description' => 'Permite configurar regras e consultar previas de comissoes.',
+            ],
         ];
     }
 
@@ -137,6 +191,10 @@ class PermissionCatalog
                     'patients.manage',
                     'schedules.manage',
                     'appointments.manage',
+                    'medical-records.manage',
+                    'vaccinations.manage',
+                    'hospitalizations.manage',
+                    'prescriptions.manage',
                     'service-orders.manage',
                 ],
             ],
@@ -186,6 +244,7 @@ class PermissionCatalog
                     'purchase-entries.manage',
                     'suppliers.manage',
                     'financial.manage',
+                    'commissions.manage',
                 ],
             ],
         ];

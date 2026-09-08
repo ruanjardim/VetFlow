@@ -54,3 +54,50 @@ jobs:
 
       - name: Build frontend assets
         run: npm run build
+
+  postgres-migrations:
+    name: PostgreSQL migration compatibility
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: vetflow
+          POSTGRES_USER: vetflow
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U vetflow -d vetflow"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.2"
+          extensions: dom, curl, fileinfo, filter, intl, libxml, mbstring, pdo, pdo_pgsql, xmlreader, zip
+          coverage: none
+
+      - name: Install PHP dependencies
+        run: composer install --prefer-dist --no-interaction --no-progress
+
+      - name: Prepare PostgreSQL environment
+        run: |
+          cp .env.example .env
+          php artisan key:generate --ansi
+          sed -i 's/^DB_CONNECTION=.*/DB_CONNECTION=pgsql/' .env
+          sed -i 's/^DB_DATABASE=.*/DB_DATABASE=vetflow/' .env
+          printf '\nDB_HOST=127.0.0.1\nDB_PORT=5432\nDB_USERNAME=vetflow\nDB_PASSWORD=\n' >> .env
+
+      - name: Run PostgreSQL migrations
+        run: php artisan migrate --force
+
+      - name: Verify PostgreSQL migration status
+        run: php artisan migrate:status

@@ -3,6 +3,7 @@
 namespace App\Modules\Clinics\Requests;
 
 use App\Core\Base\BaseRequest;
+use App\Modules\Clinics\Services\ClinicBrandingService;
 use Illuminate\Validation\Rule;
 
 class UpdateClinicRequest extends BaseRequest
@@ -29,6 +30,8 @@ class UpdateClinicRequest extends BaseRequest
             'timezone' => ['nullable', 'string', 'max:80'],
             'currency' => ['nullable', 'string', 'size:3'],
             'language' => ['nullable', 'string', 'max:12'],
+            'brand_icon_mode' => ['sometimes', Rule::in(array_keys(ClinicBrandingService::modes()))],
+            'brand_icon_key' => ['sometimes', Rule::in(array_keys(ClinicBrandingService::icons()))],
             'active' => ['required', 'boolean'],
         ];
     }

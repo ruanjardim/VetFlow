@@ -9,14 +9,19 @@ use App\Modules\PetShopServices\Models\PetShopService;
 use App\Modules\Products\Models\Product;
 use App\Modules\Products\Services\ProductLookupService;
 use App\Modules\Products\Support\Gtin;
+use App\Modules\Sales\Requests\ProductAbcAnalysisRequest;
+use App\Modules\Sales\Requests\StoreSalePaymentRequest;
 use App\Modules\Sales\Requests\StoreSaleRequest;
 use App\Modules\Sales\Requests\UpdateSaleRequest;
+use App\Modules\Sales\Services\ProductAbcAnalysisService;
+use App\Modules\Sales\Services\SaleProfitabilityService;
 use App\Modules\Sales\Services\SaleService;
 use App\Modules\ServiceOrders\Models\ServiceOrder;
 use App\Modules\Tutors\Models\Tutor;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use Illuminate\View\View;
 
 class SaleController extends BaseCrudController
 {
@@ -35,9 +40,12 @@ class SaleController extends BaseCrudController
 
     public function edit(int $id)
     {
-        return view("{$this->viewPath}.edit", array_merge($this->formData(), [
-            'item' => $this->service->findOrFail($id),
-        ]));
+        $sale = $this->service->findOrFail($id);
+
+        return view("{$this->viewPath}.edit", array_merge(
+            $this->formData($sale->service_order_id),
+            ['item' => $sale]
+        ));
     }
 
     public function cashier(Request $request)
@@ -48,6 +56,29 @@ class SaleController extends BaseCrudController
                 $request->query('to')
             ),
         ]);
+    }
+
+    public function profitability(Request $request, SaleProfitabilityService $profitability)
+    {
+        $validated = $request->validate([
+            'from' => ['nullable', 'date'],
+            'to' => ['nullable', 'date', 'after_or_equal:from'],
+            'type' => ['nullable', 'string', Rule::in(array_merge(['all'], array_keys(SaleProfitabilityService::TYPE_LABELS)))],
+        ]);
+
+        return view("{$this->viewPath}.profitability", [
+            'summary' => $profitability->summary(
+                $validated['from'] ?? null,
+                $validated['to'] ?? null,
+                $validated['type'] ?? 'all'
+            ),
+            'typeLabels' => SaleProfitabilityService::TYPE_LABELS,
+        ]);
+    }
+
+    public function productAbc(ProductAbcAnalysisRequest $request, ProductAbcAnalysisService $analysis): View
+    {
+        return view("{$this->viewPath}.product-abc", $analysis->data($request->validated()));
     }
 
     public function cashierClose(Request $request)
@@ -65,17 +96,35 @@ class SaleController extends BaseCrudController
         $payload = $request->all();
         $payload['counted_cash'] = $this->normalizeDecimal($payload['counted_cash'] ?? null);
         $payload['counted_total'] = $this->normalizeDecimal($payload['counted_total'] ?? null);
+
+        if (isset($payload['counted_methods']) && is_array($payload['counted_methods'])) {
+            $payload['counted_methods'] = array_map(
+                fn ($value) => $this->normalizeDecimal($value),
+                $payload['counted_methods']
+            );
+        }
+
         $request->merge($payload);
 
-        $validated = $request->validate([
+        $paymentMethodKeys = implode(',', array_keys(SaleService::PAYMENT_METHOD_LABELS));
+
+        $rules = [
             'period_from' => ['nullable', 'date'],
             'period_to' => ['nullable', 'date'],
             'clinic_id' => ['nullable', 'integer', 'exists:clinics,id'],
             'unit_id' => ['nullable', 'integer'],
-            'counted_cash' => ['required', 'numeric', 'min:0'],
+            'counted_methods' => ['required_without:counted_cash', 'array:'.$paymentMethodKeys, 'min:1'],
+            'counted_methods.*' => ['required', 'numeric', 'min:0'],
+            'counted_cash' => ['required_without:counted_methods', 'nullable', 'numeric', 'min:0'],
             'counted_total' => ['nullable', 'numeric', 'min:0'],
             'notes' => ['nullable', 'string'],
-        ]);
+        ];
+
+        foreach (array_keys(SaleService::PAYMENT_METHOD_LABELS) as $method) {
+            $rules['counted_methods.'.$method] = ['required_with:counted_methods', 'numeric', 'min:0'];
+        }
+
+        $validated = $request->validate($rules);
 
         $this->service->closeCashier($validated);
 
@@ -95,6 +144,15 @@ class SaleController extends BaseCrudController
         return view("{$this->viewPath}.receipt", [
             'sale' => $sale,
         ]);
+    }
+
+    public function storePayment(StoreSalePaymentRequest $request, int $id)
+    {
+        $this->service->addPayment($id, $request->validated());
+
+        return redirect()
+            ->route('sales.edit', $id)
+            ->with('success', 'Recebimento registrado com sucesso.');
     }
 
     public function cancel(Request $request, int $id)
@@ -285,7 +343,7 @@ class SaleController extends BaseCrudController
         return UpdateSaleRequest::class;
     }
 
-    private function formData(): array
+    private function formData(?int $includeServiceOrderId = null): array
     {
         return [
             'clinics' => Clinic::query()->orderBy('trade_name')->get(),
@@ -294,7 +352,15 @@ class SaleController extends BaseCrudController
             'products' => Product::query()->active()->orderBy('name')->get(),
             'petShopServices' => PetShopService::query()->active()->orderBy('name')->get(),
             'serviceOrders' => ServiceOrder::query()
-                ->with(['tutor', 'patient'])
+                ->with(['tutor', 'patient', 'items'])
+                ->where('status', '!=', 'cancelled')
+                ->where(function ($query) use ($includeServiceOrderId): void {
+                    $query->whereDoesntHave('sales', fn ($sales) => $sales->where('status', '!=', 'cancelled'));
+
+                    if ($includeServiceOrderId) {
+                        $query->orWhereKey($includeServiceOrderId);
+                    }
+                })
                 ->latest('opened_at')
                 ->limit(100)
                 ->get(),

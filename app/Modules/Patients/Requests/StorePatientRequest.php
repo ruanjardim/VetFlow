@@ -26,8 +26,15 @@ class StorePatientRequest extends FormRequest
         return [
             'tutor_id' => ['required', 'integer', $tutorExists],
             'name' => ['required', 'string', 'max:255'],
+            'species_choice' => ['nullable', 'string', 'max:30'],
+            'new_species' => ['nullable', 'string', 'max:120'],
             'species' => ['nullable', 'string', 'max:255'],
+            'breed_choice' => ['nullable', 'string', 'max:30'],
+            'new_breed' => ['nullable', 'string', 'max:120'],
             'breed' => ['nullable', 'string', 'max:255'],
+            'coat_choice' => ['nullable', 'string', 'max:30'],
+            'new_coat' => ['nullable', 'string', 'max:120'],
+            'coat' => ['nullable', 'string', 'max:255'],
             'gender' => ['nullable', 'string', 'max:50'],
             'birth_date' => ['nullable', 'date', 'before_or_equal:today'],
             'weight' => ['nullable', 'numeric', 'gt:0', 'max:999999.99'],
@@ -38,8 +45,8 @@ class StorePatientRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'tutor_id.required' => 'Selecione o tutor responsável.',
-            'tutor_id.exists' => 'O tutor selecionado não está disponível para esta clínica.',
+            'tutor_id.required' => 'Selecione o responsável.',
+            'tutor_id.exists' => 'O responsável selecionado não está disponível para esta clínica.',
             'name.required' => 'Informe o nome do paciente.',
             'name.max' => 'O nome deve ter no máximo 255 caracteres.',
             'birth_date.date' => 'Informe uma data de nascimento válida.',

@@ -7,6 +7,486 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
+  document.querySelectorAll('[data-history-back]').forEach((link) => {
+    link.addEventListener('click', (event) => {
+      let previousPageIsVetFlow = false;
+
+      if (document.referrer) {
+        try {
+          previousPageIsVetFlow = new URL(document.referrer).origin === window.location.origin;
+        } catch {
+          previousPageIsVetFlow = false;
+        }
+      }
+
+      if (previousPageIsVetFlow && window.history.length > 1) {
+        event.preventDefault();
+        window.history.back();
+      }
+    });
+  });
+
+  const patientForm = document.querySelector('[data-patient-form]');
+
+  if (patientForm) {
+    const tutorSelect = patientForm.querySelector('#tutor_id');
+    const speciesSelect = patientForm.querySelector('[data-patient-species]');
+    const breedSelect = patientForm.querySelector('[data-patient-breed]');
+    const coatSelect = patientForm.querySelector('[data-patient-coat]');
+    const newSpeciesField = patientForm.querySelector('[data-new-species-field]');
+    const newBreedField = patientForm.querySelector('[data-new-breed-field]');
+    const newCoatField = patientForm.querySelector('[data-new-coat-field]');
+    const newSpeciesInput = patientForm.querySelector('#new_species');
+    const newBreedInput = patientForm.querySelector('#new_breed');
+    const newCoatInput = patientForm.querySelector('#new_coat');
+
+    const selectedClinicId = () => tutorSelect?.selectedOptions?.[0]?.dataset.clinicId || '';
+
+    const updateTaxonomyFields = () => {
+      const clinicId = selectedClinicId();
+      const speciesId = speciesSelect?.value || '';
+
+      speciesSelect?.querySelectorAll('option[data-clinic-id]').forEach((option) => {
+        const available = !option.dataset.clinicId || !clinicId || option.dataset.clinicId === clinicId;
+        option.hidden = !available;
+        option.disabled = !available;
+      });
+
+      if (speciesSelect?.selectedOptions?.[0]?.disabled) {
+        speciesSelect.value = '';
+      }
+
+      breedSelect?.querySelectorAll('option[data-species-id]').forEach((option) => {
+        const sameSpecies = option.dataset.speciesId === speciesSelect?.value;
+        const sameClinic = !option.dataset.clinicId || !clinicId || option.dataset.clinicId === clinicId;
+        const available = sameSpecies && sameClinic;
+        option.hidden = !available;
+        option.disabled = !available;
+      });
+
+      if (breedSelect?.selectedOptions?.[0]?.disabled) {
+        breedSelect.value = '';
+      }
+
+      coatSelect?.querySelectorAll('option[data-species-id]').forEach((option) => {
+        const sameSpecies = option.dataset.speciesId === speciesSelect?.value;
+        const sameClinic = !option.dataset.clinicId || !clinicId || option.dataset.clinicId === clinicId;
+        const available = sameSpecies && sameClinic;
+        option.hidden = !available;
+        option.disabled = !available;
+      });
+
+      if (coatSelect?.selectedOptions?.[0]?.disabled) {
+        coatSelect.value = '';
+      }
+
+      const customSpecies = speciesSelect?.value === 'other';
+      const customBreed = customSpecies || breedSelect?.value === 'other';
+      const customCoat = customSpecies || coatSelect?.value === 'other';
+
+      if (newSpeciesField) {
+        newSpeciesField.hidden = !customSpecies;
+      }
+
+      if (newSpeciesInput) {
+        newSpeciesInput.required = customSpecies;
+      }
+
+      if (newBreedField) {
+        newBreedField.hidden = !customBreed;
+      }
+
+      if (newBreedInput) {
+        newBreedInput.required = breedSelect?.value === 'other';
+      }
+
+      if (newCoatField) {
+        newCoatField.hidden = !customCoat;
+      }
+
+      if (newCoatInput) {
+        newCoatInput.required = coatSelect?.value === 'other';
+      }
+
+      if (breedSelect) {
+        breedSelect.disabled = !speciesSelect?.value;
+      }
+
+      if (coatSelect) {
+        coatSelect.disabled = !speciesSelect?.value;
+      }
+    };
+
+    tutorSelect?.addEventListener('change', updateTaxonomyFields);
+    speciesSelect?.addEventListener('change', () => {
+      if (breedSelect) {
+        breedSelect.value = '';
+      }
+
+      if (coatSelect) {
+        coatSelect.value = '';
+      }
+
+      updateTaxonomyFields();
+    });
+    breedSelect?.addEventListener('change', updateTaxonomyFields);
+    coatSelect?.addEventListener('change', updateTaxonomyFields);
+    updateTaxonomyFields();
+  }
+
+  const serviceOrderForm = document.querySelector('[data-service-order-form]');
+
+  if (serviceOrderForm) {
+    const clinicSelect = serviceOrderForm.querySelector('[data-service-order-clinic-select]');
+    const tutorSelect = serviceOrderForm.querySelector('[data-service-order-tutor-select]');
+    const patientSelect = serviceOrderForm.querySelector('[data-service-order-patient-select]');
+    const assignedUserSelect = serviceOrderForm.querySelector('[data-service-order-assigned-user-select]');
+    const itemRows = Array.from(serviceOrderForm.querySelectorAll('[data-service-order-item-row]'));
+    const discountInput = serviceOrderForm.querySelector('[data-service-order-discount]');
+    const servicesTotalDisplay = serviceOrderForm.querySelector('[data-service-order-services-total]');
+    const productsTotalDisplay = serviceOrderForm.querySelector('[data-service-order-products-total]');
+    const discountTotalDisplay = serviceOrderForm.querySelector('[data-service-order-discount-total]');
+    const totalDisplay = serviceOrderForm.querySelector('[data-service-order-total]');
+
+    const currentClinicId = () => String(
+      clinicSelect?.value || serviceOrderForm.dataset.serviceOrderClinicId || '',
+    );
+
+    const optionMatchesClinic = (option, clinicId) => {
+      if (!option.value || !option.dataset.clinicId) {
+        return true;
+      }
+
+      return clinicId !== '' && option.dataset.clinicId === clinicId;
+    };
+
+    const filterSelectByClinic = (select, clinicId) => {
+      Array.from(select?.options || []).forEach((option) => {
+        const visible = optionMatchesClinic(option, clinicId);
+        option.hidden = !visible;
+        option.disabled = !visible;
+      });
+
+      if (select?.selectedOptions[0]?.disabled) {
+        select.value = '';
+      }
+    };
+
+    const numberValue = (value) => Number.parseFloat(String(value || '0').replace(',', '.')) || 0;
+    const formatMoney = (value) => new Intl.NumberFormat('pt-BR', {
+      currency: 'BRL',
+      style: 'currency',
+    }).format(Math.max(0, value));
+
+    const calculateServiceOrderTotals = () => {
+      let servicesTotal = 0;
+      let productsTotal = 0;
+
+      itemRows.forEach((row) => {
+        const type = row.querySelector('[data-service-order-item-type]')?.value || 'service';
+        const quantity = numberValue(row.querySelector('[data-service-order-quantity]')?.value);
+        const unitPrice = numberValue(row.querySelector('[data-service-order-unit-price]')?.value);
+        const rowTotal = quantity * unitPrice;
+
+        if (type === 'product') {
+          productsTotal += rowTotal;
+        } else {
+          servicesTotal += rowTotal;
+        }
+      });
+
+      const discount = numberValue(discountInput?.value);
+      const total = Math.max(0, servicesTotal + productsTotal - discount);
+
+      if (servicesTotalDisplay) servicesTotalDisplay.textContent = formatMoney(servicesTotal);
+      if (productsTotalDisplay) productsTotalDisplay.textContent = formatMoney(productsTotal);
+      if (discountTotalDisplay) discountTotalDisplay.textContent = formatMoney(discount);
+      if (totalDisplay) totalDisplay.textContent = formatMoney(total);
+    };
+
+    const clearServiceOrderRow = (row) => {
+      const type = row.querySelector('[data-service-order-item-type]');
+      const service = row.querySelector('[data-service-order-service-select]');
+      const product = row.querySelector('[data-service-order-product-select]');
+      const description = row.querySelector('[data-service-order-description]');
+      const quantity = row.querySelector('[data-service-order-quantity]');
+      const unitPrice = row.querySelector('[data-service-order-unit-price]');
+      const priceSelect = row.querySelector('[data-service-order-price-select]');
+
+      if (type) type.value = 'service';
+      if (service) service.value = '';
+      if (product) product.value = '';
+      if (description) description.value = '';
+      if (quantity) quantity.value = '';
+      if (unitPrice) unitPrice.value = '';
+      if (priceSelect) {
+        priceSelect.replaceChildren(new Option('Selecione o servico', ''));
+        priceSelect.disabled = true;
+      }
+
+      calculateServiceOrderTotals();
+    };
+
+    const filterPatients = () => {
+      const clinicId = currentClinicId();
+      const tutorId = String(tutorSelect?.value || '');
+
+      Array.from(patientSelect?.options || []).forEach((option) => {
+        const matchesClinic = optionMatchesClinic(option, clinicId);
+        const matchesTutor = !option.value
+          || !tutorId
+          || !option.dataset.tutorId
+          || option.dataset.tutorId === tutorId;
+        const visible = matchesClinic && matchesTutor;
+        option.hidden = !visible;
+        option.disabled = !visible;
+      });
+
+      if (patientSelect?.selectedOptions[0]?.disabled) {
+        patientSelect.value = '';
+      }
+    };
+
+    const filterServiceOrderCatalog = () => {
+      const clinicId = currentClinicId();
+
+      filterSelectByClinic(tutorSelect, clinicId);
+      filterSelectByClinic(assignedUserSelect, clinicId);
+      itemRows.forEach((row) => {
+        const service = row.querySelector('[data-service-order-service-select]');
+        const product = row.querySelector('[data-service-order-product-select]');
+        const previousService = service?.value || '';
+        const previousProduct = product?.value || '';
+
+        filterSelectByClinic(service, clinicId);
+        filterSelectByClinic(product, clinicId);
+
+        if ((previousService && !service?.value) || (previousProduct && !product?.value)) {
+          clearServiceOrderRow(row);
+        }
+      });
+      filterPatients();
+    };
+
+    const setDefaultQuantity = (row) => {
+      const quantity = row.querySelector('[data-service-order-quantity]');
+
+      if (quantity && !(Number.parseFloat(quantity.value || '0') > 0)) {
+        quantity.value = '1';
+      }
+    };
+
+    const populateServicePrices = (row, preserveUnitPrice = false) => {
+      const serviceSelect = row.querySelector('[data-service-order-service-select]');
+      const priceSelect = row.querySelector('[data-service-order-price-select]');
+      const unitPrice = row.querySelector('[data-service-order-unit-price]');
+      const option = serviceSelect?.selectedOptions[0];
+      const labels = [
+        ['priceBase', 'Base'],
+        ['priceSmall', 'Porte pequeno'],
+        ['priceMedium', 'Porte medio'],
+        ['priceLarge', 'Porte grande'],
+        ['priceGiant', 'Porte gigante'],
+      ];
+
+      if (!priceSelect) {
+        return;
+      }
+
+      priceSelect.replaceChildren();
+
+      if (!option?.value) {
+        const placeholder = document.createElement('option');
+        placeholder.value = '';
+        placeholder.textContent = 'Selecione o servico';
+        priceSelect.appendChild(placeholder);
+        priceSelect.disabled = true;
+        return;
+      }
+
+      const currentPrice = preserveUnitPrice ? String(unitPrice?.value || '') : '';
+
+      labels.forEach(([key, label]) => {
+        const value = option.dataset[key];
+
+        if (value === undefined || value === '') {
+          return;
+        }
+
+        const priceOption = document.createElement('option');
+        priceOption.value = value;
+        priceOption.textContent = `${label} - ${new Intl.NumberFormat('pt-BR', {
+          currency: 'BRL',
+          style: 'currency',
+        }).format(Number.parseFloat(value || '0') || 0)}`;
+        priceSelect.appendChild(priceOption);
+      });
+
+      priceSelect.disabled = priceSelect.options.length === 0;
+
+      const matchingOption = Array.from(priceSelect.options).find((item) => (
+        Math.abs(Number.parseFloat(item.value || '0') - Number.parseFloat(currentPrice || '-1')) < 0.005
+      ));
+
+      if (matchingOption) {
+        priceSelect.value = matchingOption.value;
+      }
+
+      if (unitPrice && (!preserveUnitPrice || !unitPrice.value)) {
+        unitPrice.value = priceSelect.value || '0';
+      }
+    };
+
+    itemRows.forEach((row) => {
+      const typeSelect = row.querySelector('[data-service-order-item-type]');
+      const serviceSelect = row.querySelector('[data-service-order-service-select]');
+      const productSelect = row.querySelector('[data-service-order-product-select]');
+      const priceSelect = row.querySelector('[data-service-order-price-select]');
+      const description = row.querySelector('[data-service-order-description]');
+      const unitPrice = row.querySelector('[data-service-order-unit-price]');
+
+      serviceSelect?.addEventListener('change', () => {
+        const option = serviceSelect.selectedOptions[0];
+
+        if (!option?.value) {
+          populateServicePrices(row);
+          return;
+        }
+
+        typeSelect.value = 'service';
+        productSelect.value = '';
+        description.value = option.dataset.name || option.textContent.trim();
+        populateServicePrices(row);
+        setDefaultQuantity(row);
+        calculateServiceOrderTotals();
+      });
+
+      productSelect?.addEventListener('change', () => {
+        const option = productSelect.selectedOptions[0];
+
+        if (!option?.value) {
+          return;
+        }
+
+        typeSelect.value = 'product';
+        serviceSelect.value = '';
+        description.value = option.dataset.name || option.textContent.trim();
+        unitPrice.value = option.dataset.salePrice || '0';
+        populateServicePrices(row);
+        setDefaultQuantity(row);
+        calculateServiceOrderTotals();
+      });
+
+      priceSelect?.addEventListener('change', () => {
+        if (unitPrice && priceSelect.value !== '') {
+          unitPrice.value = priceSelect.value;
+          calculateServiceOrderTotals();
+        }
+      });
+
+      typeSelect?.addEventListener('change', calculateServiceOrderTotals);
+      row.querySelector('[data-service-order-quantity]')?.addEventListener('input', calculateServiceOrderTotals);
+      unitPrice?.addEventListener('input', calculateServiceOrderTotals);
+      row.querySelector('[data-service-order-clear-item]')?.addEventListener('click', () => clearServiceOrderRow(row));
+
+      populateServicePrices(row, true);
+    });
+
+    clinicSelect?.addEventListener('change', filterServiceOrderCatalog);
+    tutorSelect?.addEventListener('change', filterPatients);
+    patientSelect?.addEventListener('change', () => {
+      const tutorId = patientSelect.selectedOptions[0]?.dataset.tutorId || '';
+
+      if (tutorSelect && tutorId && !tutorSelect.value) {
+        tutorSelect.value = tutorId;
+        filterPatients();
+      }
+    });
+    discountInput?.addEventListener('input', calculateServiceOrderTotals);
+
+    filterServiceOrderCatalog();
+    calculateServiceOrderTotals();
+  }
+
+  document.querySelectorAll('[data-catalog-auto-submit]').forEach((form) => {
+    form.querySelectorAll('[data-auto-submit-select]').forEach((select) => {
+      select.addEventListener('change', () => form.requestSubmit());
+    });
+  });
+
+  document.querySelectorAll('[data-catalog-search]').forEach((search) => {
+    const table = search.closest('.panel')?.querySelector('[data-catalog-table]');
+    const rows = Array.from(table?.querySelectorAll('[data-catalog-row]') || []);
+
+    search.addEventListener('input', () => {
+      const query = search.value.trim().toLocaleLowerCase('pt-BR');
+
+      rows.forEach((row) => {
+        row.hidden = Boolean(query) && !row.textContent.toLocaleLowerCase('pt-BR').includes(query);
+      });
+    });
+  });
+
+  document.querySelectorAll('[data-specialty-form]').forEach((form) => {
+    const boxes = Array.from(form.querySelectorAll('input[name="species_ids[]"]'));
+    const count = form.querySelector('[data-specialty-count]');
+
+    const updateCount = () => {
+      const selected = boxes.filter((box) => box.checked).length;
+      count.textContent = selected
+        ? `${selected} espécie${selected === 1 ? '' : 's'} selecionada${selected === 1 ? '' : 's'}`
+        : 'Sem filtro: todas as espécies serão exibidas';
+    };
+
+    boxes.forEach((box) => box.addEventListener('change', updateCount));
+    updateCount();
+  });
+
+  document.querySelectorAll('[data-pathology-picker], [data-exam-picker]').forEach((picker) => {
+    const select = picker.querySelector('[data-pathology-select], [data-exam-select]');
+    const search = picker.querySelector('[data-pathology-search], [data-exam-search]');
+    const appointmentSelect = document.getElementById('appointment_id');
+    const patientSelect = document.getElementById('patient_id');
+
+    if (!select) {
+      return;
+    }
+
+    const currentSpeciesId = () => {
+      if (picker.dataset.fixedSpeciesId) {
+        return picker.dataset.fixedSpeciesId;
+      }
+
+      return appointmentSelect?.selectedOptions?.[0]?.dataset.speciesId
+        || patientSelect?.selectedOptions?.[0]?.dataset.speciesId
+        || '';
+    };
+
+    const refresh = () => {
+      const speciesId = currentSpeciesId();
+      const query = (search?.value || '').trim().toLocaleLowerCase('pt-BR');
+
+      select.querySelectorAll('option').forEach((option) => {
+        const speciesIds = (option.dataset.speciesIds || '').split(',').filter(Boolean);
+        const matchesSpecies = !speciesId || speciesIds.length === 0 || speciesIds.includes(speciesId);
+        const matchesSearch = !query || option.textContent.toLocaleLowerCase('pt-BR').includes(query);
+        const visible = matchesSpecies && matchesSearch;
+
+        option.hidden = !visible;
+        option.disabled = !visible;
+
+        if (!matchesSpecies && option.selected) {
+          option.selected = false;
+        }
+      });
+    };
+
+    search?.addEventListener('input', refresh);
+    appointmentSelect?.addEventListener('change', refresh);
+    patientSelect?.addEventListener('change', refresh);
+    refresh();
+  });
+
   const normalizeBarcode = (value) => value.replace(/\D+/g, '');
 
   const setLookupStatus = (status, message, state = '') => {
@@ -339,6 +819,20 @@ document.addEventListener('DOMContentLoaded', () => {
     const paymentAmounts = Array.from(document.querySelectorAll('[data-sale-payment-amount]'));
     const paymentMethods = Array.from(document.querySelectorAll('[data-sale-payment-method]'));
     const receivedAmountInput = document.querySelector('[data-sale-received-amount]');
+    const quickItemButtons = Array.from(document.querySelectorAll('[data-sale-quick-item]'));
+    const quickCards = Array.from(document.querySelectorAll('[data-sale-quick-card]'));
+    const quickStatus = document.querySelector('[data-sale-quick-status]');
+    const quickCartEmpty = document.querySelector('[data-sale-cart-empty]');
+    const paymentShortcuts = Array.from(document.querySelectorAll('[data-sale-payment-shortcut]'));
+    const removeItemButtons = Array.from(document.querySelectorAll('[data-sale-remove-item]'));
+    const clinicSelect = document.querySelector('[data-sale-clinic-select]');
+    const tutorSelect = document.querySelector('[data-sale-tutor-select]');
+    const patientSelect = document.querySelector('[data-sale-patient-select]');
+    const serviceOrderSelect = document.querySelector('#service_order_id');
+    const serviceOrderCatalogElement = document.querySelector('[data-sale-service-order-catalog]');
+    const quickCustomer = document.querySelector('[data-sale-quick-customer]');
+    const quickCustomerButton = quickCustomer?.querySelector('[data-sale-customer-submit]');
+    const quickCustomerStatus = quickCustomer?.querySelector('[data-sale-customer-status]');
     const moneyInputs = [
       discountInput,
       additionsInput,
@@ -348,7 +842,18 @@ document.addEventListener('DOMContentLoaded', () => {
       ...paymentAmounts,
     ].filter(Boolean);
     const isLocked = saleForm?.dataset.saleLocked === '1';
+    const isQuickMode = saleForm?.dataset.saleMode === 'quick';
+    const hasOldSaleInput = saleForm?.dataset.saleHasOldInput === '1';
+    const saleFormElement = saleForm?.closest('form');
+    let serviceOrderCatalog = {};
+    let hydratedServiceOrderId = '';
     let scanTimer = null;
+
+    try {
+      serviceOrderCatalog = JSON.parse(serviceOrderCatalogElement?.textContent || '{}');
+    } catch (error) {
+      serviceOrderCatalog = {};
+    }
 
     const toNumber = (value) => {
       const raw = String(value || '').trim();
@@ -470,6 +975,8 @@ document.addEventListener('DOMContentLoaded', () => {
           setLookupStatus(checkoutStatus, 'Venda pronta para finalizar.', 'success');
         }
       }
+
+      refreshQuickCart();
 
       return { balance, paid, subtotal, total };
     };
@@ -655,6 +1162,16 @@ document.addEventListener('DOMContentLoaded', () => {
       return type?.value === 'product' && product?.value === String(productId);
     });
 
+    const findServiceRow = (serviceId, unitPrice) => rows.find((row) => {
+      const type = rowField(row, '[data-sale-item-type]');
+      const service = rowField(row, '[data-sale-service-select]');
+      const price = rowField(row, '[data-sale-unit-price]');
+
+      return type?.value === 'service'
+        && service?.value === String(serviceId)
+        && Math.abs(toNumber(price?.value) - toNumber(unitPrice)) < 0.005;
+    });
+
     const findScannedRow = (item) => {
       const barcode = item.gtin || item.barcode;
 
@@ -666,6 +1183,45 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const firstEmptyRow = () => rows.find(isEmptyRow);
+
+    const refreshQuickCart = () => {
+      if (!isQuickMode) {
+        return;
+      }
+
+      const hasItems = rows.some((row) => !isEmptyRow(row));
+
+      rows.forEach((row) => {
+        row.hidden = isEmptyRow(row);
+      });
+
+      if (quickCartEmpty) {
+        quickCartEmpty.hidden = hasItems;
+      }
+    };
+
+    const clearSaleRow = (row, recalculate = true) => {
+      const type = rowField(row, '[data-sale-item-type]');
+      const product = rowField(row, '[data-sale-product-select]');
+      const service = rowField(row, '[data-sale-service-select]');
+      const description = rowField(row, '[data-sale-description]');
+      const quantity = rowField(row, '[data-sale-quantity]');
+      const unitPrice = rowField(row, '[data-sale-unit-price]');
+      const itemDiscount = rowField(row, '[data-sale-item-discount]');
+
+      if (type) type.value = 'product';
+      if (product) product.value = '';
+      if (service) service.value = '';
+      if (description) description.value = '';
+      if (quantity) quantity.value = '';
+      if (unitPrice) unitPrice.value = '';
+      if (itemDiscount) itemDiscount.value = '';
+      row.dataset.saleGtin = '';
+
+      if (recalculate) {
+        calculateSaleTotals();
+      }
+    };
 
     const ensureProductOption = (select, item) => {
       if (!select || !item.product_id || select.querySelector(`option[value="${item.product_id}"]`)) {
@@ -727,6 +1283,15 @@ document.addEventListener('DOMContentLoaded', () => {
     const addSaleItem = (item) => {
       if (item.type === 'product' && item.product_id) {
         const existingRow = findProductRow(item.product_id);
+
+        if (existingRow) {
+          fillSaleRow(existingRow, item, true);
+          return 'incremented';
+        }
+      }
+
+      if (item.type === 'service' && item.petshop_service_id) {
+        const existingRow = findServiceRow(item.petshop_service_id, item.unit_price);
 
         if (existingRow) {
           fillSaleRow(existingRow, item, true);
@@ -842,6 +1407,311 @@ document.addEventListener('DOMContentLoaded', () => {
       applyManualRowDefaults(row);
     });
 
+    quickItemButtons.forEach((button) => button.addEventListener('click', () => {
+      const card = button.closest('[data-sale-quick-card]');
+      const price = card?.querySelector('[data-sale-quick-price]')?.value || '0';
+      const result = addSaleItem({
+        type: button.dataset.saleQuickType || 'service',
+        petshop_service_id: button.dataset.saleQuickId || null,
+        product_id: null,
+        description: button.dataset.saleQuickDescription || 'Servico PetShop',
+        quantity: 1,
+        unit_price: toNumber(price),
+      });
+
+      if (result === 'full') {
+        setLookupStatus(quickStatus, 'O carrinho esta cheio. Remova um item antes de continuar.', 'error');
+        return;
+      }
+
+      setLookupStatus(
+        quickStatus,
+        result === 'incremented' ? 'Quantidade do servico atualizada.' : 'Servico adicionado ao carrinho.',
+        'success',
+      );
+    }));
+
+    removeItemButtons.forEach((button) => button.addEventListener('click', () => {
+      const row = button.closest('[data-sale-item-row]');
+
+      if (row) {
+        clearSaleRow(row);
+        setLookupStatus(quickStatus, 'Item removido do carrinho.');
+      }
+    }));
+
+    const currentClinicId = () => String(clinicSelect?.value || saleForm?.dataset.saleClinicId || '');
+
+    const optionMatchesClinic = (option, clinicId) => {
+      if (!option.value || !option.dataset.clinicId) {
+        return true;
+      }
+
+      return clinicId !== '' && option.dataset.clinicId === clinicId;
+    };
+
+    const filterSelectByClinic = (select, clinicId) => {
+      if (!select) {
+        return;
+      }
+
+      Array.from(select.options).forEach((option) => {
+        const visible = optionMatchesClinic(option, clinicId);
+        option.hidden = !visible;
+        option.disabled = !visible;
+      });
+
+      if (select.selectedOptions[0]?.disabled) {
+        select.value = '';
+      }
+    };
+
+    const filterPatients = () => {
+      if (!patientSelect) {
+        return;
+      }
+
+      const clinicId = currentClinicId();
+      const tutorId = String(tutorSelect?.value || '');
+
+      Array.from(patientSelect.options).forEach((option) => {
+        const matchesClinic = optionMatchesClinic(option, clinicId);
+        const matchesTutor = !option.value || !tutorId || option.dataset.tutorId === tutorId;
+        const visible = matchesClinic && matchesTutor;
+        option.hidden = !visible;
+        option.disabled = !visible;
+      });
+
+      if (patientSelect.selectedOptions[0]?.disabled) {
+        patientSelect.value = '';
+      }
+    };
+
+    const filterSaleCatalog = () => {
+      const clinicId = currentClinicId();
+
+      filterSelectByClinic(tutorSelect, clinicId);
+      filterSelectByClinic(serviceOrderSelect, clinicId);
+      rows.forEach((row) => {
+        const product = rowField(row, '[data-sale-product-select]');
+        const service = rowField(row, '[data-sale-service-select]');
+        const previousProduct = product?.value || '';
+        const previousService = service?.value || '';
+
+        filterSelectByClinic(product, clinicId);
+        filterSelectByClinic(service, clinicId);
+
+        if ((previousProduct && !product?.value) || (previousService && !service?.value)) {
+          clearSaleRow(row, false);
+        }
+      });
+      quickCards.forEach((card) => {
+        card.hidden = !clinicId || card.dataset.clinicId !== clinicId;
+      });
+      filterPatients();
+      calculateSaleTotals();
+    };
+
+    const quickCustomerValue = (selector) => quickCustomer?.querySelector(selector)?.value?.trim() || '';
+
+    const appendSelectedOption = (select, record, attributes = {}) => {
+      if (!select || !record?.id) {
+        return;
+      }
+
+      let option = Array.from(select.options).find((item) => item.value === String(record.id));
+
+      if (!option) {
+        option = document.createElement('option');
+        option.value = String(record.id);
+        option.textContent = record.name || `Cadastro ${record.id}`;
+        select.appendChild(option);
+      }
+
+      Object.entries(attributes).forEach(([key, value]) => {
+        option.dataset[key] = String(value || '');
+      });
+      option.hidden = false;
+      option.disabled = false;
+      select.value = option.value;
+    };
+
+    const clearQuickCustomerFields = () => {
+      quickCustomer?.querySelectorAll('input').forEach((input) => {
+        input.value = '';
+      });
+    };
+
+    const storeQuickCustomer = async () => {
+      const tutorName = quickCustomerValue('[data-sale-customer-tutor-name]');
+      const tutorPhone = quickCustomerValue('[data-sale-customer-tutor-phone]');
+      const patientName = quickCustomerValue('[data-sale-customer-patient-name]');
+      const clinicId = currentClinicId();
+
+      if (!clinicId) {
+        setLookupStatus(quickCustomerStatus, 'Selecione a clínica antes de cadastrar.', 'error');
+        return;
+      }
+
+      if (!tutorName || !tutorPhone || !patientName) {
+        setLookupStatus(quickCustomerStatus, 'Preencha responsável, telefone e nome do pet.', 'error');
+        return;
+      }
+
+      const csrfToken = saleFormElement?.querySelector('input[name="_token"]')?.value || '';
+      const payload = {
+        clinic_id: clinicId,
+        tutor_name: tutorName,
+        tutor_phone: tutorPhone,
+        tutor_email: quickCustomerValue('[data-sale-customer-tutor-email]') || null,
+        patient_name: patientName,
+        patient_species: quickCustomerValue('[data-sale-customer-patient-species]') || null,
+        patient_breed: quickCustomerValue('[data-sale-customer-patient-breed]') || null,
+        patient_weight: quickCustomerValue('[data-sale-customer-patient-weight]') || null,
+      };
+
+      quickCustomerButton.disabled = true;
+      setLookupStatus(quickCustomerStatus, 'Salvando responsável e pet...');
+
+      try {
+        const response = await fetch(quickCustomer.dataset.storeUrl, {
+          method: 'POST',
+          headers: {
+            Accept: 'application/json',
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': csrfToken,
+          },
+          body: JSON.stringify(payload),
+        });
+        const data = await response.json();
+
+        if (!response.ok) {
+          const validationMessage = Object.values(data.errors || {}).flat().find(Boolean);
+          setLookupStatus(quickCustomerStatus, validationMessage || data.message || 'Não foi possível concluir o cadastro.', 'error');
+          return;
+        }
+
+        appendSelectedOption(tutorSelect, data.tutor, { clinicId: data.tutor.clinic_id });
+        appendSelectedOption(patientSelect, data.patient, {
+          clinicId: data.patient.clinic_id,
+          tutorId: data.patient.tutor_id,
+        });
+        filterPatients();
+        patientSelect.value = String(data.patient.id);
+        clearQuickCustomerFields();
+        setLookupStatus(quickCustomerStatus, data.message || 'Cadastro concluído.', 'success');
+      } catch (error) {
+        setLookupStatus(quickCustomerStatus, 'Cadastro indisponível agora. Tente novamente.', 'error');
+      } finally {
+        quickCustomerButton.disabled = false;
+      }
+    };
+
+    const hydrateSelectedServiceOrder = () => {
+      if (!isQuickMode || isLocked) {
+        return;
+      }
+
+      const selectedId = String(serviceOrderSelect?.value || '');
+
+      if (!selectedId) {
+        if (hydratedServiceOrderId) {
+          rows.forEach((row) => clearSaleRow(row, false));
+          tutorSelect.value = '';
+          patientSelect.value = '';
+          discountInput.value = '';
+          hydratedServiceOrderId = '';
+          filterPatients();
+          calculateSaleTotals();
+          setLookupStatus(quickStatus, 'Comanda removida; venda direta iniciada.');
+        }
+
+        return;
+      }
+
+      const order = serviceOrderCatalog[selectedId];
+
+      if (!order) {
+        setLookupStatus(quickStatus, 'Não foi possível carregar os itens desta comanda.', 'error');
+        return;
+      }
+
+      if (clinicSelect) {
+        clinicSelect.value = String(order.clinic_id || '');
+        filterSaleCatalog();
+      }
+
+      rows.forEach((row) => clearSaleRow(row, false));
+      tutorSelect.value = order.tutor_id ? String(order.tutor_id) : '';
+      filterPatients();
+      patientSelect.value = order.patient_id ? String(order.patient_id) : '';
+      discountInput.value = formatAmountInput(toNumber(order.discount_total), false);
+      paymentAmounts.forEach((input) => {
+        input.value = '';
+      });
+      paymentMethods.forEach((select) => {
+        select.value = '';
+      });
+      if (receivedAmountInput) {
+        receivedAmountInput.value = '';
+      }
+
+      let omittedItems = 0;
+
+      (order.items || []).forEach((item) => {
+        if (addSaleItem(item) === 'full') {
+          omittedItems += 1;
+        }
+      });
+
+      hydratedServiceOrderId = selectedId;
+      calculateSaleTotals();
+      syncPaymentShortcuts();
+
+      if (omittedItems > 0) {
+        setLookupStatus(quickStatus, `${omittedItems} item(ns) não couberam no carrinho. Revise a comanda.`, 'error');
+        return;
+      }
+
+      setLookupStatus(quickStatus, 'Comanda carregada. Confira os itens e receba o pagamento.', 'success');
+    };
+
+    clinicSelect?.addEventListener('change', () => {
+      filterSaleCatalog();
+      hydrateSelectedServiceOrder();
+    });
+    serviceOrderSelect?.addEventListener('change', hydrateSelectedServiceOrder);
+    tutorSelect?.addEventListener('change', filterPatients);
+    patientSelect?.addEventListener('change', () => {
+      const tutorId = patientSelect.selectedOptions[0]?.dataset.tutorId || '';
+
+      if (tutorSelect && tutorId && !tutorSelect.value) {
+        tutorSelect.value = tutorId;
+        filterPatients();
+      }
+    });
+    quickCustomerButton?.addEventListener('click', storeQuickCustomer);
+
+    const syncPaymentShortcuts = () => {
+      const selectedMethod = paymentMethods.find((select) => select.value)?.value || '';
+
+      paymentShortcuts.forEach((button) => {
+        button.classList.toggle('is-selected', button.dataset.salePaymentShortcut === selectedMethod);
+      });
+    };
+
+    paymentShortcuts.forEach((button) => button.addEventListener('click', () => {
+      const method = button.dataset.salePaymentShortcut || '';
+
+      if (paymentMethods[0]) {
+        paymentMethods[0].value = method;
+      }
+
+      fillBalancePayment();
+      syncPaymentShortcuts();
+    }));
+    paymentMethods.forEach((select) => select.addEventListener('change', syncPaymentShortcuts));
+
     moneyInputs.forEach((input) => formatMoneyInput(input, false));
     discountInput?.addEventListener('input', (event) => {
       applyMoneyMask(event.target);
@@ -860,7 +1730,7 @@ document.addEventListener('DOMContentLoaded', () => {
       applyMoneyMask(event.target);
       calculateSaleTotals();
     }));
-    saleForm?.addEventListener('submit', () => {
+    saleFormElement?.addEventListener('submit', () => {
       normalizeMoneyField(discountInput);
       normalizeMoneyField(additionsInput);
       unitPriceInputs.forEach(normalizeMoneyField);
@@ -882,13 +1752,18 @@ document.addEventListener('DOMContentLoaded', () => {
         statusSelect.value = 'completed';
       }
 
-      saleForm?.requestSubmit();
+      saleFormElement?.requestSubmit();
     });
 
     if (saleScanner.dataset.saleLookupAuto === '1' && normalizeBarcode(barcodeInput?.value || '').length >= 8) {
       lookupSaleProduct();
     }
 
+    filterSaleCatalog();
+    if (!hasOldSaleInput) {
+      hydrateSelectedServiceOrder();
+    }
+    syncPaymentShortcuts();
     calculateSaleTotals();
   }
 
@@ -2285,4 +3160,323 @@ document.addEventListener('DOMContentLoaded', () => {
 
     updatePurchaseTotals();
   }
+
+  const vaccinationForm = document.querySelector('[data-vaccination-form]');
+
+  if (vaccinationForm) {
+    const patientSelect = vaccinationForm.querySelector('[data-vaccination-patient]');
+    const vaccineSelect = vaccinationForm.querySelector('[data-vaccine-select]');
+    const vaccineNameInput = vaccinationForm.querySelector('[data-vaccine-name-input]');
+    const scheduledForInput = vaccinationForm.querySelector('[data-vaccination-scheduled]');
+    const appliedAtInput = vaccinationForm.querySelector('[data-vaccination-applied]');
+    const nextDueInput = vaccinationForm.querySelector('[data-vaccination-next-due]');
+
+    const addDaysToDate = (value, days) => {
+      const dateValue = String(value || '').slice(0, 10);
+
+      if (! /^\d{4}-\d{2}-\d{2}$/.test(dateValue)) {
+        return '';
+      }
+
+      const [year, month, day] = dateValue.split('-').map(Number);
+      const date = new Date(year, month - 1, day);
+      date.setDate(date.getDate() + Number(days));
+
+      return [date.getFullYear(), String(date.getMonth() + 1).padStart(2, '0'), String(date.getDate()).padStart(2, '0')].join('-');
+    };
+
+    const refreshVaccineOptions = () => {
+      const selectedPatient = patientSelect?.options[patientSelect.selectedIndex];
+      const speciesId = selectedPatient?.dataset.speciesId || '';
+
+      [...(vaccineSelect?.options || [])].forEach((option) => {
+        if (! option.value) {
+          return;
+        }
+
+        const speciesIds = String(option.dataset.speciesIds || '').split(',').filter(Boolean);
+        option.hidden = speciesId !== '' && speciesIds.length > 0 && ! speciesIds.includes(speciesId);
+      });
+    };
+
+    const suggestNextDue = () => {
+      const selectedVaccine = vaccineSelect?.options[vaccineSelect.selectedIndex];
+      const intervalDays = Number(selectedVaccine?.dataset.recommendedIntervalDays || 0);
+
+      if (! intervalDays || ! nextDueInput || (nextDueInput.value && nextDueInput.dataset.suggested !== 'true')) {
+        return;
+      }
+
+      const suggested = addDaysToDate(appliedAtInput?.value || scheduledForInput?.value, intervalDays);
+
+      if (suggested) {
+        nextDueInput.value = suggested;
+        nextDueInput.dataset.suggested = 'true';
+      }
+    };
+
+    patientSelect?.addEventListener('change', refreshVaccineOptions);
+    vaccineSelect?.addEventListener('change', () => {
+      const selectedVaccine = vaccineSelect.options[vaccineSelect.selectedIndex];
+
+      if (selectedVaccine?.value && vaccineNameInput) {
+        vaccineNameInput.value = selectedVaccine.dataset.vaccineName || '';
+      }
+
+      suggestNextDue();
+    });
+    scheduledForInput?.addEventListener('change', suggestNextDue);
+    appliedAtInput?.addEventListener('change', suggestNextDue);
+    nextDueInput?.addEventListener('input', () => {
+      delete nextDueInput.dataset.suggested;
+    });
+    refreshVaccineOptions();
+  }
+
+  const hospitalizationForm = document.querySelector('[data-hospitalization-form]');
+
+  if (hospitalizationForm) {
+    const patientSelect = hospitalizationForm.querySelector('[data-hospitalization-patient]');
+    const medicalRecordSelect = hospitalizationForm.querySelector('[data-hospitalization-medical-record]');
+
+    const refreshMedicalRecords = () => {
+      const patientId = patientSelect?.value || hospitalizationForm.querySelector('input[name="patient_id"]')?.value || '';
+
+      medicalRecordSelect?.querySelectorAll('option[data-patient-id]').forEach((option) => {
+        const available = !patientId || option.dataset.patientId === patientId;
+        option.hidden = !available;
+        option.disabled = !available;
+
+        if (!available && option.selected) {
+          medicalRecordSelect.value = '';
+        }
+      });
+    };
+
+    patientSelect?.addEventListener('change', refreshMedicalRecords);
+    refreshMedicalRecords();
+  }
+
+  const tutorForm = document.querySelector('[data-tutor-form]');
+
+  if (tutorForm) {
+    const digits = (value) => String(value || '').replace(/\D+/g, '');
+    const cpfInput = tutorForm.querySelector('[data-tutor-cpf]');
+    const cpfStatus = tutorForm.querySelector('[data-tutor-cpf-status]');
+    const cepInput = tutorForm.querySelector('[data-tutor-cep]');
+    const cepStatus = tutorForm.querySelector('[data-tutor-cep-status]');
+    let cepLookupTimer = null;
+    let cepLookupController = null;
+
+    const setTutorLookupStatus = (element, message, state = '') => {
+      if (!element) {
+        return;
+      }
+
+      element.textContent = message;
+      element.classList.remove('is-success', 'is-warning', 'is-error');
+
+      if (state) {
+        element.classList.add(`is-${state}`);
+      }
+    };
+
+    const formatCpf = (value) => {
+      const valueDigits = digits(value).slice(0, 11);
+
+      return valueDigits
+        .replace(/(\d{3})(\d)/, '$1.$2')
+        .replace(/(\d{3})(\d)/, '$1.$2')
+        .replace(/(\d{3})(\d{1,2})$/, '$1-$2');
+    };
+
+    const isValidCpf = (value) => {
+      const valueDigits = digits(value);
+
+      if (valueDigits.length !== 11 || /^(\d)\1{10}$/.test(valueDigits)) {
+        return false;
+      }
+
+      const digitAt = (position) => {
+        let sum = 0;
+
+        for (let index = 0; index < position - 1; index += 1) {
+          sum += Number(valueDigits[index]) * (position - index);
+        }
+
+        const remainder = (sum * 10) % 11;
+
+        return remainder === 10 ? 0 : remainder;
+      };
+
+      return digitAt(10) === Number(valueDigits[9]) && digitAt(11) === Number(valueDigits[10]);
+    };
+
+    const formatPhone = (value) => {
+      const valueDigits = digits(value).slice(0, 11);
+
+      if (valueDigits.length <= 2) {
+        return valueDigits;
+      }
+
+      if (valueDigits.length <= 6) {
+        return valueDigits.replace(/(\d{2})(\d+)/, '($1) $2');
+      }
+
+      if (valueDigits.length <= 10) {
+        return valueDigits.replace(/(\d{2})(\d{4})(\d+)/, '($1) $2-$3');
+      }
+
+      return valueDigits.replace(/(\d{2})(\d{5})(\d+)/, '($1) $2-$3');
+    };
+
+    const formatCep = (value) => {
+      const valueDigits = digits(value).slice(0, 8);
+
+      return valueDigits.replace(/(\d{5})(\d+)/, '$1-$2');
+    };
+
+    const fillAddress = (address) => {
+      const fields = {
+        street: address.logradouro,
+        district: address.bairro,
+        city: address.localidade,
+        state: address.uf,
+      };
+
+      Object.entries(fields).forEach(([field, value]) => {
+        const input = tutorForm.querySelector(`#${field}`);
+
+        if (input && value) {
+          input.value = value;
+        }
+      });
+    };
+
+    const lookupCep = async () => {
+      const cep = digits(cepInput?.value);
+
+      if (cep.length !== 8) {
+        setTutorLookupStatus(cepStatus, cep ? 'Informe os 8 dígitos do CEP.' : '', cep ? 'warning' : '');
+        return;
+      }
+
+      cepLookupController?.abort();
+      cepLookupController = new AbortController();
+      setTutorLookupStatus(cepStatus, 'Buscando endereço pelo CEP...');
+
+      try {
+        const response = await fetch(`https://viacep.com.br/ws/${cep}/json/`, {
+          signal: cepLookupController.signal,
+        });
+
+        if (!response.ok) {
+          throw new Error('CEP lookup failed');
+        }
+
+        const address = await response.json();
+
+        if (address.erro) {
+          setTutorLookupStatus(cepStatus, 'CEP não encontrado. Preencha o endereço manualmente.', 'warning');
+          return;
+        }
+
+        fillAddress(address);
+        setTutorLookupStatus(cepStatus, 'Endereço preenchido. Revise número e complemento.', 'success');
+        tutorForm.querySelector('#number')?.focus();
+      } catch (error) {
+        if (error.name !== 'AbortError') {
+          setTutorLookupStatus(cepStatus, 'Não foi possível buscar o CEP agora. Preencha manualmente.', 'warning');
+        }
+      }
+    };
+
+    if (cpfInput) {
+      cpfInput.value = formatCpf(cpfInput.value);
+      cpfInput.addEventListener('input', () => {
+        cpfInput.value = formatCpf(cpfInput.value);
+        const valueDigits = digits(cpfInput.value);
+        const valid = isValidCpf(valueDigits);
+
+        setTutorLookupStatus(
+          cpfStatus,
+          valueDigits.length === 11 ? (valid ? 'CPF válido.' : 'CPF inválido.') : '',
+          valueDigits.length === 11 ? (valid ? 'success' : 'error') : ''
+        );
+      });
+    }
+
+    tutorForm.querySelectorAll('[data-tutor-phone]').forEach((input) => {
+      input.value = formatPhone(input.value);
+      input.addEventListener('input', () => {
+        input.value = formatPhone(input.value);
+      });
+    });
+
+    if (cepInput) {
+      cepInput.value = formatCep(cepInput.value);
+      cepInput.addEventListener('input', () => {
+        cepInput.value = formatCep(cepInput.value);
+        window.clearTimeout(cepLookupTimer);
+
+        if (digits(cepInput.value).length === 8) {
+          cepLookupTimer = window.setTimeout(lookupCep, 450);
+        }
+      });
+      cepInput.addEventListener('blur', lookupCep);
+    }
+  }
+
+  const prescriptionForm = document.querySelector('[data-prescription-form]');
+
+  if (prescriptionForm) {
+    const itemsContainer = prescriptionForm.querySelector('[data-prescription-items]');
+    const itemTemplate = prescriptionForm.querySelector('[data-prescription-item-template]');
+    const addButton = prescriptionForm.querySelector('[data-prescription-add-item]');
+
+    const refreshPrescriptionItems = () => {
+      const items = [...itemsContainer.querySelectorAll('[data-prescription-item]')];
+
+      items.forEach((item, index) => {
+        const number = item.querySelector('[data-prescription-item-number]');
+
+        if (number) {
+          number.textContent = String(index + 1);
+        }
+      });
+
+      addButton.disabled = items.length >= 30;
+      itemsContainer.querySelectorAll('[data-prescription-remove-item]').forEach((button) => {
+        button.disabled = items.length === 1;
+      });
+    };
+
+    addButton?.addEventListener('click', () => {
+      const nextIndex = Number(itemsContainer.dataset.nextIndex || 0);
+      const wrapper = document.createElement('div');
+
+      wrapper.innerHTML = itemTemplate.innerHTML.replaceAll('__INDEX__', String(nextIndex)).trim();
+      itemsContainer.append(wrapper.firstElementChild);
+      itemsContainer.dataset.nextIndex = String(nextIndex + 1);
+      refreshPrescriptionItems();
+      itemsContainer.lastElementChild?.querySelector('input')?.focus();
+    });
+
+    itemsContainer?.addEventListener('click', (event) => {
+      const removeButton = event.target.closest('[data-prescription-remove-item]');
+
+      if (!removeButton) {
+        return;
+      }
+
+      removeButton.closest('[data-prescription-item]')?.remove();
+      refreshPrescriptionItems();
+    });
+
+    refreshPrescriptionItems();
+  }
+
+  document.querySelectorAll('[data-print-page]').forEach((button) => {
+    button.addEventListener('click', () => window.print());
+  });
 });

@@ -5,6 +5,7 @@ namespace App\Modules\Access\Services;
 use App\Models\Role;
 use App\Models\User;
 use App\Modules\Access\Contracts\AccessUserRepositoryInterface;
+use App\Modules\Audit\Services\AuditTrailService;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
@@ -13,7 +14,8 @@ use Illuminate\Validation\ValidationException;
 class AccessUserService
 {
     public function __construct(
-        private readonly AccessUserRepositoryInterface $repository
+        private readonly AccessUserRepositoryInterface $repository,
+        private readonly AuditTrailService $audit
     ) {}
 
     public function paginate(User $actor): LengthAwarePaginator
@@ -50,7 +52,19 @@ class AccessUserService
             $user = $this->repository->create($attributes);
             $this->repository->syncRoles($user, $roleIds, $actor);
 
-            return $user->load(['clinic', 'roles']);
+            $user->load(['clinic', 'roles']);
+            $this->audit->record(
+                'access.user.created',
+                $user,
+                [],
+                $this->auditSnapshot($user),
+                $actor,
+                [],
+                $user->clinic_id,
+                $user->name
+            );
+
+            return $user;
         });
     }
 
@@ -61,14 +75,28 @@ class AccessUserService
     {
         [$roleIds, $roles] = $this->validatedRoles($data['role_ids'] ?? []);
         $attributes = $this->userAttributes($actor, $data, $accessUser);
+        $before = $this->auditSnapshot($accessUser);
+        $passwordChanged = ! empty($data['password']);
 
         $this->guardSelfUpdate($actor, $accessUser, $attributes, $roles);
 
-        return DB::transaction(function () use ($actor, $accessUser, $attributes, $roleIds): User {
+        return DB::transaction(function () use ($actor, $accessUser, $attributes, $roleIds, $before, $passwordChanged): User {
             $user = $this->repository->update($accessUser, $attributes);
             $this->repository->syncRoles($user, $roleIds, $actor);
+            $user->load(['clinic', 'roles']);
 
-            return $user->load(['clinic', 'roles']);
+            $this->audit->record(
+                'access.user.updated',
+                $user,
+                $before,
+                $this->auditSnapshot($user),
+                $actor,
+                $passwordChanged ? ['password_changed' => true] : [],
+                $user->clinic_id,
+                $user->name
+            );
+
+            return $user;
         });
     }
 
@@ -158,5 +186,21 @@ class AccessUserService
                 'role_ids' => 'Mantenha um perfil com gestao de usuarios no seu proprio acesso.',
             ]);
         }
+    }
+
+    /** @return array<string, mixed> */
+    private function auditSnapshot(User $user): array
+    {
+        $user->loadMissing('roles');
+
+        return [
+            'clinic_id' => $user->clinic_id,
+            'name' => $user->name,
+            'email' => $user->email,
+            'phone' => $user->phone,
+            'position' => $user->position,
+            'active' => (bool) $user->active,
+            'roles' => $user->roles->pluck('slug')->sort()->values()->all(),
+        ];
     }
 }

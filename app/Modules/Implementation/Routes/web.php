@@ -17,6 +17,32 @@ Route::post('implementation/clinic', [ImplementationController::class, 'selectCl
 Route::post('implementation/source', [ImplementationController::class, 'selectSource'])
     ->name('implementation.source');
 
+Route::post('implementation/pilot-checks', [ImplementationController::class, 'storePilotCheck'])
+    ->name('implementation.pilot-checks.store');
+
+Route::post('implementation/pilot-releases', [ImplementationController::class, 'storePilotRelease'])
+    ->name('implementation.pilot-releases.store');
+
+Route::post('implementation/pilot-decisions', [ImplementationController::class, 'storePilotDecision'])
+    ->name('implementation.pilot-decisions.store');
+
+Route::get('implementation/quality/{clinic}/{type}', [ImplementationController::class, 'qualityIssues'])
+    ->whereNumber('clinic')
+    ->whereIn('type', ['tutors', 'patients', 'suppliers', 'products', 'stock', 'financial'])
+    ->name('implementation.quality.issues');
+
+Route::get('implementation/pilots/{clinic}/history', [ImplementationController::class, 'pilotHistory'])
+    ->whereNumber('clinic')
+    ->name('implementation.pilots.history');
+
+Route::get('implementation/pilots/{clinic}/report', [ImplementationController::class, 'pilotReport'])
+    ->whereNumber('clinic')
+    ->name('implementation.pilots.report');
+
+Route::get('implementation/pilots/{clinic}/report.json', [ImplementationController::class, 'pilotReportJson'])
+    ->whereNumber('clinic')
+    ->name('implementation.pilots.report-json');
+
 Route::post('implementation/tutors/upload', [ImplementationController::class, 'uploadTutors'])
     ->name('implementation.tutors.upload');
 

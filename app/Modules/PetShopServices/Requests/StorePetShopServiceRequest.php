@@ -3,6 +3,7 @@
 namespace App\Modules\PetShopServices\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class StorePetShopServiceRequest extends FormRequest
 {
@@ -14,7 +15,12 @@ class StorePetShopServiceRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'clinic_id' => ['nullable', 'integer', 'exists:clinics,id'],
+            'clinic_id' => [
+                Rule::requiredIf($this->user()?->clinic_id === null),
+                'nullable',
+                'integer',
+                Rule::exists('clinics', 'id')->where('active', true),
+            ],
             'name' => ['required', 'string', 'max:255'],
             'category' => ['nullable', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
@@ -33,6 +39,7 @@ class StorePetShopServiceRequest extends FormRequest
     {
         return [
             'name.required' => 'Informe o nome do servico.',
+            'clinic_id.required' => 'Selecione a clinica do servico.',
             'clinic_id.exists' => 'A clinica informada nao foi encontrada.',
             'base_price.numeric' => 'Informe um preco base valido.',
             'small_price.numeric' => 'Informe um preco valido para porte pequeno.',

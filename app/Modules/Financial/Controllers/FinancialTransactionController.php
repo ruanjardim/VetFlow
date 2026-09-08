@@ -46,8 +46,16 @@ class FinancialTransactionController extends BaseCrudController
 
     public function edit(int $id)
     {
+        $transaction = $this->service->findOrFail($id);
+
+        if ($transaction->sale) {
+            return redirect()
+                ->route('sales.edit', $transaction->sale->id)
+                ->with('error', 'Este recebimento pertence a uma venda. Use o PDV para receber, devolver ou cancelar.');
+        }
+
         return view("{$this->viewPath}.edit", [
-            'item' => $this->service->findOrFail($id),
+            'item' => $transaction,
             'suppliers' => $this->suppliers(),
         ]);
     }

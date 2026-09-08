@@ -48,6 +48,512 @@
     </div>
   @endif
 
+  @if(($pilotPortfolio['total'] ?? 0) > 0)
+    <section class="panel implementation-pilot-readiness">
+      <div class="panel-body">
+        <div class="implementation-heading">
+          <div>
+            <span class="eyebrow">Decisão consolidada</span>
+            <h2>Prontidão para o piloto</h2>
+            <p class="muted">
+              A decisão humana fica vinculada a um retrato das importações, qualidade, checklist e plano atuais.
+            </p>
+          </div>
+        </div>
+
+        <div class="implementation-summary implementation-portfolio-summary">
+          <div><span>Clínicas</span><strong>{{ $pilotPortfolio['total'] }}</strong></div>
+          <div><span>Pendentes</span><strong>{{ $pilotPortfolio['counts']['blocked'] }}</strong></div>
+          <div><span>Aguardando decisão</span><strong>{{ $pilotPortfolio['counts']['awaiting'] }}</strong></div>
+          <div><span>Em espera</span><strong>{{ $pilotPortfolio['counts']['held'] }}</strong></div>
+          <div><span>Aprovadas</span><strong>{{ $pilotPortfolio['counts']['approved'] }}</strong></div>
+          <div><span>Decisões superadas</span><strong>{{ $pilotPortfolio['stale_decisions'] }}</strong></div>
+        </div>
+
+        <form method="GET" action="{{ route('implementation.index') }}" class="form-grid implementation-portfolio-filter">
+          <div class="field">
+            <label for="pilot-status">Filtrar prontidão</label>
+            <select id="pilot-status" name="pilot_status">
+              <option value="">Todas as clínicas</option>
+              @foreach($pilotPortfolio['filters'] as $statusKey => $statusLabel)
+                <option value="{{ $statusKey }}" @selected($pilotPortfolio['selected_status'] === $statusKey)>
+                  {{ $statusLabel }} ({{ $pilotPortfolio['counts'][$statusKey] }})
+                </option>
+              @endforeach
+            </select>
+          </div>
+
+          <div class="field implementation-portfolio-filter-actions">
+            <button type="submit">Aplicar filtro</button>
+            @if($pilotPortfolio['selected_status'])
+              <a class="button secondary" href="{{ route('implementation.index') }}">Limpar</a>
+            @endif
+          </div>
+        </form>
+
+        @if(empty($pilotReadiness))
+          <div class="empty-state">
+            <h3>Nenhuma clínica neste status</h3>
+            <p>Altere o filtro para consultar os demais pilotos.</p>
+          </div>
+        @else
+          <p class="muted implementation-portfolio-visible">
+            Exibindo {{ $pilotPortfolio['visible'] }} de {{ $pilotPortfolio['total'] }} clínicas.
+          </p>
+
+          <div class="implementation-readiness-list">
+            @foreach($pilotReadiness as $readiness)
+            <article class="implementation-readiness-card readiness-{{ $readiness['status']['key'] }}">
+              <div class="implementation-readiness-header">
+                <div>
+                  <h3>{{ $readiness['clinic_name'] }}</h3>
+                  <p class="muted">{{ $readiness['status']['description'] }}</p>
+                </div>
+
+                <span class="implementation-readiness-status">
+                  {{ $readiness['status']['label'] }}
+                </span>
+              </div>
+
+              <div class="implementation-readiness-gates">
+                @foreach($readiness['gates'] as $gate)
+                  <div class="implementation-readiness-gate {{ $gate['passed'] ? 'passed' : 'pending' }}">
+                    <span aria-hidden="true">{{ $gate['passed'] ? '✓' : '○' }}</span>
+                    <div>
+                      <strong>{{ $gate['label'] }}</strong>
+                      <small>{{ $gate['summary'] }}</small>
+                    </div>
+                  </div>
+                @endforeach
+              </div>
+
+              @if($readiness['decision'])
+                <div class="implementation-decision-audit">
+                  <strong>
+                    Última decisão: {{ $readiness['decision'] === 'approved' ? 'Aprovado' : 'Em espera' }}
+                  </strong>
+                  <span>
+                    por {{ $readiness['decision_user_name'] }}
+                    em {{ $readiness['decided_at']?->format('d/m/Y H:i') }}
+                  </span>
+
+                  @if(!$readiness['decision_current'])
+                    <small>Esta decisão foi superada por mudanças nas evidências.</small>
+                  @elseif($readiness['decision_notes'])
+                    <small>{{ $readiness['decision_notes'] }}</small>
+                  @endif
+                </div>
+              @endif
+
+              <div class="row-actions">
+                <a
+                  class="button secondary"
+                  href="{{ route('implementation.pilots.history', $readiness['clinic_id']) }}"
+                >
+                  Ver histórico do piloto
+                </a>
+
+                <a
+                  class="button secondary"
+                  href="{{ route('implementation.pilots.report', $readiness['clinic_id']) }}"
+                >
+                  Emitir relatório
+                </a>
+              </div>
+
+              <form
+                class="implementation-readiness-decision"
+                method="POST"
+                action="{{ route('implementation.pilot-decisions.store') }}"
+              >
+                @csrf
+                <input type="hidden" name="clinic_id" value="{{ $readiness['clinic_id'] }}">
+
+                <div class="field">
+                  <label for="pilot-decision-{{ $readiness['clinic_id'] }}">Decisão</label>
+                  <select id="pilot-decision-{{ $readiness['clinic_id'] }}" name="decision" required>
+                    @if($readiness['gates_passed'])
+                      <option value="approved">Aprovar piloto com as evidências atuais</option>
+                    @endif
+                    <option value="held">Manter piloto em espera</option>
+                  </select>
+                </div>
+
+                <div class="field">
+                  <label for="pilot-decision-notes-{{ $readiness['clinic_id'] }}">
+                    Justificativa ou observação
+                  </label>
+                  <textarea
+                    id="pilot-decision-notes-{{ $readiness['clinic_id'] }}"
+                    name="notes"
+                    rows="3"
+                    maxlength="2000"
+                    placeholder="Obrigatória ao manter o piloto em espera"
+                  ></textarea>
+                </div>
+
+                <button class="button primary" type="submit">Registrar decisão</button>
+              </form>
+              </article>
+            @endforeach
+          </div>
+        @endif
+      </div>
+    </section>
+  @endif
+
+  @if(!empty($onboardingReadiness))
+    <section class="panel">
+      <div class="panel-body">
+        <div class="implementation-heading">
+          <div>
+            <span class="eyebrow">Onboarding guiado</span>
+            <h2>Cobertura da implantação</h2>
+            <p class="muted">
+              O progresso considera somente blocos que já tiveram uma importação concluída com sucesso.
+            </p>
+          </div>
+        </div>
+
+        <div class="implementation-readiness-list">
+          @foreach($onboardingReadiness as $readiness)
+            <article class="implementation-readiness-card">
+              <div class="implementation-readiness-header">
+                <div>
+                  <h3>{{ $readiness['clinic_name'] }}</h3>
+                  <p class="muted">
+                    {{ $readiness['completed_blocks'] }} de {{ $readiness['total_blocks'] }} blocos concluídos
+                  </p>
+                </div>
+
+                <strong>{{ $readiness['percentage'] }}%</strong>
+              </div>
+
+              <div
+                class="implementation-progress"
+                role="progressbar"
+                aria-valuemin="0"
+                aria-valuemax="100"
+                aria-valuenow="{{ $readiness['percentage'] }}"
+                aria-label="Cobertura da implantação de {{ $readiness['clinic_name'] }}"
+              >
+                <span style="width: {{ $readiness['percentage'] }}%"></span>
+              </div>
+
+              <div class="implementation-readiness-blocks">
+                @foreach($readiness['blocks'] as $block)
+                  <div class="implementation-readiness-block {{ $block['completed'] ? 'completed' : 'pending' }}">
+                    <span aria-hidden="true">{{ $block['completed'] ? '✓' : '○' }}</span>
+
+                    <div>
+                      <strong>{{ $block['label'] }}</strong>
+
+                      @if($block['completed'])
+                        <small>
+                          {{ $block['imported_count'] }} registros via {{ mb_strtoupper($block['source']) }}
+                          em {{ $block['completed_at']?->format('d/m/Y H:i') }}
+                        </small>
+                      @else
+                        <small>Pendente de importação concluída</small>
+                      @endif
+                    </div>
+                  </div>
+                @endforeach
+              </div>
+            </article>
+          @endforeach
+        </div>
+      </div>
+    </section>
+  @endif
+
+  @if(!empty($onboardingQuality))
+    <section class="panel">
+      <div class="panel-body">
+        <div class="implementation-heading">
+          <div>
+            <span class="eyebrow">Qualidade dos dados</span>
+            <h2>Pendências do onboarding</h2>
+            <p class="muted">
+              A revisão começa depois da primeira importação de cada bloco e destaca cadastros que merecem conferência.
+            </p>
+          </div>
+        </div>
+
+        <div class="implementation-readiness-list">
+          @foreach($onboardingQuality as $quality)
+            <article class="implementation-readiness-card">
+              <div class="implementation-readiness-header">
+                <div>
+                  <h3>{{ $quality['clinic_name'] }}</h3>
+                  <p class="muted">
+                    {{ $quality['total_issues'] }} pendências em {{ $quality['evaluated_blocks'] }} blocos avaliados
+                  </p>
+                </div>
+
+                <strong>{{ $quality['percentage'] }}%</strong>
+              </div>
+
+              <div
+                class="implementation-progress"
+                role="progressbar"
+                aria-valuemin="0"
+                aria-valuemax="100"
+                aria-valuenow="{{ $quality['percentage'] }}"
+                aria-label="Qualidade dos dados de {{ $quality['clinic_name'] }}"
+              >
+                <span style="width: {{ $quality['percentage'] }}%"></span>
+              </div>
+
+              <p class="implementation-quality-summary">
+                {{ $quality['ready_blocks'] }} de {{ $quality['evaluated_blocks'] }} blocos avaliados sem pendências detectadas
+              </p>
+
+              <div class="implementation-readiness-blocks">
+                @foreach($quality['blocks'] as $block)
+                  <div class="implementation-readiness-block quality-{{ $block['status'] }}">
+                    <span aria-hidden="true">
+                      {{ $block['status'] === 'ready' ? '✓' : ($block['status'] === 'attention' ? '!' : '○') }}
+                    </span>
+
+                    <div>
+                      <strong>{{ $block['label'] }}</strong>
+
+                      @if($block['status'] === 'awaiting')
+                        <small>Aguardando importação concluída</small>
+                      @elseif($block['status'] === 'ready')
+                        <small>Sem pendências detectadas</small>
+                      @else
+                        <small>
+                          {{ $block['issue_count'] }} registros para revisar:<br>
+                          {{ $block['description'] }}
+                        </small>
+
+                        <a
+                          class="implementation-quality-link"
+                          href="{{ route('implementation.quality.issues', [
+                            'clinic' => $quality['clinic_id'],
+                            'type' => $block['type'],
+                          ]) }}"
+                        >
+                          Ver registros
+                        </a>
+                      @endif
+                    </div>
+                  </div>
+                @endforeach
+              </div>
+            </article>
+          @endforeach
+        </div>
+      </div>
+    </section>
+  @endif
+
+  @if(!empty($pilotChecklists))
+    <section class="panel">
+      <div class="panel-body">
+        <div class="implementation-heading">
+          <div>
+            <span class="eyebrow">Preparação do piloto</span>
+            <h2>Checklist auditável</h2>
+            <p class="muted">
+              Cada conclusão ou reabertura gera uma nova decisão com responsável e horário, preservando o histórico.
+            </p>
+          </div>
+        </div>
+
+        <div class="implementation-readiness-list">
+          @foreach($pilotChecklists as $checklist)
+            <article class="implementation-readiness-card">
+              <div class="implementation-readiness-header">
+                <div>
+                  <h3>{{ $checklist['clinic_name'] }}</h3>
+                  <p class="muted">
+                    {{ $checklist['completed_checks'] }} de {{ $checklist['total_checks'] }} itens concluídos
+                  </p>
+                </div>
+
+                <strong>{{ $checklist['percentage'] }}%</strong>
+              </div>
+
+              <div
+                class="implementation-progress"
+                role="progressbar"
+                aria-valuemin="0"
+                aria-valuemax="100"
+                aria-valuenow="{{ $checklist['percentage'] }}"
+                aria-label="Checklist do piloto de {{ $checklist['clinic_name'] }}"
+              >
+                <span style="width: {{ $checklist['percentage'] }}%"></span>
+              </div>
+
+              <div class="implementation-pilot-checks">
+                @foreach($checklist['checks'] as $check)
+                  <form
+                    class="implementation-pilot-check {{ $check['completed'] ? 'completed' : 'pending' }}"
+                    method="POST"
+                    action="{{ route('implementation.pilot-checks.store') }}"
+                  >
+                    @csrf
+                    <input type="hidden" name="clinic_id" value="{{ $checklist['clinic_id'] }}">
+                    <input type="hidden" name="check_key" value="{{ $check['key'] }}">
+                    <input type="hidden" name="completed" value="{{ $check['completed'] ? 0 : 1 }}">
+
+                    <div class="implementation-pilot-check-heading">
+                      <span aria-hidden="true">{{ $check['completed'] ? '✓' : '○' }}</span>
+                      <div>
+                        <strong>{{ $check['label'] }}</strong>
+                        <small>{{ $check['description'] }}</small>
+                      </div>
+                    </div>
+
+                    <label for="pilot-note-{{ $checklist['clinic_id'] }}-{{ $check['key'] }}">
+                      Observação da decisão
+                    </label>
+                    <textarea
+                      id="pilot-note-{{ $checklist['clinic_id'] }}-{{ $check['key'] }}"
+                      name="notes"
+                      rows="2"
+                      maxlength="1000"
+                      placeholder="Contexto opcional para a equipe"
+                    >{{ $check['notes'] }}</textarea>
+
+                    @if($check['has_decision'])
+                      <small class="implementation-pilot-audit">
+                        Última decisão por {{ $check['user_name'] }}
+                        em {{ $check['decided_at']?->format('d/m/Y H:i') }}
+                      </small>
+                    @else
+                      <small class="implementation-pilot-audit">Ainda sem decisão registrada</small>
+                    @endif
+
+                    <button class="button secondary small" type="submit">
+                      {{ $check['completed'] ? 'Reabrir item' : 'Marcar concluído' }}
+                    </button>
+                  </form>
+                @endforeach
+              </div>
+            </article>
+          @endforeach
+        </div>
+      </div>
+    </section>
+  @endif
+
+  @if(!empty($pilotReleases))
+    <section class="panel">
+      <div class="panel-body">
+        <div class="implementation-heading">
+          <div>
+            <span class="eyebrow">Liberação piloto</span>
+            <h2>Responsáveis, escopo e notas</h2>
+            <p class="muted">
+              Salvar o plano cria uma nova revisão; o conteúdo anterior permanece preservado para auditoria.
+            </p>
+          </div>
+        </div>
+
+        <div class="implementation-readiness-list">
+          @foreach($pilotReleases as $release)
+            @php
+              $useOldRelease = (int) old('clinic_id') === (int) $release['clinic_id'];
+            @endphp
+            <article class="implementation-readiness-card">
+              <div class="implementation-readiness-header">
+                <div>
+                  <h3>{{ $release['clinic_name'] }}</h3>
+
+                  @if($release['has_release'])
+                    <p class="muted">
+                      Revisão {{ $release['revision'] }} registrada por {{ $release['user_name'] }}
+                      em {{ $release['recorded_at']?->format('d/m/Y H:i') }}
+                    </p>
+                  @else
+                    <p class="muted">Plano ainda não registrado</p>
+                  @endif
+                </div>
+              </div>
+
+              <form
+                class="implementation-pilot-release"
+                method="POST"
+                action="{{ route('implementation.pilot-releases.store') }}"
+              >
+                @csrf
+                <input type="hidden" name="clinic_id" value="{{ $release['clinic_id'] }}">
+
+                <div class="form-grid">
+                  <div class="field">
+                    <label for="release-owner-{{ $release['clinic_id'] }}">Responsável operacional</label>
+                    <input
+                      id="release-owner-{{ $release['clinic_id'] }}"
+                      name="release_owner"
+                      type="text"
+                      maxlength="150"
+                      required
+                      value="{{ $useOldRelease ? old('release_owner') : $release['release_owner'] }}"
+                    >
+                  </div>
+
+                  <div class="field">
+                    <label for="support-owner-{{ $release['clinic_id'] }}">Responsável pelo suporte</label>
+                    <input
+                      id="support-owner-{{ $release['clinic_id'] }}"
+                      name="support_owner"
+                      type="text"
+                      maxlength="150"
+                      required
+                      value="{{ $useOldRelease ? old('support_owner') : $release['support_owner'] }}"
+                    >
+                  </div>
+
+                  <div class="field">
+                    <label for="planned-start-{{ $release['clinic_id'] }}">Início previsto</label>
+                    <input
+                      id="planned-start-{{ $release['clinic_id'] }}"
+                      name="planned_start_date"
+                      type="date"
+                      value="{{ $useOldRelease ? old('planned_start_date') : $release['planned_start_date']?->format('Y-m-d') }}"
+                    >
+                  </div>
+                </div>
+
+                <div class="field">
+                  <label for="pilot-scope-{{ $release['clinic_id'] }}">Escopo funcional do piloto</label>
+                  <textarea
+                    id="pilot-scope-{{ $release['clinic_id'] }}"
+                    name="scope"
+                    rows="4"
+                    maxlength="5000"
+                    required
+                    placeholder="Módulos, equipe, unidade e rotinas incluídas"
+                  >{{ $useOldRelease ? old('scope') : $release['scope'] }}</textarea>
+                </div>
+
+                <div class="field">
+                  <label for="release-notes-{{ $release['clinic_id'] }}">Notas da liberação</label>
+                  <textarea
+                    id="release-notes-{{ $release['clinic_id'] }}"
+                    name="release_notes"
+                    rows="4"
+                    maxlength="10000"
+                    required
+                    placeholder="Mudanças, limitações conhecidas e orientações para o piloto"
+                  >{{ $useOldRelease ? old('release_notes') : $release['release_notes'] }}</textarea>
+                </div>
+
+                <button class="button primary" type="submit">
+                  {{ $release['has_release'] ? 'Salvar nova revisão' : 'Registrar plano do piloto' }}
+                </button>
+              </form>
+            </article>
+          @endforeach
+        </div>
+      </div>
+    </section>
+  @endif
+
   <section class="panel">
     <div class="panel-body">
       <div class="implementation-heading">
@@ -202,7 +708,7 @@
         @case(2)
           <h2>Escolha a origem dos dados</h2>
           <p class="muted">
-            Tutores, Pacientes, Fornecedores, Produtos, Estoque e Financeiro podem ser importados por CSV ou Excel.
+            Responsáveis, Pacientes, Fornecedores, Produtos, Estoque e Financeiro podem ser importados por CSV ou Excel.
           </p>
 
           <form method="POST" action="{{ route('implementation.source') }}">

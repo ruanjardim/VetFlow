@@ -1,3 +1,8 @@
+@php
+  $selectedPatientId = (int) old('patient_id', $appointment->patient_id ?? $preselectedPatientId ?? 0);
+  $selectedTutorId = (int) old('tutor_id', $appointment->tutor_id ?? $preselectedTutorId ?? 0);
+@endphp
+
 <div class="form-grid">
   <div class="field">
     <label for="title">Titulo</label>
@@ -12,18 +17,18 @@
     <select id="patient_id" name="patient_id">
       <option value="">Selecione</option>
       @foreach($patients ?? [] as $patient)
-        <option value="{{ $patient->id }}" @selected((int) old('patient_id', $appointment->patient_id ?? 0) === $patient->id)>
+        <option value="{{ $patient->id }}" data-tutor-id="{{ $patient->tutor_id }}" @selected($selectedPatientId === $patient->id)>
           {{ $patient->name }}
         </option>
       @endforeach
     </select>
   </div>
   <div class="field">
-    <label for="tutor_id">Tutor</label>
+    <label for="tutor_id">Responsável</label>
     <select id="tutor_id" name="tutor_id">
       <option value="">Selecione</option>
       @foreach($tutors ?? [] as $tutor)
-        <option value="{{ $tutor->id }}" @selected((int) old('tutor_id', $appointment->tutor_id ?? 0) === $tutor->id)>
+        <option value="{{ $tutor->id }}" @selected($selectedTutorId === $tutor->id)>
           {{ $tutor->name }}
         </option>
       @endforeach
@@ -48,3 +53,18 @@
     </div>
   </div>
 </div>
+
+<script>
+  (() => {
+    const patientInput = document.getElementById('patient_id');
+    const tutorInput = document.getElementById('tutor_id');
+
+    patientInput?.addEventListener('change', () => {
+      const tutorId = patientInput.options[patientInput.selectedIndex]?.dataset.tutorId;
+
+      if (tutorId) {
+        tutorInput.value = tutorId;
+      }
+    });
+  })();
+</script>

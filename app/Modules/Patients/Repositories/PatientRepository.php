@@ -17,7 +17,7 @@ class PatientRepository extends BaseRepository implements PatientRepositoryInter
     public function paginate(int $perPage = 15): LengthAwarePaginator
     {
         return $this->query()
-            ->with('tutor')
+            ->with(['tutor', 'animalSpecies', 'animalBreed'])
             ->orderBy('name')
             ->paginate($perPage);
     }

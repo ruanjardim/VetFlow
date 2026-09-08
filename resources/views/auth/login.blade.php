@@ -9,13 +9,44 @@
 @endpush
 
 @section('auth-visual')
-  <img
-    src="{{ asset('images/auth-malinois-square.webp') }}"
-    alt="Pastor-belga Malinois de corpo inteiro em uma clínica veterinária"
-    width="1254"
-    height="1254"
-    fetchpriority="high"
-  >
+  <div class="auth-visual-slideshow" aria-hidden="true">
+    <img
+      class="auth-visual-slide"
+      src="{{ asset('images/auth-malinois-square.webp') }}"
+      alt=""
+      width="1254"
+      height="1254"
+      fetchpriority="high"
+    >
+    <img
+      class="auth-visual-slide"
+      src="{{ asset('images/auth-pintabian-horse-square.png') }}"
+      alt=""
+      width="1254"
+      height="1254"
+    >
+    <img
+      class="auth-visual-slide"
+      src="{{ asset('images/auth-beagle-square.png') }}"
+      alt=""
+      width="1254"
+      height="1254"
+    >
+    <img
+      class="auth-visual-slide"
+      src="{{ asset('images/auth-gray-cat-square.png') }}"
+      alt=""
+      width="1254"
+      height="1254"
+    >
+    <img
+      class="auth-visual-slide"
+      src="{{ asset('images/auth-white-kitten-square.png') }}"
+      alt=""
+      width="1254"
+      height="1254"
+    >
+  </div>
 @endsection
 
 @section('content')

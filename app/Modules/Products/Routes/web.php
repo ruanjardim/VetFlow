@@ -15,6 +15,9 @@ Route::get('products/lookup/{gtin}', [ProductLookupController::class, 'show'])
 Route::get('products/diagnostics', [ProductController::class, 'diagnostics'])
     ->name('products.diagnostics');
 
+Route::get('products/pricing-radar', [ProductController::class, 'pricingRadar'])
+    ->name('products.pricing-radar');
+
 Route::post('products/{product}/link-global', [ProductController::class, 'linkGlobal'])
     ->whereNumber('product')
     ->name('products.link-global');

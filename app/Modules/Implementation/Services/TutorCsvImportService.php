@@ -205,7 +205,7 @@ class TutorCsvImportService implements CsvImportService
         $rows = $analysis['rows'] ?? [];
 
         if (! is_array($rows) || $rows === []) {
-            throw new DomainException('Não há tutores válidos para importar.');
+            throw new DomainException('Não há responsáveis válidos para importar.');
         }
 
         return DB::transaction(function () use ($rows, $clinicId): array {
@@ -344,14 +344,14 @@ class TutorCsvImportService implements CsvImportService
                 'notes' => ['nullable', 'string', 'max:5000'],
             ],
             [
-                'name.required' => 'Informe o nome do tutor.',
+                'name.required' => 'Informe o nome do responsável.',
                 'name.max' => 'O nome deve ter no máximo 255 caracteres.',
-                'phone.required' => 'Informe o telefone principal do tutor.',
+                'phone.required' => 'Informe o telefone principal do responsável.',
                 'phone.max' => 'O telefone deve ter no máximo 20 caracteres.',
                 'phone_secondary.max' => 'O WhatsApp deve ter no máximo 20 caracteres.',
                 'email.email' => 'Informe um e-mail válido.',
                 'email.max' => 'O e-mail deve ter no máximo 255 caracteres.',
-                'cpf.unique' => 'Já existe um tutor cadastrado com este CPF.',
+                'cpf.unique' => 'Já existe um responsável cadastrado com este CPF.',
                 'street.max' => 'O endereço deve ter no máximo 255 caracteres.',
                 'notes.max' => 'As observações devem ter no máximo 5.000 caracteres.',
             ]

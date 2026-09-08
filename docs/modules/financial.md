@@ -14,6 +14,9 @@ manual financial records, and dashboard/cash-flow summaries.
   notes.
 - Link payables to suppliers and purchase entries.
 - Link sale income to completed sales through `sales.financial_transaction_id`.
+- Keep sale-generated income read-only in Finance; receipts, cancellations, and
+  returns must be registered from the originating sale so cash, commission
+  previews, stock, and financial status remain synchronized.
 - Mark transactions as paid.
 - Cancel transactions.
 - Produce cash-flow summary data.

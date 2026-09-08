@@ -83,11 +83,15 @@
                 <td>{{ optional($transaction->due_date)->format('d/m/Y') }}</td>
                 <td>R$ {{ number_format((float) $transaction->amount, 2, ',', '.') }}</td>
                 <td>
-                  <form class="inline" action="{{ route('financial-transactions.pay', $transaction->id) }}" method="POST">
-                    @csrf
-                    @method('PATCH')
-                    <button type="submit">Pagar</button>
-                  </form>
+                  @if($transaction->sale)
+                    <a class="button secondary" href="{{ route('sales.edit', $transaction->sale->id) }}">Abrir venda</a>
+                  @else
+                    <form class="inline" action="{{ route('financial-transactions.pay', $transaction->id) }}" method="POST">
+                      @csrf
+                      @method('PATCH')
+                      <button type="submit">Pagar</button>
+                    </form>
+                  @endif
                 </td>
               </tr>
             @empty
