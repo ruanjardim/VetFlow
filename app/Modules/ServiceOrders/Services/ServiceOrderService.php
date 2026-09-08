@@ -28,6 +28,7 @@ class ServiceOrderService extends BaseService
 
             $data['code'] = $this->nextCode();
             $data['opened_at'] = $data['opened_at'] ?? now();
+            $data = $this->withOperationalTimestamps($data);
 
             /** @var ServiceOrder $order */
             $order = $this->repository->create($data);
@@ -47,6 +48,7 @@ class ServiceOrderService extends BaseService
 
             /** @var ServiceOrder $order */
             $order = $this->repository->findOrFail($id);
+            $data = $this->withOperationalTimestamps($data, $order);
 
             $this->repository->update($order, $data);
             $order->items()->delete();
@@ -67,7 +69,7 @@ class ServiceOrderService extends BaseService
         $activeStatuses = ['open', 'in_service', 'waiting_pickup'];
 
         $orders = ServiceOrder::query()
-            ->with(['tutor', 'patient', 'items'])
+            ->with(['clinic', 'tutor', 'patient', 'assignedUser', 'items'])
             ->where('status', '!=', 'cancelled')
             ->where(function ($query) use ($selectedDate, $activeStatuses): void {
                 $query
@@ -124,12 +126,9 @@ class ServiceOrderService extends BaseService
                 ]);
             }
 
-            $closedAt = in_array($status, ['finished', 'cancelled'], true) ? now() : null;
-
-            $this->repository->update($order, [
+            $this->repository->update($order, $this->withOperationalTimestamps([
                 'status' => $status,
-                'closed_at' => $closedAt,
-            ]);
+            ], $order));
 
             return $order->refresh();
         });
@@ -225,5 +224,35 @@ class ServiceOrderService extends BaseService
         $nextId = ((int) ServiceOrder::withTrashed()->max('id')) + 1;
 
         return 'CMD-'.str_pad((string) $nextId, 6, '0', STR_PAD_LEFT);
+    }
+
+    /** @param array<string, mixed> $data */
+    private function withOperationalTimestamps(array $data, ?ServiceOrder $order = null): array
+    {
+        $status = $data['status'] ?? $order?->status ?? 'open';
+        $now = now();
+        $startedAt = $order?->started_at ?? $order?->opened_at ?? $data['opened_at'] ?? $now;
+
+        if ($status === 'open') {
+            $data['started_at'] = null;
+            $data['ready_at'] = null;
+            $data['closed_at'] = null;
+        } elseif ($status === 'in_service') {
+            $data['started_at'] = $order?->started_at ?? $now;
+            $data['ready_at'] = null;
+            $data['closed_at'] = null;
+        } elseif ($status === 'waiting_pickup') {
+            $data['started_at'] = $startedAt;
+            $data['ready_at'] = $order?->ready_at ?? $now;
+            $data['closed_at'] = null;
+        } elseif ($status === 'finished') {
+            $data['started_at'] = $startedAt;
+            $data['ready_at'] = $order?->ready_at ?? $now;
+            $data['closed_at'] = $data['closed_at'] ?? $order?->closed_at ?? $now;
+        } elseif ($status === 'cancelled') {
+            $data['closed_at'] = $data['closed_at'] ?? $order?->closed_at ?? $now;
+        }
+
+        return $data;
     }
 }

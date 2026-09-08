@@ -3,6 +3,8 @@
 namespace App\Modules\ServiceOrders\Controllers;
 
 use App\Core\Base\BaseCrudController;
+use App\Models\User;
+use App\Modules\Clinics\Models\Clinic;
 use App\Modules\Patients\Models\Patient;
 use App\Modules\PetShopServices\Models\PetShopService;
 use App\Modules\Products\Models\Product;
@@ -86,9 +88,22 @@ class ServiceOrderController extends BaseCrudController
 
     private function formData(): array
     {
+        $clinicId = auth()->user()?->clinic_id;
+
         return [
+            'clinics' => Clinic::query()
+                ->active()
+                ->orderBy('trade_name')
+                ->orderBy('corporate_name')
+                ->get(),
             'tutors' => Tutor::query()->orderBy('name')->get(),
             'patients' => Patient::query()->orderBy('name')->get(),
+            'assignedUsers' => User::query()
+                ->active()
+                ->whereNotNull('clinic_id')
+                ->when($clinicId !== null, fn ($query) => $query->where('clinic_id', $clinicId))
+                ->orderBy('name')
+                ->get(),
             'products' => Product::query()->active()->orderBy('name')->get(),
             'petShopServices' => PetShopService::query()->active()->orderBy('name')->get(),
         ];

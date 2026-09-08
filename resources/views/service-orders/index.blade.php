@@ -20,10 +20,15 @@
         <thead>
           <tr>
             <th>Codigo</th>
+            @if(auth()->user()?->clinic_id === null)
+              <th>Clinica</th>
+            @endif
             <th>Responsável</th>
             <th>Pet</th>
+            <th>Profissional</th>
             <th>Status</th>
             <th>Abertura</th>
+            <th>Marco atual</th>
             <th>Servicos</th>
             <th>Produtos</th>
             <th>Total</th>
@@ -34,8 +39,12 @@
           @forelse($serviceOrders as $order)
             <tr>
               <td><strong>{{ $order->code }}</strong></td>
+              @if(auth()->user()?->clinic_id === null)
+                <td>{{ $order->clinic?->trade_name ?? $order->clinic?->corporate_name ?? '-' }}</td>
+              @endif
               <td>{{ $order->tutor?->name ?? '-' }}</td>
               <td>{{ $order->patient?->name ?? '-' }}</td>
+              <td>{{ $order->assignedUser?->name ?? 'A definir' }}</td>
               <td>
                 @if($order->status === 'open')
                   Aberta
@@ -50,6 +59,17 @@
                 @endif
               </td>
               <td>{{ optional($order->opened_at)->format('d/m/Y H:i') }}</td>
+              <td>
+                @if($order->closed_at)
+                  Concluida em {{ $order->closed_at->format('d/m H:i') }}
+                @elseif($order->ready_at)
+                  Pronta em {{ $order->ready_at->format('d/m H:i') }}
+                @elseif($order->started_at)
+                  Iniciada em {{ $order->started_at->format('d/m H:i') }}
+                @else
+                  Aguardando inicio
+                @endif
+              </td>
               <td>R$ {{ number_format((float) $order->services_total, 2, ',', '.') }}</td>
               <td>R$ {{ number_format((float) $order->products_total, 2, ',', '.') }}</td>
               <td>R$ {{ number_format((float) $order->total, 2, ',', '.') }}</td>
@@ -68,7 +88,7 @@
             </tr>
           @empty
             <tr>
-              <td colspan="9" class="muted">Nenhuma comanda cadastrada.</td>
+              <td colspan="{{ auth()->user()?->clinic_id === null ? 12 : 11 }}" class="muted">Nenhuma comanda cadastrada.</td>
             </tr>
           @endforelse
         </tbody>

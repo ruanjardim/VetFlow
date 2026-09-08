@@ -3,6 +3,7 @@
 namespace App\Modules\ServiceOrders\Models;
 
 use App\Models\Concerns\BelongsToClinicTenant;
+use App\Models\User;
 use App\Modules\Clinics\Models\Clinic;
 use App\Modules\Patients\Models\Patient;
 use App\Modules\Sales\Models\Sale;
@@ -39,6 +40,8 @@ class ServiceOrder extends Model
     protected $casts = [
         'opened_at' => 'datetime',
         'scheduled_at' => 'datetime',
+        'started_at' => 'datetime',
+        'ready_at' => 'datetime',
         'closed_at' => 'datetime',
         'services_total' => 'decimal:2',
         'products_total' => 'decimal:2',
@@ -64,6 +67,11 @@ class ServiceOrder extends Model
     public function patient(): BelongsTo
     {
         return $this->belongsTo(Patient::class);
+    }
+
+    public function assignedUser(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'assigned_user_id');
     }
 
     public function items(): HasMany

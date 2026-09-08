@@ -50,6 +50,8 @@ class ServiceOrderBoardTest extends TestCase
 
         $order->refresh();
         $this->assertSame('finished', $order->status);
+        $this->assertNotNull($order->started_at);
+        $this->assertNotNull($order->ready_at);
         $this->assertNotNull($order->closed_at);
 
         $this->actingAs($user)
@@ -58,6 +60,8 @@ class ServiceOrderBoardTest extends TestCase
 
         $order->refresh();
         $this->assertSame('in_service', $order->status);
+        $this->assertNotNull($order->started_at);
+        $this->assertNull($order->ready_at);
         $this->assertNull($order->closed_at);
     }
 

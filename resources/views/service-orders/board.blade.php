@@ -40,6 +40,10 @@
                 <span>{{ $order->code }}</span>
               </div>
               <p>{{ $order->tutor?->name ?? 'Responsável não informado' }}</p>
+              <p><strong>Profissional:</strong> {{ $order->assignedUser?->name ?? 'A definir' }}</p>
+              @if(auth()->user()?->clinic_id === null)
+                <p class="muted">{{ $order->clinic?->trade_name ?? $order->clinic?->corporate_name ?? 'Clinica não informada' }}</p>
+              @endif
               <dl>
                 <div>
                   <dt>Horário</dt>
@@ -49,6 +53,24 @@
                   <dt>Total</dt>
                   <dd>R$ {{ number_format((float) $order->total, 2, ',', '.') }}</dd>
                 </div>
+                @if($order->started_at)
+                  <div>
+                    <dt>Inicio</dt>
+                    <dd>{{ $order->started_at->format('d/m H:i') }}</dd>
+                  </div>
+                @endif
+                @if($order->ready_at)
+                  <div>
+                    <dt>Pronto</dt>
+                    <dd>{{ $order->ready_at->format('d/m H:i') }}</dd>
+                  </div>
+                @endif
+                @if($order->closed_at)
+                  <div>
+                    <dt>Conclusao</dt>
+                    <dd>{{ $order->closed_at->format('d/m H:i') }}</dd>
+                  </div>
+                @endif
               </dl>
 
               @if($order->items->isNotEmpty())

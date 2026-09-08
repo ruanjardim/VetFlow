@@ -1688,6 +1688,40 @@ textarea {
   color: #fbbf24;
 }
 
+.service-order-summary {
+  background: #0f172a;
+  border-radius: 8px;
+  color: #f8fafc;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  padding: 16px;
+}
+
+.service-order-summary > div {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  display: grid;
+  gap: 3px;
+  padding: 10px;
+}
+
+.service-order-summary span {
+  color: #cbd5e1;
+  font-size: 12px;
+  text-transform: uppercase;
+}
+
+.service-order-summary strong {
+  font-size: 20px;
+}
+
+.service-order-summary .service-order-summary-total {
+  background: rgba(20, 184, 166, 0.2);
+  border-color: #2dd4bf;
+}
+
 .product-image-preview {
   align-items: center;
   background: #f8fafc;
@@ -2878,6 +2912,7 @@ textarea {
   .receipt-summary,
   .sale-checkout-grid,
   .sale-checkout-payment,
+  .service-order-summary,
   .implementation-options,
   .implementation-blocks,
   .implementation-readiness-gates,
