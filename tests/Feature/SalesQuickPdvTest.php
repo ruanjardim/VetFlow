@@ -87,6 +87,13 @@ class SalesQuickPdvTest extends TestCase
             'patients.manage',
         ]);
 
+        $this->actingAs($user)
+            ->get(route('sales.create'))
+            ->assertOk()
+            ->assertSee(route('tutores.create'), false)
+            ->assertSee(route('patients.create'), false)
+            ->assertSee('Cadastrar responsável e pet sem sair do PDV');
+
         $response = $this->actingAs($user)
             ->postJson(route('sales.quick-customer.store'), [
                 'clinic_id' => $clinic->id,

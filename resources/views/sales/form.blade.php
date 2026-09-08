@@ -149,7 +149,7 @@
       @endforeach
     </select>
     @can('tutors.manage')
-      <a class="field-hint" href="{{ route('tutors.create') }}" target="_blank" rel="noopener">Cadastrar novo responsável</a>
+      <a class="field-hint" href="{{ route('tutores.create') }}" target="_blank" rel="noopener">Cadastrar novo responsável</a>
     @endcan
   </div>
   <div class="field">
