@@ -8,7 +8,10 @@
       <h1>Comandas</h1>
       <p>Atendimentos de PetShop com servicos, produtos e status operacional.</p>
     </div>
-    <a class="button" href="{{ route('service-orders.create') }}">Nova comanda</a>
+    <div class="actions">
+      <a class="button secondary" href="{{ route('service-orders.board') }}">Operação Banho e Tosa</a>
+      <a class="button" href="{{ route('service-orders.create') }}">Nova comanda</a>
+    </div>
   </header>
 
   <div class="panel">
@@ -52,11 +55,15 @@
               <td>R$ {{ number_format((float) $order->total, 2, ',', '.') }}</td>
               <td>
                 <a class="button secondary" href="{{ route('service-orders.edit', $order->id) }}">Editar</a>
-                <form class="inline" action="{{ route('service-orders.destroy', $order->id) }}" method="POST">
-                  @csrf
-                  @method('DELETE')
-                  <button class="danger" type="submit" data-confirm="Remover esta comanda?">Excluir</button>
-                </form>
+                @if($order->status === 'open' && (int) $order->sales_count === 0)
+                  <form class="inline" action="{{ route('service-orders.destroy', $order->id) }}" method="POST">
+                    @csrf
+                    @method('DELETE')
+                    <button class="danger" type="submit" data-confirm="Remover esta comanda aberta?">Excluir</button>
+                  </form>
+                @else
+                  <span class="muted">Histórico protegido</span>
+                @endif
               </td>
             </tr>
           @empty

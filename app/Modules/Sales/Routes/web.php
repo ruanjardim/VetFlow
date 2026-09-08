@@ -1,7 +1,11 @@
 <?php
 
+use App\Modules\Sales\Controllers\QuickPdvCustomerController;
 use App\Modules\Sales\Controllers\SaleController;
 use Illuminate\Support\Facades\Route;
+
+Route::post('sales/quick/customer', [QuickPdvCustomerController::class, 'store'])
+    ->name('sales.quick-customer.store');
 
 Route::get('sales/product-lookup/{gtin}', [SaleController::class, 'lookupProduct'])
     ->where('gtin', '[0-9]+')

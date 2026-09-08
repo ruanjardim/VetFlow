@@ -40,9 +40,12 @@ class SaleController extends BaseCrudController
 
     public function edit(int $id)
     {
-        return view("{$this->viewPath}.edit", array_merge($this->formData(), [
-            'item' => $this->service->findOrFail($id),
-        ]));
+        $sale = $this->service->findOrFail($id);
+
+        return view("{$this->viewPath}.edit", array_merge(
+            $this->formData($sale->service_order_id),
+            ['item' => $sale]
+        ));
     }
 
     public function cashier(Request $request)
@@ -340,7 +343,7 @@ class SaleController extends BaseCrudController
         return UpdateSaleRequest::class;
     }
 
-    private function formData(): array
+    private function formData(?int $includeServiceOrderId = null): array
     {
         return [
             'clinics' => Clinic::query()->orderBy('trade_name')->get(),
@@ -349,7 +352,15 @@ class SaleController extends BaseCrudController
             'products' => Product::query()->active()->orderBy('name')->get(),
             'petShopServices' => PetShopService::query()->active()->orderBy('name')->get(),
             'serviceOrders' => ServiceOrder::query()
-                ->with(['tutor', 'patient'])
+                ->with(['tutor', 'patient', 'items'])
+                ->where('status', '!=', 'cancelled')
+                ->where(function ($query) use ($includeServiceOrderId): void {
+                    $query->whereDoesntHave('sales', fn ($sales) => $sales->where('status', '!=', 'cancelled'));
+
+                    if ($includeServiceOrderId) {
+                        $query->orWhereKey($includeServiceOrderId);
+                    }
+                })
                 ->latest('opened_at')
                 ->limit(100)
                 ->get(),

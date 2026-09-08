@@ -555,6 +555,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const tutorSelect = document.querySelector('[data-sale-tutor-select]');
     const patientSelect = document.querySelector('[data-sale-patient-select]');
     const serviceOrderSelect = document.querySelector('#service_order_id');
+    const serviceOrderCatalogElement = document.querySelector('[data-sale-service-order-catalog]');
+    const quickCustomer = document.querySelector('[data-sale-quick-customer]');
+    const quickCustomerButton = quickCustomer?.querySelector('[data-sale-customer-submit]');
+    const quickCustomerStatus = quickCustomer?.querySelector('[data-sale-customer-status]');
     const moneyInputs = [
       discountInput,
       additionsInput,
@@ -565,7 +569,17 @@ document.addEventListener('DOMContentLoaded', () => {
     ].filter(Boolean);
     const isLocked = saleForm?.dataset.saleLocked === '1';
     const isQuickMode = saleForm?.dataset.saleMode === 'quick';
+    const hasOldSaleInput = saleForm?.dataset.saleHasOldInput === '1';
+    const saleFormElement = saleForm?.closest('form');
+    let serviceOrderCatalog = {};
+    let hydratedServiceOrderId = '';
     let scanTimer = null;
+
+    try {
+      serviceOrderCatalog = JSON.parse(serviceOrderCatalogElement?.textContent || '{}');
+    } catch (error) {
+      serviceOrderCatalog = {};
+    }
 
     const toNumber = (value) => {
       const raw = String(value || '').trim();
@@ -1224,7 +1238,175 @@ document.addEventListener('DOMContentLoaded', () => {
       calculateSaleTotals();
     };
 
-    clinicSelect?.addEventListener('change', filterSaleCatalog);
+    const quickCustomerValue = (selector) => quickCustomer?.querySelector(selector)?.value?.trim() || '';
+
+    const appendSelectedOption = (select, record, attributes = {}) => {
+      if (!select || !record?.id) {
+        return;
+      }
+
+      let option = Array.from(select.options).find((item) => item.value === String(record.id));
+
+      if (!option) {
+        option = document.createElement('option');
+        option.value = String(record.id);
+        option.textContent = record.name || `Cadastro ${record.id}`;
+        select.appendChild(option);
+      }
+
+      Object.entries(attributes).forEach(([key, value]) => {
+        option.dataset[key] = String(value || '');
+      });
+      option.hidden = false;
+      option.disabled = false;
+      select.value = option.value;
+    };
+
+    const clearQuickCustomerFields = () => {
+      quickCustomer?.querySelectorAll('input').forEach((input) => {
+        input.value = '';
+      });
+    };
+
+    const storeQuickCustomer = async () => {
+      const tutorName = quickCustomerValue('[data-sale-customer-tutor-name]');
+      const tutorPhone = quickCustomerValue('[data-sale-customer-tutor-phone]');
+      const patientName = quickCustomerValue('[data-sale-customer-patient-name]');
+      const clinicId = currentClinicId();
+
+      if (!clinicId) {
+        setLookupStatus(quickCustomerStatus, 'Selecione a clínica antes de cadastrar.', 'error');
+        return;
+      }
+
+      if (!tutorName || !tutorPhone || !patientName) {
+        setLookupStatus(quickCustomerStatus, 'Preencha responsável, telefone e nome do pet.', 'error');
+        return;
+      }
+
+      const csrfToken = saleFormElement?.querySelector('input[name="_token"]')?.value || '';
+      const payload = {
+        clinic_id: clinicId,
+        tutor_name: tutorName,
+        tutor_phone: tutorPhone,
+        tutor_email: quickCustomerValue('[data-sale-customer-tutor-email]') || null,
+        patient_name: patientName,
+        patient_species: quickCustomerValue('[data-sale-customer-patient-species]') || null,
+        patient_breed: quickCustomerValue('[data-sale-customer-patient-breed]') || null,
+        patient_weight: quickCustomerValue('[data-sale-customer-patient-weight]') || null,
+      };
+
+      quickCustomerButton.disabled = true;
+      setLookupStatus(quickCustomerStatus, 'Salvando responsável e pet...');
+
+      try {
+        const response = await fetch(quickCustomer.dataset.storeUrl, {
+          method: 'POST',
+          headers: {
+            Accept: 'application/json',
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': csrfToken,
+          },
+          body: JSON.stringify(payload),
+        });
+        const data = await response.json();
+
+        if (!response.ok) {
+          const validationMessage = Object.values(data.errors || {}).flat().find(Boolean);
+          setLookupStatus(quickCustomerStatus, validationMessage || data.message || 'Não foi possível concluir o cadastro.', 'error');
+          return;
+        }
+
+        appendSelectedOption(tutorSelect, data.tutor, { clinicId: data.tutor.clinic_id });
+        appendSelectedOption(patientSelect, data.patient, {
+          clinicId: data.patient.clinic_id,
+          tutorId: data.patient.tutor_id,
+        });
+        filterPatients();
+        patientSelect.value = String(data.patient.id);
+        clearQuickCustomerFields();
+        setLookupStatus(quickCustomerStatus, data.message || 'Cadastro concluído.', 'success');
+      } catch (error) {
+        setLookupStatus(quickCustomerStatus, 'Cadastro indisponível agora. Tente novamente.', 'error');
+      } finally {
+        quickCustomerButton.disabled = false;
+      }
+    };
+
+    const hydrateSelectedServiceOrder = () => {
+      if (!isQuickMode || isLocked) {
+        return;
+      }
+
+      const selectedId = String(serviceOrderSelect?.value || '');
+
+      if (!selectedId) {
+        if (hydratedServiceOrderId) {
+          rows.forEach((row) => clearSaleRow(row, false));
+          tutorSelect.value = '';
+          patientSelect.value = '';
+          discountInput.value = '';
+          hydratedServiceOrderId = '';
+          filterPatients();
+          calculateSaleTotals();
+          setLookupStatus(quickStatus, 'Comanda removida; venda direta iniciada.');
+        }
+
+        return;
+      }
+
+      const order = serviceOrderCatalog[selectedId];
+
+      if (!order) {
+        setLookupStatus(quickStatus, 'Não foi possível carregar os itens desta comanda.', 'error');
+        return;
+      }
+
+      if (clinicSelect) {
+        clinicSelect.value = String(order.clinic_id || '');
+        filterSaleCatalog();
+      }
+
+      rows.forEach((row) => clearSaleRow(row, false));
+      tutorSelect.value = order.tutor_id ? String(order.tutor_id) : '';
+      filterPatients();
+      patientSelect.value = order.patient_id ? String(order.patient_id) : '';
+      discountInput.value = formatAmountInput(toNumber(order.discount_total), false);
+      paymentAmounts.forEach((input) => {
+        input.value = '';
+      });
+      paymentMethods.forEach((select) => {
+        select.value = '';
+      });
+      if (receivedAmountInput) {
+        receivedAmountInput.value = '';
+      }
+
+      let omittedItems = 0;
+
+      (order.items || []).forEach((item) => {
+        if (addSaleItem(item) === 'full') {
+          omittedItems += 1;
+        }
+      });
+
+      hydratedServiceOrderId = selectedId;
+      calculateSaleTotals();
+      syncPaymentShortcuts();
+
+      if (omittedItems > 0) {
+        setLookupStatus(quickStatus, `${omittedItems} item(ns) não couberam no carrinho. Revise a comanda.`, 'error');
+        return;
+      }
+
+      setLookupStatus(quickStatus, 'Comanda carregada. Confira os itens e receba o pagamento.', 'success');
+    };
+
+    clinicSelect?.addEventListener('change', () => {
+      filterSaleCatalog();
+      hydrateSelectedServiceOrder();
+    });
+    serviceOrderSelect?.addEventListener('change', hydrateSelectedServiceOrder);
     tutorSelect?.addEventListener('change', filterPatients);
     patientSelect?.addEventListener('change', () => {
       const tutorId = patientSelect.selectedOptions[0]?.dataset.tutorId || '';
@@ -1234,6 +1416,7 @@ document.addEventListener('DOMContentLoaded', () => {
         filterPatients();
       }
     });
+    quickCustomerButton?.addEventListener('click', storeQuickCustomer);
 
     const syncPaymentShortcuts = () => {
       const selectedMethod = paymentMethods.find((select) => select.value)?.value || '';
@@ -1273,7 +1456,7 @@ document.addEventListener('DOMContentLoaded', () => {
       applyMoneyMask(event.target);
       calculateSaleTotals();
     }));
-    saleForm?.addEventListener('submit', () => {
+    saleFormElement?.addEventListener('submit', () => {
       normalizeMoneyField(discountInput);
       normalizeMoneyField(additionsInput);
       unitPriceInputs.forEach(normalizeMoneyField);
@@ -1295,7 +1478,7 @@ document.addEventListener('DOMContentLoaded', () => {
         statusSelect.value = 'completed';
       }
 
-      saleForm?.requestSubmit();
+      saleFormElement?.requestSubmit();
     });
 
     if (saleScanner.dataset.saleLookupAuto === '1' && normalizeBarcode(barcodeInput?.value || '').length >= 8) {
@@ -1303,6 +1486,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     filterSaleCatalog();
+    if (!hasOldSaleInput) {
+      hydrateSelectedServiceOrder();
+    }
     syncPaymentShortcuts();
     calculateSaleTotals();
   }

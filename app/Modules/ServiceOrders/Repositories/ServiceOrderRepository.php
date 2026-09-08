@@ -19,6 +19,7 @@ class ServiceOrderRepository extends BaseRepository implements ServiceOrderRepos
     {
         return $this->model
             ->with(['tutor', 'patient'])
+            ->withCount('sales')
             ->latest('opened_at')
             ->paginate($perPage);
     }

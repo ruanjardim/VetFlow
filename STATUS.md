@@ -1,6 +1,6 @@
 # VetFlow Status
 
-Updated: 2026-09-01
+Updated: 2026-09-08
 
 ## Current State
 
@@ -22,6 +22,10 @@ The local working tree was clean before this documentation pass.
 - A reception-oriented quick PDV for PetShop and grooming, with service cards,
   explicit size-price selection, responsible/pet filtering, compact cart, and
   common payment shortcuts while retaining the advanced sale form.
+- A focused PetShop and grooming operation flow with inline responsible/pet
+  registration, a four-stage daily service-order board, one-click transfer of
+  the complete order into the PDV, and protections against duplicate checkout
+  or deletion/reopening of billed history.
 - Database migrations for the current operational model.
 - Feature tests for authentication, authorization, clinic tenant isolation, initial admin setup, and operational purchase/clinical flows.
 - Existing architecture and audit documentation under `docs/`.

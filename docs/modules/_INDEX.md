@@ -33,7 +33,7 @@ This index maps the current code modules and the documentation that should event
 | Sales | Sales, sale items, payments, returns, cash register support | Documented in [Sales](sales.md) |
 | Commissions | Seller commission rules and period previews | Documented in [Commissions](commissions.md) |
 | Schedules | Scheduling base | Covered in [Clinical Core](clinical-core.md) |
-| ServiceOrders | Service orders and service order items | Covered in [Clinical Core](clinical-core.md) |
+| ServiceOrders | Service orders, grooming board, and protected checkout lifecycle | Documented in [PetShop Operations](petshop-operations.md) and [Clinical Core](clinical-core.md) |
 | Suppliers | Supplier management | Documented in [Suppliers](suppliers.md) |
 | Tutors | Responsible person records for patients | Documented in [Responsáveis](tutors.md) |
 | Users | User records and access foundation | Documented in [Access](access.md) and database docs |

@@ -15,10 +15,23 @@ This project follows the spirit of Keep a Changelog, with one practical adjustme
 
 ### Added
 
+- PetShop and grooming operational board with four daily stages, quick status
+  transitions, direct checkout handoff, and responsive cards.
+- Inline responsible-person and pet registration in the quick PDV with atomic
+  persistence, clinic selection for global operators, and explicit permission
+  checks.
+- Full service-order hydration in the PDV, including customer, pet, items,
+  prices, and discount.
 - Reception-oriented quick PDV for PetShop and grooming, with active-service
   cards, explicit base/size price choice, tenant-aware responsible/pet filters,
   a compact removable cart, and common payment shortcuts while retaining the
   advanced sale form.
+
+### Changed
+
+- Service orders with sale history are protected from deletion and reopening,
+  completed sale identity fields are immutable through generic edits, and an
+  order cannot be charged by more than one non-cancelled sale.
 - Tenant-safe inventory-variance report for finalized cycle counts with
   30/90/180-day or complete-history filters, line accuracy, preserved-cost
   surplus/shortage impact, aggregated product ranking, soft-deleted history,

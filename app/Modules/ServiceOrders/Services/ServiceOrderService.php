@@ -7,8 +7,11 @@ use App\Modules\PetShopServices\Models\PetShopService;
 use App\Modules\Products\Models\Product;
 use App\Modules\ServiceOrders\Contracts\ServiceOrderRepositoryInterface;
 use App\Modules\ServiceOrders\Models\ServiceOrder;
+use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class ServiceOrderService extends BaseService
 {
@@ -50,6 +53,83 @@ class ServiceOrderService extends BaseService
 
             $this->syncItems($order->refresh(), $items);
             $this->recalculateTotals($order);
+
+            return $order->refresh();
+        });
+    }
+
+    /**
+     * @return array{date: CarbonImmutable, columns: Collection<string, array{label: string, orders: Collection}>}
+     */
+    public function board(?string $date = null): array
+    {
+        $selectedDate = CarbonImmutable::parse($date ?: now()->toDateString())->startOfDay();
+        $activeStatuses = ['open', 'in_service', 'waiting_pickup'];
+
+        $orders = ServiceOrder::query()
+            ->with(['tutor', 'patient', 'items'])
+            ->where('status', '!=', 'cancelled')
+            ->where(function ($query) use ($selectedDate, $activeStatuses): void {
+                $query
+                    ->where(function ($active) use ($selectedDate, $activeStatuses): void {
+                        $active
+                            ->whereIn('status', $activeStatuses)
+                            ->where(function ($scheduled) use ($selectedDate): void {
+                                $scheduled
+                                    ->whereNull('scheduled_at')
+                                    ->orWhereDate('scheduled_at', '<=', $selectedDate->toDateString());
+                            });
+                    })
+                    ->orWhere(function ($finished) use ($selectedDate): void {
+                        $finished
+                            ->where('status', 'finished')
+                            ->where(function ($completedOnDate) use ($selectedDate): void {
+                                $completedOnDate
+                                    ->whereDate('closed_at', $selectedDate->toDateString())
+                                    ->orWhereDate('scheduled_at', $selectedDate->toDateString());
+                            });
+                    });
+            })
+            ->orderByRaw('CASE WHEN scheduled_at IS NULL THEN 1 ELSE 0 END')
+            ->orderBy('scheduled_at')
+            ->orderBy('opened_at')
+            ->get();
+
+        $columns = collect(ServiceOrder::BOARD_STATUSES)
+            ->mapWithKeys(fn (string $status): array => [
+                $status => [
+                    'label' => ServiceOrder::STATUS_LABELS[$status],
+                    'orders' => $orders->where('status', $status)->values(),
+                ],
+            ]);
+
+        return [
+            'date' => $selectedDate,
+            'columns' => $columns,
+        ];
+    }
+
+    public function updateStatus(int $id, string $status): ServiceOrder
+    {
+        return DB::transaction(function () use ($id, $status): ServiceOrder {
+            /** @var ServiceOrder $order */
+            $order = $this->repository->findOrFail($id);
+
+            if (
+                $status !== 'finished'
+                && $order->sales()->whereIn('status', ['completed', 'returned'])->exists()
+            ) {
+                throw ValidationException::withMessages([
+                    'status' => 'A comanda já possui uma venda concluída e deve permanecer finalizada.',
+                ]);
+            }
+
+            $closedAt = in_array($status, ['finished', 'cancelled'], true) ? now() : null;
+
+            $this->repository->update($order, [
+                'status' => $status,
+                'closed_at' => $closedAt,
+            ]);
 
             return $order->refresh();
         });

@@ -12,6 +12,8 @@ financial income, returns, refunds, cancellations, and sale event history.
 - Create sales from direct items or service-order items.
 - Offer a reception-oriented quick PDV for PetShop and grooming services while
   retaining the advanced sale form for exceptional adjustments.
+- Create a responsible person and pet inline when the operator has both
+  registration permissions.
 - Calculate subtotal, discounts, additions, total, paid amount, change, cost,
   gross profit, and margin.
 - Snapshot product/service fields into sale items.
@@ -35,6 +37,8 @@ financial income, returns, refunds, cancellations, and sale event history.
 | Class | Role |
 | --- | --- |
 | `SaleController` | Web sales, cancellation, returns, cashier, and closure flows. |
+| `QuickPdvCustomerController` | Permission-gated inline responsible/pet endpoint. |
+| `QuickPdvCustomerService` | Atomic responsible and pet creation using their domain services. |
 | `SaleService` | Sale orchestration and side effects. |
 | `SaleProfitabilityService` | Return-adjusted gross profitability reporting. |
 | `ProductAbcAnalysisService` | Product revenue ranking, cumulative ABC bands, filters, and pagination. |
@@ -60,6 +64,13 @@ financial income, returns, refunds, cancellations, and sale event history.
   filtered by responsible person, and common payment methods are available as
   shortcuts. The advanced mode continues to use the same validated sale
   workflow and persistence model.
+- Selecting a service order hydrates its responsible person, pet, items,
+  prices, and discount into the quick cart. A non-cancelled sale reserves its
+  linked order so the same service order cannot be charged twice.
+- The quick inline customer flow requires `sales.manage`, `tutors.manage`, and
+  `patients.manage`; global operators must explicitly choose an active clinic.
+- Completed sales keep tenant, customer, service-order, date, source, and total
+  identity fields protected from generic edits.
 - Completed sales apply stock and financial effects once using
   `stock_applied` and `financial_applied`.
 - Draft sales can be updated before effects are applied.
@@ -136,3 +147,4 @@ Relevant coverage is present in:
 
 - `tests/Feature/OperationalFlowTest.php`
 - `tests/Feature/ProductAbcAnalysisTest.php`
+- `tests/Feature/SalesQuickPdvTest.php`

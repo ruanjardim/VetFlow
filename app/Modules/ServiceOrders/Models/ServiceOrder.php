@@ -5,6 +5,7 @@ namespace App\Modules\ServiceOrders\Models;
 use App\Models\Concerns\BelongsToClinicTenant;
 use App\Modules\Clinics\Models\Clinic;
 use App\Modules\Patients\Models\Patient;
+use App\Modules\Sales\Models\Sale;
 use App\Modules\Tutors\Models\Tutor;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -15,6 +16,21 @@ class ServiceOrder extends Model
 {
     use BelongsToClinicTenant;
     use SoftDeletes;
+
+    public const STATUS_LABELS = [
+        'open' => 'Aberta',
+        'in_service' => 'Em atendimento',
+        'waiting_pickup' => 'Aguardando retirada',
+        'finished' => 'Finalizada',
+        'cancelled' => 'Cancelada',
+    ];
+
+    public const BOARD_STATUSES = [
+        'open',
+        'in_service',
+        'waiting_pickup',
+        'finished',
+    ];
 
     protected $table = 'service_orders';
 
@@ -53,5 +69,10 @@ class ServiceOrder extends Model
     public function items(): HasMany
     {
         return $this->hasMany(ServiceOrderItem::class);
+    }
+
+    public function sales(): HasMany
+    {
+        return $this->hasMany(Sale::class);
     }
 }

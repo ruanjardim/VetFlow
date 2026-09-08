@@ -49,6 +49,8 @@ class SaleService extends BaseService
 
             $serviceOrder = $this->serviceOrderWithItems($data['service_order_id'] ?? null);
 
+            $this->ensureServiceOrderCanBeBilled($serviceOrder);
+
             if ($serviceOrder && ! $this->hasBillableItems($items)) {
                 $items = $this->itemsFromServiceOrder($serviceOrder);
 
@@ -88,10 +90,25 @@ class SaleService extends BaseService
             $effectsAlreadyApplied = $sale->stock_applied || $sale->financial_applied;
 
             if ($effectsAlreadyApplied) {
-                unset($data['discount_total'], $data['status']);
+                unset(
+                    $data['clinic_id'],
+                    $data['tutor_id'],
+                    $data['patient_id'],
+                    $data['service_order_id'],
+                    $data['seller_user_id'],
+                    $data['status'],
+                    $data['sold_at'],
+                    $data['source'],
+                    $data['discount_total'],
+                    $data['additions_total']
+                );
             }
 
-            $serviceOrder = $this->serviceOrderWithItems($data['service_order_id'] ?? null);
+            $serviceOrder = $effectsAlreadyApplied
+                ? null
+                : $this->serviceOrderWithItems($data['service_order_id'] ?? null);
+
+            $this->ensureServiceOrderCanBeBilled($serviceOrder, $sale->id);
 
             if (! $effectsAlreadyApplied && $serviceOrder && ! $this->hasBillableItems($items)) {
                 $items = $this->itemsFromServiceOrder($serviceOrder);
@@ -727,7 +744,33 @@ class SaleService extends BaseService
 
         return ServiceOrder::query()
             ->with('items')
+            ->lockForUpdate()
             ->find($serviceOrderId);
+    }
+
+    private function ensureServiceOrderCanBeBilled(?ServiceOrder $serviceOrder, ?int $ignoreSaleId = null): void
+    {
+        if (! $serviceOrder) {
+            return;
+        }
+
+        if ($serviceOrder->status === 'cancelled') {
+            throw ValidationException::withMessages([
+                'service_order_id' => 'Uma comanda cancelada não pode ser recebida no PDV.',
+            ]);
+        }
+
+        $alreadyUsed = Sale::query()
+            ->where('service_order_id', $serviceOrder->id)
+            ->where('status', '!=', 'cancelled')
+            ->when($ignoreSaleId, fn ($query) => $query->whereKeyNot($ignoreSaleId))
+            ->exists();
+
+        if ($alreadyUsed) {
+            throw ValidationException::withMessages([
+                'service_order_id' => 'Esta comanda já está vinculada a outra venda. Abra a venda existente para continuar.',
+            ]);
+        }
     }
 
     private function itemsFromServiceOrder(ServiceOrder $serviceOrder): array

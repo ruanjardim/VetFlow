@@ -1305,6 +1305,192 @@ textarea {
   min-height: 72px;
 }
 
+.sale-quick-customer {
+  background: #f8fafc;
+  border: 1px solid #dbe3ee;
+  border-radius: 10px;
+  padding: 14px 16px;
+}
+
+.sale-quick-customer summary {
+  color: #0f766e;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.sale-quick-customer-grid {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-top: 16px;
+}
+
+.sale-quick-customer-actions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.sale-quick-customer-actions .lookup-status {
+  margin: 0;
+}
+
+.service-order-board-toolbar {
+  align-items: end;
+  display: flex;
+  gap: 14px;
+  justify-content: center;
+  margin-bottom: 18px;
+  padding: 16px;
+}
+
+.service-order-board-toolbar form {
+  align-items: end;
+  display: flex;
+  gap: 10px;
+}
+
+.service-order-board-toolbar label {
+  display: grid;
+  font-size: 12px;
+  font-weight: 700;
+  gap: 5px;
+}
+
+.service-order-board {
+  align-items: start;
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(4, minmax(220px, 1fr));
+}
+
+.service-order-column {
+  background: #f1f5f9;
+  border: 1px solid #dbe3ee;
+  border-radius: 12px;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.service-order-column > header {
+  align-items: center;
+  border-top: 4px solid #64748b;
+  display: flex;
+  justify-content: space-between;
+  padding: 13px 14px 10px;
+}
+
+.service-order-column--in_service > header {
+  border-top-color: #2563eb;
+}
+
+.service-order-column--waiting_pickup > header {
+  border-top-color: #d97706;
+}
+
+.service-order-column--finished > header {
+  border-top-color: #059669;
+}
+
+.service-order-column h2 {
+  font-size: 15px;
+  margin: 0;
+}
+
+.service-order-column > header span {
+  background: #ffffff;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 3px 8px;
+}
+
+.service-order-cards {
+  display: grid;
+  gap: 10px;
+  padding: 10px;
+}
+
+.service-order-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  display: grid;
+  gap: 10px;
+  padding: 13px;
+}
+
+.service-order-card-heading {
+  align-items: start;
+  display: flex;
+  gap: 8px;
+  justify-content: space-between;
+}
+
+.service-order-card-heading span,
+.service-order-card > p {
+  color: #64748b;
+  font-size: 12px;
+  margin: 0;
+}
+
+.service-order-card dl {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin: 0;
+}
+
+.service-order-card dl div {
+  display: grid;
+  gap: 2px;
+}
+
+.service-order-card dt {
+  color: #64748b;
+  font-size: 11px;
+  text-transform: uppercase;
+}
+
+.service-order-card dd {
+  font-size: 13px;
+  font-weight: 700;
+  margin: 0;
+}
+
+.service-order-card-items {
+  border-top: 1px solid #e2e8f0;
+  color: #475569;
+  font-size: 12px;
+  margin: 0;
+  padding: 9px 0 0 18px;
+}
+
+.service-order-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.service-order-card-actions form {
+  margin: 0;
+}
+
+.service-order-card-actions .button,
+.service-order-card-actions button {
+  font-size: 12px;
+  padding: 8px 10px;
+}
+
+.service-order-column-empty {
+  color: #64748b;
+  font-size: 13px;
+  margin: 10px;
+  text-align: center;
+}
+
 .sale-quick-services {
   background: linear-gradient(135deg, #f0fdfa 0%, #f8fafc 100%);
   border: 1px solid #99f6e4;
@@ -2941,6 +3127,10 @@ textarea {
 }
 
 @media (max-width: 980px) {
+  .service-order-board {
+    grid-template-columns: repeat(2, minmax(220px, 1fr));
+  }
+
   .agenda-weekdays,
   .agenda-days {
     min-width: 760px;
@@ -2952,6 +3142,21 @@ textarea {
 }
 
 @media (max-width: 640px) {
+  .sale-quick-customer-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .service-order-board,
+  .service-order-card dl {
+    grid-template-columns: 1fr;
+  }
+
+  .service-order-board-toolbar,
+  .service-order-board-toolbar form {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
   .agenda-toolbar {
     align-items: stretch;
     flex-direction: column;

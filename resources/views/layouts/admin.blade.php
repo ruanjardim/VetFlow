@@ -66,7 +66,10 @@
                 <a class="{{ request()->routeIs('sales.profitability') ? 'is-active' : '' }}" href="{{ route('sales.profitability') }}">Rentabilidade</a>
                 <a class="{{ request()->routeIs('sales.product-abc') ? 'is-active' : '' }}" href="{{ route('sales.product-abc') }}">Curva ABC</a>
               @endcan
-              @can('service-orders.manage')<a class="{{ request()->routeIs('service-orders.*') ? 'is-active' : '' }}" href="{{ route('service-orders.index') }}">Comandas</a>@endcan
+              @can('service-orders.manage')
+                <a class="{{ request()->routeIs('service-orders.board') ? 'is-active' : '' }}" href="{{ route('service-orders.board') }}">Operação Banho e Tosa</a>
+                <a class="{{ request()->routeIs('service-orders.index', 'service-orders.create', 'service-orders.edit') ? 'is-active' : '' }}" href="{{ route('service-orders.index') }}">Comandas</a>
+              @endcan
               @can('petshop-services.manage')<a class="{{ request()->routeIs('petshop-services.*') ? 'is-active' : '' }}" href="{{ route('petshop-services.index') }}">Serviços PetShop</a>@endcan
             </div>
           </details>
