@@ -4,6 +4,11 @@
     "src": "resources/css/app.css",
     "isEntry": true
   },
+  "resources/css/landing.css": {
+    "file": "assets/landing-BCugwzOT.css",
+    "src": "resources/css/landing.css",
+    "isEntry": true
+  },
   "resources/js/app.js": {
     "file": "assets/app-CHZ-xkAf.js",
     "name": "app",

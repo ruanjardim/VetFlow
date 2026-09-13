@@ -38,6 +38,8 @@ Route::get('/ops/release', ReleaseIdentityController::class)
     ->middleware('throttle:30,1')
     ->name('operations.release');
 
+Route::view('/', 'public.home')->name('home');
+
 Route::middleware('guest')->group(function () {
     Route::get('/login', [AuthenticatedSessionController::class, 'create'])->name('login');
     Route::post('/login', [AuthenticatedSessionController::class, 'store'])
@@ -58,7 +60,7 @@ Route::post('/logout', [AuthenticatedSessionController::class, 'destroy'])
     ->name('logout');
 
 Route::middleware(['auth', EnsureUserIsActive::class])->group(function () {
-    Route::get('/', [DashboardController::class, 'index'])
+    Route::get('/dashboard', [DashboardController::class, 'index'])
         ->middleware(EnsureUserHasPermission::class.':dashboard.view')
         ->name('dashboard');
 
