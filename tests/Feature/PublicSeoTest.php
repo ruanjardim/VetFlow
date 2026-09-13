@@ -31,7 +31,12 @@ class PublicSeoTest extends TestCase
             ->assertSee('href="'.route('login').'"', false)
             ->assertSee('href="'.route('home').'"', false)
             ->assertSee('id="recursos"', false)
-            ->assertSee('id="para-quem"', false);
+            ->assertSee('id="para-quem"', false)
+            ->assertSee('images/auth-malinois-square.webp', false)
+            ->assertSee('images/auth-pintabian-horse-square.png', false)
+            ->assertSee('images/auth-beagle-square.png', false)
+            ->assertSee('images/auth-gray-cat-square.png', false)
+            ->assertSee('images/auth-white-kitten-square.png', false);
     }
 
     public function test_login_and_reset_screens_have_noindex(): void

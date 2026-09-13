@@ -78,8 +78,14 @@
           <div class="hero-actions"><a class="button-primary" href="mailto:comercial@vetflowsys.com.br?subject=Demonstra%C3%A7%C3%A3o%20do%20VetFlow">Solicitar demonstração <span aria-hidden="true">↗</span></a><a class="button-quiet" href="{{ route('login') }}">Entrar no sistema <span aria-hidden="true">→</span></a></div>
           <p class="hero-footnote">Da agenda ao financeiro, com informações organizadas para o dia a dia.</p>
         </div>
-        <div class="hero-media">
-          <img src="{{ asset('images/auth-malinois-square.webp') }}" width="1254" height="1254" alt="Cão em destaque, representando o cuidado com os animais" fetchpriority="high" decoding="async">
+        <div class="hero-media" role="img" aria-label="Cães, gatos e cavalo representando os animais atendidos pelos negócios que usam o VetFlow">
+          <div class="hero-media-slideshow" aria-hidden="true">
+            <img class="hero-media-slide" src="{{ asset('images/auth-malinois-square.webp') }}" width="1254" height="1254" alt="" fetchpriority="high" decoding="async">
+            <img class="hero-media-slide" src="{{ asset('images/auth-pintabian-horse-square.png') }}" width="1254" height="1254" alt="" decoding="async">
+            <img class="hero-media-slide" src="{{ asset('images/auth-beagle-square.png') }}" width="1254" height="1254" alt="" decoding="async">
+            <img class="hero-media-slide" src="{{ asset('images/auth-gray-cat-square.png') }}" width="1254" height="1254" alt="" decoding="async">
+            <img class="hero-media-slide" src="{{ asset('images/auth-white-kitten-square.png') }}" width="1254" height="1254" alt="" decoding="async">
+          </div>
           <div class="media-caption"><span class="caption-dot" aria-hidden="true"></span> Cuidado com cada detalhe da operação</div>
         </div>
       </div>

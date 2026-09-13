@@ -40,7 +40,14 @@ h1 em{font-style:normal;color:#64d8cb}
 .hero-footnote{border-left:2px solid #39b6a9;padding-left:13px;color:#8fa7b2;font-size:12px;margin:40px 0 0}
 .hero-media{position:relative;min-height:550px;margin-right:calc((min(1160px,100vw - 48px) - 100vw)/2);overflow:hidden;background:#19343a}
 .hero-media:after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,#0d151d45,transparent 35%),linear-gradient(0deg,#0d151d77,transparent 35%);pointer-events:none}
-.hero-media img{height:100%;width:100%;object-fit:cover;object-position:52% center}
+.hero-media-slideshow{position:absolute;inset:0}
+.hero-media-slide{position:absolute;inset:0;height:100%;width:100%;object-fit:cover;object-position:52% center;opacity:0;animation:hero-media-cycle 20s ease-in-out infinite}
+.hero-media-slide:nth-child(1){animation-delay:-.5s}
+.hero-media-slide:nth-child(2){animation-delay:3.5s}
+.hero-media-slide:nth-child(3){animation-delay:7.5s}
+.hero-media-slide:nth-child(4){animation-delay:11.5s}
+.hero-media-slide:nth-child(5){animation-delay:15.5s}
+@keyframes hero-media-cycle{0%{opacity:0}5%,20%{opacity:1}25%,100%{opacity:0}}
 .media-caption{position:absolute;z-index:1;bottom:27px;left:30px;color:#fff;font-size:11px;font-weight:650;letter-spacing:.03em;background:#0d151db8;padding:12px 14px;border:1px solid #ffffff24;border-radius:9px}
 .caption-dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:#52d7c9;margin-right:6px}
 .section{padding:100px 0;scroll-margin-top:20px}
@@ -78,6 +85,6 @@ h1 em{font-style:normal;color:#64d8cb}
 .footer-brand{color:#fff;font-size:17px}.footer-brand .brand-mark{width:35px;height:35px;font-size:12px;border-radius:9px}
 .site-footer a:hover{color:#6ce0d4}
 @media(max-width:950px){.hero-grid{grid-template-columns:1fr .78fr}.hero-copy{padding:75px 26px 75px 0}.audience-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.features-layout{gap:45px}.hero-media{min-height:530px}}
-@media(max-width:680px){.wrap{width:min(100% - 36px,1160px)}.header-inner{min-height:76px}.site-brand strong{font-size:20px}.site-nav{gap:12px}.site-nav>a:not(.nav-login){display:none}.site-nav .nav-login{padding:10px 12px;font-size:12px}.hero-grid{display:flex;flex-direction:column}.hero-copy{padding:70px 0 55px}.hero-media{margin:0 calc((100vw - (100vw - 36px))/-2);min-height:340px;max-height:430px}.hero-media img{max-height:430px;object-position:50% 42%}.section{padding:74px 0}.audience-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.audience-card{padding:17px;min-height:240px}.audience-card h3{font-size:16px}.features-layout,.benefits-layout{grid-template-columns:1fr;gap:34px}.features-intro{position:static}.footer-inner{padding:28px 0;flex-wrap:wrap}.footer-inner>span:nth-child(2){display:none}}
+@media(max-width:680px){.wrap{width:min(100% - 36px,1160px)}.header-inner{min-height:76px}.site-brand strong{font-size:20px}.site-nav{gap:12px}.site-nav>a:not(.nav-login){display:none}.site-nav .nav-login{padding:10px 12px;font-size:12px}.hero-grid{display:flex;flex-direction:column}.hero-copy{padding:70px 0 55px}.hero-media{margin:0 calc((100vw - (100vw - 36px))/-2);min-height:340px;max-height:430px}.hero-media-slide{max-height:430px;object-position:50% 42%}.section{padding:74px 0}.audience-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.audience-card{padding:17px;min-height:240px}.audience-card h3{font-size:16px}.features-layout,.benefits-layout{grid-template-columns:1fr;gap:34px}.features-intro{position:static}.footer-inner{padding:28px 0;flex-wrap:wrap}.footer-inner>span:nth-child(2){display:none}}
 @media(max-width:420px){.site-brand small{font-size:10px}.brand-mark{width:39px;height:39px}.nav-login span{display:none}.hero-copy{padding:58px 0 50px}h1{font-size:46px}.hero-actions{align-items:stretch;flex-direction:column}.hero-actions a{width:100%}.audience-grid{grid-template-columns:1fr}.audience-card{min-height:0}.card-icon{margin:15px 0}.media-caption{left:16px;bottom:16px}.benefits li{font-size:15px}}
-@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*,*::before,*::after{transition:none!important}}
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*,*::before,*::after{transition:none!important}.hero-media-slide{animation:none}.hero-media-slide:first-child{opacity:1}}
