@@ -1,4 +1,21 @@
 document.addEventListener('DOMContentLoaded', () => {
+  document.querySelectorAll('[data-password-toggle]').forEach((button) => {
+    const input = document.getElementById(button.dataset.passwordToggle);
+
+    if (!input) {
+      return;
+    }
+
+    button.addEventListener('click', () => {
+      const passwordIsVisible = input.type === 'text';
+
+      input.type = passwordIsVisible ? 'password' : 'text';
+      button.setAttribute('aria-label', passwordIsVisible ? 'Mostrar senha' : 'Ocultar senha');
+      button.setAttribute('aria-pressed', passwordIsVisible ? 'false' : 'true');
+      input.focus({ preventScroll: true });
+    });
+  });
+
   document.querySelectorAll('[data-confirm]').forEach((element) => {
     element.addEventListener('click', (event) => {
       if (!window.confirm(element.dataset.confirm)) {

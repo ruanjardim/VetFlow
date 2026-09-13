@@ -515,6 +515,64 @@ button.danger {
   outline: none;
 }
 
+.password-input {
+  display: block;
+  position: relative;
+}
+
+.password-input > input:not([type="checkbox"]) {
+  padding-right: 48px;
+  width: 100%;
+}
+
+.password-toggle {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  border-radius: 7px;
+  color: #64748b;
+  cursor: pointer;
+  display: inline-flex;
+  height: 36px;
+  justify-content: center;
+  padding: 0;
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 36px;
+}
+
+.password-toggle:hover {
+  background: #e9f5f3;
+  color: #0f766e;
+}
+
+.password-toggle:focus-visible {
+  box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.2);
+  outline: 2px solid #0f766e;
+  outline-offset: 1px;
+}
+
+.password-toggle svg {
+  fill: none;
+  height: 20px;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.8;
+  width: 20px;
+}
+
+.password-toggle-hide,
+.password-toggle[aria-pressed="true"] .password-toggle-show {
+  display: none;
+}
+
+.password-toggle[aria-pressed="true"] .password-toggle-hide {
+  display: block;
+}
+
 .auth-form .button {
   border-radius: 10px;
   font-weight: 700;
@@ -672,7 +730,8 @@ button.danger {
   gap: 18px;
 }
 
-.auth-form-card .field > span {
+.auth-form-card .field > span,
+.auth-form-card .field > label {
   color: #253345;
   font-size: 13px;
   letter-spacing: 0.01em;
