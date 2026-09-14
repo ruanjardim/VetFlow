@@ -13,8 +13,8 @@
       <label class="field"><span>Tipo de documento</span><select name="clinic[document_type]" data-document-type required><option value="cnpj" @selected(old('clinic.document_type', 'cnpj') === 'cnpj')>CNPJ — pessoa jurídica</option><option value="cpf" @selected(old('clinic.document_type') === 'cpf')>CPF — pessoa física</option></select></label>
       <label class="field"><span data-document-label>{{ old('clinic.document_type', 'cnpj') === 'cpf' ? 'CPF' : 'CNPJ' }}</span><input name="clinic[cnpj]" value="{{ old('clinic.cnpj') }}" inputmode="numeric" autocomplete="off" data-document-number required><small class="field-hint" data-document-hint></small></label>
       <label class="field"><span>E-mail comercial</span><input type="email" name="clinic[email]" value="{{ old('clinic.email') }}"></label>
-      <label class="field"><span>Telefone</span><input name="clinic[phone]" value="{{ old('clinic.phone') }}" inputmode="tel" maxlength="15" data-phone-mask></label>
-      <label class="field"><span>WhatsApp</span><input name="clinic[whatsapp]" value="{{ old('clinic.whatsapp') }}" inputmode="tel" maxlength="15" data-phone-mask></label>
+      <label class="field"><span>Telefone</span><input name="clinic[phone]" value="{{ old('clinic.phone') }}" inputmode="tel" autocomplete="off" maxlength="15" data-phone-mask></label>
+      <label class="field"><span>WhatsApp</span><input name="clinic[whatsapp]" value="{{ old('clinic.whatsapp') }}" inputmode="tel" autocomplete="off" maxlength="15" data-phone-mask></label>
       <label class="field"><span>Fuso horário</span><input name="clinic[timezone]" value="{{ old('clinic.timezone', 'America/Sao_Paulo') }}"></label>
     </div></div></section>
 
@@ -34,7 +34,7 @@
     <section class="panel"><div class="panel-heading"><div><h2>4. Administrador inicial</h2><p>Primeiro acesso do cliente, vinculado ao perfil Administrador.</p></div></div><div class="panel-body"><div class="form-grid">
       <label class="field"><span>Nome</span><input name="admin[name]" value="{{ old('admin.name') }}" required></label>
       <label class="field"><span>E-mail de acesso</span><input type="email" name="admin[email]" value="{{ old('admin.email') }}" required></label>
-      <label class="field"><span>Telefone</span><input name="admin[phone]" value="{{ old('admin.phone') }}" inputmode="tel" maxlength="15" data-phone-mask></label>
+      <label class="field"><span>Telefone</span><input name="admin[phone]" value="{{ old('admin.phone') }}" inputmode="tel" autocomplete="off" maxlength="15" data-phone-mask></label>
       <label class="field"><span>Senha</span><input type="password" name="admin[password]" required></label>
       <label class="field"><span>Confirmar senha</span><input type="password" name="admin[password_confirmation]" required></label>
     </div></div></section>

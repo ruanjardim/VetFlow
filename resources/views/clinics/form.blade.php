@@ -25,7 +25,7 @@
   </div>
   <div class="field">
     <label for="phone">Telefone</label>
-    <input id="phone" name="phone" value="{{ old('phone', $clinic->phone ?? '') }}" inputmode="tel" maxlength="15" data-phone-mask>
+    <input id="phone" name="phone" value="{{ old('phone', $clinic->phone ?? '') }}" inputmode="tel" autocomplete="off" maxlength="15" data-phone-mask>
   </div>
   <div class="field">
     <label for="city">Cidade</label>
