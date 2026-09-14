@@ -1,3 +1,5 @@
+import './pdv.js';
+
 document.addEventListener('DOMContentLoaded', () => {
   document.querySelectorAll('[data-password-toggle]').forEach((button) => {
     const input = document.getElementById(button.dataset.passwordToggle);

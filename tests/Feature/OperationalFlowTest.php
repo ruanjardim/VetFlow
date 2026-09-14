@@ -1156,6 +1156,130 @@ class OperationalFlowTest extends TestCase
         ]);
     }
 
+    public function test_pdv_quick_search_is_clinic_scoped_and_finds_sku_and_service(): void
+    {
+        $clinicA = $this->clinic('Clinica Busca A', '00000000000401');
+        $clinicB = $this->clinic('Clinica Busca B', '00000000000402');
+        $productA = $this->product($clinicA, 'Racao busca', stock: 4, salePrice: 35);
+        $productA->update(['sku' => 'RACAO-TESTE', 'barcode' => '12345678']);
+        $this->product($clinicB, 'Racao externa', stock: 9, salePrice: 20)
+            ->update(['sku' => 'RACAO-TESTE', 'barcode' => '12345678']);
+        PetShopService::query()->create([
+            'clinic_id' => $clinicA->id,
+            'name' => 'Banho rápido',
+            'category' => 'Banho e tosa',
+            'base_price' => 50,
+            'active' => true,
+        ]);
+        $user = $this->userForClinic($clinicA, ['sales.manage']);
+
+        $this->actingAs($user)
+            ->getJson(route('sales.quick-search', ['q' => 'RACAO-TESTE', 'clinic_id' => $clinicB->id]))
+            ->assertOk()
+            ->assertJsonCount(1, 'items')
+            ->assertJsonPath('items.0.product_id', $productA->id)
+            ->assertJsonPath('items.0.stock_quantity', 4);
+
+        $this->getJson(route('sales.quick-search', ['q' => 'Banho']))
+            ->assertOk()
+            ->assertJsonPath('items.0.type', 'service');
+
+        $this->getJson(route('sales.product-lookup', ['gtin' => '12345678']))
+            ->assertOk()
+            ->assertJsonPath('item.product_id', $productA->id);
+    }
+
+    public function test_pdv_checkout_requires_full_payment_and_cash_backed_change(): void
+    {
+        $clinic = $this->clinic('Clinica Checkout', '00000000000403');
+        $product = $this->product($clinic, 'Antipulgas checkout', stock: 5, salePrice: 50);
+        $user = $this->userForClinic($clinic, ['sales.manage']);
+        $payload = [
+            'pdv_checkout' => '1',
+            'status' => 'completed',
+            'items' => [[
+                'type' => 'product',
+                'product_id' => $product->id,
+                'description' => $product->name,
+                'quantity' => '1',
+                'unit_price' => '50',
+            ]],
+        ];
+
+        $this->actingAs($user)->from(route('sales.create'))
+            ->post(route('sales.store'), $payload + ['payments' => [['method' => 'pix', 'amount' => '40']]])
+            ->assertSessionHasErrors('payments');
+        $this->from(route('sales.create'))
+            ->post(route('sales.store'), $payload + ['payments' => [['method' => 'pix', 'amount' => '60']]])
+            ->assertSessionHasErrors('payments');
+        $this->assertDatabaseCount('sales', 0);
+
+        $this->post(route('sales.store'), $payload + ['payments' => [
+            ['method' => 'pix', 'amount' => '30'],
+            ['method' => 'cash', 'amount' => '30'],
+        ]])->assertSessionDoesntHaveErrors();
+
+        $sale = Sale::query()->firstOrFail();
+        $this->assertSame('completed', $sale->status);
+        $this->assertEquals(10, (float) $sale->change_total);
+        $this->assertEquals(4, (float) $product->fresh()->stock_quantity);
+    }
+
+    public function test_pdv_suspended_sale_appears_in_draft_filter(): void
+    {
+        $clinic = $this->clinic('Clinica Suspensa', '00000000000404');
+        $user = $this->userForClinic($clinic, ['sales.manage']);
+        $this->actingAs($user)->post(route('sales.store'), [
+            'pdv_checkout' => '1',
+            'status' => 'draft',
+            'items' => [[
+                'type' => 'custom',
+                'description' => 'Item reservado',
+                'quantity' => '1',
+                'unit_price' => '25',
+            ]],
+        ])->assertSessionDoesntHaveErrors();
+
+        $sale = Sale::query()->firstOrFail();
+        $this->assertSame('draft', $sale->status);
+        $this->get(route('sales.index', ['status' => 'draft']))
+            ->assertOk()
+            ->assertSee($sale->code);
+    }
+
+    public function test_pdv_price_and_discounts_match_checkout_and_leave_audit_events(): void
+    {
+        $clinic = $this->clinic('Clinica Preco PDV', '00000000000405');
+        $product = $this->product($clinic, 'Ração premium', stock: 3, salePrice: 50);
+        $user = $this->userForClinic($clinic, ['sales.manage']);
+
+        $this->actingAs($user)->post(route('sales.store'), [
+            'pdv_checkout' => '1',
+            'status' => 'completed',
+            'discount_total' => '2',
+            'items' => [[
+                'type' => 'product',
+                'product_id' => $product->id,
+                'description' => $product->name,
+                'quantity' => '1',
+                'unit_price' => '40',
+                'original_unit_price' => '999',
+                'discount_total' => '5',
+            ]],
+            'payments' => [['method' => 'pix', 'amount' => '33']],
+        ])->assertSessionDoesntHaveErrors();
+
+        $sale = Sale::query()->with(['items', 'events'])->firstOrFail();
+        $this->assertEquals(33, (float) $sale->total);
+        $this->assertEquals(40, (float) $sale->items->first()->original_unit_price);
+        $this->assertEqualsCanonicalizing(
+            ['unit_price_adjusted', 'item_discount', 'sale_discount'],
+            $sale->events->pluck('event_type')
+                ->intersect(['unit_price_adjusted', 'item_discount', 'sale_discount'])
+                ->all()
+        );
+    }
+
     private function userForClinic(Clinic $clinic, array $permissionSlugs): User
     {
         $user = User::factory()->create([

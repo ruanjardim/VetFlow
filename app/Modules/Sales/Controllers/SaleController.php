@@ -4,11 +4,13 @@ namespace App\Modules\Sales\Controllers;
 
 use App\Core\Base\BaseCrudController;
 use App\Modules\Clinics\Models\Clinic;
+use App\Modules\Inventory\Services\ProductLotService;
 use App\Modules\Patients\Models\Patient;
 use App\Modules\PetShopServices\Models\PetShopService;
 use App\Modules\Products\Models\Product;
 use App\Modules\Products\Services\ProductLookupService;
 use App\Modules\Products\Support\Gtin;
+use App\Modules\Sales\Models\Sale;
 use App\Modules\Sales\Requests\ProductAbcAnalysisRequest;
 use App\Modules\Sales\Requests\StoreSalePaymentRequest;
 use App\Modules\Sales\Requests\StoreSaleRequest;
@@ -33,9 +35,43 @@ class SaleController extends BaseCrudController
         $this->viewVariable = 'sales';
     }
 
+    public function index()
+    {
+        if (request()->query('status') !== 'draft') {
+            return parent::index();
+        }
+
+        return view('sales.index', [
+            'sales' => Sale::query()
+                ->with(['tutor', 'patient', 'serviceOrder'])
+                ->where('status', 'draft')
+                ->latest('sold_at')
+                ->paginate(15),
+        ]);
+    }
+
     public function create()
     {
-        return view("{$this->viewPath}.create", $this->formData());
+        $advanced = request()->query('mode') === 'advanced';
+
+        return view(
+            $advanced ? 'sales.create-advanced' : 'sales.create',
+            $this->formData($advanced)
+        );
+    }
+
+    public function store(Request $request)
+    {
+        $validated = $this->validateRequest($request, StoreSaleRequest::class);
+        $sale = $this->service->create($validated);
+
+        if ($request->boolean('pdv_checkout')) {
+            return redirect()
+                ->route($sale->status === 'completed' ? 'sales.receipt' : 'sales.edit', $sale->id)
+                ->with('success', $sale->status === 'completed' ? 'Venda concluída com sucesso.' : 'Venda suspensa.');
+        }
+
+        return redirect()->route('sales.index')->with('success', 'Registro criado com sucesso.');
     }
 
     public function edit(int $id)
@@ -225,7 +261,62 @@ class SaleController extends BaseCrudController
             ->with('success', 'Rascunho removido com sucesso.');
     }
 
-    public function lookupProduct(string $gtin, ProductLookupService $lookupService): JsonResponse
+    public function quickSearch(Request $request, ProductLotService $lotService): JsonResponse
+    {
+        $validated = $request->validate([
+            'q' => ['required', 'string', 'min:2', 'max:100'],
+            'clinic_id' => ['nullable', 'integer', 'exists:clinics,id'],
+        ]);
+        $clinicId = auth()->user()?->clinic_id ?? ($validated['clinic_id'] ?? null);
+
+        if (! $clinicId) {
+            return response()->json(['items' => [], 'message' => 'Selecione uma clínica para buscar itens.'], 422);
+        }
+
+        $term = trim($validated['q']);
+        $pattern = '%'.addcslashes($term, '%_\\').'%';
+        $products = Product::query()
+            ->active()
+            ->where('clinic_id', $clinicId)
+            ->where(function ($query) use ($pattern) {
+                $query->where('name', 'like', $pattern)
+                    ->orWhere('sku', 'like', $pattern)
+                    ->orWhere('barcode', 'like', $pattern)
+                    ->orWhere('gtin', 'like', $pattern);
+            })
+            ->orderBy('name')
+            ->limit(12)
+            ->get();
+
+        $services = PetShopService::query()
+            ->active()
+            ->where('clinic_id', $clinicId)
+            ->where('name', 'like', $pattern)
+            ->orderBy('name')
+            ->limit(max(0, 12 - $products->count()))
+            ->get();
+
+        $items = $products->map(fn (Product $product) => [
+            'type' => 'product',
+            'product_id' => $product->id,
+            'description' => $product->name,
+            'sku' => $product->sku,
+            'barcode' => $product->barcode,
+            'gtin' => $product->gtin,
+            'unit_price' => (float) $product->sale_price,
+            'stock_quantity' => $lotService->sellableQuantity($product),
+            'minimum_stock' => (float) $product->minimum_stock,
+        ])->concat($services->map(fn (PetShopService $service) => [
+            'type' => 'service',
+            'petshop_service_id' => $service->id,
+            'description' => $service->name,
+            'unit_price' => (float) $service->base_price,
+        ]))->values();
+
+        return response()->json(['items' => $items]);
+    }
+
+    public function lookupProduct(Request $request, string $gtin, ProductLookupService $lookupService): JsonResponse
     {
         $normalized = Gtin::normalize($gtin);
         $variants = Gtin::variants($normalized);
@@ -238,8 +329,18 @@ class SaleController extends BaseCrudController
             ], 422);
         }
 
+        $clinicId = auth()->user()?->clinic_id ?? $request->integer('clinic_id');
+
+        if (! $clinicId) {
+            return response()->json([
+                'found' => false,
+                'message' => 'Selecione uma clínica antes de ler o código de barras.',
+            ], 422);
+        }
+
         $product = Product::query()
             ->active()
+            ->where('clinic_id', $clinicId)
             ->where(function ($query) use ($variants) {
                 $query
                     ->whereIn('gtin', $variants)
@@ -340,12 +441,19 @@ class SaleController extends BaseCrudController
         return UpdateSaleRequest::class;
     }
 
-    private function formData(): array
+    private function formData(bool $includeCatalog = true): array
     {
-        return [
+        $data = [
             'clinics' => Clinic::query()->orderBy('trade_name')->get(),
             'tutors' => Tutor::query()->orderBy('name')->get(),
             'patients' => Patient::query()->orderBy('name')->get(),
+        ];
+
+        if (! $includeCatalog) {
+            return $data;
+        }
+
+        return array_merge($data, [
             'products' => Product::query()->active()->orderBy('name')->get(),
             'petShopServices' => PetShopService::query()->active()->orderBy('name')->get(),
             'serviceOrders' => ServiceOrder::query()
@@ -353,7 +461,7 @@ class SaleController extends BaseCrudController
                 ->latest('opened_at')
                 ->limit(100)
                 ->get(),
-        ];
+        ]);
     }
 
     private function normalizeDecimal(mixed $value): mixed

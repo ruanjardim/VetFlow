@@ -56,6 +56,14 @@ financial income, returns, refunds, cancellations, and sale event history.
 - Completed sales apply stock and financial effects once using
   `stock_applied` and `financial_applied`.
 - Draft sales can be updated before effects are applied.
+- The new-sale screen is a counter-oriented PDV with a dynamic cart, clinic-scoped
+  name/SKU/barcode/GTIN search, optional customer and pet, keyboard shortcuts,
+  and a multi-method receipt dialog. The previous full form remains available
+  as the advanced/comanda path and continues to serve sale editing.
+- PDV completion requires full payment. Any change must be covered by cash
+  received; suspended sales stay as editable drafts. Completion continues
+  through the existing SaleService stock, financial, and audit flow.
+- A completed PDV sale opens its receipt with a direct new-sale action.
 - Sale item snapshots protect historical margin/reporting data from later
   product edits.
 - Product exits use lot allocation when available.

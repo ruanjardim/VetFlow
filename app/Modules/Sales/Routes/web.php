@@ -7,6 +7,9 @@ Route::get('sales/product-lookup/{gtin}', [SaleController::class, 'lookupProduct
     ->where('gtin', '[0-9]+')
     ->name('sales.product-lookup');
 
+Route::get('sales/quick-search', [SaleController::class, 'quickSearch'])
+    ->name('sales.quick-search');
+
 Route::get('sales/cashier', [SaleController::class, 'cashier'])
     ->name('sales.cashier');
 
