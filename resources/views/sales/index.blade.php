@@ -6,9 +6,14 @@
   <header class="topbar">
     <div>
       <h1>PDV / Vendas</h1>
-      <p>Fechamento de produtos, servicos e comandas com baixa de estoque e caixa.</p>
+      <p>{{ request('status') === 'draft' ? 'Vendas suspensas para retomar no formulário.' : 'Fechamento de produtos, serviços e comandas com baixa de estoque e caixa.' }}</p>
     </div>
     <div class="actions">
+      @if(request('status') === 'draft')
+        <a class="button secondary" href="{{ route('sales.index') }}">Todas as vendas</a>
+      @else
+        <a class="button secondary" href="{{ route('sales.index', ['status' => 'draft']) }}">Vendas suspensas</a>
+      @endif
       <a class="button secondary" href="{{ route('sales.profitability') }}">Rentabilidade</a>
       <a class="button secondary" href="{{ route('sales.cashier') }}">Caixa do dia</a>
       <a class="button" href="{{ route('sales.create') }}">Nova venda</a>
@@ -63,7 +68,7 @@
               <td>{{ optional($sale->sold_at)->format('d/m/Y H:i') }}</td>
               <td>R$ {{ number_format((float) $sale->total, 2, ',', '.') }}</td>
               <td>
-                <a class="button secondary" href="{{ route('sales.edit', $sale->id) }}">Editar</a>
+                <a class="button secondary" href="{{ route('sales.edit', $sale->id) }}">{{ $sale->status === 'draft' ? 'Retomar' : 'Editar' }}</a>
                 <a class="button secondary" href="{{ route('sales.receipt', $sale->id) }}">Comprovante</a>
                 @if($sale->status === 'completed')
                   <a class="button secondary" href="{{ route('sales.returns.create', $sale->id) }}">Devolver</a>

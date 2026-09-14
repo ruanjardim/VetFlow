@@ -613,7 +613,38 @@ class SaleService extends BaseService
                 continue;
             }
 
-            $sale->items()->create($normalized);
+            $saleItem = $sale->items()->create($normalized);
+            $catalogPrice = $normalized['metadata']['catalog_unit_price'] ?? null;
+
+            if ($sale->status === 'completed' && $catalogPrice !== null) {
+                $this->recordSaleEvent(
+                    $sale,
+                    'unit_price_adjusted',
+                    $saleItem->id,
+                    null,
+                    round(abs((float) $catalogPrice - (float) $normalized['unit_price']) * (float) $normalized['quantity'], 2),
+                    'Preço unitário alterado',
+                    (float) $normalized['quantity'],
+                    [
+                        'catalog_unit_price' => $catalogPrice,
+                        'charged_unit_price' => (float) $normalized['unit_price'],
+                        'user_id' => auth()->id(),
+                    ]
+                );
+            }
+
+            if ($sale->status === 'completed' && (float) $normalized['discount_total'] > 0) {
+                $this->recordSaleEvent(
+                    $sale,
+                    'item_discount',
+                    $saleItem->id,
+                    null,
+                    (float) $normalized['discount_total'],
+                    'Desconto no item',
+                    null,
+                    ['user_id' => auth()->id()]
+                );
+            }
         }
     }
 
@@ -654,6 +685,8 @@ class SaleService extends BaseService
         }
 
         $unitPrice = (float) ($unitPrice ?: 0);
+        $catalogUnitPrice = $product?->sale_price ?? $service?->base_price;
+        $priceAdjusted = $catalogUnitPrice !== null && abs($unitPrice - (float) $catalogUnitPrice) >= 0.005;
         $originalUnitPrice = (float) ($item['original_unit_price'] ?? $product?->sale_price ?? $service?->base_price ?? $unitPrice);
         $costUnitPrice = $type === 'product'
             ? (float) ($product?->cost_price ?? 0)
@@ -691,6 +724,7 @@ class SaleService extends BaseService
             'metadata' => array_filter([
                 'source' => $item['source'] ?? null,
                 'manual_description' => $type === 'custom',
+                'catalog_unit_price' => $priceAdjusted ? (float) $catalogUnitPrice : null,
             ], fn ($value) => $value !== null),
         ];
     }
@@ -859,6 +893,19 @@ class SaleService extends BaseService
                     'status' => 'finished',
                     'closed_at' => $sale->sold_at ?? now(),
                 ]);
+        }
+
+        if ((float) $sale->discount_total > 0) {
+            $this->recordSaleEvent(
+                $sale,
+                'sale_discount',
+                null,
+                null,
+                (float) $sale->discount_total,
+                'Desconto na venda',
+                null,
+                ['user_id' => auth()->id()]
+            );
         }
 
         $this->recordSaleEvent($sale, 'completed', null, null, (float) $sale->total, 'Venda concluida');

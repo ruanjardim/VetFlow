@@ -63,7 +63,8 @@
             <summary><span>Vendas e serviços</span><span class="nav-chevron">⌄</span></summary>
             <div class="nav-submenu">
               @can('sales.manage')
-                <a class="{{ request()->routeIs('sales.index', 'sales.create', 'sales.edit') ? 'is-active' : '' }}" href="{{ route('sales.index') }}">Ponto de venda</a>
+                <a class="{{ request()->routeIs('sales.create') ? 'is-active' : '' }}" href="{{ route('sales.create') }}">Ponto de venda</a>
+                <a class="{{ request()->routeIs('sales.index', 'sales.edit', 'sales.receipt', 'sales.returns.*', 'sales.cancel') ? 'is-active' : '' }}" href="{{ route('sales.index') }}">Histórico de vendas</a>
                 <a class="{{ request()->routeIs('sales.cashier', 'sales.cashier.close') ? 'is-active' : '' }}" href="{{ route('sales.cashier') }}">Movimentos de caixa</a>
                 <a class="{{ request()->routeIs('sales.profitability') ? 'is-active' : '' }}" href="{{ route('sales.profitability') }}">Rentabilidade</a>
                 <a class="{{ request()->routeIs('sales.product-abc') ? 'is-active' : '' }}" href="{{ route('sales.product-abc') }}">Curva ABC</a>

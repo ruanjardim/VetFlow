@@ -28,6 +28,7 @@
       <p>{{ $sale->code }} - {{ optional($sale->sold_at)->format('d/m/Y H:i') }}</p>
     </div>
     <div class="actions">
+      <a class="button" href="{{ route('sales.create') }}">Nova venda</a>
       <button type="button" onclick="window.print()">Imprimir</button>
       @if($sale->status === 'completed')
         <a class="button secondary" href="{{ route('sales.returns.create', $sale->id) }}">Devolver</a>

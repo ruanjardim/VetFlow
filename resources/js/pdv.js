@@ -1,0 +1,383 @@
+document.addEventListener('DOMContentLoaded', () => {
+  const form = document.querySelector('[data-pdv-form]');
+  if (!form) return;
+
+  const find = (selector) => form.querySelector(selector);
+  const cart = find('[data-pdv-cart]');
+  const empty = find('[data-pdv-empty]');
+  const search = find('[data-pdv-search]');
+  const results = find('[data-pdv-results]');
+  const lookupStatus = find('[data-pdv-lookup-status]');
+  const checkoutStatus = find('[data-pdv-checkout-status]');
+  const paymentStatus = find('[data-pdv-payment-status]');
+  const dialog = find('[data-pdv-payment-dialog]');
+  const payments = find('[data-pdv-payments]');
+  const clinic = find('[data-pdv-clinic]');
+  const tutor = find('[data-pdv-tutor]');
+  const patient = find('[data-pdv-patient]');
+  const status = find('[data-pdv-status]');
+  const discount = find('[data-pdv-discount]');
+  const additions = find('[data-pdv-additions]');
+  const createProduct = find('[data-pdv-create-product]');
+  const brl = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
+  const money = (cents) => brl.format(cents / 100);
+  const parseMoney = (value) => {
+    const raw = String(value ?? '').trim();
+    if (!raw) return 0;
+    const normalized = raw.includes(',') ? raw.replace(/\./g, '').replace(',', '.') : raw;
+    return Math.max(0, Math.round((Number.parseFloat(normalized) || 0) * 100));
+  };
+  const moneyInput = (cents) => (cents / 100).toFixed(2).replace('.', ',');
+  const quantity = (value) => Math.max(0, Number.parseFloat(String(value).replace(',', '.')) || 0);
+  const rows = () => Array.from(cart.querySelectorAll('[data-pdv-row]'));
+  const paymentRows = () => Array.from(payments.querySelectorAll('[data-pdv-payment-row]'));
+  let nextItem = 0;
+  let nextPayment = 0;
+  let searchTimer;
+  let searchSerial = 0;
+  let activeResults = [];
+
+  const message = (node, value, kind = '') => {
+    node.textContent = value;
+    node.className = 'lookup-status' + (kind ? ' is-' + kind : '');
+  };
+  const selectedClinic = () => clinic?.value || '';
+  const withClinic = (url) => {
+    if (!clinic) return url;
+    const address = new URL(url, window.location.origin);
+    address.searchParams.set('clinic_id', selectedClinic());
+    return address.toString();
+  };
+  const normalizeRows = () => {
+    rows().forEach((row) => {
+      row.querySelectorAll('[data-pdv-money]').forEach((input) => {
+        input.value = (parseMoney(input.value) / 100).toFixed(2);
+      });
+    });
+    paymentRows().forEach((row) => {
+      const input = row.querySelector('[data-pdv-payment-amount]');
+      input.value = (parseMoney(input.value) / 100).toFixed(2);
+    });
+    discount.value = (parseMoney(discount.value) / 100).toFixed(2);
+    additions.value = (parseMoney(additions.value) / 100).toFixed(2);
+  };
+  const totals = () => {
+    let gross = 0;
+    let itemDiscounts = 0;
+    rows().forEach((row) => {
+      const qty = quantity(row.querySelector('[data-pdv-quantity]').value);
+      const price = parseMoney(row.querySelector('[data-pdv-price]').value);
+      const reduction = parseMoney(row.querySelector('[data-pdv-item-discount]').value);
+      const lineGross = Math.round(qty * price);
+      gross += lineGross;
+      itemDiscounts += Math.min(lineGross, reduction);
+      row.querySelector('[data-pdv-line-total]').textContent = money(Math.max(0, lineGross - reduction));
+      const stock = Number.parseFloat(row.dataset.stock);
+      const stockNote = row.querySelector('[data-pdv-stock]');
+      if (row.dataset.type === 'product' && Number.isFinite(stock)) {
+        stockNote.textContent = qty > stock ? 'Estoque vendável insuficiente: ' + stock : 'Estoque vendável: ' + stock;
+        stockNote.classList.toggle('is-error', qty > stock);
+      }
+    });
+    const saleDiscount = Math.min(gross - itemDiscounts, parseMoney(discount.value));
+    const total = Math.max(0, gross - itemDiscounts - saleDiscount + parseMoney(additions.value));
+    const paid = paymentRows().reduce((sum, row) => sum + parseMoney(row.querySelector('[data-pdv-payment-amount]').value), 0);
+    const balance = Math.max(0, total - paid);
+    const change = Math.max(0, paid - total);
+    find('[data-pdv-subtotal]').textContent = money(gross);
+    find('[data-pdv-item-discounts]').textContent = money(itemDiscounts);
+    find('[data-pdv-total]').textContent = money(total);
+    find('[data-pdv-paid]').textContent = money(paid);
+    find('[data-pdv-balance-label]').textContent = change ? 'Troco' : 'Falta';
+    find('[data-pdv-balance]').textContent = money(change || balance);
+    find('[data-pdv-payment-total]').textContent = money(total);
+    find('[data-pdv-dialog-paid]').textContent = money(paid);
+    find('[data-pdv-dialog-balance]').textContent = money(balance);
+    find('[data-pdv-dialog-change]').textContent = money(change);
+    find('[data-pdv-item-count]').textContent = rows().length + (rows().length === 1 ? ' item' : ' itens');
+    empty.hidden = rows().length > 0;
+    return { total, paid, balance, change };
+  };
+
+  const addRow = (item) => {
+    const type = item.type || 'custom';
+    const productId = String(item.product_id || '');
+    const serviceId = String(item.petshop_service_id || '');
+    const existing = productId
+      ? rows().find((row) => row.dataset.type === 'product' && row.dataset.productId === productId)
+      : serviceId ? rows().find((row) => row.dataset.type === 'service' && row.dataset.serviceId === serviceId) : null;
+    if (existing) {
+      const qty = existing.querySelector('[data-pdv-quantity]');
+      qty.value = String(Math.round((quantity(qty.value) + quantity(item.quantity || 1)) * 1000) / 1000);
+      totals();
+      return existing;
+    }
+    const index = nextItem++;
+    const row = document.createElement('article');
+    row.className = 'pdv-cart-row';
+    row.dataset.pdvRow = '';
+    row.dataset.type = type;
+    row.dataset.productId = productId;
+    row.dataset.serviceId = serviceId;
+    if (item.stock_quantity !== undefined) row.dataset.stock = String(item.stock_quantity);
+    row.innerHTML = `
+      <div class="pdv-row-top"><span data-pdv-kind></span><button type="button" class="secondary" data-pdv-remove aria-label="Remover item">Remover</button></div>
+      <input type="hidden" name="items[${index}][type]">
+      <input type="hidden" name="items[${index}][product_id]">
+      <input type="hidden" name="items[${index}][petshop_service_id]">
+      <div class="field pdv-description"><label>Item</label><input name="items[${index}][description]" maxlength="255" data-pdv-description required></div>
+      <div class="pdv-row-fields">
+        <div class="field"><label>Qtd</label><div class="pdv-quantity"><button type="button" class="secondary" data-pdv-minus aria-label="Diminuir quantidade">−</button><input name="items[${index}][quantity]" type="number" min="0.001" step="0.001" data-pdv-quantity required><button type="button" class="secondary" data-pdv-plus aria-label="Aumentar quantidade">+</button></div></div>
+        <div class="field"><label>Preço unit.</label><input name="items[${index}][unit_price]" type="text" inputmode="decimal" data-pdv-price data-pdv-money required></div>
+        <div class="field"><label>Desc. item</label><input name="items[${index}][discount_total]" type="text" inputmode="decimal" data-pdv-item-discount data-pdv-money></div>
+        <div class="pdv-line-total"><span>Total</span><strong data-pdv-line-total>R$ 0,00</strong></div>
+      </div>
+      <small data-pdv-stock></small>`;
+    row.querySelector('[name$="[type]"]').value = type;
+    row.querySelector('[name$="[product_id]"]').value = productId;
+    row.querySelector('[name$="[petshop_service_id]"]').value = serviceId;
+    row.querySelector('[data-pdv-kind]').textContent = type === 'product' ? 'Produto' : type === 'service' ? 'Serviço' : 'Avulso';
+    row.querySelector('[data-pdv-description]').value = item.description || '';
+    row.querySelector('[data-pdv-quantity]').value = String(item.quantity || 1);
+    row.querySelector('[data-pdv-price]').value = moneyInput(parseMoney(item.unit_price));
+    row.querySelector('[data-pdv-item-discount]').value = moneyInput(parseMoney(item.discount_total));
+    row.querySelector('[data-pdv-remove]').addEventListener('click', () => { row.remove(); totals(); search.focus(); });
+    row.querySelector('[data-pdv-minus]').addEventListener('click', () => {
+      const input = row.querySelector('[data-pdv-quantity]');
+      input.value = String(Math.max(0.001, Math.round((quantity(input.value) - 1) * 1000) / 1000));
+      totals();
+    });
+    row.querySelector('[data-pdv-plus]').addEventListener('click', () => {
+      const input = row.querySelector('[data-pdv-quantity]');
+      input.value = String(Math.round((quantity(input.value) + 1) * 1000) / 1000);
+      totals();
+    });
+    row.querySelectorAll('input').forEach((input) => input.addEventListener('input', totals));
+    cart.appendChild(row);
+    totals();
+    return row;
+  };
+
+  const addPayment = (payment = {}) => {
+    const index = nextPayment++;
+    const row = document.createElement('div');
+    row.className = 'pdv-payment-row';
+    row.dataset.pdvPaymentRow = '';
+    row.innerHTML = `
+      <div class="pdv-payment-fields">
+        <div class="field"><label>Forma</label><select name="payments[${index}][method]" data-pdv-payment-method>
+          <option value="">Selecione</option><option value="cash">Dinheiro</option><option value="pix">PIX</option>
+          <option value="debit_card">Cartão de débito</option><option value="credit_card">Cartão de crédito</option>
+          <option value="transfer">Transferência</option><option value="other">Outro</option></select></div>
+        <div class="field"><label>Valor</label><input name="payments[${index}][amount]" type="text" inputmode="decimal" data-pdv-payment-amount></div>
+        <button type="button" class="secondary" data-pdv-remove-payment aria-label="Remover pagamento">Remover</button>
+      </div>
+      <div class="pdv-card-fields" data-pdv-card-fields hidden>
+        <div class="field"><label>Parcelas</label><input name="payments[${index}][installments]" type="number" min="1" max="120" value="1" data-pdv-installments></div>
+        <div class="field"><label>Bandeira</label><input name="payments[${index}][card_brand]" maxlength="80"></div>
+        <div class="field"><label>Operadora</label><input name="payments[${index}][acquirer]" maxlength="120"></div>
+      </div>
+      <div class="field pdv-reference"><label>Referência (opcional)</label><input name="payments[${index}][reference]" maxlength="255"></div>`;
+    const method = row.querySelector('[data-pdv-payment-method]');
+    const amount = row.querySelector('[data-pdv-payment-amount]');
+    const updateCard = () => {
+      const card = method.value === 'credit_card' || method.value === 'debit_card';
+      row.querySelector('[data-pdv-card-fields]').hidden = !card;
+      row.querySelector('[data-pdv-installments]').disabled = !card;
+      row.querySelector('[data-pdv-installments]').max = method.value === 'debit_card' ? '1' : '120';
+      if (method.value === 'debit_card') row.querySelector('[data-pdv-installments]').value = '1';
+      totals();
+    };
+    method.value = payment.method || '';
+    amount.value = moneyInput(parseMoney(payment.amount));
+    row.querySelector('[data-pdv-installments]').value = payment.installments || 1;
+    row.querySelector('[name$="[card_brand]"]').value = payment.card_brand || '';
+    row.querySelector('[name$="[acquirer]"]').value = payment.acquirer || '';
+    row.querySelector('[name$="[reference]"]').value = payment.reference || payment.transaction_reference || '';
+    method.addEventListener('change', updateCard);
+    amount.addEventListener('input', totals);
+    row.querySelector('[data-pdv-remove-payment]').addEventListener('click', () => { row.remove(); totals(); });
+    payments.appendChild(row);
+    updateCard();
+    return row;
+  };
+
+  const clearResults = () => { results.replaceChildren(); results.hidden = true; activeResults = []; };
+  const addSearchItem = (item) => {
+    addRow(item);
+    search.value = '';
+    clearResults();
+    createProduct.hidden = true;
+    message(lookupStatus, (item.description || 'Item') + ' adicionado.', 'success');
+    search.focus();
+  };
+  const quickSearch = async () => {
+    const term = search.value.trim();
+    const serial = ++searchSerial;
+    if (term.length < 2) { clearResults(); return; }
+    if (clinic && !clinic.value) { message(lookupStatus, 'Selecione uma clínica.', 'warning'); return; }
+    try {
+      const url = new URL(form.dataset.searchUrl, window.location.origin);
+      url.searchParams.set('q', term);
+      if (clinic) url.searchParams.set('clinic_id', clinic.value);
+      const response = await fetch(url, { headers: { Accept: 'application/json' } });
+      const data = await response.json();
+      if (serial !== searchSerial || term !== search.value.trim()) return;
+      if (!response.ok) throw new Error(data.message || 'Busca indisponível.');
+      activeResults = data.items || [];
+      results.replaceChildren();
+      activeResults.forEach((item) => {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.setAttribute('role', 'option');
+        button.className = 'pdv-result';
+        const name = document.createElement('strong');
+        name.textContent = item.description;
+        const detail = document.createElement('span');
+        detail.textContent = [item.type === 'service' ? 'Serviço' : 'Produto', item.sku || item.gtin || item.barcode || '', money(parseMoney(item.unit_price)), item.type === 'product' ? 'Estoque: ' + item.stock_quantity : ''].filter(Boolean).join(' · ');
+        button.append(name, detail);
+        button.addEventListener('click', () => addSearchItem(item));
+        results.appendChild(button);
+      });
+      results.hidden = activeResults.length === 0;
+      message(lookupStatus, activeResults.length ? '' : 'Nenhum item encontrado.', activeResults.length ? '' : 'warning');
+    } catch (error) {
+      message(lookupStatus, error.message || 'Busca indisponível.', 'error');
+    }
+  };
+  const lookupBarcode = async () => {
+    const gtin = search.value.replace(/\D/g, '');
+    if (gtin.length < 8) return quickSearch();
+    if (clinic && !clinic.value) { message(lookupStatus, 'Selecione uma clínica.', 'warning'); return; }
+    const serial = ++searchSerial;
+    clearResults();
+    message(lookupStatus, 'Consultando código...');
+    try {
+      const url = withClinic(form.dataset.lookupUrl.replace('__GTIN__', encodeURIComponent(gtin)));
+      const response = await fetch(url, { headers: { Accept: 'application/json' } });
+      const data = await response.json();
+      if (serial !== searchSerial || search.value.replace(/\D/g, '') !== gtin) return;
+      if (!response.ok || !data.found) {
+        message(lookupStatus, data.message || 'Produto não encontrado.', 'warning');
+        createProduct.href = form.dataset.productCreateUrl.replace('__GTIN__', encodeURIComponent(gtin));
+        createProduct.hidden = false;
+        return;
+      }
+      addSearchItem(data.item);
+      const warnings = Array.isArray(data.warnings) ? data.warnings : [];
+      message(lookupStatus, [data.message, ...warnings].filter(Boolean).join(' '), warnings.length || data.mode === 'catalog' ? 'warning' : 'success');
+      if (data.mode === 'catalog') {
+        createProduct.href = form.dataset.productCreateUrl.replace('__GTIN__', encodeURIComponent(gtin));
+        createProduct.hidden = false;
+      }
+    } catch {
+      message(lookupStatus, 'Consulta indisponível. Use a busca ou item avulso.', 'error');
+    }
+  };
+  const openPayment = () => {
+    if (totals().total <= 0 || rows().length === 0) {
+      message(checkoutStatus, 'Inclua um item com valor antes de receber.', 'warning');
+      return;
+    }
+    if (paymentRows().length === 0) addPayment();
+    dialog.showModal();
+    paymentRows()[0]?.querySelector('[data-pdv-payment-method]')?.focus();
+  };
+  const finish = () => {
+    const { total, paid, balance, change } = totals();
+    if (total <= 0 || rows().length === 0) { message(paymentStatus, 'Inclua itens com valor.', 'warning'); return; }
+    if (paymentRows().some((row) => !row.querySelector('[data-pdv-payment-method]').value || parseMoney(row.querySelector('[data-pdv-payment-amount]').value) <= 0)) {
+      message(paymentStatus, 'Informe a forma e o valor de cada pagamento.', 'warning'); return;
+    }
+    const cash = paymentRows().filter((row) => row.querySelector('[data-pdv-payment-method]').value === 'cash')
+      .reduce((sum, row) => sum + parseMoney(row.querySelector('[data-pdv-payment-amount]').value), 0);
+    if (balance > 0) { message(paymentStatus, 'Faltam ' + money(balance) + ' para concluir.', 'warning'); return; }
+    if (change > cash) { message(paymentStatus, 'Troco só pode sair de valor recebido em dinheiro.', 'warning'); return; }
+    if (!form.reportValidity()) return;
+    status.value = 'completed';
+    normalizeRows();
+    find('[data-pdv-finish]').disabled = true;
+    form.requestSubmit();
+  };
+  try { Object.values(JSON.parse(form.dataset.oldItems || '[]')).forEach(addRow); } catch { /* no old cart */ }
+  try { Object.values(JSON.parse(form.dataset.oldPayments || '[]')).forEach(addPayment); } catch { /* no old payments */ }
+  if (new URLSearchParams(window.location.search).get('scan')) search.value = form.dataset.initialScan || '';
+  totals();
+  if (search.value) lookupBarcode();
+  if (paymentRows().length) dialog.showModal();
+
+  search.addEventListener('input', () => {
+    window.clearTimeout(searchTimer);
+    ++searchSerial;
+    clearResults();
+    if (!search.value.trim()) { ++searchSerial; clearResults(); return; }
+    if (/^\d{12,}$/.test(search.value.trim())) {
+      searchTimer = window.setTimeout(lookupBarcode, 350);
+    } else {
+      searchTimer = window.setTimeout(quickSearch, 180);
+    }
+  });
+  search.addEventListener('keydown', (event) => {
+    if (event.key !== 'Enter') return;
+    event.preventDefault();
+    window.clearTimeout(searchTimer);
+    if (/^\d{8,}$/.test(search.value.trim())) lookupBarcode();
+    else if (activeResults.length) addSearchItem(activeResults[0]);
+    else quickSearch();
+  });
+  find('[data-pdv-search-button]').addEventListener('click', () => {
+    if (/^\d{8,}$/.test(search.value.trim())) lookupBarcode(); else quickSearch();
+  });
+  find('[data-pdv-add-custom]').addEventListener('click', () => addRow({ type: 'custom', quantity: 1, unit_price: 0 }).querySelector('[data-pdv-description]').focus());
+  [discount, additions].forEach((input) => input.addEventListener('input', totals));
+  find('[data-pdv-open-payment]').addEventListener('click', openPayment);
+  find('[data-pdv-close-payment]').addEventListener('click', () => dialog.close());
+  find('[data-pdv-add-payment]').addEventListener('click', () => {
+    const row = addPayment({ amount: (totals().balance / 100).toFixed(2) });
+    row.querySelector('[data-pdv-payment-method]').focus();
+  });
+  form.querySelectorAll('[data-pdv-method]').forEach((button) => button.addEventListener('click', () => {
+    const row = paymentRows().find((entry) => !entry.querySelector('[data-pdv-payment-method]').value) || addPayment();
+    row.querySelector('[data-pdv-payment-method]').value = button.dataset.pdvMethod;
+    row.querySelector('[data-pdv-payment-method]').dispatchEvent(new Event('change'));
+    row.querySelector('[data-pdv-payment-amount]').value = moneyInput(totals().balance);
+    row.querySelector('[data-pdv-payment-amount]').focus();
+    totals();
+  }));
+  find('[data-pdv-finish]').addEventListener('click', finish);
+  find('[data-pdv-suspend]').addEventListener('click', (event) => {
+    if (!rows().length) { event.preventDefault(); message(checkoutStatus, 'Inclua um item para suspender a venda.', 'warning'); }
+  });
+  form.addEventListener('submit', () => {
+    if (status.value === 'draft') {
+      paymentRows().forEach((row) => {
+        if (!row.querySelector('[data-pdv-payment-method]').value || parseMoney(row.querySelector('[data-pdv-payment-amount]').value) <= 0) row.remove();
+      });
+    }
+    normalizeRows();
+  });
+  const customer = find('[data-pdv-customer]');
+  const customerSummary = find('[data-pdv-customer-summary]');
+  const syncCustomer = () => {
+    const clinicId = selectedClinic();
+    [tutor, patient].forEach((select) => {
+      Array.from(select.options).forEach((option) => {
+        option.hidden = Boolean(clinicId && option.dataset.clinicId && option.dataset.clinicId !== clinicId);
+      });
+      if (select.selectedOptions[0]?.hidden) select.value = '';
+    });
+    customerSummary.firstChild.textContent = tutor.value ? tutor.selectedOptions[0].textContent + ' · Alterar cliente ' : 'Consumidor não identificado · Identificar cliente ';
+  };
+  tutor.addEventListener('change', syncCustomer);
+  clinic?.addEventListener('change', () => { ++searchSerial; clearResults(); syncCustomer(); });
+  syncCustomer();
+  document.addEventListener('keydown', (event) => {
+    if (!['F2', 'F4', 'F6', 'F8', 'F10'].includes(event.key)) return;
+    event.preventDefault();
+    if (event.key === 'F2') { if (dialog.open) dialog.close(); search.focus(); }
+    if (event.key === 'F4') { customer.open = true; tutor.focus(); }
+    if (event.key === 'F6') discount.focus();
+    if (event.key === 'F8') openPayment();
+    if (event.key === 'F10') { if (!dialog.open) openPayment(); else finish(); }
+  });
+});

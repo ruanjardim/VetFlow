@@ -38,6 +38,10 @@ class StoreSaleRequest extends FormRequest
                 $item['original_unit_price'] = $this->normalizeDecimalValue($item['original_unit_price'] ?? null);
                 $item['discount_total'] = $this->normalizeDecimalValue($item['discount_total'] ?? null);
 
+                if ($this->boolean('pdv_checkout') && $item['unit_price'] !== null && $item['unit_price'] !== '') {
+                    $item['original_unit_price'] = $item['unit_price'];
+                }
+
                 $quantity = (float) ($item['quantity'] ?? 0);
                 $unitPrice = (float) ($item['unit_price'] ?? 0);
                 $description = trim((string) ($item['description'] ?? ''));
@@ -151,6 +155,46 @@ class StoreSaleRequest extends FormRequest
 
             foreach ($this->stockErrors($items) as $message) {
                 $validator->errors()->add('items', $message);
+            }
+
+            if ($this->boolean('pdv_checkout')) {
+                $total = $this->itemsTotal($items);
+                $paid = 0.0;
+                $cash = 0.0;
+                $payments = $this->input('payments', []);
+
+                foreach (is_array($payments) ? $payments : [] as $payment) {
+                    if (! is_array($payment)) {
+                        continue;
+                    }
+
+                    $amount = max(0, (float) ($payment['amount'] ?? 0));
+                    if ($amount <= 0) {
+                        continue;
+                    }
+                    if (empty($payment['method'])) {
+                        $validator->errors()->add('payments', 'Informe a forma de cada pagamento.');
+
+                        continue;
+                    }
+                    if (($payment['status'] ?? 'paid') !== 'paid') {
+                        $validator->errors()->add('payments', 'O pagamento do PDV deve estar recebido para finalizar.');
+
+                        continue;
+                    }
+
+                    $paid += $amount;
+                    if ($payment['method'] === 'cash') {
+                        $cash += $amount;
+                    }
+                }
+
+                if (round($paid, 2) < round($total, 2)) {
+                    $validator->errors()->add('payments', 'Receba o valor integral para finalizar no PDV.');
+                }
+                if (round($paid - $total, 2) > round($cash, 2)) {
+                    $validator->errors()->add('payments', 'O troco não pode exceder o valor recebido em dinheiro.');
+                }
             }
         });
     }
