@@ -52,6 +52,7 @@ npm ci
 npm run build
 php artisan migrate --force
 php artisan db:seed --class=AuthorizationSeeder --force
+php artisan db:seed --class=SaasPlanSeeder --force
 php artisan config:cache
 php artisan route:cache
 php artisan view:cache
@@ -72,6 +73,10 @@ Laravel filesystem. In production:
 - Run `AuthorizationSeeder` after migrations to synchronize permissions and
   standard role presets. It is idempotent and should not be replaced by manual
   role edits.
+- Run `SaasPlanSeeder` after the SaaS migrations to create missing feature
+  definitions and example commercial plans. Existing plan edits are retained.
+- Existing clinics are migrated to the internal compatibility plan. Reassign
+  them to commercial plans only after reviewing the intended entitlements.
 - Back up the database before every production migration.
 - Keep `clinic_id` nullable only where the code intentionally supports global
   records or historical migration state.

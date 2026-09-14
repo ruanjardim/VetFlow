@@ -14,6 +14,7 @@ For the current working state, read [STATUS.md](STATUS.md).
 
 - Multi-clinic foundation.
 - Users, roles, permissions, and active-user access checks.
+- Commercial SaaS plans, per-clinic subscriptions, feature overrides, active-user limits, and transactional client onboarding.
 - Clinics, tutors, patients, schedules, and appointments.
 - Products, inventory, suppliers, purchase entries, and product intelligence.
 - Pet shop services, service orders, sales, payments, and cash register closure.
@@ -96,6 +97,7 @@ php artisan optimize:clear
 - [Frontend architecture](docs/frontend-architecture.md)
 - [Database documentation](docs/BANCO_DE_DADOS.md)
 - [Module index](docs/modules/_INDEX.md)
+- [SaaS foundation](docs/modules/saas.md)
 - [Roadmap](docs/ROADMAP.md)
 - [CI guide](docs/ci.md)
 - [Deployment guide](docs/deployment.md)

@@ -6,6 +6,7 @@ use App\Models\User;
 use App\Modules\Clinics\Contracts\ClinicRepositoryInterface;
 use App\Modules\Clinics\Repositories\ClinicRepository;
 use App\Modules\Clinics\Services\ClinicBrandingService;
+use App\Modules\Saas\Services\SubscriptionFeatureService;
 use App\Modules\Tutors\Contracts\TutorRepositoryInterface;
 use App\Modules\Tutors\Repositories\TutorRepository;
 use App\Support\Auth\PermissionCatalog;
@@ -18,6 +19,11 @@ class AppServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
+        $this->app->scoped(
+            SubscriptionFeatureService::class,
+            fn (): SubscriptionFeatureService => new SubscriptionFeatureService
+        );
+
         $this->app->bind(
             ClinicRepositoryInterface::class,
             ClinicRepository::class
@@ -32,7 +38,8 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         foreach (PermissionCatalog::slugs() as $permission) {
-            Gate::define($permission, fn (User $user): bool => $user->hasPermission($permission));
+            Gate::define($permission, fn (User $user): bool => $user->hasPermission($permission)
+                && app(SubscriptionFeatureService::class)->allowsPermission($user, $permission));
         }
 
         View::composer('layouts.admin', function ($view): void {

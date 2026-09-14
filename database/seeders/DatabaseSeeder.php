@@ -28,6 +28,7 @@ class DatabaseSeeder extends Seeder
         }
 
         $this->call(AuthorizationSeeder::class);
+        $this->call(SaasPlanSeeder::class);
     }
 
     private function shouldSeedDemoUser(): bool

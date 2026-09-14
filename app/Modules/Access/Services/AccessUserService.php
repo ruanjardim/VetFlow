@@ -6,6 +6,7 @@ use App\Models\Role;
 use App\Models\User;
 use App\Modules\Access\Contracts\AccessUserRepositoryInterface;
 use App\Modules\Audit\Services\AuditTrailService;
+use App\Modules\Saas\Services\SubscriptionFeatureService;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
@@ -15,12 +16,19 @@ class AccessUserService
 {
     public function __construct(
         private readonly AccessUserRepositoryInterface $repository,
-        private readonly AuditTrailService $audit
+        private readonly AuditTrailService $audit,
+        private readonly SubscriptionFeatureService $features
     ) {}
 
     public function paginate(User $actor): LengthAwarePaginator
     {
         return $this->repository->paginateFor($actor);
+    }
+
+    /** @return array{used: int, limit: ?int, available: ?int}|null */
+    public function licenseUsage(User $actor): ?array
+    {
+        return $actor->clinic_id === null ? null : $this->features->userUsage($actor->clinic_id);
     }
 
     public function find(User $actor, int $id): User
@@ -49,6 +57,8 @@ class AccessUserService
         $attributes = $this->userAttributes($actor, $data);
 
         return DB::transaction(function () use ($actor, $attributes, $roleIds): User {
+            $this->lockLicenseScope($attributes['clinic_id']);
+            $this->guardActiveUserLimit($attributes['clinic_id'], (bool) $attributes['active']);
             $user = $this->repository->create($attributes);
             $this->repository->syncRoles($user, $roleIds, $actor);
 
@@ -81,6 +91,10 @@ class AccessUserService
         $this->guardSelfUpdate($actor, $accessUser, $attributes, $roles);
 
         return DB::transaction(function () use ($actor, $accessUser, $attributes, $roleIds, $before, $passwordChanged): User {
+            $consumesNewLicense = (bool) $attributes['active']
+                && (! $accessUser->active || $accessUser->clinic_id !== $attributes['clinic_id']);
+            $this->lockLicenseScope($attributes['clinic_id']);
+            $this->guardActiveUserLimit($attributes['clinic_id'], $consumesNewLicense);
             $user = $this->repository->update($accessUser, $attributes);
             $this->repository->syncRoles($user, $roleIds, $actor);
             $user->load(['clinic', 'roles']);
@@ -185,6 +199,29 @@ class AccessUserService
             throw ValidationException::withMessages([
                 'role_ids' => 'Mantenha um perfil com gestao de usuarios no seu proprio acesso.',
             ]);
+        }
+    }
+
+    private function guardActiveUserLimit(?int $clinicId, bool $willConsumeLicense): void
+    {
+        if (! $willConsumeLicense || $clinicId === null) {
+            return;
+        }
+
+        $usage = $this->features->userUsage($clinicId);
+        if ($usage['limit'] === null || $usage['used'] < $usage['limit']) {
+            return;
+        }
+
+        throw ValidationException::withMessages([
+            'active' => "O limite de {$usage['limit']} usuários ativos do plano foi atingido. Desative um usuário ou ajuste a assinatura.",
+        ]);
+    }
+
+    private function lockLicenseScope(?int $clinicId): void
+    {
+        if ($clinicId !== null) {
+            DB::table('clinics')->where('id', $clinicId)->lockForUpdate()->first();
         }
     }
 

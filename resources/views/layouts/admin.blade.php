@@ -133,11 +133,12 @@
           </details>
         @endcanany
 
-        @canany(['clinics.manage', 'clinic-branding.manage', 'users.manage', 'implementation.manage', 'audit.manage', 'operations.readiness'])
-          <details class="nav-group" @if(request()->routeIs('clinics.*', 'clinic-branding.*', 'access-users.*', 'implementation.*', 'audit-events.*', 'operations.*')) open @endif>
+        @canany(['clinics.manage', 'clinic-branding.manage', 'users.manage', 'implementation.manage', 'audit.manage', 'operations.readiness', 'saas.manage'])
+          <details class="nav-group" @if(request()->routeIs('clinics.*', 'clinic-branding.*', 'access-users.*', 'implementation.*', 'audit-events.*', 'operations.*', 'saas.*')) open @endif>
             <summary><span>Administração</span><span class="nav-chevron">⌄</span></summary>
             <div class="nav-submenu">
               @if(auth()->user()?->clinic_id === null)
+                @can('saas.manage')<a class="{{ request()->routeIs('saas.*') ? 'is-active' : '' }}" href="{{ route('saas.dashboard') }}">Gestão SaaS</a>@endcan
                 @can('clinics.manage')
                   <a class="{{ request()->routeIs('clinics.*') ? 'is-active' : '' }}" href="{{ route('clinics.index') }}">Clínicas</a>
                 @endcan

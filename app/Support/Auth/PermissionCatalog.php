@@ -59,6 +59,12 @@ class PermissionCatalog
                 'description' => 'Permite cadastrar colaboradores e atribuir perfis de acesso.',
             ],
             [
+                'slug' => 'saas.manage',
+                'name' => 'Gerenciar plataforma SaaS',
+                'group' => 'Plataforma',
+                'description' => 'Permite administrar planos, assinaturas, limites e implantar estabelecimentos.',
+            ],
+            [
                 'slug' => 'tutors.manage',
                 'name' => 'Gerenciar tutores',
                 'group' => 'Atendimento',

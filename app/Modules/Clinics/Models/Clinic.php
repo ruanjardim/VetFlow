@@ -2,8 +2,12 @@
 
 namespace App\Modules\Clinics\Models;
 
+use App\Modules\Saas\Models\Subscription;
+use App\Modules\Saas\Services\LegacySubscriptionProvisioner;
+use App\Modules\Saas\Services\SubscriptionFeatureService;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Str;
 
@@ -18,6 +22,7 @@ class Clinic extends Model
         'parent_clinic_id',
         'corporate_name',
         'trade_name',
+        'business_type',
         'cnpj',
         'crmv',
         'technical_manager',
@@ -52,6 +57,10 @@ class Clinic extends Model
                 $clinic->ulid = (string) Str::ulid();
             }
         });
+
+        static::created(function (Clinic $clinic): void {
+            app(LegacySubscriptionProvisioner::class)->ensure($clinic);
+        });
     }
 
     public function parent()
@@ -62,6 +71,21 @@ class Clinic extends Model
     public function children()
     {
         return $this->hasMany(self::class, 'parent_clinic_id');
+    }
+
+    public function subscription(): HasOne
+    {
+        return $this->hasOne(Subscription::class);
+    }
+
+    public function hasFeature(string $feature): bool
+    {
+        return app(SubscriptionFeatureService::class)->enabled($this->id, $feature);
+    }
+
+    public function featureLimit(string $feature): ?int
+    {
+        return app(SubscriptionFeatureService::class)->limit($this->id, $feature);
     }
 
     public function scopeActive($query)

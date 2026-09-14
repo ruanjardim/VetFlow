@@ -11,6 +11,18 @@
     <a class="button" href="{{ route('access-users.create') }}">Novo colaborador</a>
   </header>
 
+  @if($licenseUsage)
+    <div class="panel" style="margin-bottom: 18px;">
+      <strong>Licenças de usuários</strong>
+      <div class="muted">
+        {{ $licenseUsage['used'] }} de {{ $licenseUsage['limit'] ?? 'ilimitados' }} usuários ativos utilizados.
+      </div>
+      @if($licenseUsage['limit'] !== null && $licenseUsage['available'] === 0)
+        <div class="alert warning" style="margin-top: 12px;">O limite do plano foi atingido. Usuários inativos continuam disponíveis para consulta e não consomem licença.</div>
+      @endif
+    </div>
+  @endif
+
   <div class="panel">
     <div class="table-wrap">
       <table>

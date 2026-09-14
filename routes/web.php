@@ -7,6 +7,8 @@ use App\Http\Controllers\Operations\QueueCronController;
 use App\Http\Controllers\Operations\ReleaseIdentityController;
 use App\Http\Middleware\EnsureUserHasPermission;
 use App\Http\Middleware\EnsureUserIsActive;
+use App\Http\Middleware\EnsureTenantHasFeature;
+use App\Http\Middleware\EnsureUserIsGlobal;
 use App\Modules\Dashboard\Http\Controllers\DashboardController;
 use App\Modules\ProductIntelligence\Controllers\GlobalProductController;
 use App\Modules\ProductIntelligence\Controllers\ProductIntelligenceApiController;
@@ -61,10 +63,16 @@ Route::post('/logout', [AuthenticatedSessionController::class, 'destroy'])
 
 Route::middleware(['auth', EnsureUserIsActive::class])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])
-        ->middleware(EnsureUserHasPermission::class.':dashboard.view')
+        ->middleware([
+            EnsureUserHasPermission::class.':dashboard.view',
+            EnsureTenantHasFeature::class.':dashboard',
+        ])
         ->name('dashboard');
 
-    Route::middleware(EnsureUserHasPermission::class.':global-products.manage')->group(function () {
+    Route::middleware([
+        EnsureUserHasPermission::class.':global-products.manage',
+        EnsureTenantHasFeature::class.':products',
+    ])->group(function () {
         Route::get('/global-products', [GlobalProductController::class, 'index'])->name('global-products.index');
         Route::get('/global-products/export', [GlobalProductController::class, 'export'])->name('global-products.export');
         Route::get('/global-products/suggestions', [GlobalProductController::class, 'suggestions'])->name('global-products.suggestions');
@@ -124,10 +132,23 @@ Route::middleware(['auth', EnsureUserIsActive::class])->group(function () {
     ];
 
     foreach ($moduleRoutes as $permission => $routeFile) {
-        Route::middleware(EnsureUserHasPermission::class.':'.$permission)->group(function () use ($routeFile) {
+        $middleware = [EnsureUserHasPermission::class.':'.$permission];
+        $feature = \App\Modules\Saas\Support\FeatureCatalog::forPermission($permission);
+        if ($feature !== null) {
+            $middleware[] = EnsureTenantHasFeature::class.':'.$feature;
+        }
+
+        Route::middleware($middleware)->group(function () use ($routeFile) {
             if (file_exists($routeFile)) {
                 require $routeFile;
             }
         });
     }
+
+    Route::prefix('admin/saas')
+        ->name('saas.')
+        ->middleware([EnsureUserIsGlobal::class, EnsureUserHasPermission::class.':saas.manage'])
+        ->group(function (): void {
+            require app_path('Modules/Saas/Routes/web.php');
+        });
 });

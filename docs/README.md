@@ -50,6 +50,7 @@ The employee/access note documents the current decision to use `users`,
 - [Hospitalizations](modules/hospitalizations.md)
 - [Prescriptions](modules/prescriptions.md)
 - [Validation](modules/validation.md)
+- [SaaS Foundation](modules/saas.md)
 
 ## Audits
 

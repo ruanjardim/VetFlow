@@ -1,6 +1,6 @@
 # VetFlow Status
 
-Updated: 2026-09-01
+Updated: 2026-09-14
 
 ## Current State
 
@@ -20,6 +20,7 @@ The local working tree was clean before this documentation pass.
 - Active-user and permission middleware.
 - Clinics, access management, tutors, patients, schedules, appointments, inventory, products, product intelligence, purchase entries, suppliers, pet shop services, service orders, sales, financial, dashboard, and validation modules.
 - Database migrations for the current operational model.
+- A commercial SaaS foundation with editable plans and features, one subscription per clinic, per-subscription overrides, central entitlement checks, active-user limits, a global `/admin/saas` console, and transactional onboarding. Existing clinics retain full access through an internal compatibility plan.
 - Feature tests for authentication, authorization, clinic tenant isolation, initial admin setup, and operational purchase/clinical flows.
 - Existing architecture and audit documentation under `docs/`.
 - Assisted CSV implementation workflow for Tutors, Patients, Suppliers,

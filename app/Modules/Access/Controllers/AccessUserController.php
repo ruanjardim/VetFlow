@@ -20,6 +20,7 @@ class AccessUserController extends Controller
     {
         return view('access.users.index', [
             'users' => $this->service->paginate($request->user()),
+            'licenseUsage' => $this->service->licenseUsage($request->user()),
         ]);
     }
 
