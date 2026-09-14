@@ -23,6 +23,7 @@ class Clinic extends Model
         'corporate_name',
         'trade_name',
         'business_type',
+        'document_type',
         'cnpj',
         'crmv',
         'technical_manager',
@@ -96,5 +97,25 @@ class Clinic extends Model
     public function scopeInactive($query)
     {
         return $query->where('active', false);
+    }
+
+    public function documentLabel(): string
+    {
+        return $this->document_type === 'cpf' ? 'CPF' : 'CNPJ';
+    }
+
+    public function formattedDocument(): string
+    {
+        $digits = preg_replace('/\D+/', '', (string) $this->cnpj);
+
+        if ($this->document_type === 'cpf' && strlen($digits) === 11) {
+            return preg_replace('/^(\d{3})(\d{3})(\d{3})(\d{2})$/', '$1.$2.$3-$4', $digits);
+        }
+
+        if ($this->document_type !== 'cpf' && strlen($digits) === 14) {
+            return preg_replace('/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/', '$1.$2.$3/$4-$5', $digits);
+        }
+
+        return (string) $this->cnpj;
     }
 }

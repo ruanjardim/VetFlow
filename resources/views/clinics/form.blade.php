@@ -8,8 +8,16 @@
     <input id="trade_name" name="trade_name" value="{{ old('trade_name', $clinic->trade_name ?? '') }}">
   </div>
   <div class="field">
-    <label for="cnpj">CNPJ</label>
-    <input id="cnpj" name="cnpj" value="{{ old('cnpj', $clinic->cnpj ?? '') }}">
+    <label for="document_type">Tipo de documento</label>
+    <select id="document_type" name="document_type" data-document-type>
+      <option value="cnpj" @selected(old('document_type', $clinic->document_type ?? 'cnpj') === 'cnpj')>CNPJ — pessoa jurídica</option>
+      <option value="cpf" @selected(old('document_type', $clinic->document_type ?? 'cnpj') === 'cpf')>CPF — pessoa física</option>
+    </select>
+  </div>
+  <div class="field">
+    <label for="cnpj" data-document-label>{{ old('document_type', $clinic->document_type ?? 'cnpj') === 'cpf' ? 'CPF' : 'CNPJ' }}</label>
+    <input id="cnpj" name="cnpj" value="{{ old('cnpj', $clinic->cnpj ?? '') }}" inputmode="numeric" autocomplete="off" data-document-number required>
+    <small class="field-hint" data-document-hint></small>
   </div>
   <div class="field">
     <label for="email">E-mail</label>
@@ -17,7 +25,7 @@
   </div>
   <div class="field">
     <label for="phone">Telefone</label>
-    <input id="phone" name="phone" value="{{ old('phone', $clinic->phone ?? '') }}">
+    <input id="phone" name="phone" value="{{ old('phone', $clinic->phone ?? '') }}" inputmode="tel" maxlength="15" data-phone-mask>
   </div>
   <div class="field">
     <label for="city">Cidade</label>

@@ -1,6 +1,88 @@
 import './pdv.js';
 
 document.addEventListener('DOMContentLoaded', () => {
+  const onlyDigits = (value) => String(value || '').replace(/\D+/g, '');
+  const formatDocument = (value, type) => {
+    const maxDigits = type === 'cpf' ? 11 : 14;
+    const valueDigits = onlyDigits(value).slice(0, maxDigits);
+
+    if (type === 'cpf') {
+      return valueDigits
+        .replace(/(\d{3})(\d)/, '$1.$2')
+        .replace(/(\d{3})(\d)/, '$1.$2')
+        .replace(/(\d{3})(\d{1,2})$/, '$1-$2');
+    }
+
+    return valueDigits
+      .replace(/(\d{2})(\d)/, '$1.$2')
+      .replace(/(\d{3})(\d)/, '$1.$2')
+      .replace(/(\d{3})(\d)/, '$1/$2')
+      .replace(/(\d{4})(\d{1,2})$/, '$1-$2');
+  };
+  const formatBrazilianPhone = (value) => {
+    const valueDigits = onlyDigits(value).slice(0, 11);
+
+    if (valueDigits.length <= 2) {
+      return valueDigits;
+    }
+
+    if (valueDigits.length <= 6) {
+      return valueDigits.replace(/(\d{2})(\d+)/, '($1) $2');
+    }
+
+    if (valueDigits.length <= 10) {
+      return valueDigits.replace(/(\d{2})(\d{4})(\d+)/, '($1) $2-$3');
+    }
+
+    return valueDigits.replace(/(\d{2})(\d{5})(\d+)/, '($1) $2-$3');
+  };
+
+  document.querySelectorAll('[data-document-form]').forEach((form) => {
+    const typeInput = form.querySelector('[data-document-type]');
+    const numberInput = form.querySelector('[data-document-number]');
+    const label = form.querySelector('[data-document-label]');
+    const hint = form.querySelector('[data-document-hint]');
+
+    if (!typeInput || !numberInput) {
+      return;
+    }
+
+    const refreshDocumentField = () => {
+      const type = typeInput.value === 'cpf' ? 'cpf' : 'cnpj';
+      const documentLabel = type.toUpperCase();
+
+      numberInput.value = formatDocument(numberInput.value, type);
+      numberInput.maxLength = type === 'cpf' ? 14 : 18;
+      numberInput.placeholder = type === 'cpf' ? '000.000.000-00' : '00.000.000/0000-00';
+      numberInput.setAttribute('aria-label', documentLabel);
+
+      if (label) {
+        label.textContent = documentLabel;
+      }
+
+      if (hint) {
+        hint.textContent = type === 'cpf'
+          ? 'Digite os 11 dígitos do CPF.'
+          : 'Digite os 14 dígitos do CNPJ.';
+      }
+    };
+
+    typeInput.addEventListener('change', () => {
+      numberInput.value = '';
+      refreshDocumentField();
+      numberInput.focus();
+    });
+    numberInput.addEventListener('input', refreshDocumentField);
+    refreshDocumentField();
+  });
+
+  document.querySelectorAll('[data-phone-mask]').forEach((input) => {
+    input.value = formatBrazilianPhone(input.value);
+    input.addEventListener('input', () => {
+      input.value = formatBrazilianPhone(input.value);
+    });
+  });
+
   document.querySelectorAll('[data-password-toggle]').forEach((button) => {
     const input = document.getElementById(button.dataset.passwordToggle);
 

@@ -66,6 +66,8 @@ The example prices and compositions are editable records rather than product rul
 
 If the role, user, subscription, or any other write fails, the clinic is rolled back as well. Passwords are handled by the existing hashed model cast and never enter audit snapshots.
 
+The establishment can identify itself with either CPF or CNPJ. `clinics.document_type` records which document was selected, while the existing `clinics.cnpj` column stores digits only for backward compatibility. The onboarding and clinic forms apply the corresponding Brazilian display mask and also normalize telephone and WhatsApp numbers before validation.
+
 ## Operational rollout
 
 Production rollout requires a database backup, the two SaaS migrations, `AuthorizationSeeder`, and `SaasPlanSeeder`. Existing clinics stay on the compatibility plan until a platform operator deliberately assigns a commercial plan.

@@ -154,6 +154,39 @@ class SaasFoundationTest extends TestCase
         $this->assertTrue($admin->hasRole('administrador'));
     }
 
+    public function test_onboarding_accepts_a_masked_cpf_and_normalizes_contact_numbers(): void
+    {
+        $operator = $this->userWithPermissions(null, ['saas.manage']);
+        $plan = Plan::query()->where('slug', 'essencial')->firstOrFail();
+        $payload = $this->onboardingPayload($plan);
+        $payload['clinic']['document_type'] = 'cpf';
+        $payload['clinic']['cnpj'] = '529.982.247-25';
+        $payload['clinic']['phone'] = '(21) 98050-2114';
+        $payload['clinic']['whatsapp'] = '(21) 98050-2114';
+
+        $this->actingAs($operator)->post(route('saas.onboarding.store'), $payload)
+            ->assertSessionDoesntHaveErrors();
+
+        $this->assertDatabaseHas('clinics', [
+            'document_type' => 'cpf',
+            'cnpj' => '52998224725',
+            'phone' => '21980502114',
+            'whatsapp' => '21980502114',
+        ]);
+    }
+
+    public function test_onboarding_returns_a_clear_document_length_message(): void
+    {
+        $operator = $this->userWithPermissions(null, ['saas.manage']);
+        $plan = Plan::query()->where('slug', 'essencial')->firstOrFail();
+        $payload = $this->onboardingPayload($plan);
+        $payload['clinic']['document_type'] = 'cpf';
+        $payload['clinic']['cnpj'] = '000.000.000-000';
+
+        $this->actingAs($operator)->post(route('saas.onboarding.store'), $payload)
+            ->assertSessionHasErrors(['clinic.cnpj' => 'O CPF deve conter 11 dígitos.']);
+    }
+
     public function test_onboarding_rolls_back_everything_when_administrator_role_is_missing(): void
     {
         $operator = $this->userWithPermissions(null, ['saas.manage']);
@@ -235,7 +268,7 @@ class SaasFoundationTest extends TestCase
         return [
             'clinic' => [
                 'corporate_name' => 'Novo Vet Ltda', 'trade_name' => 'Novo Vet',
-                'business_type' => 'mixed', 'cnpj' => '12345678000199',
+                'business_type' => 'mixed', 'document_type' => 'cnpj', 'cnpj' => '12345678000199',
                 'email' => 'contato@novo.test', 'phone' => '11999999999',
             ],
             'plan_id' => $plan->id,
