@@ -63,18 +63,19 @@ class PrinterService
         ];
     }
 
-    public function paginate(): LengthAwarePaginator
+    public function paginate(int $clinicId): LengthAwarePaginator
     {
         return Printer::query()
+            ->where('clinic_id', $clinicId)
             ->orderByDesc('is_default')
             ->orderByDesc('active')
             ->orderBy('name')
             ->paginate(15);
     }
 
-    public function find(int $id): Printer
+    public function find(int $id, int $clinicId): Printer
     {
-        return Printer::query()->findOrFail($id);
+        return Printer::query()->where('clinic_id', $clinicId)->findOrFail($id);
     }
 
     /** @param array<string, mixed> $data */
@@ -143,6 +144,7 @@ class PrinterService
         }
 
         Printer::query()
+            ->where('clinic_id', $data['clinic_id'])
             ->when($exceptId, fn ($query, int $id) => $query->where('id', '!=', $id))
             ->where('is_default', true)
             ->update(['is_default' => false]);

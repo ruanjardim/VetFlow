@@ -111,7 +111,19 @@ class PrinterManagementTest extends TestCase
 
         $global = User::factory()->create(['clinic_id' => null, 'active' => true]);
         $this->attachPermission($global, 'printers.manage');
-        $this->actingAs($global)->get(route('printers.index'))->assertForbidden();
+        $this->actingAs($global)->get(route('printers.index', ['clinic_id' => $clinicB->id]))
+            ->assertOk()
+            ->assertSee('Impressora da clínica B');
+
+        $this->post(route('printers.store'), $this->payload([
+            'clinic_id' => $clinicB->id,
+            'name' => 'Impressora criada pelo SaaS',
+        ]))->assertRedirect(route('printers.index', ['clinic_id' => $clinicB->id]));
+
+        $this->assertDatabaseHas('printers', [
+            'clinic_id' => $clinicB->id,
+            'name' => 'Impressora criada pelo SaaS',
+        ]);
     }
 
     public function test_all_standard_role_presets_receive_printer_access(): void

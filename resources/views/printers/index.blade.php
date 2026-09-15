@@ -8,8 +8,21 @@
       <h1>Configuração de impressoras</h1>
       <p>Organize as impressoras fiscais, não fiscais, de etiquetas e documentos deste estabelecimento.</p>
     </div>
-    <a class="button" href="{{ route('printers.create') }}">Nova impressora</a>
+    <a class="button" href="{{ route('printers.create', $requiresClinic ? ['clinic_id' => $selectedClinicId] : []) }}">Nova impressora</a>
   </header>
+
+  @if($requiresClinic)
+    <form method="GET" action="{{ route('printers.index') }}" class="panel panel-body">
+      <div class="field">
+        <label for="printer-clinic">Estabelecimento</label>
+        <select id="printer-clinic" name="clinic_id" data-auto-submit-select>
+          @foreach($clinics as $clinic)
+            <option value="{{ $clinic->id }}" @selected($selectedClinicId === $clinic->id)>{{ $clinic->trade_name ?: $clinic->corporate_name }}</option>
+          @endforeach
+        </select>
+      </div>
+    </form>
+  @endif
 
   <div class="alert-soft printer-guidance">
     <span>
@@ -74,8 +87,8 @@
               <td><span class="badge {{ $printer->active ? 'success' : 'muted-badge' }}">{{ $printer->active ? 'Ativa' : 'Inativa' }}</span></td>
               <td>
                 <div class="actions printer-row-actions">
-                  <a class="button secondary" href="{{ route('printers.test', $printer->id) }}">Testar</a>
-                  <a class="button secondary" href="{{ route('printers.edit', $printer->id) }}">Editar</a>
+                  <a class="button secondary" href="{{ route('printers.test', array_filter(['printer' => $printer->id, 'clinic_id' => $requiresClinic ? $selectedClinicId : null])) }}">Testar</a>
+                  <a class="button secondary" href="{{ route('printers.edit', array_filter(['printer' => $printer->id, 'clinic_id' => $requiresClinic ? $selectedClinicId : null])) }}">Editar</a>
                 </div>
               </td>
             </tr>
@@ -89,5 +102,5 @@
     </div>
   </div>
 
-  {{ $printers->links() }}
+  {{ $printers->withQueryString()->links() }}
 @endsection

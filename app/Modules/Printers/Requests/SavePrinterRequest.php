@@ -11,6 +11,12 @@ class SavePrinterRequest extends BaseRequest
     public function rules(): array
     {
         return [
+            'clinic_id' => [
+                Rule::requiredIf(fn (): bool => auth()->user()?->clinic_id === null),
+                'nullable',
+                'integer',
+                Rule::exists('clinics', 'id')->where(fn ($query) => $query->where('active', true)),
+            ],
             'name' => ['required', 'string', 'max:120'],
             'type' => ['required', Rule::in(array_keys(PrinterService::types()))],
             'purpose' => ['required', Rule::in(array_keys(PrinterService::purposes()))],

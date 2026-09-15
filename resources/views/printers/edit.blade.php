@@ -8,7 +8,7 @@
       <h1>Editar impressora</h1>
       <p>{{ $printer->name }}</p>
     </div>
-    <a class="button secondary" href="{{ route('printers.test', $printer->id) }}">Testar impressão</a>
+    <a class="button secondary" href="{{ route('printers.test', array_filter(['printer' => $printer->id, 'clinic_id' => $requiresClinic ? $selectedClinicId : null])) }}">Testar impressão</a>
   </header>
 
   <div class="panel">

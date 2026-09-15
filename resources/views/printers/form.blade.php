@@ -1,6 +1,21 @@
 @php($selectedConnection = old('connection_type', $printer?->connection_type ?? 'browser'))
 
 <div class="form-grid" data-printer-form>
+  @if($requiresClinic)
+    <div class="field full">
+      <label for="clinic_id">Estabelecimento</label>
+      @if($printer)
+        <input type="hidden" name="clinic_id" value="{{ $selectedClinicId }}">
+        <input value="{{ $clinics->firstWhere('id', $selectedClinicId)?->trade_name ?: $clinics->firstWhere('id', $selectedClinicId)?->corporate_name }}" disabled>
+      @else
+        <select id="clinic_id" name="clinic_id" required>
+          @foreach($clinics as $clinic)
+            <option value="{{ $clinic->id }}" @selected((int) old('clinic_id', $selectedClinicId) === $clinic->id)>{{ $clinic->trade_name ?: $clinic->corporate_name }}</option>
+          @endforeach
+        </select>
+      @endif
+    </div>
+  @endif
   <div class="field">
     <label for="name">Nome de identificação</label>
     <input id="name" name="name" value="{{ old('name', $printer?->name) }}" placeholder="Ex.: Térmica do caixa" maxlength="120" required autofocus>

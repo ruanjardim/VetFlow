@@ -145,8 +145,8 @@
               @endif
               @if(auth()->user()?->clinic_id !== null)
                 @can('clinic-branding.manage')<a class="{{ request()->routeIs('clinic-branding.*') ? 'is-active' : '' }}" href="{{ route('clinic-branding.edit') }}">Identidade visual</a>@endcan
-                @can('printers.manage')<a class="{{ request()->routeIs('printers.*') ? 'is-active' : '' }}" href="{{ route('printers.index') }}">Impressoras</a>@endcan
               @endif
+              @can('printers.manage')<a class="{{ request()->routeIs('printers.*') ? 'is-active' : '' }}" href="{{ route('printers.index') }}">Impressoras</a>@endcan
               @can('users.manage')<a class="{{ request()->routeIs('access-users.*') ? 'is-active' : '' }}" href="{{ route('access-users.index') }}">Usuários e acessos</a>@endcan
               @can('audit.manage')<a class="{{ request()->routeIs('audit-events.*') ? 'is-active' : '' }}" href="{{ route('audit-events.index') }}">Auditoria</a>@endcan
               @can('implementation.manage')<a class="{{ request()->routeIs('implementation.*') ? 'is-active' : '' }}" href="{{ route('implementation.index') }}">Implantação</a>@endcan

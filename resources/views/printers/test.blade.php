@@ -10,8 +10,8 @@
     </div>
     <div class="actions">
       <button type="button" data-print-page>Imprimir teste</button>
-      <a class="button secondary" href="{{ route('printers.edit', $printer->id) }}">Editar configuração</a>
-      <a class="button secondary" href="{{ route('printers.index') }}">Voltar</a>
+      <a class="button secondary" href="{{ route('printers.edit', array_filter(['printer' => $printer->id, 'clinic_id' => $requiresClinic ? $selectedClinicId : null])) }}">Editar configuração</a>
+      <a class="button secondary" href="{{ route('printers.index', $requiresClinic ? ['clinic_id' => $selectedClinicId] : []) }}">Voltar</a>
     </div>
   </header>
 
