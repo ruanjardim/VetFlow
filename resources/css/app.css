@@ -1869,6 +1869,96 @@ textarea {
   min-width: 620px;
 }
 
+.printer-stats {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.printer-default-name {
+  font-size: 18px !important;
+  overflow-wrap: anywhere;
+}
+
+.printer-row-actions {
+  flex-wrap: nowrap;
+}
+
+.printer-guidance,
+.printer-fiscal-note {
+  line-height: 1.5;
+}
+
+.printer-fiscal-note {
+  margin-bottom: 0;
+}
+
+.printer-test-card {
+  margin: 0 auto;
+  max-width: 760px;
+}
+
+.printer-test-sheet {
+  text-align: center;
+}
+
+.printer-test-logo {
+  color: #0f766e;
+  font-size: 28px;
+  font-weight: 800;
+}
+
+.printer-test-sheet h2 {
+  margin-bottom: 8px;
+}
+
+.printer-test-details {
+  border-bottom: 1px dashed #94a3b8;
+  border-top: 1px dashed #94a3b8;
+  margin: 24px 0;
+  padding: 12px 0;
+  text-align: left;
+}
+
+.printer-test-details div {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: minmax(110px, 0.8fr) minmax(0, 1.5fr);
+  padding: 4px 0;
+}
+
+.printer-test-details dt {
+  color: #64748b;
+}
+
+.printer-test-details dd {
+  font-weight: 700;
+  margin: 0;
+}
+
+.printer-test-bars {
+  align-items: stretch;
+  display: flex;
+  gap: 3px;
+  height: 54px;
+  justify-content: center;
+  margin: 22px auto 12px;
+  max-width: 360px;
+}
+
+.printer-test-bars span {
+  background: #0f172a;
+  width: 3px;
+}
+
+.printer-test-bars span:nth-child(3n),
+.printer-test-bars span:nth-child(5n) {
+  width: 7px;
+}
+
+.printer-test-time {
+  color: #64748b;
+  font-size: 12px;
+}
+
 .implementation-heading {
   align-items: flex-start;
   display: flex;
@@ -2602,6 +2692,24 @@ textarea {
   .pilot-report .panel {
     break-inside: avoid;
     margin-bottom: 14px;
+  }
+
+  .printer-test-card {
+    border: 0;
+    box-shadow: none;
+    margin: 0 auto;
+  }
+
+  .printer-paper-58mm {
+    max-width: 58mm;
+  }
+
+  .printer-paper-80mm {
+    max-width: 80mm;
+  }
+
+  .printer-paper-label {
+    max-width: 100mm;
   }
 }
 

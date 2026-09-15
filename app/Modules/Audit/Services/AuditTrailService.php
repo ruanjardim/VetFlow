@@ -16,6 +16,8 @@ class AuditTrailService
         'access.user.created' => 'Colaborador criado',
         'access.user.updated' => 'Acesso de colaborador atualizado',
         'clinic.branding.updated' => 'Identidade visual atualizada',
+        'printer.created' => 'Impressora cadastrada',
+        'printer.updated' => 'Impressora atualizada',
         'saas.plan.created' => 'Plano SaaS criado',
         'saas.plan.updated' => 'Plano SaaS atualizado',
         'saas.subscription.updated' => 'Assinatura SaaS atualizada',

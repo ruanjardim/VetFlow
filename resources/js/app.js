@@ -2911,4 +2911,19 @@ document.addEventListener('DOMContentLoaded', () => {
   document.querySelectorAll('[data-print-page]').forEach((button) => {
     button.addEventListener('click', () => window.print());
   });
+
+  document.querySelectorAll('[data-printer-form]').forEach((form) => {
+    const connection = form.querySelector('[data-printer-connection]');
+    const networkFields = form.querySelectorAll('[data-printer-network-field]');
+
+    const refreshNetworkFields = () => {
+      const networkSelected = connection?.value === 'network';
+      networkFields.forEach((field) => {
+        field.hidden = !networkSelected;
+      });
+    };
+
+    connection?.addEventListener('change', refreshNetworkFields);
+    refreshNetworkFields();
+  });
 });

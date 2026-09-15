@@ -59,6 +59,10 @@ The module is implemented by:
 More than one preset can be selected. Effective permissions are the union of
 the active selected roles.
 
+All six standard presets include `printers.manage` so the operational team can
+reach the establishment's shared printer setup. Tenant isolation and the
+permission middleware still apply to every printer route.
+
 ## Role Link History
 
 `user_roles` has a required ULID and soft deletion. Role changes therefore use

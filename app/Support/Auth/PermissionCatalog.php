@@ -29,6 +29,12 @@ class PermissionCatalog
                 'description' => 'Permite escolher o ícone da clínica exibido no menu do VetFlow.',
             ],
             [
+                'slug' => 'printers.manage',
+                'name' => 'Gerenciar impressoras',
+                'group' => 'Administrativo',
+                'description' => 'Permite configurar e testar impressoras do estabelecimento.',
+            ],
+            [
                 'slug' => 'audit.manage',
                 'name' => 'Consultar auditoria',
                 'group' => 'Administrativo',
@@ -202,6 +208,7 @@ class PermissionCatalog
                     'hospitalizations.manage',
                     'prescriptions.manage',
                     'service-orders.manage',
+                    'printers.manage',
                 ],
             ],
             'atendimento' => [
@@ -216,6 +223,7 @@ class PermissionCatalog
                     'petshop-services.manage',
                     'service-orders.manage',
                     'sales.manage',
+                    'printers.manage',
                 ],
             ],
             'estoque-compras' => [
@@ -228,6 +236,7 @@ class PermissionCatalog
                     'inventory.manage',
                     'purchase-entries.manage',
                     'suppliers.manage',
+                    'printers.manage',
                 ],
             ],
             'caixa' => [
@@ -239,6 +248,7 @@ class PermissionCatalog
                     'patients.manage',
                     'service-orders.manage',
                     'sales.manage',
+                    'printers.manage',
                 ],
             ],
             'financeiro' => [
@@ -251,6 +261,7 @@ class PermissionCatalog
                     'suppliers.manage',
                     'financial.manage',
                     'commissions.manage',
+                    'printers.manage',
                 ],
             ],
         ];

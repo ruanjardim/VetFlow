@@ -133,8 +133,8 @@
           </details>
         @endcanany
 
-        @canany(['clinics.manage', 'clinic-branding.manage', 'users.manage', 'implementation.manage', 'audit.manage', 'operations.readiness', 'saas.manage'])
-          <details class="nav-group" @if(request()->routeIs('clinics.*', 'clinic-branding.*', 'access-users.*', 'implementation.*', 'audit-events.*', 'operations.*', 'saas.*')) open @endif>
+        @canany(['clinics.manage', 'clinic-branding.manage', 'printers.manage', 'users.manage', 'implementation.manage', 'audit.manage', 'operations.readiness', 'saas.manage'])
+          <details class="nav-group" @if(request()->routeIs('clinics.*', 'clinic-branding.*', 'printers.*', 'access-users.*', 'implementation.*', 'audit-events.*', 'operations.*', 'saas.*')) open @endif>
             <summary><span>Administração</span><span class="nav-chevron">⌄</span></summary>
             <div class="nav-submenu">
               @if(auth()->user()?->clinic_id === null)
@@ -145,6 +145,7 @@
               @endif
               @if(auth()->user()?->clinic_id !== null)
                 @can('clinic-branding.manage')<a class="{{ request()->routeIs('clinic-branding.*') ? 'is-active' : '' }}" href="{{ route('clinic-branding.edit') }}">Identidade visual</a>@endcan
+                @can('printers.manage')<a class="{{ request()->routeIs('printers.*') ? 'is-active' : '' }}" href="{{ route('printers.index') }}">Impressoras</a>@endcan
               @endif
               @can('users.manage')<a class="{{ request()->routeIs('access-users.*') ? 'is-active' : '' }}" href="{{ route('access-users.index') }}">Usuários e acessos</a>@endcan
               @can('audit.manage')<a class="{{ request()->routeIs('audit-events.*') ? 'is-active' : '' }}" href="{{ route('audit-events.index') }}">Auditoria</a>@endcan

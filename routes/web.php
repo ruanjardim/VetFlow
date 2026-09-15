@@ -5,13 +5,14 @@ use App\Http\Controllers\Auth\NewPasswordController;
 use App\Http\Controllers\Auth\PasswordResetLinkController;
 use App\Http\Controllers\Operations\QueueCronController;
 use App\Http\Controllers\Operations\ReleaseIdentityController;
+use App\Http\Middleware\EnsureTenantHasFeature;
 use App\Http\Middleware\EnsureUserHasPermission;
 use App\Http\Middleware\EnsureUserIsActive;
-use App\Http\Middleware\EnsureTenantHasFeature;
 use App\Http\Middleware\EnsureUserIsGlobal;
 use App\Modules\Dashboard\Http\Controllers\DashboardController;
 use App\Modules\ProductIntelligence\Controllers\GlobalProductController;
 use App\Modules\ProductIntelligence\Controllers\ProductIntelligenceApiController;
+use App\Modules\Saas\Support\FeatureCatalog;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/assets/app.css', function () {
@@ -120,6 +121,7 @@ Route::middleware(['auth', EnsureUserIsActive::class])->group(function () {
         'medical-records.manage' => app_path('Modules/MedicalRecords/Routes/web.php'),
         'patients.manage' => app_path('Modules/Patients/Routes/web.php'),
         'petshop-services.manage' => app_path('Modules/PetShopServices/Routes/web.php'),
+        'printers.manage' => app_path('Modules/Printers/Routes/web.php'),
         'products.manage' => app_path('Modules/Products/Routes/web.php'),
         'prescriptions.manage' => app_path('Modules/Prescriptions/Routes/web.php'),
         'purchase-entries.manage' => app_path('Modules/PurchaseEntries/Routes/web.php'),
@@ -133,7 +135,7 @@ Route::middleware(['auth', EnsureUserIsActive::class])->group(function () {
 
     foreach ($moduleRoutes as $permission => $routeFile) {
         $middleware = [EnsureUserHasPermission::class.':'.$permission];
-        $feature = \App\Modules\Saas\Support\FeatureCatalog::forPermission($permission);
+        $feature = FeatureCatalog::forPermission($permission);
         if ($feature !== null) {
             $middleware[] = EnsureTenantHasFeature::class.':'.$feature;
         }
