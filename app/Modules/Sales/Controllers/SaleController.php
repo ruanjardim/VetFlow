@@ -9,6 +9,7 @@ use App\Modules\Patients\Models\Patient;
 use App\Modules\PetShopServices\Models\PetShopService;
 use App\Modules\Products\Models\Product;
 use App\Modules\Products\Services\ProductLookupService;
+use App\Modules\Products\Services\ProductService;
 use App\Modules\Products\Support\Gtin;
 use App\Modules\Sales\Models\Sale;
 use App\Modules\Sales\Requests\ProductAbcAnalysisRequest;
@@ -429,6 +430,85 @@ class SaleController extends BaseCrudController
                 'category' => $result->category,
             ],
         ]);
+    }
+
+    public function storeQuickProduct(Request $request, ProductService $products, ProductLotService $lotService): JsonResponse
+    {
+        $request->merge([
+            'gtin' => Gtin::normalize($request->input('gtin')),
+            'sale_price' => $this->normalizeDecimal($request->input('sale_price')),
+            'cost_price' => $this->normalizeDecimal($request->input('cost_price')),
+            'stock_quantity' => $this->normalizeDecimal($request->input('stock_quantity')),
+        ]);
+
+        $validated = $request->validate([
+            'clinic_id' => ['nullable', 'integer', Rule::exists('clinics', 'id')->where('active', true)],
+            'gtin' => ['required', 'string', 'min:8', 'max:14'],
+            'name' => ['required', 'string', 'max:255'],
+            'sale_price' => ['required', 'numeric', 'min:0.01'],
+            'cost_price' => ['nullable', 'numeric', 'min:0'],
+            'stock_quantity' => ['required', 'numeric', 'min:0.001'],
+            'unit' => ['required', 'string', Rule::in(['un', 'kg', 'g', 'pct', 'cx'])],
+            'category' => ['nullable', 'string', 'max:255'],
+            'brand' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        $clinicId = auth()->user()?->clinic_id ?? ($validated['clinic_id'] ?? null);
+
+        if (! $clinicId) {
+            return response()->json(['message' => 'Selecione uma clínica antes de cadastrar o produto.'], 422);
+        }
+
+        $variants = Gtin::variants($validated['gtin']);
+        $existing = Product::query()
+            ->where('clinic_id', $clinicId)
+            ->where(fn ($query) => $query->whereIn('gtin', $variants)->orWhereIn('barcode', $variants))
+            ->first();
+
+        if ($existing) {
+            return response()->json([
+                'message' => 'Este código de barras já está cadastrado neste estabelecimento.',
+                'item' => $this->productItem($existing, $lotService),
+            ], 409);
+        }
+
+        /** @var Product $product */
+        $product = $products->create([
+            'clinic_id' => $clinicId,
+            'gtin' => $validated['gtin'],
+            'barcode' => $validated['gtin'],
+            'name' => trim($validated['name']),
+            'sale_price' => $validated['sale_price'],
+            'cost_price' => $validated['cost_price'] ?? 0,
+            'stock_quantity' => $validated['stock_quantity'],
+            'minimum_stock' => 0,
+            'unit' => $validated['unit'],
+            'category' => $validated['category'] ?? null,
+            'brand' => $validated['brand'] ?? null,
+            'lookup_source' => 'pdv_quick_registration',
+            'active' => true,
+        ]);
+
+        return response()->json([
+            'message' => 'Produto cadastrado e adicionado ao carrinho.',
+            'item' => $this->productItem($product, $lotService),
+        ], 201);
+    }
+
+    /** @return array<string, mixed> */
+    private function productItem(Product $product, ProductLotService $lotService): array
+    {
+        return [
+            'type' => 'product',
+            'product_id' => $product->id,
+            'petshop_service_id' => null,
+            'description' => $product->name,
+            'quantity' => 1,
+            'unit_price' => (float) $product->sale_price,
+            'gtin' => $product->gtin,
+            'barcode' => $product->barcode,
+            'stock_quantity' => $lotService->sellableQuantity($product),
+        ];
     }
 
     protected function storeRequest(): string

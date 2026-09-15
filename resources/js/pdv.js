@@ -19,6 +19,14 @@ document.addEventListener('DOMContentLoaded', () => {
   const discount = find('[data-pdv-discount]');
   const additions = find('[data-pdv-additions]');
   const createProduct = find('[data-pdv-create-product]');
+  const quickProductDialog = find('[data-pdv-quick-product-dialog]');
+  const quickProductCode = find('[data-pdv-quick-product-code]');
+  const quickProductName = find('[data-pdv-quick-product-name]');
+  const quickProductPrice = find('[data-pdv-quick-product-price]');
+  const quickProductStock = find('[data-pdv-quick-product-stock]');
+  const quickProductUnit = find('[data-pdv-quick-product-unit]');
+  const quickProductCost = find('[data-pdv-quick-product-cost]');
+  const quickProductStatus = find('[data-pdv-quick-product-status]');
   const brl = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
   const money = (cents) => brl.format(cents / 100);
   const parseMoney = (value) => {
@@ -36,6 +44,7 @@ document.addEventListener('DOMContentLoaded', () => {
   let searchTimer;
   let searchSerial = 0;
   let activeResults = [];
+  let pendingQuickProductGtin = '';
 
   const message = (node, value, kind = '') => {
     node.textContent = value;
@@ -211,6 +220,66 @@ document.addEventListener('DOMContentLoaded', () => {
     message(lookupStatus, (item.description || 'Item') + ' adicionado.', 'success');
     search.focus();
   };
+  const openQuickProduct = (gtin, item = {}) => {
+    pendingQuickProductGtin = gtin;
+    quickProductCode.textContent = gtin;
+    quickProductName.value = item.description || '';
+    quickProductPrice.value = parseMoney(item.unit_price) > 0 ? moneyInput(parseMoney(item.unit_price)) : '';
+    quickProductStock.value = '1';
+    quickProductUnit.value = 'un';
+    quickProductCost.value = '';
+    message(quickProductStatus, 'Informe preço e quantidade disponível para controlar o estoque.');
+    createProduct.href = form.dataset.productCreateUrl.replace('__GTIN__', encodeURIComponent(gtin));
+    createProduct.hidden = false;
+    quickProductDialog.showModal();
+    (quickProductName.value ? quickProductPrice : quickProductName).focus();
+  };
+  const saveQuickProduct = async () => {
+    const button = find('[data-pdv-save-quick-product]');
+    const payload = {
+      clinic_id: selectedClinic() || null,
+      gtin: pendingQuickProductGtin,
+      name: quickProductName.value.trim(),
+      sale_price: quickProductPrice.value,
+      stock_quantity: quickProductStock.value,
+      unit: quickProductUnit.value,
+      cost_price: quickProductCost.value,
+    };
+    if (!payload.name || parseMoney(payload.sale_price) <= 0 || quantity(payload.stock_quantity) <= 0) {
+      message(quickProductStatus, 'Informe nome, preço de venda e estoque inicial.', 'warning');
+      return;
+    }
+    button.disabled = true;
+    message(quickProductStatus, 'Salvando produto...');
+    try {
+      const response = await fetch(form.dataset.quickProductUrl, {
+        method: 'POST',
+        headers: {
+          Accept: 'application/json',
+          'Content-Type': 'application/json',
+          'X-CSRF-TOKEN': form.querySelector('[name="_token"]').value,
+        },
+        body: JSON.stringify(payload),
+      });
+      const data = await response.json();
+      if (response.status === 409 && data.item) {
+        quickProductDialog.close();
+        addSearchItem(data.item);
+        return;
+      }
+      if (!response.ok) {
+        const errors = data.errors ? Object.values(data.errors).flat() : [];
+        throw new Error(errors[0] || data.message || 'Não foi possível cadastrar o produto.');
+      }
+      quickProductDialog.close();
+      addSearchItem(data.item);
+      message(lookupStatus, data.message, 'success');
+    } catch (error) {
+      message(quickProductStatus, error.message || 'Não foi possível cadastrar o produto.', 'error');
+    } finally {
+      button.disabled = false;
+    }
+  };
   const quickSearch = async () => {
     const term = search.value.trim();
     const serial = ++searchSerial;
@@ -259,19 +328,20 @@ document.addEventListener('DOMContentLoaded', () => {
       if (serial !== searchSerial || search.value.replace(/\D/g, '') !== gtin) return;
       if (!response.ok || !data.found) {
         message(lookupStatus, data.message || 'Produto não encontrado.', 'warning');
-        createProduct.href = form.dataset.productCreateUrl.replace('__GTIN__', encodeURIComponent(gtin));
-        createProduct.hidden = false;
+        if (data.manual_allowed !== false) openQuickProduct(gtin, data.item || {});
+        return;
+      }
+      if (data.mode === 'catalog') {
+        message(lookupStatus, data.message, 'warning');
+        openQuickProduct(gtin, data.item || {});
         return;
       }
       addSearchItem(data.item);
       const warnings = Array.isArray(data.warnings) ? data.warnings : [];
       message(lookupStatus, [data.message, ...warnings].filter(Boolean).join(' '), warnings.length || data.mode === 'catalog' ? 'warning' : 'success');
-      if (data.mode === 'catalog') {
-        createProduct.href = form.dataset.productCreateUrl.replace('__GTIN__', encodeURIComponent(gtin));
-        createProduct.hidden = false;
-      }
     } catch {
-      message(lookupStatus, 'Consulta indisponível. Use a busca ou item avulso.', 'error');
+      message(lookupStatus, 'Consulta indisponível. Faça o cadastro rápido para continuar.', 'warning');
+      openQuickProduct(gtin);
     }
   };
   const openPayment = () => {
@@ -332,6 +402,11 @@ document.addEventListener('DOMContentLoaded', () => {
   [discount, additions].forEach((input) => input.addEventListener('input', totals));
   find('[data-pdv-open-payment]').addEventListener('click', openPayment);
   find('[data-pdv-close-payment]').addEventListener('click', () => dialog.close());
+  find('[data-pdv-close-quick-product]').addEventListener('click', () => { quickProductDialog.close(); search.focus(); });
+  find('[data-pdv-save-quick-product]').addEventListener('click', saveQuickProduct);
+  quickProductDialog.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter') { event.preventDefault(); saveQuickProduct(); }
+  });
   find('[data-pdv-add-payment]').addEventListener('click', () => {
     const row = addPayment({ amount: (totals().balance / 100).toFixed(2) });
     row.querySelector('[data-pdv-payment-method]').focus();

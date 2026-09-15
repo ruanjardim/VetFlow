@@ -1189,6 +1189,44 @@ class OperationalFlowTest extends TestCase
             ->assertJsonPath('item.product_id', $productA->id);
     }
 
+    public function test_pdv_can_quickly_register_a_scanned_product_and_consume_its_stock(): void
+    {
+        $clinic = $this->clinic('Clinica Cadastro Rapido', '00000000000406');
+        $user = $this->userForClinic($clinic, ['sales.manage']);
+
+        $response = $this->actingAs($user)->postJson(route('sales.quick-products.store'), [
+            'gtin' => '7891000315507',
+            'name' => 'Sache para gatos 85 g',
+            'sale_price' => '7,50',
+            'stock_quantity' => '3',
+            'unit' => 'un',
+        ]);
+
+        $response->assertCreated()
+            ->assertJsonPath('item.type', 'product')
+            ->assertJsonPath('item.description', 'Sache para gatos 85 g')
+            ->assertJsonPath('item.stock_quantity', 3);
+
+        $product = Product::query()->where('gtin', '7891000315507')->firstOrFail();
+        $this->assertSame($clinic->id, $product->clinic_id);
+        $this->assertSame('7.50', $product->sale_price);
+
+        $this->post(route('sales.store'), [
+            'pdv_checkout' => '1',
+            'status' => 'completed',
+            'items' => [[
+                'type' => 'product',
+                'product_id' => $product->id,
+                'description' => $product->name,
+                'quantity' => '1',
+                'unit_price' => '7.50',
+            ]],
+            'payments' => [['method' => 'pix', 'amount' => '7.50']],
+        ])->assertSessionDoesntHaveErrors();
+
+        $this->assertSame('2.000', $product->refresh()->stock_quantity);
+    }
+
     public function test_pdv_checkout_requires_full_payment_and_cash_backed_change(): void
     {
         $clinic = $this->clinic('Clinica Checkout', '00000000000403');

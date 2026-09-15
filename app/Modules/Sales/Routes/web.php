@@ -10,6 +10,9 @@ Route::get('sales/product-lookup/{gtin}', [SaleController::class, 'lookupProduct
 Route::get('sales/quick-search', [SaleController::class, 'quickSearch'])
     ->name('sales.quick-search');
 
+Route::post('sales/quick-products', [SaleController::class, 'storeQuickProduct'])
+    ->name('sales.quick-products.store');
+
 Route::get('sales/cashier', [SaleController::class, 'cashier'])
     ->name('sales.cashier');
 

@@ -16,6 +16,7 @@
 <form method="POST" action="{{ route('sales.store') }}" data-pdv-form
   data-search-url="{{ route('sales.quick-search') }}"
   data-lookup-url="{{ route('sales.product-lookup', ['gtin' => '__GTIN__']) }}"
+  data-quick-product-url="{{ route('sales.quick-products.store') }}"
   data-product-create-url="{{ route('products.create') }}?gtin=__GTIN__&from=sales"
   data-old-items="{{ json_encode(old('items', []), JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) }}"
   data-old-payments="{{ json_encode(old('payments', []), JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) }}"
@@ -115,6 +116,22 @@
     </div>
     <p class="lookup-status" role="status" aria-live="polite" data-pdv-payment-status></p>
     <button type="button" class="pdv-finish-button" data-pdv-finish>Finalizar venda <kbd>F10</kbd></button>
+  </dialog>
+  <dialog class="pdv-payment-dialog pdv-quick-product-dialog" data-pdv-quick-product-dialog aria-labelledby="pdv_quick_product_title">
+    <div class="pdv-dialog-head">
+      <div><h2 id="pdv_quick_product_title">Cadastro rápido</h2><p>Salve o produto e adicione ao carrinho sem sair do PDV.</p></div>
+      <button type="button" class="secondary" data-pdv-close-quick-product aria-label="Fechar cadastro rápido">Fechar</button>
+    </div>
+    <div class="pdv-quick-product-code">Código de barras <strong data-pdv-quick-product-code></strong></div>
+    <div class="pdv-quick-product-grid">
+      <div class="field full"><label for="pdv_quick_name">Nome do produto</label><input id="pdv_quick_name" maxlength="255" data-pdv-quick-product-name></div>
+      <div class="field"><label for="pdv_quick_price">Preço de venda</label><input id="pdv_quick_price" inputmode="decimal" placeholder="0,00" data-pdv-quick-product-price></div>
+      <div class="field"><label for="pdv_quick_stock">Estoque inicial</label><input id="pdv_quick_stock" inputmode="decimal" value="1" data-pdv-quick-product-stock></div>
+      <div class="field"><label for="pdv_quick_unit">Unidade</label><select id="pdv_quick_unit" data-pdv-quick-product-unit><option value="un">Unidade</option><option value="kg">Quilograma</option><option value="g">Grama</option><option value="pct">Pacote</option><option value="cx">Caixa</option></select></div>
+      <div class="field"><label for="pdv_quick_cost">Custo (opcional)</label><input id="pdv_quick_cost" inputmode="decimal" placeholder="0,00" data-pdv-quick-product-cost></div>
+    </div>
+    <p class="lookup-status" role="status" aria-live="polite" data-pdv-quick-product-status></p>
+    <button type="button" class="pdv-finish-button" data-pdv-save-quick-product>Salvar e adicionar ao carrinho</button>
   </dialog>
 </form>
 @endsection
