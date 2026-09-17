@@ -150,6 +150,8 @@ class AccessUserService
             'email' => $data['email'],
             'phone' => $data['phone'] ?? null,
             'position' => $data['position'] ?? null,
+            'veterinary_license_number' => $data['veterinary_license_number'] ?? null,
+            'veterinary_license_state' => $data['veterinary_license_state'] ?? null,
             'active' => (bool) $data['active'],
         ];
 
@@ -236,6 +238,8 @@ class AccessUserService
             'email' => $user->email,
             'phone' => $user->phone,
             'position' => $user->position,
+            'veterinary_license_number' => $user->veterinary_license_number,
+            'veterinary_license_state' => $user->veterinary_license_state,
             'active' => (bool) $user->active,
             'roles' => $user->roles->pluck('slug')->sort()->values()->all(),
         ];

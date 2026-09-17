@@ -18,7 +18,7 @@ class PrescriptionRepository extends BaseRepository implements PrescriptionRepos
     public function paginate(int $perPage = 15): LengthAwarePaginator
     {
         return $this->query()
-            ->with(['patient', 'medicalRecord', 'createdBy'])
+            ->with(['patient', 'medicalRecord', 'responsibleVeterinarian', 'createdBy'])
             ->latest('prescribed_at')
             ->paginate($perPage);
     }
@@ -30,6 +30,7 @@ class PrescriptionRepository extends BaseRepository implements PrescriptionRepos
                 'patient.tutor',
                 'patient.activeClinicalAlerts.createdBy',
                 'medicalRecord.appointment',
+                'responsibleVeterinarian',
                 'createdBy',
                 'finalizedBy',
                 'cancelledBy',

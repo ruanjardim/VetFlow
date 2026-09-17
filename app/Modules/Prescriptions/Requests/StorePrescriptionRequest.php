@@ -4,6 +4,7 @@ namespace App\Modules\Prescriptions\Requests;
 
 use App\Http\Requests\Concerns\ValidatesTenantScopedReferences;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class StorePrescriptionRequest extends FormRequest
 {
@@ -18,6 +19,13 @@ class StorePrescriptionRequest extends FormRequest
     {
         return [
             'medical_record_id' => ['required', 'integer', $this->existsInCurrentClinic('medical_records')],
+            'responsible_veterinarian_id' => [
+                'required',
+                'integer',
+                Rule::exists('users', 'id')->where(
+                    fn ($query) => $query->where('active', true)->whereNull('deleted_at')
+                ),
+            ],
             'prescribed_at' => ['required', 'date'],
             'general_instructions' => ['nullable', 'string', 'max:5000'],
             'notes' => ['nullable', 'string', 'max:5000'],
@@ -38,6 +46,8 @@ class StorePrescriptionRequest extends FormRequest
         return [
             'medical_record_id.required' => 'Selecione o prontuário relacionado.',
             'medical_record_id.exists' => 'O prontuário informado não foi encontrado nesta clínica.',
+            'responsible_veterinarian_id.required' => 'Selecione o veterinário responsável.',
+            'responsible_veterinarian_id.exists' => 'O veterinário responsável não está disponível.',
             'prescribed_at.required' => 'Informe a data e hora da prescrição.',
             'items.required' => 'Inclua pelo menos um item na prescrição.',
             'items.min' => 'Inclua pelo menos um item na prescrição.',

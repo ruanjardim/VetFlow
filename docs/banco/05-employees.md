@@ -1,14 +1,16 @@
 # Employee And Access Model
 
 Status: planned as a separate table; currently represented by `users`,
-`roles`, `permissions`, and `users.position`.
+`roles`, `permissions`, `users.position`, and the veterinarian registration
+fields on `users`.
 
 ## Current Decision
 
 VetFlow does not currently have an `employees` table. Staff/operator behavior is
 handled by:
 
-- `users`: identity, login, profile, clinic link, active status, and `position`.
+- `users`: identity, login, profile, clinic link, active status, `position`, and
+  optional CRMV/UF for veterinarian document responsibility.
 - `roles`: access profiles.
 - `permissions`: feature-level capabilities.
 - `user_roles`: relationship between users and roles.
@@ -22,6 +24,8 @@ the ERP also needs a login account.
 - Roles and permissions already express what each operator can do.
 - `users.position` covers the visible job/title need without introducing a
   second staff identity.
+- CRMV/UF remains on the login user while every responsible veterinarian in the
+  current workflow is also an authenticated collaborator.
 - Feature tests already validate permission and tenant isolation behavior.
 
 ## When To Create `employees`
@@ -33,7 +37,7 @@ are not the same as login users, for example:
 - payroll or HR records;
 - commission rules;
 - professional schedules independent from a system account;
-- veterinarian CRMV data per person;
+- non-login veterinarians or registrations that vary between clinics;
 - employment status history;
 - links to multiple clinics/units with different roles.
 
@@ -57,6 +61,7 @@ are not the same as login users, for example:
 
 ## Migration Guideline
 
-If `employees` is introduced later, keep `users` as the login source of truth and
-make `employees.user_id` nullable. Do not move authentication fields into
-`employees`.
+If `employees` is introduced later, keep `users` as the login source of truth,
+make `employees.user_id` nullable, and migrate the existing veterinarian
+registration without rewriting finalized prescription snapshots. Do not move
+authentication fields into `employees`.

@@ -29,6 +29,8 @@ class User extends Authenticatable
         'phone',
         'photo',
         'position',
+        'veterinary_license_number',
+        'veterinary_license_state',
         'password',
         'active',
         'last_login_at',

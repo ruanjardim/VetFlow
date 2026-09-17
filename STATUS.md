@@ -1,6 +1,6 @@
 # VetFlow Status
 
-Updated: 2026-09-14
+Updated: 2026-09-17
 
 ## Current State
 
@@ -32,6 +32,9 @@ The local working tree was clean before this documentation pass.
   manual operational fallbacks available during provider outages.
 - Clinic-scoped collaborator management with six standard role presets,
   auditable role changes, and administrator self-lockout protection.
+- Clinic-scoped professional identification with CRMV/UF on veterinarian
+  profiles and an immutable responsible-professional snapshot when a
+  prescription is finalized.
 - A local/testing-only walkthrough reset that removes fixed demo fixtures
   selectively and can recreate them without touching unrelated clinic data.
 - A release-readiness diagnostic for application configuration, database and

@@ -16,9 +16,10 @@ historical snapshot instead of depending on the product or inventory catalog.
 
 1. A permitted user creates a `draft` from a tenant-visible medical record.
 2. The draft can be reviewed and edited while preserving its patient,
-   medical-record, clinic, and creator links.
-3. Finalization records its timestamp and user and makes the clinical content
-   immutable.
+   medical-record, clinic, creator, and responsible-veterinarian links.
+3. Finalization requires CRMV/UF on an active veterinarian from the same clinic,
+   copies the professional name and registration into the prescription, records
+   its timestamp and user, and makes the clinical content immutable.
 4. A finalized prescription can be cancelled with a required reason. The
    original content remains visible and is marked as cancelled.
 
@@ -50,7 +51,10 @@ commercial catalog record changes.
 ## Document View
 
 The detail page is print-friendly and displays patient, responsible person,
-date, author, items, directions, general instructions, and lifecycle state.
+date, author, responsible veterinarian, CRMV/UF, items, directions, general
+instructions, and lifecycle state. Final documents render the preserved
+professional snapshot, so a later collaborator-profile change does not rewrite
+clinical history.
 Drafts are explicitly marked as having no final-document validity. Cancelled
 documents retain a visible reason.
 
@@ -58,9 +62,11 @@ Active patient clinical alerts are shown to the operator above the document
 but omitted from the printed prescription. The alert is contextual safety
 information and does not alter the prescription's immutable content.
 
-This version does not implement a veterinarian credential registry, digital
-signature, controlled-substance forms, external validation, or automatic
-regulatory compliance. Those require a separate legal and product definition.
+This version stores the CRMV identifier supplied by an administrator. It does
+not verify that registration with an external council and does not implement a
+digital signature, controlled-substance forms, external validation, or
+automatic regulatory compliance. Those require a separate legal and product
+definition.
 
 ## Tables
 

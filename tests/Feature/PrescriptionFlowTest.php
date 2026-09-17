@@ -27,6 +27,7 @@ class PrescriptionFlowTest extends TestCase
 
         $response = $this->actingAs($user)->post(route('prescriptions.store'), [
             'medical_record_id' => $medicalRecord->id,
+            'responsible_veterinarian_id' => $user->id,
             'prescribed_at' => '2026-08-20 10:30:00',
             'general_instructions' => 'Manter água disponível e observar aceitação.',
             'notes' => 'Retorno se houver piora.',
@@ -58,6 +59,7 @@ class PrescriptionFlowTest extends TestCase
         $this->assertSame($patient->id, (int) $prescription->patient_id);
         $this->assertSame($medicalRecord->id, (int) $prescription->medical_record_id);
         $this->assertSame($user->id, (int) $prescription->created_by);
+        $this->assertSame($user->id, (int) $prescription->responsible_veterinarian_id);
         $this->assertSame('draft', $prescription->status);
         $this->assertCount(2, $prescription->items);
 
@@ -75,12 +77,21 @@ class PrescriptionFlowTest extends TestCase
         $prescription->refresh();
         $this->assertSame('finalized', $prescription->status);
         $this->assertSame($user->id, (int) $prescription->finalized_by);
+        $this->assertSame($user->name, $prescription->responsible_name);
+        $this->assertSame('12345', $prescription->responsible_license_number);
+        $this->assertSame('RJ', $prescription->responsible_license_state);
         $this->assertNotNull($prescription->finalized_at);
+
+        $this->get(route('prescriptions.show', $prescription->id))
+            ->assertOk()
+            ->assertSee($user->name)
+            ->assertSee('CRMV-RJ 12345');
 
         $this->actingAs($user)
             ->from(route('prescriptions.show', $prescription->id))
             ->put(route('prescriptions.update', $prescription->id), [
                 'medical_record_id' => $medicalRecord->id,
+                'responsible_veterinarian_id' => $user->id,
                 'prescribed_at' => '2026-08-20 11:00:00',
                 'items' => [[
                     'medication_name' => 'Item indevido',
@@ -117,6 +128,7 @@ class PrescriptionFlowTest extends TestCase
             ->from(route('prescriptions.create'))
             ->post(route('prescriptions.store'), [
                 'medical_record_id' => $recordB->id,
+                'responsible_veterinarian_id' => $authorizedUser->id,
                 'prescribed_at' => '2026-08-20 12:00:00',
                 'items' => [[
                     'medication_name' => 'Medicamento externo',
@@ -168,6 +180,49 @@ class PrescriptionFlowTest extends TestCase
             ->assertDontSee('Medicamento externo');
     }
 
+    public function test_responsible_veterinarian_must_belong_to_the_clinic_and_have_professional_identification(): void
+    {
+        [$clinicA, $tutorA, $patientA, $recordA] = $this->clinicalContext('Responsável A', '00000000001121');
+        [$clinicB] = $this->clinicalContext('Responsável B', '00000000001122');
+        $veterinarianA = $this->userForClinic($clinicA, ['prescriptions.manage']);
+        $veterinarianB = $this->userForClinic($clinicB, ['prescriptions.manage']);
+
+        $payload = [
+            'medical_record_id' => $recordA->id,
+            'responsible_veterinarian_id' => $veterinarianB->id,
+            'prescribed_at' => '2026-08-20 15:00:00',
+            'items' => [[
+                'medication_name' => 'Medicamento de teste',
+                'dosage' => '1 unidade',
+                'frequency' => 'Uma vez ao dia',
+            ]],
+        ];
+
+        $this->actingAs($veterinarianA)
+            ->from(route('prescriptions.create'))
+            ->post(route('prescriptions.store'), $payload)
+            ->assertRedirect(route('prescriptions.create'))
+            ->assertSessionHasErrors('responsible_veterinarian_id');
+
+        $this->assertDatabaseCount('prescriptions', 0);
+
+        $veterinarianA->update([
+            'veterinary_license_number' => null,
+            'veterinary_license_state' => null,
+        ]);
+        $payload['responsible_veterinarian_id'] = $veterinarianA->id;
+
+        $this->post(route('prescriptions.store'), $payload)->assertSessionHasNoErrors();
+        $prescription = Prescription::query()->firstOrFail();
+
+        $this->from(route('prescriptions.show', $prescription->id))
+            ->patch(route('prescriptions.finalize', $prescription->id))
+            ->assertRedirect(route('prescriptions.show', $prescription->id))
+            ->assertSessionHasErrors('responsible_veterinarian_id');
+
+        $this->assertSame('draft', $prescription->fresh()->status);
+    }
+
     /** @return array{Clinic, Tutor, Patient, MedicalRecord} */
     private function clinicalContext(string $suffix, string $cnpj): array
     {
@@ -211,7 +266,12 @@ class PrescriptionFlowTest extends TestCase
     /** @param array<int, string> $permissionSlugs */
     private function userForClinic(Clinic $clinic, array $permissionSlugs): User
     {
-        $user = User::factory()->create(['active' => true, 'clinic_id' => $clinic->id]);
+        $user = User::factory()->create([
+            'active' => true,
+            'clinic_id' => $clinic->id,
+            'veterinary_license_number' => '12345',
+            'veterinary_license_state' => 'RJ',
+        ]);
         $role = Role::query()->create([
             'name' => 'Perfil '.Str::random(6),
             'slug' => 'perfil-'.Str::lower(Str::random(8)),
@@ -233,6 +293,21 @@ class PrescriptionFlowTest extends TestCase
             'created_at' => now(),
             'updated_at' => now(),
         ]);
+
+        if (in_array('prescriptions.manage', $permissionSlugs, true)) {
+            $veterinarianRole = Role::query()->firstOrCreate(
+                ['slug' => 'veterinario'],
+                ['name' => 'Veterinário', 'system' => true, 'active' => true]
+            );
+
+            DB::table('user_roles')->insert([
+                'ulid' => (string) Str::ulid(),
+                'user_id' => $user->id,
+                'role_id' => $veterinarianRole->id,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }
 
         return $user;
     }
