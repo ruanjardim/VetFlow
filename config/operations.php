@@ -26,6 +26,7 @@ return [
         'mode' => env('VETFLOW_QUEUE_MODE', 'worker'),
 
         'cron' => [
+            'transport' => env('VETFLOW_QUEUE_CRON_TRANSPORT', 'http'),
             'enabled' => (bool) env('VETFLOW_QUEUE_CRON_ENABLED', false),
             'token' => env('VETFLOW_QUEUE_CRON_TOKEN'),
             'header' => env('VETFLOW_QUEUE_CRON_HEADER', 'X-Cron-Auth'),
