@@ -3365,6 +3365,21 @@ textarea {
   margin: 0;
 }
 
+.prescription-professional-signature {
+  border-top: 1px solid #475569;
+  display: grid;
+  gap: 3px;
+  margin: 56px auto 0;
+  max-width: 360px;
+  padding-top: 10px;
+  text-align: center;
+}
+
+.prescription-professional-signature small {
+  color: #64748b;
+  margin-top: 5px;
+}
+
 .prescription-document-footer {
   border-top: 1px solid #cbd5e1;
   color: #64748b;

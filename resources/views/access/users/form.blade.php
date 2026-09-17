@@ -26,6 +26,17 @@
     <input id="position" name="position" value="{{ old('position', $accessUser?->position) }}" placeholder="Ex.: Veterinaria responsavel">
   </div>
 
+  <div class="field">
+    <label for="veterinary_license_number">CRMV</label>
+    <input id="veterinary_license_number" name="veterinary_license_number" value="{{ old('veterinary_license_number', $accessUser?->veterinary_license_number) }}" maxlength="30" placeholder="Ex.: 12345">
+    <div class="field-hint">Preencha para profissionais responsáveis por documentos veterinários.</div>
+  </div>
+
+  <div class="field">
+    <label for="veterinary_license_state">UF do CRMV</label>
+    <input id="veterinary_license_state" name="veterinary_license_state" value="{{ old('veterinary_license_state', $accessUser?->veterinary_license_state) }}" maxlength="2" placeholder="Ex.: RJ">
+  </div>
+
   @if($isGlobalActor)
     <div class="field">
       <label for="clinic_id">Clinica</label>

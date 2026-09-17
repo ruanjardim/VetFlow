@@ -4,6 +4,9 @@
 
 @section('content')
   @php($statusClass = match($prescription->status) { 'finalized' => 'success', 'cancelled' => 'danger', default => 'warning' })
+  @php($responsibleName = $prescription->responsible_name ?? $prescription->responsibleVeterinarian?->name)
+  @php($responsibleLicenseNumber = $prescription->responsible_license_number ?? $prescription->responsibleVeterinarian?->veterinary_license_number)
+  @php($responsibleLicenseState = $prescription->responsible_license_state ?? $prescription->responsibleVeterinarian?->veterinary_license_state)
 
   <header class="topbar prescription-print-actions">
     <div>
@@ -47,6 +50,8 @@
       <div><span>Responsável</span><strong>{{ $prescription->patient?->tutor?->name ?? '-' }}</strong></div>
       <div><span>Data</span><strong>{{ optional($prescription->prescribed_at)->format('d/m/Y H:i') }}</strong></div>
       <div><span>Registrado por</span><strong>{{ $prescription->createdBy?->name ?? '-' }}</strong></div>
+      <div><span>Veterinário responsável</span><strong>{{ $responsibleName ?? '-' }}</strong></div>
+      <div><span>Registro profissional</span><strong>{{ $responsibleLicenseNumber && $responsibleLicenseState ? 'CRMV-'.$responsibleLicenseState.' '.$responsibleLicenseNumber : 'Pendente' }}</strong></div>
     </section>
 
     <ol class="prescription-document-items">
@@ -72,6 +77,14 @@
       <section class="prescription-general-instructions">
         <h2>Orientações gerais</h2>
         <p>{{ $prescription->general_instructions }}</p>
+      </section>
+    @endif
+
+    @if($prescription->finalized_at)
+      <section class="prescription-professional-signature">
+        <strong>{{ $responsibleName }}</strong>
+        <span>CRMV-{{ $responsibleLicenseState }} {{ $responsibleLicenseNumber }}</span>
+        <small>Identificação profissional registrada pelo VetFlow. Não representa assinatura digital.</small>
       </section>
     @endif
 

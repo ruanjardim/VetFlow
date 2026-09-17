@@ -1,5 +1,9 @@
 @php
   $selectedMedicalRecordId = (int) old('medical_record_id', $prescription->medical_record_id ?? $preselectedMedicalRecordId ?? 0);
+  $selectedVeterinarianId = (int) old(
+    'responsible_veterinarian_id',
+    $prescription->responsible_veterinarian_id ?? (auth()->user()->hasRole('veterinario') ? auth()->id() : 0)
+  );
   $itemRows = old('items');
 
   if (! is_array($itemRows)) {
@@ -37,6 +41,26 @@
     <div class="field">
       <label for="prescribed_at">Data e hora</label>
       <input id="prescribed_at" name="prescribed_at" type="datetime-local" value="{{ old('prescribed_at', $prescription?->prescribed_at?->format('Y-m-d\TH:i') ?? now()->format('Y-m-d\TH:i')) }}" required>
+    </div>
+    <div class="field">
+      <label for="responsible_veterinarian_id">Veterinário responsável</label>
+      <select id="responsible_veterinarian_id" name="responsible_veterinarian_id" required>
+        <option value="">Selecione</option>
+        @foreach($veterinarians as $veterinarian)
+          <option value="{{ $veterinarian->id }}" @selected($selectedVeterinarianId === $veterinarian->id)>
+            {{ $veterinarian->name }}
+            @if($veterinarian->veterinary_license_number && $veterinarian->veterinary_license_state)
+              — CRMV-{{ $veterinarian->veterinary_license_state }} {{ $veterinarian->veterinary_license_number }}
+            @else
+              — CRMV pendente
+            @endif
+            @if(auth()->user()->clinic_id === null && $veterinarian->clinic)
+              — {{ $veterinarian->clinic->trade_name ?? $veterinarian->clinic->corporate_name }}
+            @endif
+          </option>
+        @endforeach
+      </select>
+      <div class="field-hint">A identificação deste profissional será preservada quando a prescrição for finalizada.</div>
     </div>
     <div class="field full">
       <label for="general_instructions">Orientações gerais</label>
