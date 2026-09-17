@@ -66,6 +66,9 @@ The local working tree was clean before this documentation pass.
   explicit global-administrator boundary on clinic management.
 - A provider-specific KingHost staging runbook and a disabled-by-default,
   token-protected queue cron bridge for low-volume shared-hosting validation.
+- A Hostinger production runbook and a CLI Cron Job transport that drains the
+  bounded database queue without exposing an operational HTTP endpoint or
+  token in the scheduled command.
 - Explainable replenishment suggestions that prioritize low-stock products,
   use recent received-purchase batches when the history is sufficient, and
   prefill a reviewable purchase entry without creating an automatic order.

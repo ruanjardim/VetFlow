@@ -119,6 +119,35 @@ class ReleaseReadinessCheckTest extends TestCase
             ->assertSuccessful();
     }
 
+    public function test_production_cli_cron_mode_does_not_require_an_http_endpoint_or_token(): void
+    {
+        Storage::fake('local');
+        $this->app->detectEnvironment(fn (): string => 'production');
+        config([
+            'app.key' => 'base64:production-readiness-key',
+            'app.debug' => false,
+            'app.url' => 'https://vetflow.example',
+            'filesystems.default' => 'local',
+            'logging.default' => 'single',
+            'queue.default' => 'database',
+            'operations.queue.mode' => 'cron',
+            'operations.queue.cron.transport' => 'cli',
+            'operations.queue.cron.enabled' => false,
+            'operations.queue.cron.token' => null,
+            'operations.queue.cron.max_jobs' => 25,
+            'operations.queue.cron.max_time' => 45,
+            'operations.queue.cron.timeout' => 30,
+            'operations.queue.cron.tries' => 3,
+        ]);
+
+        $this->artisan('vetflow:release:check', [
+            '--backup-confirmed' => true,
+            '--runtime-evidence' => $this->runtimeEvidence('production', 'cron'),
+        ])
+            ->expectsOutputToContain('Verificacoes tecnicas de release aprovadas.')
+            ->assertSuccessful();
+    }
+
     public function test_production_release_accepts_fresh_restore_evidence(): void
     {
         Storage::fake('local');

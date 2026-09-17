@@ -4,7 +4,8 @@ This is a production-readiness guide for VetFlow. It documents the intended
 deployment concerns without locking the project to one hosting provider.
 
 Provider-specific staging instructions live in the
-[KingHost staging runbook](deployment/kinghost-staging.md).
+[KingHost staging runbook](deployment/kinghost-staging.md). The current
+production host has a separate [Hostinger production runbook](deployment/hostinger-production.md).
 
 ## Required Runtime
 
@@ -123,9 +124,12 @@ After deployment:
 - create a completed sale and verify stock and finance records;
 - review logs for provider, storage, and mail failures.
 
-When `VETFLOW_QUEUE_MODE=cron`, the runtime check also requires the database
-queue, an enabled operational endpoint, a token of at least 32 characters, and
-execution limits below the hosting request timeout.
+When `VETFLOW_QUEUE_MODE=cron`, choose `VETFLOW_QUEUE_CRON_TRANSPORT=cli` for a
+provider Cron Job that can execute Artisan directly. The release gate then
+requires the database queue and safe execution limits while the HTTP endpoint
+stays closed. Use `http` only when direct CLI execution is unavailable; that
+transport additionally requires an enabled operational endpoint, a token of at
+least 32 characters, and a valid header.
 
 Use the complete [release checklist](release-checklist.md) to record the
 pre-release validation, rollback decision, smoke tests, and release evidence.
