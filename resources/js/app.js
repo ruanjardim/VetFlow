@@ -633,6 +633,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const statusSelect = document.querySelector('[data-sale-status]');
     const discountInput = document.querySelector('[data-sale-discount]');
     const additionsInput = document.querySelector('[data-sale-additions]');
+    const saleTypeSelect = document.querySelector('[data-sale-type]');
+    const deliveryFeeInput = document.querySelector('[data-sale-delivery-fee]');
+    const deliveryFields = Array.from(document.querySelectorAll('[data-sale-delivery]'));
+    let saleDeliveryTypes = [];
+    try { saleDeliveryTypes = JSON.parse(saleTypeSelect?.dataset.deliveryTypes || '[]'); } catch { saleDeliveryTypes = []; }
+    const saleHasDelivery = () => Boolean(saleTypeSelect && saleDeliveryTypes.includes(saleTypeSelect.value));
     const totalInput = document.querySelector('[data-sale-total-input]');
     const subtotalDisplay = document.querySelector('[data-sale-subtotal-display]');
     const discountDisplay = document.querySelector('[data-sale-discount-display]');
@@ -652,6 +658,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const moneyInputs = [
       discountInput,
       additionsInput,
+      deliveryFeeInput,
       receivedAmountInput,
       ...unitPriceInputs,
       ...itemDiscountInputs,
@@ -737,7 +744,8 @@ document.addEventListener('DOMContentLoaded', () => {
       const subtotal = rows.reduce((total, row) => total + rowTotal(row), 0);
       const discount = Math.min(subtotal, toNumber(discountInput?.value));
       const additions = toNumber(additionsInput?.value);
-      const total = Math.max(0, subtotal + additions - discount);
+      const deliveryFee = saleHasDelivery() ? toNumber(deliveryFeeInput?.value) : 0;
+      const total = Math.max(0, subtotal + additions + deliveryFee - discount);
       const paid = paymentAmounts.reduce((sum, input) => sum + toNumber(input.value), 0);
       const balance = total - paid;
 
@@ -1161,6 +1169,16 @@ document.addEventListener('DOMContentLoaded', () => {
       applyMoneyMask(event.target);
       calculateSaleTotals();
     });
+    deliveryFeeInput?.addEventListener('input', (event) => {
+      applyMoneyMask(event.target);
+      calculateSaleTotals();
+    });
+    const syncSaleDelivery = () => {
+      deliveryFields.forEach((field) => { field.hidden = !saleHasDelivery(); });
+      calculateSaleTotals();
+    };
+    saleTypeSelect?.addEventListener('change', syncSaleDelivery);
+    syncSaleDelivery();
     receivedAmountInput?.addEventListener('input', (event) => {
       applyMoneyMask(event.target);
       applyReceivedAmount();
@@ -1173,6 +1191,7 @@ document.addEventListener('DOMContentLoaded', () => {
     saleForm?.addEventListener('submit', () => {
       normalizeMoneyField(discountInput);
       normalizeMoneyField(additionsInput);
+      normalizeMoneyField(deliveryFeeInput);
       unitPriceInputs.forEach(normalizeMoneyField);
       itemDiscountInputs.forEach(normalizeMoneyField);
       paymentAmounts.forEach(normalizeMoneyField);
