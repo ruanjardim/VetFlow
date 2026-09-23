@@ -20,6 +20,7 @@
       'description' => $item->description,
       'quantity' => $item->quantity,
       'unit_price' => $item->unit_price,
+      'from_package' => $item->pet_package_balance_id ? 1 : 0,
     ])->toArray();
   }
 
@@ -90,10 +91,17 @@
           data-clinic-id="{{ $patient->clinic_id }}"
           data-tutor-id="{{ $patient->tutor_id }}"
           data-size="{{ \App\Modules\Patients\Support\PatientSize::resolve($patient->size, $patient->weight) }}"
+          data-package-summary="{{ ($packageSummaries ?? [])[$patient->id] ?? '' }}"
           @selected((int) old('patient_id', $order->patient_id ?? ($prefill['patient_id'] ?? 0)) === $patient->id)
         >{{ $patient->name }}@if($sizeLabel = \App\Modules\Patients\Support\PatientSize::label(\App\Modules\Patients\Support\PatientSize::resolve($patient->size, $patient->weight))) · {{ $sizeLabel }}@endif</option>
       @endforeach
     </select>
+    <div class="service-order-package-hint" data-service-order-package-hint hidden></div>
+    <label class="checkbox-inline">
+      <input type="hidden" name="use_package_balance" value="0">
+      <input type="checkbox" name="use_package_balance" value="1" @checked((string) old('use_package_balance', $isEditing ? (int) $order->use_package_balance : 1) === '1')>
+      Usar saldo de pacote do pet (serviço sai sem custo)
+    </label>
   </div>
   <div class="field">
     <label for="discount_total">Desconto</label>
@@ -215,6 +223,7 @@
               </td>
               <td>
                 <input name="items[{{ $index }}][description]" value="{{ $row['description'] ?? '' }}" data-service-order-description>
+                <input type="hidden" name="items[{{ $index }}][from_package]" value="{{ ! empty($row['from_package']) ? 1 : 0 }}" data-service-order-from-package>
               </td>
               <td>
                 <input name="items[{{ $index }}][quantity]" type="number" step="0.001" min="0" value="{{ $row['quantity'] ?? '' }}" data-service-order-quantity>

@@ -48,6 +48,10 @@
     <input id="giant_price" name="giant_price" type="number" step="0.01" min="0" value="{{ old('giant_price', $service->giant_price ?? '') }}">
   </div>
   <div class="field">
+    <label for="commission_percent">Comissão do profissional (%)</label>
+    <input id="commission_percent" name="commission_percent" type="number" step="0.01" min="0" max="100" value="{{ old('commission_percent', $service->commission_percent ?? '') }}" placeholder="Usa o padrão do profissional">
+  </div>
+  <div class="field">
     <label for="requires_appointment">Agenda</label>
     <select id="requires_appointment" name="requires_appointment">
       <option value="1" @selected(old('requires_appointment', $service->requires_appointment ?? true))>Precisa agendar</option>

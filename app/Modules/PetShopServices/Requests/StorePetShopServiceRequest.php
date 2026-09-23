@@ -29,6 +29,7 @@ class StorePetShopServiceRequest extends FormRequest
             'medium_price' => ['nullable', 'numeric', 'min:0'],
             'large_price' => ['nullable', 'numeric', 'min:0'],
             'giant_price' => ['nullable', 'numeric', 'min:0'],
+            'commission_percent' => ['nullable', 'numeric', 'min:0', 'max:100'],
             'duration_minutes' => ['nullable', 'integer', 'min:1'],
             'requires_appointment' => ['nullable', 'boolean'],
             'active' => ['nullable', 'boolean'],
@@ -46,6 +47,7 @@ class StorePetShopServiceRequest extends FormRequest
             'medium_price.numeric' => 'Informe um preco valido para porte medio.',
             'large_price.numeric' => 'Informe um preco valido para porte grande.',
             'giant_price.numeric' => 'Informe um preco valido para porte gigante.',
+            'commission_percent.max' => 'A comissao deve ficar entre 0% e 100%.',
             'duration_minutes.integer' => 'Informe a duracao em minutos.',
         ];
     }

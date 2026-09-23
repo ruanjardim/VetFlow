@@ -65,6 +65,7 @@ class ServiceOrder extends Model
         'scheduled_at' => 'datetime',
         'checked_in_at' => 'datetime',
         'duration_minutes' => 'integer',
+        'use_package_balance' => 'boolean',
         'started_at' => 'datetime',
         'ready_at' => 'datetime',
         'closed_at' => 'datetime',

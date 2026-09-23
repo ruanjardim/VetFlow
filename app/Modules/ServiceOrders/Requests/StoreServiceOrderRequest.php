@@ -65,6 +65,8 @@ class StoreServiceOrderRequest extends FormRequest
             'items.*.description' => ['nullable', 'string', 'max:255'],
             'items.*.quantity' => ['nullable', 'numeric', 'min:0.001'],
             'items.*.unit_price' => ['nullable', 'numeric', 'min:0'],
+            'items.*.from_package' => ['nullable', 'boolean'],
+            'use_package_balance' => ['nullable', 'boolean'],
         ];
     }
 

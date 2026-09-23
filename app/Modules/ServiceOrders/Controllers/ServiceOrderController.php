@@ -162,6 +162,7 @@ class ServiceOrderController extends BaseCrudController
             'products' => Product::query()->active()->orderBy('name')->get(),
             'petShopServices' => PetShopService::query()->active()->orderBy('name')->get(),
             'recurrenceFrequencies' => GroomingAgendaService::RECURRENCE_FREQUENCIES,
+            'packageSummaries' => $this->packageSummaries(),
             'prefill' => [
                 'status' => in_array(request()->query('status'), array_keys(ServiceOrder::STATUS_LABELS), true)
                     ? request()->query('status')
@@ -172,6 +173,36 @@ class ServiceOrderController extends BaseCrudController
                 'tutor_id' => request()->integer('tutor_id') ?: null,
             ],
         ];
+    }
+
+    /** @return array<int, string> resumo do saldo de pacotes ativos por pet */
+    private function packageSummaries(): array
+    {
+        return \App\Modules\PetShopServices\Models\PetPackage::query()
+            ->with(['balances.usages'])
+            ->where('status', 'active')
+            ->where(fn ($query) => $query->whereNull('expires_on')->orWhereDate('expires_on', '>=', today()->toDateString()))
+            ->get()
+            ->groupBy('patient_id')
+            ->map(function ($packages): string {
+                return $packages
+                    ->map(function ($package): ?string {
+                        $open = $package->balances
+                            ->filter(fn ($balance) => $balance->remaining() > 0)
+                            ->map(fn ($balance) => $balance->remaining().'× '.$balance->service_name);
+
+                        if ($open->isEmpty()) {
+                            return null;
+                        }
+
+                        return $package->name.': '.$open->implode(', ')
+                            .($package->expires_on ? ' (até '.$package->expires_on->format('d/m').')' : '');
+                    })
+                    ->filter()
+                    ->implode(' · ');
+            })
+            ->filter()
+            ->all();
     }
 
     private function prefillDateTime(mixed $value): ?string

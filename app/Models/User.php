@@ -34,6 +34,7 @@ class User extends Authenticatable
         'password',
         'active',
         'grooming_professional',
+        'grooming_commission_percent',
         'last_login_at',
     ];
 
@@ -49,6 +50,7 @@ class User extends Authenticatable
             'last_login_at' => 'datetime',
             'active' => 'boolean',
             'grooming_professional' => 'boolean',
+            'grooming_commission_percent' => 'decimal:2',
             'password' => 'hashed',
         ];
     }

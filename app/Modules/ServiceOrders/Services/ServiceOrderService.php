@@ -3,9 +3,11 @@
 namespace App\Modules\ServiceOrders\Services;
 
 use App\Core\Base\BaseService;
+use App\Modules\Commissions\Services\GroomingCommissionService;
 use App\Modules\Patients\Models\Patient;
 use App\Modules\Patients\Support\PatientSize;
 use App\Modules\PetShopServices\Models\PetShopService;
+use App\Modules\PetShopServices\Services\PetPackageService;
 use App\Modules\Products\Models\Product;
 use App\Modules\ServiceOrders\Contracts\ServiceOrderRepositoryInterface;
 use App\Modules\ServiceOrders\Models\ServiceOrder;
@@ -21,6 +23,8 @@ class ServiceOrderService extends BaseService
     public function __construct(
         ServiceOrderRepositoryInterface $repository,
         private readonly GroomingAgendaService $agenda,
+        private readonly PetPackageService $packages,
+        private readonly GroomingCommissionService $commissions,
     ) {
         $this->repository = $repository;
     }
@@ -67,8 +71,10 @@ class ServiceOrderService extends BaseService
         $order = $this->repository->create($data);
 
         $this->syncItems($order, $items);
+        $this->packages->consumeForOrder($order);
         $this->recalculateTotals($order);
         $this->fillDurationFromServices($order);
+        $this->commissions->syncForOrder($order);
 
         return $order->refresh();
     }
@@ -84,11 +90,14 @@ class ServiceOrderService extends BaseService
             $data = $this->withOperationalTimestamps($data, $order);
 
             $this->repository->update($order, $data);
+            $this->packages->releaseForOrder($order);
             $order->items()->delete();
 
             $this->syncItems($order->refresh(), $items);
+            $this->packages->consumeForOrder($order);
             $this->recalculateTotals($order);
             $this->fillDurationFromServices($order);
+            $this->commissions->syncForOrder($order);
 
             return $order->refresh();
         });
@@ -167,9 +176,21 @@ class ServiceOrderService extends BaseService
                 ]);
             }
 
+            $previousStatus = $order->status;
+
             $this->repository->update($order, $this->withOperationalTimestamps([
                 'status' => $status,
             ], $order));
+            $order->refresh();
+
+            if (in_array($status, ['cancelled', 'no_show'], true)) {
+                $this->packages->releaseForOrder($order);
+            } elseif (in_array($previousStatus, ['cancelled', 'no_show'], true)) {
+                $this->packages->consumeForOrder($order);
+                $this->recalculateTotals($order);
+            }
+
+            $this->commissions->syncForOrder($order);
 
             return $order->refresh();
         });
@@ -203,6 +224,12 @@ class ServiceOrderService extends BaseService
         $serviceId = $type === 'service' ? ($item['petshop_service_id'] ?? null) : null;
         $description = trim((string) ($item['description'] ?? ''));
         $unitPrice = $item['unit_price'] ?? null;
+
+        if (! empty($item['from_package'])) {
+            // Item que vinha de pacote: recalcula o preco; o consumo e refeito depois.
+            $description = trim($this->packages->stripSuffix($description));
+            $unitPrice = null;
+        }
 
         if ($type === 'product' && $productId) {
             $product = Product::query()->find($productId);

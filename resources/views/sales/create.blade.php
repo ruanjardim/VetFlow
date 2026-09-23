@@ -3,9 +3,11 @@
 @section('content')
 @php
   $checkoutOrder = $serviceOrderCheckout['order'] ?? null;
-  $selectedClinicId = (int) old('clinic_id', $checkoutOrder?->clinic_id ?? auth()->user()?->clinic_id ?? ($clinics->count() === 1 ? $clinics->first()->id : 0));
-  $selectedTutorId = (int) old('tutor_id', $checkoutOrder?->tutor_id ?? 0);
-  $selectedPatientId = (int) old('patient_id', $checkoutOrder?->patient_id ?? 0);
+  $checkoutPackage = $serviceOrderCheckout['package'] ?? null;
+  $checkoutSource = $checkoutOrder ?? $checkoutPackage;
+  $selectedClinicId = (int) old('clinic_id', $checkoutSource?->clinic_id ?? auth()->user()?->clinic_id ?? ($clinics->count() === 1 ? $clinics->first()->id : 0));
+  $selectedTutorId = (int) old('tutor_id', $checkoutSource?->tutor_id ?? 0);
+  $selectedPatientId = (int) old('patient_id', $checkoutSource?->patient_id ?? 0);
   $initialItems = old('items', $serviceOrderCheckout['items'] ?? []);
   $initialDiscount = old('discount_total', $checkoutOrder ? number_format((float) $checkoutOrder->discount_total, 2, ',', '.') : '0,00');
 @endphp
@@ -24,6 +26,13 @@
     — {{ $checkoutOrder->tutor?->name ?? 'Sem responsável' }} / {{ $checkoutOrder->patient?->name ?? 'Sem pet' }}.
     Ao concluir a venda, a comanda é finalizada automaticamente.
   </div>
+@elseif($checkoutPackage)
+  <div class="alert success" role="status">
+    Vendendo o pacote <strong>{{ $checkoutPackage->name }}</strong> ({{ $checkoutPackage->code }})
+    para {{ $checkoutPackage->patient?->name ?? 'o pet' }}. O saldo é liberado quando a venda for concluída.
+  </div>
+@elseif(request()->filled('pet_package_id'))
+  <div class="alert error" role="alert">O pacote informado não está aguardando pagamento.</div>
 @elseif(request()->filled('service_order_id'))
   <div class="alert error" role="alert">A comanda informada não está disponível para recebimento (cancelada, inexistente ou já vendida).</div>
 @endif
@@ -39,6 +48,9 @@
   <input type="hidden" name="source" value="pdv">
   @if($checkoutOrder)
     <input type="hidden" name="service_order_id" value="{{ $checkoutOrder->id }}">
+  @endif
+  @if($checkoutPackage)
+    <input type="hidden" name="pet_package_id" value="{{ $checkoutPackage->id }}">
   @endif
   <input type="hidden" name="pdv_checkout" value="1">
   <input type="hidden" name="status" value="draft" data-pdv-status>

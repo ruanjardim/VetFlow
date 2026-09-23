@@ -310,6 +310,17 @@ if (serviceOrderForm) {
     calculateServiceOrderTotals();
   });
 
+  const packageHint = serviceOrderForm.querySelector('[data-service-order-package-hint]');
+  const refreshPackageHint = () => {
+    const summary = patientSelect?.selectedOptions[0]?.dataset.packageSummary || '';
+    if (packageHint) {
+      packageHint.textContent = summary ? `Pacote ativo — ${summary}` : '';
+      packageHint.hidden = !summary;
+    }
+  };
+  patientSelect?.addEventListener('change', refreshPackageHint);
+  refreshPackageHint();
+
   initGroomingScheduling(serviceOrderForm, itemRows, currentClinicId);
 
   filterServiceOrderCatalog();

@@ -30,6 +30,7 @@ class StoreAccessUserRequest extends FormRequest
             'password' => ['required', 'confirmed', Password::defaults()],
             'active' => ['required', 'boolean'],
             'grooming_professional' => ['nullable', 'boolean'],
+            'grooming_commission_percent' => ['nullable', 'numeric', 'min:0', 'max:100'],
             'role_ids' => ['required', 'array', 'min:1'],
             'role_ids.*' => [
                 'required',

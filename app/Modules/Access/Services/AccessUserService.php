@@ -154,6 +154,9 @@ class AccessUserService
             'veterinary_license_state' => $data['veterinary_license_state'] ?? null,
             'active' => (bool) $data['active'],
             'grooming_professional' => (bool) ($data['grooming_professional'] ?? false),
+            'grooming_commission_percent' => isset($data['grooming_commission_percent']) && $data['grooming_commission_percent'] !== ''
+                ? (float) $data['grooming_commission_percent']
+                : null,
         ];
 
         if (! empty($data['password'])) {
@@ -243,6 +246,7 @@ class AccessUserService
             'veterinary_license_state' => $user->veterinary_license_state,
             'active' => (bool) $user->active,
             'grooming_professional' => (bool) $user->grooming_professional,
+            'grooming_commission_percent' => $user->grooming_commission_percent,
             'roles' => $user->roles->pluck('slug')->sort()->values()->all(),
         ];
     }

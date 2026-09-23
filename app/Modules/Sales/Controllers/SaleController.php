@@ -6,6 +6,7 @@ use App\Core\Base\BaseCrudController;
 use App\Modules\Clinics\Models\Clinic;
 use App\Modules\Inventory\Services\ProductLotService;
 use App\Modules\Patients\Models\Patient;
+use App\Modules\PetShopServices\Models\PetPackage;
 use App\Modules\PetShopServices\Models\PetShopService;
 use App\Modules\Products\Models\Product;
 use App\Modules\Products\Services\ProductLookupService;
@@ -58,7 +59,7 @@ class SaleController extends BaseCrudController
         return view(
             $advanced ? 'sales.create-advanced' : 'sales.create',
             array_merge($this->formData($advanced), [
-                'serviceOrderCheckout' => $advanced ? null : $this->serviceOrderCheckout(),
+                'serviceOrderCheckout' => $advanced ? null : ($this->serviceOrderCheckout() ?? $this->petPackageCheckout()),
             ])
         );
     }
@@ -558,6 +559,40 @@ class SaleController extends BaseCrudController
                 ])
                 ->values()
                 ->all(),
+        ];
+    }
+
+    /**
+     * Prefills the quick PDV with a pet package waiting for payment.
+     *
+     * @return array{order: null, package: PetPackage, items: array<int, array<string, mixed>>}|null
+     */
+    private function petPackageCheckout(): ?array
+    {
+        $packageId = (int) request()->query('pet_package_id');
+
+        if ($packageId <= 0) {
+            return null;
+        }
+
+        $package = PetPackage::query()
+            ->with(['patient', 'tutor'])
+            ->where('status', 'pending_payment')
+            ->find($packageId);
+
+        if (! $package) {
+            return null;
+        }
+
+        return [
+            'order' => null,
+            'package' => $package,
+            'items' => [[
+                'type' => 'custom',
+                'description' => 'Pacote '.$package->name.' ('.$package->code.') — '.($package->patient?->name ?? 'pet'),
+                'quantity' => 1,
+                'unit_price' => (float) $package->price,
+            ]],
         ];
     }
 

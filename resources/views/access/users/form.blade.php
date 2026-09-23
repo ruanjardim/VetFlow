@@ -78,6 +78,12 @@
   </div>
 
   <div class="field">
+    <label for="grooming_commission_percent">Comissão padrão em banho e tosa (%)</label>
+    <input id="grooming_commission_percent" name="grooming_commission_percent" type="number" step="0.01" min="0" max="100" value="{{ old('grooming_commission_percent', $accessUser?->grooming_commission_percent) }}">
+    <div class="field-hint">Usada quando o serviço não tem comissão própria.</div>
+  </div>
+
+  <div class="field">
     <label for="password">{{ $accessUser ? 'Nova senha' : 'Senha inicial' }}</label>
     <input
       id="password"

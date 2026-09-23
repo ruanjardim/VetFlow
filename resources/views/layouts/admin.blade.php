@@ -59,15 +59,20 @@
         @endcanany
 
         @canany(['petshop-services.manage', 'service-orders.manage'])
-          <details class="nav-group" @if(request()->routeIs('petshop-services.*', 'service-orders.*')) open @endif>
+          <details class="nav-group" @if(request()->routeIs('petshop-services.*', 'service-orders.*', 'pet-packages.*', 'petshop-packages.*', 'grooming-commissions.*')) open @endif>
             <summary><span>Banho e tosa</span><span class="nav-chevron">⌄</span></summary>
             <div class="nav-submenu">
               @can('service-orders.manage')
                 <a class="{{ request()->routeIs('service-orders.agenda') ? 'is-active' : '' }}" href="{{ route('service-orders.agenda') }}">Agenda banho e tosa</a>
                 <a class="{{ request()->routeIs('service-orders.board') ? 'is-active' : '' }}" href="{{ route('service-orders.board') }}">Operação do dia</a>
                 <a class="{{ request()->routeIs('service-orders.index', 'service-orders.create', 'service-orders.edit') ? 'is-active' : '' }}" href="{{ route('service-orders.index') }}">Comandas</a>
+                <a class="{{ request()->routeIs('pet-packages.*') ? 'is-active' : '' }}" href="{{ route('pet-packages.index') }}">Pacotes vendidos</a>
               @endcan
-              @can('petshop-services.manage')<a class="{{ request()->routeIs('petshop-services.*') ? 'is-active' : '' }}" href="{{ route('petshop-services.index') }}">Serviços e preços</a>@endcan
+              @can('petshop-services.manage')
+                <a class="{{ request()->routeIs('petshop-services.*') ? 'is-active' : '' }}" href="{{ route('petshop-services.index') }}">Serviços e preços</a>
+                <a class="{{ request()->routeIs('petshop-packages.*') ? 'is-active' : '' }}" href="{{ route('petshop-packages.index') }}">Modelos de pacote</a>
+              @endcan
+              @can('commissions.manage')<a class="{{ request()->routeIs('grooming-commissions.*') ? 'is-active' : '' }}" href="{{ route('grooming-commissions.index') }}">Comissões</a>@endcan
             </div>
           </details>
         @endcanany

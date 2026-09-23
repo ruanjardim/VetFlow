@@ -61,6 +61,47 @@ medium, up to 45 kg large, above that giant (editable assumption in
 informed unit price uses the service's price for that size, falling back to
 the base price. The form preselects the same price.
 
+## Packages (Clubinho)
+
+- **Modelos de pacote** (`petshop-services.manage`): services and quantities,
+  price and optional validity in days. Editing a model never changes packages
+  already sold.
+- **Pacotes vendidos** (`service-orders.manage`): selling creates a pet package
+  `pending_payment` with a balance per service and redirects to the PDV
+  (`sales.create?pet_package_id=`). Completing that sale activates it
+  (`sales.pet_package_id`); cancelling the sale cancels the package. Only users
+  with `sales.manage` may release a package paid outside the PDV.
+- Each session's value is the package price divided equally by the total
+  sessions. It is the commission base for services covered by the package.
+- Consumption is automatic: when a service order for the pet contains a service
+  with enough active balance (package active, date inside validity), the item
+  is charged R$ 0,00, linked to the balance (`pet_package_balance_id`) and gets
+  " · pacote PCT-xxxxxx" in its description. The order option
+  "Usar saldo de pacote" (`use_package_balance`) turns it off. Cancelled and
+  no-show orders release the balance. Quantities must be whole numbers.
+- Displayed status: aguardando pagamento, ativo, consumido (no balance),
+  vencido (past validity) or cancelado.
+
+## Grooming Commissions
+
+- Percentage: the service's `commission_percent`; otherwise the professional's
+  `grooming_commission_percent` (Administration > Users). Without either, no
+  commission is created.
+- Created per service item for the order's professional when the order becomes
+  `finished` (board or PDV). Base: item total minus the order discount
+  prorated by item; package items use the session value.
+- If the order leaves `finished` (sale cancelled, status changed), pending
+  entries are cancelled and settled ones get a negative reversal entry that is
+  deducted in the next settlement.
+- **Comissões** (`commissions.manage`): summary per professional, statement and
+  "Fechar e gerar conta", which settles every pending entry up to the date and
+  creates a pending `expense` financial transaction (reference
+  `COMISSAO-BT`). A settlement is refused when the net pending total is zero or
+  negative.
+- Not handled yet: partial item returns do not adjust commission (only full
+  cancellation does); sales-based commission rules in Financeiro remain a
+  separate preview.
+
 ## Integrity Rules
 
 - The board and all referenced records are clinic-scoped.
@@ -84,6 +125,7 @@ needed for the operational and checkout flow.
 ## Tests
 
 - `tests/Feature/GroomingAgendaTest.php`
+- `tests/Feature/GroomingPackagesAndCommissionsTest.php`
 - `tests/Feature/ServiceOrderBoardTest.php`
 - `tests/Feature/SalesQuickPdvTest.php`
 - `tests/Feature/OperationalFlowTest.php`

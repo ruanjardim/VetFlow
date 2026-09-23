@@ -30,6 +30,14 @@ This project follows the spirit of Keep a Changelog, with one practical adjustme
   from the weight when blank, used to pick the service's size price in
   service orders.
 - "Atende banho e tosa" flag on collaborators to choose the agenda columns.
+- Bath and grooming packages (Clubinho): package models, sale per pet through
+  the PDV (activated when the sale completes, cancelled with it), balance per
+  service, validity, automatic consumption in service orders with opt-out, and
+  a sold-packages list with status filters and usage history.
+- Groomer commissions: percentage per service or per professional, generated
+  when the order is finished (discount prorated, package sessions valued at the
+  package price per session), reversal when the order is reopened, statement
+  per professional, and settlement that creates the payable in Financeiro.
 - The visual agenda can filter by area (Clínica / Banho e tosa) and shows
   grooming bookings.
 
