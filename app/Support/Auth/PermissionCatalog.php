@@ -137,6 +137,18 @@ class PermissionCatalog
                 'description' => 'Permite acessar vendas, caixa, recibos, cancelamentos e devolucoes.',
             ],
             [
+                'slug' => 'payment-methods.manage',
+                'name' => 'Gerenciar formas de pagamento',
+                'group' => 'Vendas',
+                'description' => 'Permite cadastrar formas de pagamento, maquininhas, taxas e prazos de repasse.',
+            ],
+            [
+                'slug' => 'cash-sessions.review',
+                'name' => 'Conferir e encerrar caixas',
+                'group' => 'Vendas',
+                'description' => 'Permite conferir, encerrar e reabrir os caixas dos operadores.',
+            ],
+            [
                 'slug' => 'products.manage',
                 'name' => 'Gerenciar produtos',
                 'group' => 'Estoque',
@@ -257,6 +269,8 @@ class PermissionCatalog
                 'permissions' => [
                     'dashboard.view',
                     'sales.manage',
+                    'payment-methods.manage',
+                    'cash-sessions.review',
                     'purchase-entries.manage',
                     'suppliers.manage',
                     'financial.manage',
