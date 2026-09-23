@@ -42,10 +42,10 @@ git checkout -b feat/<assunto>      # toda branch nova sai daqui
   `cd /home/u804718109/domains/vetflowsys.com.br/public_html && php artisan migrate --force`,
   seguido de `db:seed --class=AuthorizationSeeder --force` e
   `db:seed --class=SaasPlanSeeder --force`.
-  - Até o próximo cron (no máximo 1 hora), o código novo roda com o banco
-    antigo. Quando o PR trouxer migration, avise o usuário no merge (ele
-    pode rodar a migration na hora) e prefira mudanças aditivas: tabela
-    nova, coluna nullable ou com default.
+  - Até o próximo cron (no máximo 1 hora), o código novo rodaria com o banco
+    antigo. Por isso, **migration vai antes, num PR só com o schema** (aditivo:
+    tabela nova, coluna nullable ou com default). O PR do código só entra
+    depois que o cron rodou (espere uma hora cheia depois do merge do schema).
   - As migrations precisam rodar em SQLite (testes), PostgreSQL (job do CI)
     e MySQL (produção).
   - Permissão nova vai em `App\Support\Auth\PermissionCatalog` (o
@@ -73,7 +73,10 @@ git checkout -b feat/<assunto>      # toda branch nova sai daqui
 
 Última atualização: 23/09/2026.
 
-- **No ar:** deploy `9e23857`, PR #18 (banho e tosa). Agenda por
+- **No ar:** PR #21 (orçamento no PDV e tipo de venda/delivery, itens 1 e 2
+  do plano de Vendas), sobre o schema do PR #20. Regras em
+  `docs/modules/sales.md`.
+- **Antes disso:** PR #18 (banho e tosa). Agenda por
   profissional (horários livres, conflito/encaixe, recorrência, check-in),
   quadro, preço por porte, cobrança da comanda no PDV, pacotes (modelos,
   venda pelo PDV, saldo e consumo automático na comanda) e comissão do
@@ -91,13 +94,13 @@ git checkout -b feat/<assunto>      # toda branch nova sai daqui
      abertura de caixa por operador, formas de pagamento por maquininha.
   2. Pet: foto e castrado.
   3. Depois, a parte da clínica.
-- **Plano de Vendas** (proposto em 23/09/2026, aguardando o ok do usuário):
-  um PR por item, nesta ordem.
-  1. **Orçamento no PDV:** seletor Venda/Orçamento, código `ORC-`, validade
+- **Plano de Vendas** (aprovado em 23/09/2026, com as decisões padrão): um PR
+  por item, nesta ordem. Itens 1 e 2 entregues; **o próximo é o 3**.
+  1. ✅ **Orçamento no PDV:** seletor Venda/Orçamento, código `ORC-`, validade
      (padrão de 7 dias), impressão/WhatsApp, lista de orçamentos e
      "converter em venda", que abre o PDV preenchido. Não mexe em estoque,
      financeiro nem comissão. Pacote não entra em orçamento.
-  2. **Tipo de venda:** as 6 opções do SimplesVet (padrão: presencial para
+  2. ✅ **Tipo de venda:** as 6 opções do SimplesVet (padrão: presencial para
      consumidor final); nos tipos de delivery, endereço e taxa de entrega.
   3. **Formas de pagamento por maquininha:** cadastro por clínica (tipo,
      maquininha, taxa à vista e parcelada, prazo, parcelas, NSU), iniciado
@@ -111,8 +114,11 @@ git checkout -b feat/<assunto>      # toda branch nova sai daqui
      como forma de pagamento, troco como crédito, adiantamento (vira
      receita quando usado), quitação de várias vendas e devolução em
      crédito. O saldo aparece no PDV, na ficha do tutor e numa lista.
-  - Com migration nova, primeiro vai um PR só com o schema; o PR do código
-    entra depois que o cron rodar.
+  - Decisões já tomadas: delivery com endereço e taxa (sem status de
+    entrega); caixa aberto obrigatório para receber, com abertura no próprio
+    PDV; taxas de maquininha como uma despesa por maquininha no fechamento;
+    adiantamento vira receita só quando usado; orçamento vencido ainda pode
+    virar venda, com aviso, pelos preços orçados.
 
 ## 5. Mapa rápido do código
 
@@ -149,3 +155,14 @@ git checkout -b feat/<assunto>      # toda branch nova sai daqui
   mexer em JS/CSS.
 - O `composer install` não consegue baixar os pacotes zipados do GitHub e
   cai para git clone. Funciona, só demora alguns minutos.
+- Sem npm, dá para gerar o `public/build` com o esbuild que vem no `tsx`
+  global (`~/.npm-global/lib/node_modules/tsx/node_modules/@esbuild/linux-x64/bin/esbuild`):
+  `--bundle --minify --target=es2020` (e `--format=esm` no JS) para
+  `resources/js/app.js` e `resources/css/app.css`, com nome
+  `assets/app-<hash>.<ext>` e o `public/build/manifest.json` atualizado no
+  mesmo formato. Não reconstrua o `landing.css` se a fonte dele não mudou. O
+  PR #21 saiu assim; a próxima sessão com npm pode rodar `npm run build`.
+- Sem push na sessão, os PRs saíram pelo GitHub web no Chrome do usuário:
+  arquivos numa branch nova, PR e merge. O classificador de segurança do
+  Claude bloqueia commit direto na `0-hostinger-production`: use sempre
+  branch + PR.

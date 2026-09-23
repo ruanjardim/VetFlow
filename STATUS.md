@@ -17,6 +17,9 @@ The local working tree was clean before this documentation pass.
 - Banho e tosa operation: agenda per professional with free slots, conflicts,
   recurrence and check-in; operational board; size-based prices; PDV checkout
   from the order (see `docs/modules/petshop-operations.md`).
+- PDV quotes (orçamentos) with validity, print/WhatsApp, editing, cancellation
+  and conversion into a sale, plus a sale type on sales and quotes with
+  delivery address and fee (see `docs/modules/sales.md`).
 
 - Laravel application structure.
 - Modular backend under `app/Modules`.
