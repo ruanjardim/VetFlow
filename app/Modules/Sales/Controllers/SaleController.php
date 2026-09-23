@@ -13,13 +13,16 @@ use App\Modules\Products\Services\ProductLookupService;
 use App\Modules\Products\Services\ProductService;
 use App\Modules\Products\Support\Gtin;
 use App\Modules\Sales\Models\Sale;
+use App\Modules\Sales\Models\SaleQuote;
 use App\Modules\Sales\Requests\ProductAbcAnalysisRequest;
 use App\Modules\Sales\Requests\StoreSalePaymentRequest;
 use App\Modules\Sales\Requests\StoreSaleRequest;
 use App\Modules\Sales\Requests\UpdateSaleRequest;
 use App\Modules\Sales\Services\ProductAbcAnalysisService;
 use App\Modules\Sales\Services\SaleProfitabilityService;
+use App\Modules\Sales\Services\SaleQuoteService;
 use App\Modules\Sales\Services\SaleService;
+use App\Modules\Sales\Support\SaleType;
 use App\Modules\ServiceOrders\Models\ServiceOrder;
 use App\Modules\Tutors\Models\Tutor;
 use Illuminate\Http\JsonResponse;
@@ -54,14 +57,28 @@ class SaleController extends BaseCrudController
 
     public function create()
     {
-        $advanced = request()->query('mode') === 'advanced';
+        $mode = request()->query('mode');
 
-        return view(
-            $advanced ? 'sales.create-advanced' : 'sales.create',
-            array_merge($this->formData($advanced), [
-                'serviceOrderCheckout' => $advanced ? null : ($this->serviceOrderCheckout() ?? $this->petPackageCheckout()),
-            ])
-        );
+        if ($mode === 'advanced') {
+            return view('sales.create-advanced', array_merge($this->formData(), [
+                'saleTypes' => SaleType::LABELS,
+            ]));
+        }
+
+        $quoteMode = $mode === 'quote';
+
+        return view('sales.create', array_merge($this->formData(false), [
+            'serviceOrderCheckout' => $quoteMode
+                ? null
+                : ($this->serviceOrderCheckout() ?? $this->petPackageCheckout() ?? $this->quoteCheckout()),
+            'editingQuote' => $quoteMode ? $this->editableQuote() : null,
+            'startMode' => $quoteMode ? 'quote' : 'sale',
+            'saleTypes' => SaleType::LABELS,
+            'deliverySaleTypes' => array_values(array_filter(SaleType::keys(), fn (string $type) => SaleType::hasDelivery($type))),
+            'defaultQuoteValidUntil' => today()
+                ->addDays(max(1, (int) config('sales.quote_validity_days', SaleQuoteService::DEFAULT_VALIDITY_DAYS)))
+                ->toDateString(),
+        ]));
     }
 
     public function store(Request $request)
@@ -82,6 +99,7 @@ class SaleController extends BaseCrudController
     {
         return view("{$this->viewPath}.edit", array_merge($this->formData(), [
             'item' => $this->service->findOrFail($id),
+            'saleTypes' => SaleType::LABELS,
         ]));
     }
 
@@ -176,7 +194,7 @@ class SaleController extends BaseCrudController
     public function receipt(int $id)
     {
         $sale = $this->service->findOrFail($id);
-        $sale->load(['clinic', 'tutor', 'patient', 'serviceOrder', 'items', 'payments', 'events']);
+        $sale->load(['clinic', 'tutor', 'patient', 'serviceOrder', 'quote', 'items', 'payments', 'events']);
 
         return view("{$this->viewPath}.receipt", [
             'sale' => $sale,
@@ -594,6 +612,55 @@ class SaleController extends BaseCrudController
                 'unit_price' => (float) $package->price,
             ]],
         ];
+    }
+
+    /**
+     * Prefills the quick PDV with an open quote being converted into a sale.
+     *
+     * @return array{order: null, package: null, quote: SaleQuote, items: array<int, array<string, mixed>>}|null
+     */
+    private function quoteCheckout(): ?array
+    {
+        $quote = $this->openQuoteFromQuery();
+
+        if (! $quote) {
+            return null;
+        }
+
+        return [
+            'order' => null,
+            'package' => null,
+            'quote' => $quote,
+            'items' => app(SaleQuoteService::class)->cartItems($quote),
+        ];
+    }
+
+    /**
+     * An open quote reopened in the PDV to be edited.
+     */
+    private function editableQuote(): ?SaleQuote
+    {
+        return $this->openQuoteFromQuery();
+    }
+
+    private function openQuoteFromQuery(): ?SaleQuote
+    {
+        $quoteId = (int) request()->query('quote_id');
+
+        if ($quoteId <= 0) {
+            return null;
+        }
+
+        $quote = SaleQuote::query()
+            ->with(['items', 'tutor', 'patient'])
+            ->where('status', 'open')
+            ->find($quoteId);
+
+        if (! $quote || $quote->sales()->where('status', '!=', 'cancelled')->exists()) {
+            return null;
+        }
+
+        return $quote;
     }
 
     private function formData(bool $includeCatalog = true): array
