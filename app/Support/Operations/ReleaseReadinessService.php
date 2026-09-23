@@ -189,6 +189,7 @@ class ReleaseReadinessService
         }
 
         $connection = (string) config('queue.default');
+        $transport = (string) config('operations.queue.cron.transport', 'http');
         $enabled = (bool) config('operations.queue.cron.enabled');
         $token = (string) config('operations.queue.cron.token');
         $header = (string) config('operations.queue.cron.header');
@@ -196,11 +197,7 @@ class ReleaseReadinessService
         $maxTime = (int) config('operations.queue.cron.max_time');
         $timeout = (int) config('operations.queue.cron.timeout');
         $tries = (int) config('operations.queue.cron.tries');
-        $valid = $connection === 'database'
-            && $enabled
-            && mb_strlen($token) >= 32
-            && preg_match('/^[A-Za-z0-9-]+$/', $header) === 1
-            && $maxJobs >= 1
+        $safeLimits = $maxJobs >= 1
             && $maxJobs <= 100
             && $maxTime >= 1
             && $maxTime <= 50
@@ -209,12 +206,38 @@ class ReleaseReadinessService
             && $tries >= 1
             && $tries <= 10;
 
+        if (! in_array($transport, ['cli', 'http'], true)) {
+            return $this->check(
+                'Processamento da fila',
+                false,
+                'VETFLOW_QUEUE_CRON_TRANSPORT deve ser cli ou http.'
+            );
+        }
+
+        if ($transport === 'cli') {
+            $valid = $connection === 'database' && $safeLimits;
+
+            return $this->check(
+                'Processamento da fila',
+                $valid,
+                $valid
+                    ? 'Cron CLI configurado com fila database e limites seguros; confirme o comando agendado no smoke test.'
+                    : 'O cron CLI exige fila database e limites seguros.'
+            );
+        }
+
+        $valid = $connection === 'database'
+            && $enabled
+            && mb_strlen($token) >= 32
+            && preg_match('/^[A-Za-z0-9-]+$/', $header) === 1
+            && $safeLimits;
+
         return $this->check(
             'Processamento da fila',
             $valid,
             $valid
-                ? 'Cron controlado habilitado com fila database, token e limites seguros.'
-                : 'O modo cron exige fila database, endpoint habilitado, token de 32+ caracteres, header valido e limites seguros.'
+                ? 'Cron HTTP controlado habilitado com fila database, token e limites seguros.'
+                : 'O cron HTTP exige fila database, endpoint habilitado, token de 32+ caracteres, header valido e limites seguros.'
         );
     }
 

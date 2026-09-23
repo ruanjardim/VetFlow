@@ -26,6 +26,17 @@
     <input id="position" name="position" value="{{ old('position', $accessUser?->position) }}" placeholder="Ex.: Veterinaria responsavel">
   </div>
 
+  <div class="field">
+    <label for="veterinary_license_number">CRMV</label>
+    <input id="veterinary_license_number" name="veterinary_license_number" value="{{ old('veterinary_license_number', $accessUser?->veterinary_license_number) }}" maxlength="30" placeholder="Ex.: 12345">
+    <div class="field-hint">Preencha para profissionais responsáveis por documentos veterinários.</div>
+  </div>
+
+  <div class="field">
+    <label for="veterinary_license_state">UF do CRMV</label>
+    <input id="veterinary_license_state" name="veterinary_license_state" value="{{ old('veterinary_license_state', $accessUser?->veterinary_license_state) }}" maxlength="2" placeholder="Ex.: RJ">
+  </div>
+
   @if($isGlobalActor)
     <div class="field">
       <label for="clinic_id">Clinica</label>
@@ -55,6 +66,21 @@
       <option value="1" @selected((string) old('active', $accessUser ? (int) $accessUser->active : 1) === '1')>Ativo</option>
       <option value="0" @selected((string) old('active', $accessUser ? (int) $accessUser->active : 1) === '0')>Inativo</option>
     </select>
+  </div>
+
+  <div class="field">
+    <label class="checkbox-inline">
+      <input type="hidden" name="grooming_professional" value="0">
+      <input type="checkbox" name="grooming_professional" value="1" @checked((string) old('grooming_professional', $accessUser ? (int) $accessUser->grooming_professional : 0) === '1')>
+      Atende banho e tosa
+    </label>
+    <div class="field-hint">Mostra o colaborador como coluna na agenda de banho e tosa.</div>
+  </div>
+
+  <div class="field">
+    <label for="grooming_commission_percent">Comissão padrão em banho e tosa (%)</label>
+    <input id="grooming_commission_percent" name="grooming_commission_percent" type="number" step="0.01" min="0" max="100" value="{{ old('grooming_commission_percent', $accessUser?->grooming_commission_percent) }}">
+    <div class="field-hint">Usada quando o serviço não tem comissão própria.</div>
   </div>
 
   <div class="field">

@@ -40,6 +40,11 @@ class Prescription extends Model
         return $this->belongsTo(MedicalRecord::class);
     }
 
+    public function responsibleVeterinarian(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'responsible_veterinarian_id');
+    }
+
     public function createdBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');

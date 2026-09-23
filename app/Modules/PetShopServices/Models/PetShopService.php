@@ -23,6 +23,7 @@ class PetShopService extends Model
         'medium_price' => 'decimal:2',
         'large_price' => 'decimal:2',
         'giant_price' => 'decimal:2',
+        'commission_percent' => 'decimal:2',
         'duration_minutes' => 'integer',
         'requires_appointment' => 'boolean',
         'active' => 'boolean',

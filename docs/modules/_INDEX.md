@@ -26,7 +26,7 @@ This index maps the current code modules and the documentation that should event
 | Vaccinations | Patient vaccination schedules and applications | Documented in [Vaccinations](vaccinations.md) |
 | Patients | Pets/patients with extensible taxonomy, clinical alerts, and longitudinal timeline | Documented in [Patient Taxonomy](patient-taxonomy.md), [Patient Clinical Alerts](patient-clinical-alerts.md), [Patient Clinical Timeline](patient-clinical-timeline.md), and [Clinical Core](clinical-core.md) |
 | Pets | Pet-related area | Pending review; overlaps with Patients |
-| PetShopServices | Pet shop service catalog | Covered in [Clinical Core](clinical-core.md) |
+| PetShopServices | Pet shop service catalog with size prices and durations | Documented in [PetShop Operations](petshop-operations.md) |
 | ProductIntelligence | Global product data, suggestions, GTIN intelligence | Documented in [Product Intelligence](product-intelligence.md) |
 | Products | Local product catalog and lookup | Documented in [Products](products.md) |
 | PurchaseEntries | Purchase entry and NF-e import flows | Documented in [Purchase Entries](purchase-entries.md) |
@@ -35,7 +35,7 @@ This index maps the current code modules and the documentation that should event
 | Saas | Commercial plans, subscription entitlements, limits, overrides, and transactional client onboarding | Documented in [SaaS Foundation](saas.md) |
 | Commissions | Seller commission rules and period previews | Documented in [Commissions](commissions.md) |
 | Schedules | Scheduling base | Covered in [Clinical Core](clinical-core.md) |
-| ServiceOrders | Service orders and service order items | Covered in [Clinical Core](clinical-core.md) |
+| ServiceOrders | Bath and grooming bookings, agenda, operational board, and service orders | Documented in [PetShop Operations](petshop-operations.md) |
 | Suppliers | Supplier management | Documented in [Suppliers](suppliers.md) |
 | Tutors | Responsible person records for patients | Documented in [Responsáveis](tutors.md) |
 | Users | User records and access foundation | Documented in [Access](access.md) and database docs |

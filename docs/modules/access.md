@@ -32,6 +32,13 @@ The module is implemented by:
 - store and update form requests;
 - Blade views under `resources/views/access/users`.
 
+## Professional Identification
+
+The collaborator form accepts an optional CRMV number and state. Both fields
+must be supplied together. They are used only when the collaborator is selected
+as the responsible veterinarian for a clinical document; assigning an access
+role alone does not create or infer a professional registration.
+
 ## Tenant Rules
 
 - A clinic administrator only lists and edits users with the same `clinic_id`.
@@ -77,7 +84,8 @@ There is no destructive delete action in this module. Administrators deactivate
 a collaborator when access must be blocked.
 
 Creation and updates also write an `audit_events` entry in the same transaction.
-The snapshot includes profile, status, clinic, and role slugs. A password change
+The snapshot includes profile, professional identification, status, clinic,
+and role slugs. A password change
 is acknowledged without retaining the password or its hash. Reading those
 events requires the separate `audit.manage` permission.
 

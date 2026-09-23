@@ -1,6 +1,6 @@
 # VetFlow Status
 
-Updated: 2026-09-14
+Updated: 2026-09-23
 
 ## Current State
 
@@ -13,6 +13,10 @@ https://github.com/ruanjardim/VetFlow
 The local working tree was clean before this documentation pass.
 
 ## What Exists
+
+- Banho e tosa operation: agenda per professional with free slots, conflicts,
+  recurrence and check-in; operational board; size-based prices; PDV checkout
+  from the order (see `docs/modules/petshop-operations.md`).
 
 - Laravel application structure.
 - Modular backend under `app/Modules`.
@@ -32,6 +36,9 @@ The local working tree was clean before this documentation pass.
   manual operational fallbacks available during provider outages.
 - Clinic-scoped collaborator management with six standard role presets,
   auditable role changes, and administrator self-lockout protection.
+- Clinic-scoped professional identification with CRMV/UF on veterinarian
+  profiles and an immutable responsible-professional snapshot when a
+  prescription is finalized.
 - A local/testing-only walkthrough reset that removes fixed demo fixtures
   selectively and can recreate them without touching unrelated clinic data.
 - A release-readiness diagnostic for application configuration, database and
@@ -63,6 +70,9 @@ The local working tree was clean before this documentation pass.
   explicit global-administrator boundary on clinic management.
 - A provider-specific KingHost staging runbook and a disabled-by-default,
   token-protected queue cron bridge for low-volume shared-hosting validation.
+- A Hostinger production runbook and a CLI Cron Job transport that drains the
+  bounded database queue without exposing an operational HTTP endpoint or
+  token in the scheduled command.
 - Explainable replenishment suggestions that prioritize low-stock products,
   use recent received-purchase batches when the history is sufficient, and
   prefill a reviewable purchase entry without creating an automatic order.

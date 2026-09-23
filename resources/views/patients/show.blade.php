@@ -36,6 +36,7 @@
       <div class="field"><label>Sexo</label><input value="{{ $patient->gender ?? '-' }}" disabled></div>
       <div class="field"><label>Data de nascimento</label><input value="{{ optional($patient->birth_date)->format('d/m/Y') ?: '-' }}" disabled></div>
       <div class="field"><label>Peso cadastrado</label><input value="{{ $patient->weight !== null ? $patient->weight.' kg' : '-' }}" disabled></div>
+      <div class="field"><label>Porte</label><input value="{{ \App\Modules\Patients\Support\PatientSize::label(\App\Modules\Patients\Support\PatientSize::resolve($patient->size, $patient->weight)) ?? '-' }}{{ $patient->size ? '' : ($patient->weight ? ' (pelo peso)' : '') }}" disabled></div>
       <div class="field full"><label>Observações do cadastro</label><div class="panel">{!! $patient->notes ? nl2br(e($patient->notes)) : '<span class="muted">Nenhuma observação cadastrada.</span>' !!}</div></div>
     </div>
   </section>

@@ -91,6 +91,7 @@ class StoreSaleRequest extends FormRequest
             'tutor_id' => ['nullable', 'integer', $this->existsInCurrentClinic('tutors')],
             'patient_id' => ['nullable', 'integer', $this->existsInCurrentClinic('patients')],
             'service_order_id' => ['nullable', 'integer', $this->existsInCurrentClinic('service_orders')],
+            'pet_package_id' => ['nullable', 'integer', $this->existsInCurrentClinic('pet_packages')],
             'status' => ['required', 'string', Rule::in(['draft', 'completed', 'cancelled', 'returned'])],
             'sold_at' => ['nullable', 'date'],
             'source' => ['nullable', 'string', 'max:40'],

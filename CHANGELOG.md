@@ -15,6 +15,32 @@ This project follows the spirit of Keep a Changelog, with one practical adjustme
 
 ### Added
 
+- Banho e tosa agenda: day grid per professional with click-to-book free
+  slots, booking duration (defaults to the sum of the services), statuses
+  Agendado/Confirmado/Em espera/Em atendimento/Animal pronto/Não compareceu,
+  late detection, same-professional conflict blocking with an explicit
+  "Encaixe" override, free-slot suggestions in the booking form, and weekly,
+  biweekly, 3-week, or 4-week recurrence that copies the services.
+- Operational board for bath and grooming (ported from `deploy/render`, never
+  released before) with a scheduled column, check-in, "Animal pronto", and
+  "Receber no PDV", which now opens the quick PDV prefilled with the order's
+  customer, pet, items, and discount and closes the order when the sale is
+  completed.
+- Pet size (Pequeno/Médio/Grande/Gigante) on the patient record, suggested
+  from the weight when blank, used to pick the service's size price in
+  service orders.
+- "Atende banho e tosa" flag on collaborators to choose the agenda columns.
+- Bath and grooming packages (Clubinho): package models, sale per pet through
+  the PDV (activated when the sale completes, cancelled with it), balance per
+  service, validity, automatic consumption in service orders with opt-out, and
+  a sold-packages list with status filters and usage history.
+- Groomer commissions: percentage per service or per professional, generated
+  when the order is finished (discount prorated, package sessions valued at the
+  package price per session), reversal when the order is reopened, statement
+  per professional, and settlement that creates the payable in Financeiro.
+- The visual agenda can filter by area (Clínica / Banho e tosa) and shows
+  grooming bookings.
+
 - Tenant-safe inventory-variance report for finalized cycle counts with
   30/90/180-day or complete-history filters, line accuracy, preserved-cost
   surplus/shortage impact, aggregated product ranking, soft-deleted history,

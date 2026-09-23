@@ -13,6 +13,7 @@ This directory contains the working documentation for VetFlow.
 - [Database overview](BANCO_DE_DADOS.md)
 - [Continuous integration](ci.md)
 - [Deployment guide](deployment.md)
+- [Hostinger production runbook](deployment/hostinger-production.md)
 - [KingHost staging runbook](deployment/kinghost-staging.md)
 - [Render demonstration deployment](deploy/render.md)
 - [Release checklist](release-checklist.md)

@@ -6,6 +6,7 @@ use App\Core\Base\BaseCrudController;
 use App\Modules\Clinics\Models\Clinic;
 use App\Modules\Inventory\Services\ProductLotService;
 use App\Modules\Patients\Models\Patient;
+use App\Modules\PetShopServices\Models\PetPackage;
 use App\Modules\PetShopServices\Models\PetShopService;
 use App\Modules\Products\Models\Product;
 use App\Modules\Products\Services\ProductLookupService;
@@ -57,7 +58,9 @@ class SaleController extends BaseCrudController
 
         return view(
             $advanced ? 'sales.create-advanced' : 'sales.create',
-            $this->formData($advanced)
+            array_merge($this->formData($advanced), [
+                'serviceOrderCheckout' => $advanced ? null : ($this->serviceOrderCheckout() ?? $this->petPackageCheckout()),
+            ])
         );
     }
 
@@ -519,6 +522,78 @@ class SaleController extends BaseCrudController
     protected function updateRequest(): string
     {
         return UpdateSaleRequest::class;
+    }
+
+    /**
+     * Prefills the quick PDV with an order coming from the Banho e Tosa board.
+     *
+     * @return array{order: ServiceOrder, items: array<int, array<string, mixed>>}|null
+     */
+    private function serviceOrderCheckout(): ?array
+    {
+        $serviceOrderId = (int) request()->query('service_order_id');
+
+        if ($serviceOrderId <= 0) {
+            return null;
+        }
+
+        $order = ServiceOrder::query()
+            ->with(['items', 'tutor', 'patient'])
+            ->whereNotIn('status', ['cancelled', 'no_show'])
+            ->find($serviceOrderId);
+
+        if (! $order || $order->sales()->whereNot('status', 'cancelled')->exists()) {
+            return null;
+        }
+
+        return [
+            'order' => $order,
+            'items' => $order->items
+                ->map(fn ($item) => [
+                    'type' => $item->type,
+                    'product_id' => $item->product_id,
+                    'petshop_service_id' => $item->petshop_service_id,
+                    'description' => $item->description,
+                    'quantity' => (float) $item->quantity,
+                    'unit_price' => (float) $item->unit_price,
+                ])
+                ->values()
+                ->all(),
+        ];
+    }
+
+    /**
+     * Prefills the quick PDV with a pet package waiting for payment.
+     *
+     * @return array{order: null, package: PetPackage, items: array<int, array<string, mixed>>}|null
+     */
+    private function petPackageCheckout(): ?array
+    {
+        $packageId = (int) request()->query('pet_package_id');
+
+        if ($packageId <= 0) {
+            return null;
+        }
+
+        $package = PetPackage::query()
+            ->with(['patient', 'tutor'])
+            ->where('status', 'pending_payment')
+            ->find($packageId);
+
+        if (! $package) {
+            return null;
+        }
+
+        return [
+            'order' => null,
+            'package' => $package,
+            'items' => [[
+                'type' => 'custom',
+                'description' => 'Pacote '.$package->name.' ('.$package->code.') — '.($package->patient?->name ?? 'pet'),
+                'quantity' => 1,
+                'unit_price' => (float) $package->price,
+            ]],
+        ];
     }
 
     private function formData(bool $includeCatalog = true): array

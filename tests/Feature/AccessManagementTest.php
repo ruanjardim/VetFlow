@@ -84,6 +84,7 @@ class AccessManagementTest extends TestCase
             ->get(route('access-users.create'))
             ->assertOk()
             ->assertSee('Veterinario')
+            ->assertSee('CRMV')
             ->assertSee($clinicA->trade_name)
             ->assertDontSee($clinicB->trade_name);
 
@@ -118,6 +119,8 @@ class AccessManagementTest extends TestCase
                 'email' => 'veterinaria-a@vetflow.test',
                 'phone' => '21999990001',
                 'position' => 'Veterinaria',
+                'veterinary_license_number' => '12345',
+                'veterinary_license_state' => 'rj',
                 'password' => 'Password123!',
                 'password_confirmation' => 'Password123!',
                 'active' => '1',
@@ -132,6 +135,8 @@ class AccessManagementTest extends TestCase
 
         $this->assertSame($clinicA->id, $createdUser->clinic_id);
         $this->assertTrue($createdUser->hasRole('veterinario'));
+        $this->assertSame('12345', $createdUser->veterinary_license_number);
+        $this->assertSame('RJ', $createdUser->veterinary_license_state);
     }
 
     public function test_global_administrator_can_choose_users_clinic(): void
@@ -321,6 +326,8 @@ class AccessManagementTest extends TestCase
             'email' => $user->email,
             'phone' => $user->phone,
             'position' => $user->position,
+            'veterinary_license_number' => $user->veterinary_license_number,
+            'veterinary_license_state' => $user->veterinary_license_state,
             'active' => '1',
             'role_ids' => $roleIds,
         ];

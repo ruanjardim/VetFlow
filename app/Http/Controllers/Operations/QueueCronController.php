@@ -13,7 +13,11 @@ class QueueCronController extends Controller
 {
     public function __invoke(Request $request): Response
     {
-        abort_unless((bool) config('operations.queue.cron.enabled'), 404);
+        abort_unless(
+            config('operations.queue.cron.transport', 'http') === 'http'
+                && (bool) config('operations.queue.cron.enabled'),
+            404
+        );
 
         $expectedToken = (string) config('operations.queue.cron.token');
 

@@ -24,7 +24,8 @@ class ScheduleController extends BaseCrudController
     {
         return view('schedules.index', $this->calendar->calendarData(
             request()->query('date'),
-            request()->query('view')
+            request()->query('view'),
+            request()->query('area')
         ));
     }
 

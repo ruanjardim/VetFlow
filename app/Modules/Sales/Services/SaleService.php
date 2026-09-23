@@ -15,6 +15,9 @@ use App\Modules\Sales\Models\Sale;
 use App\Modules\Sales\Models\SaleEvent;
 use App\Modules\Sales\Models\SaleItem;
 use App\Modules\Sales\Models\SalePayment;
+use App\Modules\Commissions\Services\GroomingCommissionService;
+use App\Modules\PetShopServices\Models\PetPackage;
+use App\Modules\PetShopServices\Services\PetPackageService;
 use App\Modules\ServiceOrders\Models\ServiceOrder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Carbon;
@@ -189,6 +192,16 @@ class SaleService extends BaseService
                         'status' => 'open',
                         'closed_at' => null,
                     ]);
+
+                app(GroomingCommissionService::class)->syncForOrder((int) $sale->service_order_id);
+            }
+
+            if ($sale->pet_package_id) {
+                $petPackage = PetPackage::query()->find($sale->pet_package_id);
+
+                if ($petPackage) {
+                    app(PetPackageService::class)->cancel($petPackage, 'venda '.$sale->code.' cancelada');
+                }
             }
 
             $sale->update([
@@ -893,6 +906,16 @@ class SaleService extends BaseService
                     'status' => 'finished',
                     'closed_at' => $sale->sold_at ?? now(),
                 ]);
+
+            app(GroomingCommissionService::class)->syncForOrder((int) $sale->service_order_id);
+        }
+
+        if ($sale->pet_package_id) {
+            $petPackage = PetPackage::query()->find($sale->pet_package_id);
+
+            if ($petPackage && $petPackage->status === 'pending_payment') {
+                app(PetPackageService::class)->activate($petPackage, $sale);
+            }
         }
 
         if ((float) $sale->discount_total > 0) {

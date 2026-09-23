@@ -17,6 +17,7 @@
         <thead>
           <tr>
             <th>Servico</th>
+            @if(auth()->user()?->clinic_id === null)<th>Clinica</th>@endif
             <th>Categoria</th>
             <th>Preco base</th>
             <th>Pequeno</th>
@@ -34,6 +35,9 @@
                 <strong>{{ $service->name }}</strong>
                 <div class="muted">{{ $service->requires_appointment ? 'Agenda' : 'Balcao' }}</div>
               </td>
+              @if(auth()->user()?->clinic_id === null)
+                <td>{{ $service->clinic?->trade_name ?? $service->clinic?->corporate_name ?? 'Sem clinica' }}</td>
+              @endif
               <td>{{ $service->category }}</td>
               <td>R$ {{ number_format((float) $service->base_price, 2, ',', '.') }}</td>
               <td>R$ {{ number_format((float) ($service->small_price ?? $service->base_price), 2, ',', '.') }}</td>
@@ -52,7 +56,7 @@
             </tr>
           @empty
             <tr>
-              <td colspan="9" class="muted">Nenhum servico PetShop cadastrado.</td>
+              <td colspan="{{ auth()->user()?->clinic_id === null ? 10 : 9 }}" class="muted">Nenhum servico PetShop cadastrado.</td>
             </tr>
           @endforelse
         </tbody>

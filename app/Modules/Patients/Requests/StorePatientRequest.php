@@ -2,6 +2,7 @@
 
 namespace App\Modules\Patients\Requests;
 
+use App\Modules\Patients\Support\PatientSize;
 use App\Support\Tenancy\TenantContext;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -38,6 +39,7 @@ class StorePatientRequest extends FormRequest
             'gender' => ['nullable', 'string', 'max:50'],
             'birth_date' => ['nullable', 'date', 'before_or_equal:today'],
             'weight' => ['nullable', 'numeric', 'gt:0', 'max:999999.99'],
+            'size' => ['nullable', 'string', Rule::in(PatientSize::keys())],
             'notes' => ['nullable', 'string', 'max:5000'],
         ];
     }
@@ -53,6 +55,7 @@ class StorePatientRequest extends FormRequest
             'birth_date.before_or_equal' => 'A data de nascimento não pode estar no futuro.',
             'weight.numeric' => 'Informe um peso válido.',
             'weight.gt' => 'O peso deve ser maior que zero.',
+            'size.in' => 'Informe um porte válido.',
             'notes.max' => 'As observações devem ter no máximo 5.000 caracteres.',
         ];
     }
