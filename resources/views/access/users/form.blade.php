@@ -69,6 +69,15 @@
   </div>
 
   <div class="field">
+    <label class="checkbox-inline">
+      <input type="hidden" name="grooming_professional" value="0">
+      <input type="checkbox" name="grooming_professional" value="1" @checked((string) old('grooming_professional', $accessUser ? (int) $accessUser->grooming_professional : 0) === '1')>
+      Atende banho e tosa
+    </label>
+    <div class="field-hint">Mostra o colaborador como coluna na agenda de banho e tosa.</div>
+  </div>
+
+  <div class="field">
     <label for="password">{{ $accessUser ? 'Nova senha' : 'Senha inicial' }}</label>
     <input
       id="password"

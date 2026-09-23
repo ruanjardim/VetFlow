@@ -119,7 +119,17 @@
     </div>
     <div class="field">
       <label for="weight">Peso de referência (kg)</label>
-      <input id="weight" name="weight" type="number" min="0.01" max="999999.99" step="0.01" value="{{ old('weight', $patient->weight ?? '') }}">
+      <input id="weight" name="weight" type="number" min="0.01" max="999999.99" step="0.01" value="{{ old('weight', $patient->weight ?? '') }}" data-patient-weight>
+    </div>
+    <div class="field">
+      <label for="size">Porte (banho e tosa)</label>
+      <select id="size" name="size" data-patient-size>
+        <option value="">Sugerir pelo peso</option>
+        @foreach(\App\Modules\Patients\Support\PatientSize::LABELS as $sizeValue => $sizeLabel)
+          <option value="{{ $sizeValue }}" @selected(old('size', $patient->size ?? '') === $sizeValue)>{{ $sizeLabel }}</option>
+        @endforeach
+      </select>
+      <small class="muted" data-patient-size-hint>Define a tabela de preço do banho e tosa. Sem porte, usamos o peso: até 10 kg pequeno, até 25 kg médio, até 45 kg grande, acima gigante.</small>
     </div>
     <div class="field full">
       <label for="notes">Observações</label>

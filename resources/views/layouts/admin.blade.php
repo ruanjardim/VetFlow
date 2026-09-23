@@ -58,9 +58,23 @@
           </details>
         @endcanany
 
-        @canany(['petshop-services.manage', 'service-orders.manage', 'sales.manage'])
-          <details class="nav-group" @if(request()->routeIs('petshop-services.*', 'service-orders.*', 'sales.*')) open @endif>
-            <summary><span>Vendas e serviços</span><span class="nav-chevron">⌄</span></summary>
+        @canany(['petshop-services.manage', 'service-orders.manage'])
+          <details class="nav-group" @if(request()->routeIs('petshop-services.*', 'service-orders.*')) open @endif>
+            <summary><span>Banho e tosa</span><span class="nav-chevron">⌄</span></summary>
+            <div class="nav-submenu">
+              @can('service-orders.manage')
+                <a class="{{ request()->routeIs('service-orders.agenda') ? 'is-active' : '' }}" href="{{ route('service-orders.agenda') }}">Agenda banho e tosa</a>
+                <a class="{{ request()->routeIs('service-orders.board') ? 'is-active' : '' }}" href="{{ route('service-orders.board') }}">Operação do dia</a>
+                <a class="{{ request()->routeIs('service-orders.index', 'service-orders.create', 'service-orders.edit') ? 'is-active' : '' }}" href="{{ route('service-orders.index') }}">Comandas</a>
+              @endcan
+              @can('petshop-services.manage')<a class="{{ request()->routeIs('petshop-services.*') ? 'is-active' : '' }}" href="{{ route('petshop-services.index') }}">Serviços e preços</a>@endcan
+            </div>
+          </details>
+        @endcanany
+
+        @can('sales.manage')
+          <details class="nav-group" @if(request()->routeIs('sales.*')) open @endif>
+            <summary><span>Vendas</span><span class="nav-chevron">⌄</span></summary>
             <div class="nav-submenu">
               @can('sales.manage')
                 <a class="{{ request()->routeIs('sales.create') ? 'is-active' : '' }}" href="{{ route('sales.create') }}">Ponto de venda</a>
@@ -69,11 +83,9 @@
                 <a class="{{ request()->routeIs('sales.profitability') ? 'is-active' : '' }}" href="{{ route('sales.profitability') }}">Rentabilidade</a>
                 <a class="{{ request()->routeIs('sales.product-abc') ? 'is-active' : '' }}" href="{{ route('sales.product-abc') }}">Curva ABC</a>
               @endcan
-              @can('service-orders.manage')<a class="{{ request()->routeIs('service-orders.*') ? 'is-active' : '' }}" href="{{ route('service-orders.index') }}">Comandas</a>@endcan
-              @can('petshop-services.manage')<a class="{{ request()->routeIs('petshop-services.*') ? 'is-active' : '' }}" href="{{ route('petshop-services.index') }}">Serviços PetShop</a>@endcan
             </div>
           </details>
-        @endcanany
+        @endcan
 
         @canany(['products.manage', 'global-products.manage', 'inventory.manage', 'purchase-entries.manage', 'suppliers.manage'])
           <details class="nav-group" @if(request()->routeIs('products.*', 'global-products.*', 'inventory-movements.*', 'inventory-counts.*', 'purchase-entries.*', 'suppliers.*')) open @endif>

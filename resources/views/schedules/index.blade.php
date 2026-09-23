@@ -6,21 +6,33 @@
   <header class="topbar">
     <div>
       <h1>Agenda</h1>
-      <p>Consultas e compromissos da operação em uma visão visual.</p>
+      <p>Consultas, compromissos e banho e tosa em uma visão visual.</p>
     </div>
-    <a class="button" href="{{ route('schedules.create') }}">Novo agendamento</a>
+    <div class="actions">
+      @can('service-orders.manage')
+        <a class="button secondary" href="{{ route('service-orders.agenda', ['date' => $anchorDate->toDateString()]) }}">Agenda banho e tosa</a>
+      @endcan
+      <a class="button" href="{{ route('schedules.create') }}">Novo agendamento</a>
+    </div>
   </header>
 
   <section class="agenda-toolbar panel">
     <div class="agenda-navigation">
-      <a class="button secondary" href="{{ route('schedules.index', ['view' => $calendarView, 'date' => $previousDate]) }}">Anterior</a>
-      <a class="button secondary" href="{{ route('schedules.index', ['view' => $calendarView, 'date' => $todayDate]) }}">Hoje</a>
-      <a class="button secondary" href="{{ route('schedules.index', ['view' => $calendarView, 'date' => $nextDate]) }}">Próximo</a>
+      <a class="button secondary" href="{{ route('schedules.index', ['view' => $calendarView, 'date' => $previousDate, 'area' => $calendarArea]) }}">Anterior</a>
+      <a class="button secondary" href="{{ route('schedules.index', ['view' => $calendarView, 'date' => $todayDate, 'area' => $calendarArea]) }}">Hoje</a>
+      <a class="button secondary" href="{{ route('schedules.index', ['view' => $calendarView, 'date' => $nextDate, 'area' => $calendarArea]) }}">Próximo</a>
     </div>
     <strong>{{ $calendarView === 'day' ? $anchorDate->translatedFormat('d \d\e F \d\e Y') : ($calendarView === 'month' ? $anchorDate->translatedFormat('F \d\e Y') : $periodStart->format('d/m').' a '.$periodEnd->format('d/m/Y')) }}</strong>
+    @if(! empty($calendarAreas))
+      <div class="agenda-views" role="group" aria-label="Filtrar por área">
+        @foreach($calendarAreas as $areaValue => $areaLabel)
+          <a class="button {{ $calendarArea === $areaValue ? '' : 'secondary' }}" href="{{ route('schedules.index', ['view' => $calendarView, 'date' => $anchorDate->toDateString(), 'area' => $areaValue]) }}">{{ $areaLabel }}</a>
+        @endforeach
+      </div>
+    @endif
     <div class="agenda-views">
       @foreach(['day' => 'Dia', 'week' => 'Semana', 'month' => 'Mês'] as $view => $label)
-        <a class="button {{ $calendarView === $view ? '' : 'secondary' }}" href="{{ route('schedules.index', ['view' => $view, 'date' => $anchorDate->toDateString()]) }}">{{ $label }}</a>
+        <a class="button {{ $calendarView === $view ? '' : 'secondary' }}" href="{{ route('schedules.index', ['view' => $view, 'date' => $anchorDate->toDateString(), 'area' => $calendarArea]) }}">{{ $label }}</a>
       @endforeach
     </div>
   </section>

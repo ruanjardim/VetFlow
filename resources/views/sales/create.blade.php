@@ -2,7 +2,12 @@
 @section('title', 'PDV - VetFlow')
 @section('content')
 @php
-  $selectedClinicId = (int) old('clinic_id', auth()->user()?->clinic_id ?? ($clinics->count() === 1 ? $clinics->first()->id : 0));
+  $checkoutOrder = $serviceOrderCheckout['order'] ?? null;
+  $selectedClinicId = (int) old('clinic_id', $checkoutOrder?->clinic_id ?? auth()->user()?->clinic_id ?? ($clinics->count() === 1 ? $clinics->first()->id : 0));
+  $selectedTutorId = (int) old('tutor_id', $checkoutOrder?->tutor_id ?? 0);
+  $selectedPatientId = (int) old('patient_id', $checkoutOrder?->patient_id ?? 0);
+  $initialItems = old('items', $serviceOrderCheckout['items'] ?? []);
+  $initialDiscount = old('discount_total', $checkoutOrder ? number_format((float) $checkoutOrder->discount_total, 2, ',', '.') : '0,00');
 @endphp
 <header class="topbar pdv-topbar">
   <div><h1>PDV</h1><p>Venda rápida de produtos e serviços</p></div>
@@ -13,16 +18,28 @@
   </div>
 </header>
 @include('shared.clinic-required-alert', ['clinics' => $clinics])
+@if($checkoutOrder)
+  <div class="alert success" role="status">
+    Recebendo a comanda <strong>{{ $checkoutOrder->code }}</strong>
+    — {{ $checkoutOrder->tutor?->name ?? 'Sem responsável' }} / {{ $checkoutOrder->patient?->name ?? 'Sem pet' }}.
+    Ao concluir a venda, a comanda é finalizada automaticamente.
+  </div>
+@elseif(request()->filled('service_order_id'))
+  <div class="alert error" role="alert">A comanda informada não está disponível para recebimento (cancelada, inexistente ou já vendida).</div>
+@endif
 <form method="POST" action="{{ route('sales.store') }}" data-pdv-form
   data-search-url="{{ route('sales.quick-search') }}"
   data-lookup-url="{{ route('sales.product-lookup', ['gtin' => '__GTIN__']) }}"
   data-quick-product-url="{{ route('sales.quick-products.store') }}"
   data-product-create-url="{{ route('products.create') }}?gtin=__GTIN__&from=sales"
-  data-old-items="{{ json_encode(old('items', []), JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) }}"
+  data-old-items="{{ json_encode($initialItems, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) }}"
   data-old-payments="{{ json_encode(old('payments', []), JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) }}"
   data-initial-scan="{{ request('scan', '') }}">
   @csrf
   <input type="hidden" name="source" value="pdv">
+  @if($checkoutOrder)
+    <input type="hidden" name="service_order_id" value="{{ $checkoutOrder->id }}">
+  @endif
   <input type="hidden" name="pdv_checkout" value="1">
   <input type="hidden" name="status" value="draft" data-pdv-status>
   <div class="pdv-shell">
@@ -56,7 +73,7 @@
             <select id="pdv_tutor" name="tutor_id" data-pdv-tutor>
               <option value="">Consumidor não identificado</option>
               @foreach($tutors as $tutor)
-                <option value="{{ $tutor->id }}" data-clinic-id="{{ $tutor->clinic_id }}" @selected((int) old('tutor_id', 0) === $tutor->id)>{{ $tutor->name }}</option>
+                <option value="{{ $tutor->id }}" data-clinic-id="{{ $tutor->clinic_id }}" @selected($selectedTutorId === $tutor->id)>{{ $tutor->name }}</option>
               @endforeach
             </select>
           </div>
@@ -65,7 +82,7 @@
             <select id="pdv_patient" name="patient_id" data-pdv-patient>
               <option value="">Sem pet</option>
               @foreach($patients as $patient)
-                <option value="{{ $patient->id }}" data-clinic-id="{{ $patient->clinic_id }}" @selected((int) old('patient_id', 0) === $patient->id)>{{ $patient->name }}</option>
+                <option value="{{ $patient->id }}" data-clinic-id="{{ $patient->clinic_id }}" @selected($selectedPatientId === $patient->id)>{{ $patient->name }}</option>
               @endforeach
             </select>
           </div>
@@ -84,7 +101,7 @@
       <div class="pdv-summary-lines">
         <div><span>Subtotal</span><strong data-pdv-subtotal>R$ 0,00</strong></div>
         <div><span>Desconto dos itens</span><strong data-pdv-item-discounts>R$ 0,00</strong></div>
-        <div class="field"><label for="pdv_discount">Desconto na venda <kbd>F6</kbd></label><input id="pdv_discount" name="discount_total" type="text" inputmode="decimal" value="{{ old('discount_total', '0,00') }}" data-pdv-discount></div>
+        <div class="field"><label for="pdv_discount">Desconto na venda <kbd>F6</kbd></label><input id="pdv_discount" name="discount_total" type="text" inputmode="decimal" value="{{ $initialDiscount }}" data-pdv-discount></div>
         <div class="field"><label for="pdv_additions">Acréscimos</label><input id="pdv_additions" name="additions_total" type="text" inputmode="decimal" value="{{ old('additions_total', '0,00') }}" data-pdv-additions></div>
         <div><span>Recebido</span><strong data-pdv-paid>R$ 0,00</strong></div>
         <div><span data-pdv-balance-label>Falta</span><strong data-pdv-balance>R$ 0,00</strong></div>

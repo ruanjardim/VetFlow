@@ -29,6 +29,7 @@ class StoreAccessUserRequest extends FormRequest
             'veterinary_license_state' => ['nullable', 'required_with:veterinary_license_number', 'string', 'size:2', 'regex:/^[A-Za-z]{2}$/'],
             'password' => ['required', 'confirmed', Password::defaults()],
             'active' => ['required', 'boolean'],
+            'grooming_professional' => ['nullable', 'boolean'],
             'role_ids' => ['required', 'array', 'min:1'],
             'role_ids.*' => [
                 'required',

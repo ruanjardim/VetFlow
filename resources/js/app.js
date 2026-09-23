@@ -1,6 +1,9 @@
 import './pdv.js';
+import { initPatientSizeHint, initServiceOrderForm } from './service-orders.js';
 
 document.addEventListener('DOMContentLoaded', () => {
+  initServiceOrderForm();
+  initPatientSizeHint();
   const onlyDigits = (value) => String(value || '').replace(/\D+/g, '');
   const formatDocument = (value, type) => {
     const maxDigits = type === 'cpf' ? 11 : 14;

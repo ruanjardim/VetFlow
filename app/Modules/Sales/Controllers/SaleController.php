@@ -57,7 +57,9 @@ class SaleController extends BaseCrudController
 
         return view(
             $advanced ? 'sales.create-advanced' : 'sales.create',
-            $this->formData($advanced)
+            array_merge($this->formData($advanced), [
+                'serviceOrderCheckout' => $advanced ? null : $this->serviceOrderCheckout(),
+            ])
         );
     }
 
@@ -519,6 +521,44 @@ class SaleController extends BaseCrudController
     protected function updateRequest(): string
     {
         return UpdateSaleRequest::class;
+    }
+
+    /**
+     * Prefills the quick PDV with an order coming from the Banho e Tosa board.
+     *
+     * @return array{order: ServiceOrder, items: array<int, array<string, mixed>>}|null
+     */
+    private function serviceOrderCheckout(): ?array
+    {
+        $serviceOrderId = (int) request()->query('service_order_id');
+
+        if ($serviceOrderId <= 0) {
+            return null;
+        }
+
+        $order = ServiceOrder::query()
+            ->with(['items', 'tutor', 'patient'])
+            ->whereNotIn('status', ['cancelled', 'no_show'])
+            ->find($serviceOrderId);
+
+        if (! $order || $order->sales()->whereNot('status', 'cancelled')->exists()) {
+            return null;
+        }
+
+        return [
+            'order' => $order,
+            'items' => $order->items
+                ->map(fn ($item) => [
+                    'type' => $item->type,
+                    'product_id' => $item->product_id,
+                    'petshop_service_id' => $item->petshop_service_id,
+                    'description' => $item->description,
+                    'quantity' => (float) $item->quantity,
+                    'unit_price' => (float) $item->unit_price,
+                ])
+                ->values()
+                ->all(),
+        ];
     }
 
     private function formData(bool $includeCatalog = true): array

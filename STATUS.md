@@ -1,6 +1,6 @@
 # VetFlow Status
 
-Updated: 2026-09-17
+Updated: 2026-09-23
 
 ## Current State
 
@@ -13,6 +13,10 @@ https://github.com/ruanjardim/VetFlow
 The local working tree was clean before this documentation pass.
 
 ## What Exists
+
+- Banho e tosa operation: agenda per professional with free slots, conflicts,
+  recurrence and check-in; operational board; size-based prices; PDV checkout
+  from the order (see `docs/modules/petshop-operations.md`).
 
 - Laravel application structure.
 - Modular backend under `app/Modules`.

@@ -4,6 +4,7 @@ namespace App\Modules\Schedules\Services;
 
 use App\Modules\Appointments\Models\Appointment;
 use App\Modules\Schedules\Models\Schedule;
+use App\Modules\ServiceOrders\Models\ServiceOrder;
 use Carbon\Carbon;
 use Carbon\CarbonPeriod;
 use Illuminate\Support\Collection;
@@ -13,17 +14,27 @@ class ScheduleCalendarService
     /**
      * @return array<string, mixed>
      */
-    public function calendarData(?string $requestedDate, ?string $requestedView): array
+    public const AREAS = [
+        'all' => 'Todas as áreas',
+        'clinic' => 'Clínica',
+        'grooming' => 'Banho e tosa',
+    ];
+
+    public function calendarData(?string $requestedDate, ?string $requestedView, ?string $requestedArea = null): array
     {
         $view = in_array($requestedView, ['day', 'week', 'month'], true) ? $requestedView : 'week';
+        $area = array_key_exists((string) $requestedArea, self::AREAS) ? $requestedArea : 'all';
+        $canSeeGrooming = (bool) auth()->user()?->can('service-orders.manage');
         $anchor = $this->anchorDate($requestedDate);
         [$start, $end] = $this->rangeFor($anchor, $view);
-        $eventsByDate = $this->eventsFor($start, $end)
+        $eventsByDate = $this->eventsFor($start, $end, $area, $canSeeGrooming)
             ->sortBy(['starts_at', 'title'])
             ->groupBy('date');
 
         return [
             'calendarView' => $view,
+            'calendarArea' => $area,
+            'calendarAreas' => $canSeeGrooming ? self::AREAS : [],
             'anchorDate' => $anchor,
             'periodStart' => $start,
             'periodEnd' => $end,
@@ -76,8 +87,35 @@ class ScheduleCalendarService
         };
     }
 
-    private function eventsFor(Carbon $start, Carbon $end): Collection
+    private function eventsFor(Carbon $start, Carbon $end, string $area = 'all', bool $canSeeGrooming = false): Collection
     {
+        $groomingEvents = collect();
+
+        if ($canSeeGrooming && $area !== 'clinic') {
+            $groomingEvents = ServiceOrder::query()
+                ->with(['patient', 'tutor', 'assignedUser', 'items'])
+                ->whereNotNull('scheduled_at')
+                ->whereNotIn('status', ['cancelled'])
+                ->whereBetween('scheduled_at', [$start->copy()->startOfDay(), $end->copy()->endOfDay()])
+                ->get()
+                ->map(fn (ServiceOrder $order) => [
+                    'date' => $order->scheduled_at->toDateString(),
+                    'time' => $order->scheduled_at->format('H:i'),
+                    'starts_at' => $order->scheduled_at->format('Y-m-d H:i:s'),
+                    'title' => $order->items->pluck('description')->take(2)->implode(' + ') ?: 'Banho e tosa',
+                    'patient' => $order->patient?->name,
+                    'tutor' => $order->tutor?->name,
+                    'status' => $order->status,
+                    'kind' => 'grooming',
+                    'kind_label' => 'Banho e tosa'.($order->assignedUser ? ' · '.$order->assignedUser->name : '').' · '.$order->statusLabel(),
+                    'url' => route('service-orders.edit', $order->id),
+                ]);
+        }
+
+        if ($area === 'grooming') {
+            return $groomingEvents;
+        }
+
         $scheduleEvents = Schedule::query()
             ->with(['patient', 'tutor'])
             ->whereNotNull('scheduled_date')
@@ -114,6 +152,6 @@ class ScheduleCalendarService
                 'url' => route('appointments.edit', $appointment->id),
             ]);
 
-        return $scheduleEvents->concat($appointmentEvents);
+        return $scheduleEvents->concat($appointmentEvents)->concat($groomingEvents);
     }
 }

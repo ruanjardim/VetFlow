@@ -18,7 +18,8 @@ class ServiceOrderRepository extends BaseRepository implements ServiceOrderRepos
     public function paginate(int $perPage = 15): LengthAwarePaginator
     {
         return $this->model
-            ->with(['tutor', 'patient'])
+            ->with(['clinic', 'tutor', 'patient', 'assignedUser'])
+            ->withCount('sales')
             ->latest('opened_at')
             ->paginate($perPage);
     }
@@ -26,7 +27,7 @@ class ServiceOrderRepository extends BaseRepository implements ServiceOrderRepos
     public function findOrFail(int $id): Model
     {
         return $this->model
-            ->with(['tutor', 'patient', 'items.product', 'items.petShopService'])
+            ->with(['clinic', 'tutor', 'patient', 'assignedUser', 'items.product', 'items.petShopService'])
             ->findOrFail($id);
     }
 }

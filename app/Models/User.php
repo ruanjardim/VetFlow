@@ -33,6 +33,7 @@ class User extends Authenticatable
         'veterinary_license_state',
         'password',
         'active',
+        'grooming_professional',
         'last_login_at',
     ];
 
@@ -47,6 +48,7 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'last_login_at' => 'datetime',
             'active' => 'boolean',
+            'grooming_professional' => 'boolean',
             'password' => 'hashed',
         ];
     }
