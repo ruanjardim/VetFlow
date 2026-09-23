@@ -1865,6 +1865,11 @@ textarea {
   margin: 0 0 10px;
 }
 
+.quote-footnote {
+  font-size: 12px;
+  margin: 18px 0 0;
+}
+
 .receipt-table table {
   min-width: 620px;
 }
@@ -2683,6 +2688,7 @@ textarea {
     padding: 8px 6px;
   }
 
+  body:has(.receipt-card) .user-bar,
   body:has(.pilot-report) .user-bar,
   body:has(.pilot-report) .pilot-report-actions,
   body:has(.pilot-report) .alert {
