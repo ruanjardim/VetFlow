@@ -42,6 +42,8 @@ class FeatureCatalog
             'hospitalizations.manage' => 'veterinary',
             'prescriptions.manage' => 'veterinary',
             'sales.manage' => 'pdv',
+            'payment-methods.manage' => 'pdv',
+            'cash-sessions.review' => 'pdv',
             'products.manage' => 'products',
             'global-products.manage' => 'products',
             'inventory.manage' => 'inventory',
