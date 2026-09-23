@@ -1,7 +1,26 @@
 <?php
 
 use App\Modules\Sales\Controllers\SaleController;
+use App\Modules\Sales\Controllers\SaleQuoteController;
 use Illuminate\Support\Facades\Route;
+
+Route::get('sales/quotes', [SaleQuoteController::class, 'index'])
+    ->name('sales.quotes.index');
+
+Route::post('sales/quotes', [SaleQuoteController::class, 'store'])
+    ->name('sales.quotes.store');
+
+Route::get('sales/quotes/{quote}', [SaleQuoteController::class, 'show'])
+    ->whereNumber('quote')
+    ->name('sales.quotes.show');
+
+Route::put('sales/quotes/{quote}', [SaleQuoteController::class, 'update'])
+    ->whereNumber('quote')
+    ->name('sales.quotes.update');
+
+Route::patch('sales/quotes/{quote}/cancel', [SaleQuoteController::class, 'cancel'])
+    ->whereNumber('quote')
+    ->name('sales.quotes.cancel');
 
 Route::get('sales/product-lookup/{gtin}', [SaleController::class, 'lookupProduct'])
     ->where('gtin', '[0-9]+')
