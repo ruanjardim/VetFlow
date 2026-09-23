@@ -27,6 +27,9 @@ financial income, returns, refunds, cancellations, and sale event history.
   catalog item.
 - Present a product ABC analysis from return-adjusted net revenue with current
   stock value as read-only context.
+- Save PDV carts as quotes (orçamentos) and convert them into sales.
+- Classify sales and quotes by sale type, with delivery address and fee for
+  delivery and shipping types.
 
 ## Key Classes
 
@@ -34,16 +37,22 @@ financial income, returns, refunds, cancellations, and sale event history.
 | --- | --- |
 | `SaleController` | Web sales, cancellation, returns, cashier, and closure flows. |
 | `SaleService` | Sale orchestration and side effects. |
+| `SaleQuoteController` | Quote list, save/update from the PDV, printable page, and cancellation. |
+| `SaleQuoteService` | Quote codes, items and totals, conversion hooks, and the WhatsApp summary. |
+| `SaleType` | Sale type catalog and delivery normalization. |
 | `SaleProfitabilityService` | Return-adjusted gross profitability reporting. |
 | `ProductAbcAnalysisService` | Product revenue ranking, cumulative ABC bands, filters, and pagination. |
 | `SaleRepository` | Data access. |
 | `Sale`, `SaleItem`, `SalePayment`, `SaleEvent` | Sale domain models. |
+| `SaleQuote`, `SaleQuoteItem` | Quote domain models. |
 | `CashRegisterClosure` | Cashier closure model. |
 
 ## Tables
 
 - `sales`
 - `sale_items`
+- `sale_quotes`
+- `sale_quote_items`
 - `sale_payments`
 - `sale_events`
 - `cash_register_closures`
@@ -104,6 +113,55 @@ financial income, returns, refunds, cancellations, and sale event history.
   cost value are context only; the analysis does not change prices, suppliers,
   purchases, product status, or inventory movements.
 
+## Quotes (Orçamentos)
+
+- The PDV has a **Venda | Orçamento** switch. In quote mode the cart is saved
+  with `sales.quotes.store` instead of being received; payment and suspension
+  are hidden. `sales.create?mode=quote` opens the PDV directly in quote mode.
+- A quote gets a global code `ORC-000001`, the logged user as seller, the
+  customer and pet (both optional), the sale type and delivery data, notes,
+  and a validity date. The default validity is
+  `config('sales.quote_validity_days', 7)` days and can be changed per quote.
+- A quote never moves stock, never creates financial records or commissions,
+  and does not validate stock. Packages are not quoted (as in SimplesVet).
+- Status: `open`, `converted`, or `cancelled`. An open quote past its validity
+  is displayed as **Vencido** (expired); it can still be converted with a
+  warning, keeping the quoted prices.
+- **Converter em venda** opens `sales.create?quote_id=` with the quote's
+  customer, pet, items, prices, discounts, additions, sale type, and delivery
+  data, plus a hidden `sale_quote_id`. Completing that sale marks the quote as
+  `converted` (with `converted_sale_id` and `converted_at`); cancelling the
+  sale reopens it.
+- A quote backs at most one non-cancelled sale. While a suspended (draft) sale
+  from the quote exists, the quote cannot be edited, cancelled, or converted
+  again.
+- Open quotes can be edited in the PDV (`sales.create?quote_id=&mode=quote`)
+  and cancelled with an optional reason; cancelled and converted quotes stay
+  in the history.
+- The quote page is print-friendly (actions and alerts hidden when printing)
+  and offers a `wa.me` link with a plain-text summary, using the customer's
+  secondary phone (WhatsApp) or main phone.
+
+## Sale Type and Delivery
+
+- `sale_type` mirrors the SimplesVet options, which are also the NF-e buyer
+  presence indicator: `in_store` (presencial, consumidor final — default),
+  `in_store_resale`, `delivery` (delivery ou atendimento domiciliar),
+  `delivery_resale`, `online_shipping`, and `phone_shipping`.
+- Only the delivery and shipping types keep `delivery_address` and
+  `delivery_fee`; the other types store an empty address and a zero fee.
+- The PDV prefills the address from the selected customer's registration and
+  keeps manual edits. The fee is added to the total:
+  `total = items + additions + delivery_fee - discount`, and the PDV full
+  payment rule includes it.
+- Receipts show the type, the address, and the fee. The sales history shows a
+  short type label.
+- The delivery fee is not item revenue: item profitability and the ABC
+  analysis exclude it from the proportional allocation of sale-level
+  adjustments.
+- After stock/financial effects are applied, the type and delivery data are
+  frozen with the other totals.
+
 ## Status Concepts
 
 Sale statuses include values such as:
@@ -137,3 +195,4 @@ Relevant coverage is present in:
 
 - `tests/Feature/OperationalFlowTest.php`
 - `tests/Feature/ProductAbcAnalysisTest.php`
+- `tests/Feature/SaleQuotesAndSaleTypeTest.php`
