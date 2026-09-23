@@ -72,7 +72,24 @@
           <span>Status</span>
           <strong>{{ $statusLabels[$sale->status] ?? ucfirst($sale->status) }}</strong>
         </div>
+        <div>
+          <span>Tipo de venda</span>
+          <strong>{{ $sale->saleTypeLabel() }}</strong>
+        </div>
+        @if($sale->quote)
+          <div>
+            <span>Orçamento</span>
+            <strong><a href="{{ route('sales.quotes.show', $sale->quote->id) }}">{{ $sale->quote->code }}</a></strong>
+          </div>
+        @endif
       </div>
+
+      @if($sale->hasDelivery() && $sale->delivery_address)
+        <div class="receipt-section">
+          <h2>Entrega</h2>
+          <p>{{ $sale->delivery_address }}</p>
+        </div>
+      @endif
 
       <div class="table-wrap receipt-table">
         <table>
@@ -117,6 +134,12 @@
           <span>Acrescimo</span>
           <strong>{{ $money($sale->additions_total) }}</strong>
         </div>
+        @if($sale->hasDelivery())
+          <div>
+            <span>Taxa de entrega</span>
+            <strong>{{ $money($sale->delivery_fee) }}</strong>
+          </div>
+        @endif
         <div>
           <span>Total</span>
           <strong>{{ $money($sale->total) }}</strong>

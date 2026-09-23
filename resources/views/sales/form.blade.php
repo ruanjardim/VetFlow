@@ -129,6 +129,26 @@
     <label for="additions_total">Acrescimo</label>
     <input id="additions_total" name="additions_total" type="text" inputmode="decimal" placeholder="0,00" value="{{ old('additions_total', $sale->additions_total ?? 0) }}" data-sale-additions @readonly($locked)>
   </div>
+  @php
+    $selectedSaleType = old('sale_type', $sale->sale_type ?? \App\Modules\Sales\Support\SaleType::DEFAULT);
+    $deliveryTypes = array_values(array_filter(array_keys($saleTypes), fn ($type) => \App\Modules\Sales\Support\SaleType::hasDelivery($type)));
+  @endphp
+  <div class="field">
+    <label for="sale_type">Tipo de venda</label>
+    <select id="sale_type" name="sale_type" data-sale-type data-delivery-types="{{ json_encode($deliveryTypes) }}" @disabled($locked)>
+      @foreach($saleTypes as $value => $label)
+        <option value="{{ $value }}" @selected($selectedSaleType === $value)>{{ $label }}</option>
+      @endforeach
+    </select>
+  </div>
+  <div class="field" data-sale-delivery>
+    <label for="delivery_fee">Taxa de entrega</label>
+    <input id="delivery_fee" name="delivery_fee" type="text" inputmode="decimal" placeholder="0,00" value="{{ old('delivery_fee', $sale->delivery_fee ?? 0) }}" data-sale-delivery-fee @readonly($locked)>
+  </div>
+  <div class="field full" data-sale-delivery>
+    <label for="delivery_address">Endereço de entrega</label>
+    <textarea id="delivery_address" name="delivery_address" rows="2" maxlength="500" @readonly($locked)>{{ old('delivery_address', $sale->delivery_address ?? '') }}</textarea>
+  </div>
   <div class="field">
     <label>Total calculado</label>
     <div class="calculated-total" data-sale-total-input aria-live="polite">

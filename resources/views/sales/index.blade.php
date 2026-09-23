@@ -14,6 +14,7 @@
       @else
         <a class="button secondary" href="{{ route('sales.index', ['status' => 'draft']) }}">Vendas suspensas</a>
       @endif
+      <a class="button secondary" href="{{ route('sales.quotes.index') }}">Orçamentos</a>
       <a class="button secondary" href="{{ route('sales.profitability') }}">Rentabilidade</a>
       <a class="button secondary" href="{{ route('sales.cashier') }}">Caixa do dia</a>
       <a class="button" href="{{ route('sales.create') }}">Nova venda</a>
@@ -45,6 +46,7 @@
             <th>Responsável</th>
             <th>Pet</th>
             <th>Comanda</th>
+            <th>Tipo</th>
             <th>Status</th>
             <th>Pagamento</th>
             <th>Data</th>
@@ -59,6 +61,7 @@
               <td>{{ $sale->tutor?->name ?? '-' }}</td>
               <td>{{ $sale->patient?->name ?? '-' }}</td>
               <td>{{ $sale->serviceOrder?->code ?? '-' }}</td>
+              <td>{{ \App\Modules\Sales\Support\SaleType::shortLabel($sale->sale_type) }}</td>
               <td>
                 {{ $statusLabels[$sale->status] ?? ucfirst($sale->status) }}
               </td>
@@ -88,7 +91,7 @@
             </tr>
           @empty
             <tr>
-              <td colspan="9" class="muted">Nenhuma venda cadastrada.</td>
+              <td colspan="10" class="muted">Nenhuma venda cadastrada.</td>
             </tr>
           @endforelse
         </tbody>
