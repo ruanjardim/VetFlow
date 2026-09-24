@@ -28,7 +28,7 @@
   <div class="actions">
     <a class="button secondary" href="{{ route('sales.index', ['status' => 'draft']) }}">Vendas suspensas</a>
     <a class="button secondary" href="{{ route('sales.quotes.index') }}">Orçamentos</a>
-    <a class="button secondary" href="{{ route('sales.cashier') }}">Caixa do dia</a>
+    <a class="button secondary" href="{{ route('sales.cash-sessions.index') }}">Caixa</a>
     <a class="button secondary" href="{{ route('sales.create', ['mode' => 'advanced']) }}">Comanda / formulário avançado</a>
   </div>
 </header>
@@ -75,6 +75,11 @@
   data-old-items="{{ json_encode($initialItems, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) }}"
   data-old-payments="{{ json_encode(old('payments', []), JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) }}"
   data-payment-methods="{{ json_encode($paymentMethods->map->toPdvArray()->values(), JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) }}"
+  data-cash-sessions="{{ json_encode((object) $cashSessions, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) }}"
+  data-cash-suggested="{{ json_encode((object) $suggestedOpenings, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) }}"
+  data-cash-open-url="{{ route('sales.cash-sessions.store') }}"
+  data-cash-index-url="{{ route('sales.cash-sessions.index') }}"
+  data-user-clinic-id="{{ auth()->user()?->clinic_id }}"
   data-initial-scan="{{ request('scan', '') }}">
   @csrf
   @if($editingQuote)
@@ -172,6 +177,11 @@
       </details>
     </section>
     <aside class="pdv-summary" aria-label="Resumo">
+      <div class="pdv-cash" data-pdv-cash data-pdv-sale-only @if($mode === 'quote') hidden @endif>
+        <span data-pdv-cash-label>Caixa</span>
+        <a href="{{ route('sales.cash-sessions.index') }}" data-pdv-cash-link>Ver caixa</a>
+        <button type="button" class="secondary" data-pdv-cash-open hidden>Abrir caixa</button>
+      </div>
       <div class="pdv-summary-head"><span data-pdv-summary-label>{{ $mode === 'quote' ? 'Orçamento em andamento' : 'Venda em andamento' }}</span><strong data-pdv-total>R$ 0,00</strong></div>
       <div class="pdv-summary-lines">
         <div><span>Subtotal</span><strong data-pdv-subtotal>R$ 0,00</strong></div>
@@ -217,6 +227,19 @@
     </div>
     <p class="lookup-status" role="status" aria-live="polite" data-pdv-payment-status></p>
     <button type="button" class="pdv-finish-button" data-pdv-finish>Finalizar venda <kbd>F10</kbd></button>
+  </dialog>
+  <dialog class="pdv-payment-dialog pdv-cash-dialog" data-pdv-cash-dialog aria-labelledby="pdv_cash_title">
+    <div class="pdv-dialog-head">
+      <div><h2 id="pdv_cash_title">Abrir caixa</h2><p>Para receber, abra o seu caixa com o dinheiro que já está na gaveta.</p></div>
+      <button type="button" class="secondary" data-pdv-close-cash aria-label="Fechar abertura de caixa">Fechar</button>
+    </div>
+    <div class="field">
+      <label for="pdv_cash_opening">Fundo de troco</label>
+      <input id="pdv_cash_opening" type="text" inputmode="decimal" placeholder="0,00" data-pdv-cash-opening>
+      <small class="muted">Sugerido: o que ficou na gaveta no último fechamento.</small>
+    </div>
+    <p class="lookup-status" role="status" aria-live="polite" data-pdv-cash-status></p>
+    <button type="button" class="pdv-finish-button" data-pdv-cash-confirm>Abrir caixa</button>
   </dialog>
   <dialog class="pdv-payment-dialog pdv-quick-product-dialog" data-pdv-quick-product-dialog aria-labelledby="pdv_quick_product_title">
     <div class="pdv-dialog-head">
