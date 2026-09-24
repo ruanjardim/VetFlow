@@ -30,6 +30,9 @@ financial income, returns, refunds, cancellations, and sale event history.
 - Save PDV carts as quotes (orçamentos) and convert them into sales.
 - Classify sales and quotes by sale type, with delivery address and fee for
   delivery and shipping types.
+- Keep payment methods per clinic (one per card machine and type) and snapshot
+  the card fee, net amount, and expected settlement date on each payment.
+- Present the expected card settlements (recebíveis) per installment.
 
 ## Key Classes
 
@@ -40,11 +43,14 @@ financial income, returns, refunds, cancellations, and sale event history.
 | `SaleQuoteController` | Quote list, save/update from the PDV, printable page, and cancellation. |
 | `SaleQuoteService` | Quote codes, items and totals, conversion hooks, and the WhatsApp summary. |
 | `SaleType` | Sale type catalog and delivery normalization. |
+| `PaymentMethodController` | Payment method admin and the card receivables report. |
+| `PaymentMethodService` | Default methods, payment snapshots (fee, net, settlement), and installment schedules. |
 | `SaleProfitabilityService` | Return-adjusted gross profitability reporting. |
 | `ProductAbcAnalysisService` | Product revenue ranking, cumulative ABC bands, filters, and pagination. |
 | `SaleRepository` | Data access. |
 | `Sale`, `SaleItem`, `SalePayment`, `SaleEvent` | Sale domain models. |
 | `SaleQuote`, `SaleQuoteItem` | Quote domain models. |
+| `PaymentMethod` | Clinic payment method (card machine, fees, settlement, installments). |
 | `CashRegisterClosure` | Cashier closure model. |
 
 ## Tables
@@ -54,6 +60,7 @@ financial income, returns, refunds, cancellations, and sale event history.
 - `sale_quotes`
 - `sale_quote_items`
 - `sale_payments`
+- `payment_methods`
 - `sale_events`
 - `cash_register_closures`
 - `inventory_movements`
@@ -162,6 +169,47 @@ financial income, returns, refunds, cancellations, and sale event history.
 - After stock/financial effects are applied, the type and delivery data are
   frozen with the other totals.
 
+## Payment Methods (Formas de Pagamento)
+
+- Each clinic keeps its own payment methods, one per card machine and type, as
+  in SimplesVet ("Rede Visa Crédito", "PagSeguro Débito"). A method has a kind
+  (`cash`, `pix`, `debit_card`, `credit_card`, `transfer`, `other`), the
+  machine/acquirer, the card brand (card kinds only), the upfront fee, the
+  installment fee (credit, from 2 installments on; empty means the upfront
+  fee), the settlement days, the maximum installments (credit only, up to
+  24), whether the NSU/reference is required, the order in the PDV, and an
+  active flag. Methods are deactivated, never deleted.
+- The first time a clinic opens the PDV (or the admin page), it gets the six
+  previous methods as defaults: Dinheiro, Pix, Cartão de débito (1 day),
+  Cartão de crédito (30 days, up to 12x), Transferência, and Outro, all with a
+  zero fee, so nothing changes until the clinic registers its machines.
+- The kind is still stored in `sale_payments.method`, so the cash, change, and
+  closure rules keep working by kind. A payment that only informs a kind
+  (legacy forms and API callers) uses the first active method of that kind.
+- Each payment snapshots `payment_method_id`, the acquirer and brand, the
+  installments (clamped to the method), `fee_amount` (amount × fee of the
+  installments), `net_amount`, and `expected_settlement_date` (paid date +
+  settlement days, for the first installment). Changing a method later does
+  not change old payments. Payments recorded before this feature have no
+  method, fee, or settlement date.
+- Validation (PDV, advanced form, and later receipt): the method belongs to
+  the sale clinic and is active, installments do not exceed the method, and a
+  method that requires the NSU needs it to finish a sale or register a later
+  receipt. Suspending a sale does not require the NSU.
+- The PDV shows one shortcut per active method of the selected clinic; card
+  rows show the installments (1x to the method maximum), the brand when the
+  method has none, and the NSU field.
+- **Recebíveis de cartão** (`sales.receivables`) lists card payments of
+  non-cancelled sales, one row per installment: the first installment on the
+  expected settlement date and the others every 30 days, or all of them on
+  that date when the method is set to anticipation (`metadata.installment_settlement
+  = upfront`). Cents that do not divide evenly go to the last installment.
+  The default period is the next 60 days.
+- The cashier summary groups receipts by method name with fees and net
+  amount, and shows the card fees of the period. The cashier closure still
+  reconciles by kind; posting the fees as one expense per machine at closing
+  comes with the cash sessions (plan item 4).
+
 ## Status Concepts
 
 Sale statuses include values such as:
@@ -187,7 +235,9 @@ are applied.
 
 ## Permissions
 
-Protected by `sales.manage`.
+Protected by `sales.manage`. The payment method admin and the card
+receivables report use `payment-methods.manage` (administrator and financial
+roles), mapped to the `pdv` plan feature.
 
 ## Tests
 
@@ -196,3 +246,4 @@ Relevant coverage is present in:
 - `tests/Feature/OperationalFlowTest.php`
 - `tests/Feature/ProductAbcAnalysisTest.php`
 - `tests/Feature/SaleQuotesAndSaleTypeTest.php`
+- `tests/Feature/PaymentMethodsTest.php`
