@@ -20,6 +20,7 @@ use App\Modules\Sales\Requests\StoreSalePaymentRequest;
 use App\Modules\Sales\Requests\StoreSaleRequest;
 use App\Modules\Sales\Requests\UpdateSaleRequest;
 use App\Modules\Sales\Services\CashSessionService;
+use App\Modules\Sales\Services\CustomerBalanceService;
 use App\Modules\Sales\Services\PaymentMethodService;
 use App\Modules\Sales\Services\ProductAbcAnalysisService;
 use App\Modules\Sales\Services\SaleProfitabilityService;
@@ -124,6 +125,7 @@ class SaleController extends BaseCrudController
             'paymentMethodOptions' => $this->paymentMethodsFor($formData['clinics'], true),
             'receiptPaymentMethods' => app(PaymentMethodService::class)->activeForClinic($sale->clinic_id ? (int) $sale->clinic_id : null),
             'receiptCashSession' => app(CashSessionService::class)->currentFor(auth()->user(), $sale->clinic_id ? (int) $sale->clinic_id : null),
+            'receiptCustomerCredit' => $sale->tutor_id ? app(CustomerBalanceService::class)->creditBalance((int) $sale->tutor_id) : 0.0,
         ]));
     }
 
@@ -276,7 +278,7 @@ class SaleController extends BaseCrudController
 
         $validated = $request->validate([
             'reason' => ['nullable', 'string', 'max:1000'],
-            'refund_method' => ['nullable', 'string', Rule::in(['cash', 'pix', 'debit_card', 'credit_card', 'transfer', 'other'])],
+            'refund_method' => ['nullable', 'string', Rule::in(['cash', 'pix', 'debit_card', 'credit_card', 'transfer', 'other', CustomerBalanceService::CREDIT_METHOD])],
             'refund_amount' => ['nullable', 'numeric', 'min:0'],
             'reference' => ['nullable', 'string', 'max:255'],
             'items' => ['required', 'array'],
