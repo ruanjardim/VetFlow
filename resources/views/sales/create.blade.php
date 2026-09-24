@@ -78,6 +78,7 @@
   data-cash-sessions="{{ json_encode((object) $cashSessions, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) }}"
   data-cash-suggested="{{ json_encode((object) $suggestedOpenings, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) }}"
   data-cash-open-url="{{ route('sales.cash-sessions.store') }}"
+  data-customer-balance-url="{{ route('sales.customer-balances.summary', ['tutor' => '__TUTOR__']) }}"
   data-cash-index-url="{{ route('sales.cash-sessions.index') }}"
   data-user-clinic-id="{{ auth()->user()?->clinic_id }}"
   data-initial-scan="{{ request('scan', '') }}">
@@ -139,6 +140,7 @@
               @endforeach
             </select>
           </div>
+          <p class="pdv-customer-balance full" role="status" aria-live="polite" data-pdv-customer-balance hidden></p>
           <div class="field">
             <label for="pdv_patient">Pet (opcional)</label>
             <select id="pdv_patient" name="patient_id" data-pdv-patient>
@@ -224,6 +226,11 @@
       <span>Recebido <strong data-pdv-dialog-paid>R$ 0,00</strong></span>
       <span>Falta <strong data-pdv-dialog-balance>R$ 0,00</strong></span>
       <span>Troco <strong data-pdv-dialog-change>R$ 0,00</strong></span>
+    </div>
+    <div class="pdv-payment-options" data-pdv-customer-options>
+      <label><input type="checkbox" name="pay_later" value="1" data-pdv-pay-later @checked(old('pay_later'))> Receber o que falta depois (fiado)</label>
+      <label><input type="checkbox" name="change_as_credit" value="1" data-pdv-change-as-credit @checked(old('change_as_credit'))> Guardar o troco como crédito do cliente</label>
+      <small class="muted" data-pdv-customer-options-hint>Identifique o cliente (F4) para vender fiado ou guardar o troco como crédito.</small>
     </div>
     <p class="lookup-status" role="status" aria-live="polite" data-pdv-payment-status></p>
     <button type="button" class="pdv-finish-button" data-pdv-finish>Finalizar venda <kbd>F10</kbd></button>
