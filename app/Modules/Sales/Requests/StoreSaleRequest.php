@@ -9,6 +9,7 @@ use App\Modules\Products\Models\Product;
 use App\Modules\Sales\Models\Sale;
 use App\Modules\Sales\Models\SaleQuote;
 use App\Modules\Sales\Requests\Concerns\NormalizesSaleInput;
+use App\Modules\Sales\Requests\Concerns\ValidatesPaymentMethods;
 use App\Modules\Sales\Support\SaleType;
 use App\Modules\ServiceOrders\Models\ServiceOrder;
 use Illuminate\Foundation\Http\FormRequest;
@@ -18,6 +19,7 @@ use Illuminate\Validation\Validator;
 class StoreSaleRequest extends FormRequest
 {
     use NormalizesSaleInput;
+    use ValidatesPaymentMethods;
     use ValidatesTenantScopedReferences;
 
     public function authorize(): bool
@@ -38,7 +40,9 @@ class StoreSaleRequest extends FormRequest
         }
 
         if (isset($data['payments']) && is_array($data['payments'])) {
-            $data['payments'] = array_map(function ($payment) {
+            $clinicId = $this->tenantReferenceClinicId();
+
+            $data['payments'] = array_map(function ($payment) use ($clinicId) {
                 if (! is_array($payment)) {
                     return $payment;
                 }
@@ -46,7 +50,7 @@ class StoreSaleRequest extends FormRequest
                 $payment['amount'] = $this->normalizeDecimalValue($payment['amount'] ?? null);
                 $payment['installments'] = max(1, (int) ($payment['installments'] ?? 1));
 
-                return $payment;
+                return $this->normalizePaymentMethodInput($clinicId, $payment);
             }, $data['payments']);
         }
 
@@ -86,6 +90,7 @@ class StoreSaleRequest extends FormRequest
 
             'payments' => ['nullable', 'array'],
             'payments.*.method' => ['nullable', 'string', Rule::in(['cash', 'pix', 'debit_card', 'credit_card', 'transfer', 'other'])],
+            'payments.*.payment_method_id' => ['nullable', 'integer', $this->existsInCurrentClinic('payment_methods')->whereNull('deleted_at')],
             'payments.*.amount' => ['nullable', 'numeric', 'min:0'],
             'payments.*.installments' => ['nullable', 'integer', 'min:1', 'max:120'],
             'payments.*.card_brand' => ['nullable', 'string', 'max:80'],
@@ -107,6 +112,7 @@ class StoreSaleRequest extends FormRequest
             'items.*.product_id.exists' => 'Um dos produtos informados nao foi encontrado.',
             'items.*.petshop_service_id.exists' => 'Um dos servicos informados nao foi encontrado.',
             'payments.*.method.in' => 'Informe uma forma de pagamento valida.',
+            'payments.*.payment_method_id.exists' => 'A forma de pagamento informada não foi encontrada neste estabelecimento.',
             'sale_quote_id.exists' => 'O orçamento informado não foi encontrado.',
             'sale_type.in' => 'Informe um tipo de venda válido.',
         ];
@@ -116,6 +122,7 @@ class StoreSaleRequest extends FormRequest
     {
         $validator->after(function (Validator $validator) {
             $this->validateQuoteConversion($validator);
+            $this->validatePaymentMethods($validator);
 
             if ($this->input('status') !== 'completed') {
                 return;
@@ -243,6 +250,50 @@ class StoreSaleRequest extends FormRequest
             : 0.0;
 
         return max(0, round($subtotal + $additions + $deliveryFee - $discount, 2));
+    }
+
+    /**
+     * Each received payment uses an active method of the sale clinic, within
+     * its installments, with the NSU when the clinic requires it to finish.
+     */
+    private function validatePaymentMethods(Validator $validator): void
+    {
+        $payments = $this->input('payments', []);
+
+        if (! is_array($payments)) {
+            return;
+        }
+
+        $currentSaleId = (int) $this->route('sale');
+
+        if ($currentSaleId > 0) {
+            $currentSale = Sale::query()->find($currentSaleId);
+
+            // Payments of a sale with stock or financial effects are frozen
+            // and ignored on update, so they are not validated again.
+            if ($currentSale && ($currentSale->stock_applied || $currentSale->financial_applied)) {
+                return;
+            }
+        }
+
+        $clinicId = $this->tenantReferenceClinicId();
+        $requireReference = $this->input('status') === 'completed';
+
+        foreach ($payments as $index => $payment) {
+            if (! is_array($payment) || (float) ($payment['amount'] ?? 0) <= 0) {
+                continue;
+            }
+
+            if ($validator->errors()->has('payments.'.$index.'.payment_method_id')) {
+                continue;
+            }
+
+            $method = $this->resolvePaymentMethod($clinicId, $payment);
+
+            foreach ($this->paymentMethodErrors($method, $payment, $requireReference) as $message) {
+                $validator->errors()->add('payments', $message);
+            }
+        }
     }
 
     /**
