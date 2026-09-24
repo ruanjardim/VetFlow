@@ -6,14 +6,6 @@
   @php
     $money = fn ($value) => 'R$ '.number_format((float) $value, 2, ',', '.');
     $quantity = fn ($value) => number_format((float) $value, 3, ',', '.');
-    $paymentMethods = [
-      'cash' => 'Dinheiro',
-      'pix' => 'Pix',
-      'debit_card' => 'Cartao debito',
-      'credit_card' => 'Cartao credito',
-      'transfer' => 'Transferencia',
-      'other' => 'Outro',
-    ];
     $statusLabels = [
       'draft' => 'Rascunho',
       'completed' => 'Concluida',
@@ -180,7 +172,7 @@
             <tbody>
               @forelse($sale->payments as $payment)
                 <tr>
-                  <td>{{ $paymentMethods[$payment->method] ?? 'Outro' }}</td>
+                  <td>{{ $payment->methodLabel() }}</td>
                   <td>{{ $money($payment->amount) }}</td>
                   <td>{{ $payment->installments ?? 1 }}x</td>
                   <td>{{ trim(($payment->card_brand ?: '').' '.($payment->acquirer ?: '')) ?: '-' }}</td>

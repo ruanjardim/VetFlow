@@ -12,12 +12,14 @@ use App\Modules\Products\Models\Product;
 use App\Modules\Products\Services\ProductLookupService;
 use App\Modules\Products\Services\ProductService;
 use App\Modules\Products\Support\Gtin;
+use App\Modules\Sales\Models\PaymentMethod;
 use App\Modules\Sales\Models\Sale;
 use App\Modules\Sales\Models\SaleQuote;
 use App\Modules\Sales\Requests\ProductAbcAnalysisRequest;
 use App\Modules\Sales\Requests\StoreSalePaymentRequest;
 use App\Modules\Sales\Requests\StoreSaleRequest;
 use App\Modules\Sales\Requests\UpdateSaleRequest;
+use App\Modules\Sales\Services\PaymentMethodService;
 use App\Modules\Sales\Services\ProductAbcAnalysisService;
 use App\Modules\Sales\Services\SaleProfitabilityService;
 use App\Modules\Sales\Services\SaleQuoteService;
@@ -27,6 +29,7 @@ use App\Modules\ServiceOrders\Models\ServiceOrder;
 use App\Modules\Tutors\Models\Tutor;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
@@ -60,14 +63,19 @@ class SaleController extends BaseCrudController
         $mode = request()->query('mode');
 
         if ($mode === 'advanced') {
-            return view('sales.create-advanced', array_merge($this->formData(), [
+            $formData = $this->formData();
+
+            return view('sales.create-advanced', array_merge($formData, [
                 'saleTypes' => SaleType::LABELS,
+                'paymentMethodOptions' => $this->paymentMethodsFor($formData['clinics'], true),
             ]));
         }
 
         $quoteMode = $mode === 'quote';
+        $formData = $this->formData(false);
 
-        return view('sales.create', array_merge($this->formData(false), [
+        return view('sales.create', array_merge($formData, [
+            'paymentMethods' => $this->paymentMethodsFor($formData['clinics']),
             'serviceOrderCheckout' => $quoteMode
                 ? null
                 : ($this->serviceOrderCheckout() ?? $this->petPackageCheckout() ?? $this->quoteCheckout()),
@@ -97,9 +105,15 @@ class SaleController extends BaseCrudController
 
     public function edit(int $id)
     {
-        return view("{$this->viewPath}.edit", array_merge($this->formData(), [
-            'item' => $this->service->findOrFail($id),
+        $formData = $this->formData();
+        $sale = $this->service->findOrFail($id);
+        $sale->loadMissing('payments.paymentMethod');
+
+        return view("{$this->viewPath}.edit", array_merge($formData, [
+            'item' => $sale,
             'saleTypes' => SaleType::LABELS,
+            'paymentMethodOptions' => $this->paymentMethodsFor($formData['clinics'], true),
+            'receiptPaymentMethods' => app(PaymentMethodService::class)->activeForClinic($sale->clinic_id ? (int) $sale->clinic_id : null),
         ]));
     }
 
@@ -194,7 +208,7 @@ class SaleController extends BaseCrudController
     public function receipt(int $id)
     {
         $sale = $this->service->findOrFail($id);
-        $sale->load(['clinic', 'tutor', 'patient', 'serviceOrder', 'quote', 'items', 'payments', 'events']);
+        $sale->load(['clinic', 'tutor', 'patient', 'serviceOrder', 'quote', 'items', 'payments.paymentMethod', 'events']);
 
         return view("{$this->viewPath}.receipt", [
             'sale' => $sale,
@@ -661,6 +675,26 @@ class SaleController extends BaseCrudController
         }
 
         return $quote;
+    }
+
+    /**
+     * Methods offered in the PDV and sale forms: the clinic ones for a
+     * clinic user, or those of every clinic for a global user (the forms
+     * filter them by the selected clinic).
+     *
+     * @return Collection<int, PaymentMethod>
+     */
+    private function paymentMethodsFor(Collection $clinics, bool $includeInactive = false): Collection
+    {
+        $service = app(PaymentMethodService::class);
+        $userClinicId = auth()->user()?->clinic_id;
+        $clinicIds = $userClinicId ? [(int) $userClinicId] : $clinics->pluck('id')->all();
+
+        return collect($clinicIds)
+            ->flatMap(fn ($clinicId) => $includeInactive
+                ? $service->forClinic((int) $clinicId)
+                : $service->activeForClinic((int) $clinicId))
+            ->values();
     }
 
     private function formData(bool $includeCatalog = true): array

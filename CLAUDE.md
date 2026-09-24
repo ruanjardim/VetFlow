@@ -71,11 +71,17 @@ git checkout -b feat/<assunto>      # toda branch nova sai daqui
 
 ## 4. Onde estamos
 
-Última atualização: 23/09/2026.
+Última atualização: 24/09/2026.
 
-- **No ar:** PR #21 (orçamento no PDV e tipo de venda/delivery, itens 1 e 2
-  do plano de Vendas), sobre o schema do PR #20. Regras em
-  `docs/modules/sales.md`.
+- **No ar:** PR #23 (formas de pagamento por maquininha e recebíveis de
+  cartão, item 3 do plano de Vendas), sobre o schema do PR #22, e PR #21
+  (orçamento no PDV e tipo de venda/delivery, itens 1 e 2), sobre o schema do
+  PR #20. Regras em `docs/modules/sales.md`.
+- **Schema dos itens 4 e 5 já está no ar** (PR #22): `cash_sessions`,
+  `cash_session_movements`, `customer_credit_entries`, as colunas
+  `cash_session_id` em `sales`/`sale_payments` e a permissão
+  `cash-sessions.review`. Os próximos PRs desses itens podem ir direto com o
+  código, sem esperar cron.
 - **Antes disso:** PR #18 (banho e tosa). Agenda por
   profissional (horários livres, conflito/encaixe, recorrência, check-in),
   quadro, preço por porte, cobrança da comanda no PDV, pacotes (modelos,
@@ -95,18 +101,19 @@ git checkout -b feat/<assunto>      # toda branch nova sai daqui
   2. Pet: foto e castrado.
   3. Depois, a parte da clínica.
 - **Plano de Vendas** (aprovado em 23/09/2026, com as decisões padrão): um PR
-  por item, nesta ordem. Itens 1 e 2 entregues; **o próximo é o 3**.
+  por item, nesta ordem. Itens 1 a 3 entregues; **o próximo é o 4**.
   1. ✅ **Orçamento no PDV:** seletor Venda/Orçamento, código `ORC-`, validade
      (padrão de 7 dias), impressão/WhatsApp, lista de orçamentos e
      "converter em venda", que abre o PDV preenchido. Não mexe em estoque,
      financeiro nem comissão. Pacote não entra em orçamento.
   2. ✅ **Tipo de venda:** as 6 opções do SimplesVet (padrão: presencial para
      consumidor final); nos tipos de delivery, endereço e taxa de entrega.
-  3. **Formas de pagamento por maquininha:** cadastro por clínica (tipo,
+  3. ✅ **Formas de pagamento por maquininha:** cadastro por clínica (tipo,
      maquininha, taxa à vista e parcelada, prazo, parcelas, NSU), iniciado
      com as 6 formas atuais. O pagamento guarda taxa, líquido e data
-     prevista do repasse; as taxas viram uma despesa por maquininha no
-     fechamento do caixa.
+     prevista do repasse; relatório "Recebíveis de cartão" por parcela.
+     **Fica para o item 4:** lançar as taxas como uma despesa por maquininha
+     no fechamento do caixa (hoje o fechamento ainda concilia por tipo).
   4. **Caixa por operador:** abertura com fundo de troco, suprimento,
      sangria, despesa, fechamento pelo operador (conferência por forma) e
      encerramento pelo gestor (permissão nova). Receber exige caixa aberto.
@@ -160,8 +167,9 @@ git checkout -b feat/<assunto>      # toda branch nova sai daqui
   `--bundle --minify --target=es2020` (e `--format=esm` no JS) para
   `resources/js/app.js` e `resources/css/app.css`, com nome
   `assets/app-<hash>.<ext>` e o `public/build/manifest.json` atualizado no
-  mesmo formato. Não reconstrua o `landing.css` se a fonte dele não mudou. O
-  PR #21 saiu assim; a próxima sessão com npm pode rodar `npm run build`.
+  mesmo formato. Não reconstrua o `landing.css` se a fonte dele não mudou. Os
+  PRs #21 e #23 saíram assim; a próxima sessão com npm pode rodar
+  `npm run build`.
 - Sem push na sessão, os PRs saíram pelo GitHub web no Chrome do usuário:
   arquivos numa branch nova, PR e merge. O classificador de segurança do
   Claude bloqueia commit direto na `0-hostinger-production`: use sempre

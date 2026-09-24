@@ -77,7 +77,7 @@
           </details>
         @endcanany
 
-        @can('sales.manage')
+        @canany(['sales.manage', 'payment-methods.manage'])
           <details class="nav-group" @if(request()->routeIs('sales.*')) open @endif>
             <summary><span>Vendas</span><span class="nav-chevron">⌄</span></summary>
             <div class="nav-submenu">
@@ -89,9 +89,13 @@
                 <a class="{{ request()->routeIs('sales.profitability') ? 'is-active' : '' }}" href="{{ route('sales.profitability') }}">Rentabilidade</a>
                 <a class="{{ request()->routeIs('sales.product-abc') ? 'is-active' : '' }}" href="{{ route('sales.product-abc') }}">Curva ABC</a>
               @endcan
+              @can('payment-methods.manage')
+                <a class="{{ request()->routeIs('sales.receivables') ? 'is-active' : '' }}" href="{{ route('sales.receivables') }}">Recebíveis de cartão</a>
+                <a class="{{ request()->routeIs('sales.payment-methods.*') ? 'is-active' : '' }}" href="{{ route('sales.payment-methods.index') }}">Formas de pagamento</a>
+              @endcan
             </div>
           </details>
-        @endcan
+        @endcanany
 
         @canany(['products.manage', 'global-products.manage', 'inventory.manage', 'purchase-entries.manage', 'suppliers.manage'])
           <details class="nav-group" @if(request()->routeIs('products.*', 'global-products.*', 'inventory-movements.*', 'inventory-counts.*', 'purchase-entries.*', 'suppliers.*')) open @endif>

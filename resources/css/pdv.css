@@ -63,6 +63,8 @@
 .pdv-payment-total{display:flex;justify-content:space-between;gap:10px;margin:19px 0;padding:14px;background:#eff6ff;border-radius:9px}
 .pdv-payment-total strong{font-size:23px}
 .pdv-payment-shortcuts{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:14px}
+.pdv-payment-shortcuts .muted{font-size:13px}
+.pdv-payment-settings{margin:-6px 0 12px;font-size:13px}
 .pdv-payment-row{display:grid;gap:10px;margin-bottom:10px;padding:12px;border:1px solid #e2e8f0;border-radius:9px}
 .pdv-payment-fields{display:grid;grid-template-columns:minmax(145px,1.4fr) minmax(110px,1fr) auto;gap:9px;align-items:end}
 .pdv-card-fields{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}

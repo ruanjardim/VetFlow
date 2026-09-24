@@ -6,14 +6,7 @@
     'returned' => 'Devolvida',
   ];
 
-  $paymentMethods = [
-    'cash' => 'Dinheiro',
-    'pix' => 'Pix',
-    'debit_card' => 'Cartao debito',
-    'credit_card' => 'Cartao credito',
-    'transfer' => 'Transferencia',
-    'other' => 'Outro',
-  ];
+  $paymentMethodOptions = $paymentMethodOptions ?? collect();
 
   $selectedClinicId = (int) old('clinic_id', $sale->clinic_id ?? request('clinic_id', $clinics->count() === 1 ? $clinics->first()->id : 0));
 
@@ -37,6 +30,7 @@
 
   if ($paymentRows === null && isset($sale) && $sale) {
     $paymentRows = $sale->payments->map(fn ($payment) => [
+      'payment_method_id' => $payment->payment_method_id,
       'method' => $payment->method,
       'amount' => $payment->amount,
       'installments' => $payment->installments,
@@ -50,6 +44,19 @@
   }
 
   $paymentRows = array_pad($paymentRows ?: [], 4, []);
+  // Rows saved before the clinic methods existed (or posted with only the
+  // kind) show the first active method of that kind.
+  $paymentMethodIdFor = function (array $payment) use ($paymentMethodOptions, $selectedClinicId): int {
+    $paymentMethodId = (int) ($payment['payment_method_id'] ?? 0);
+
+    if ($paymentMethodId > 0 || empty($payment['method'])) {
+      return $paymentMethodId;
+    }
+
+    return (int) ($paymentMethodOptions->first(fn ($option) => $option->active
+      && $option->kind === $payment['method']
+      && (! $selectedClinicId || (int) $option->clinic_id === $selectedClinicId))?->id ?? 0);
+  };
   $locked = isset($sale) && $sale && (
     $sale->stock_applied
     || $sale->financial_applied
@@ -313,20 +320,23 @@
             <th>Bandeira</th>
             <th>Operadora</th>
             <th>Data</th>
-            <th>Referencia</th>
+            <th>NSU / referência</th>
             <th>Observacao</th>
           </tr>
         </thead>
         <tbody>
           @foreach($paymentRows as $index => $payment)
             <tr>
+              @php($rowPaymentMethodId = $paymentMethodIdFor($payment))
               <td>
-                <select name="payments[{{ $index }}][method]" data-sale-payment-method @disabled($locked)>
+                <select name="payments[{{ $index }}][payment_method_id]" data-sale-payment-method @disabled($locked)>
                   <option value="">Selecione</option>
-                  @foreach($paymentMethods as $value => $label)
-                    <option value="{{ $value }}" @selected(($payment['method'] ?? '') === $value)>{{ $label }}</option>
+                  @foreach($paymentMethodOptions as $option)
+                    @continue(! $option->active && $rowPaymentMethodId !== $option->id)
+                    <option value="{{ $option->id }}" data-kind="{{ $option->kind }}" data-clinic-id="{{ $option->clinic_id }}" data-max-installments="{{ $option->maxInstallments() }}" @selected($rowPaymentMethodId === $option->id)>{{ $option->name }}{{ $option->active ? '' : ' (inativa)' }}</option>
                   @endforeach
                 </select>
+                <input type="hidden" name="payments[{{ $index }}][method]" value="{{ $payment['method'] ?? '' }}" data-sale-payment-kind @disabled($locked)>
               </td>
               <td>
                 <input name="payments[{{ $index }}][amount]" type="text" inputmode="decimal" placeholder="0,00" value="{{ $payment['amount'] ?? '' }}" data-sale-payment-amount @readonly($locked)>
