@@ -54,19 +54,20 @@
         </div>
       </div>
       <div class="panel-body">
-        <form method="POST" action="{{ route('sales.payments.store', $item->id) }}" class="form-grid">
+        <form method="POST" action="{{ route('sales.payments.store', $item->id) }}" class="form-grid" data-receipt-payment-form>
           @csrf
           <div class="field">
             <label for="payment_method">Forma</label>
-            <select id="payment_method" name="method" required>
+            <select id="payment_method" name="payment_method_id" data-receipt-payment-method required>
               <option value="">Selecione</option>
-              <option value="cash">Dinheiro</option>
-              <option value="pix">Pix</option>
-              <option value="debit_card">Cartao debito</option>
-              <option value="credit_card">Cartao credito</option>
-              <option value="transfer">Transferencia</option>
-              <option value="other">Outro</option>
+              @foreach($receiptPaymentMethods as $option)
+                <option value="{{ $option->id }}" data-kind="{{ $option->kind }}" data-max-installments="{{ $option->maxInstallments() }}" data-requires-reference="{{ $option->requires_reference ? '1' : '0' }}" @selected((int) old('payment_method_id') === $option->id)>{{ $option->name }}</option>
+              @endforeach
             </select>
+          </div>
+          <div class="field" data-receipt-installments-field hidden>
+            <label for="payment_installments">Parcelas</label>
+            <input id="payment_installments" name="installments" type="number" min="1" max="1" value="{{ old('installments', 1) }}" data-receipt-installments>
           </div>
           <div class="field">
             <label for="payment_amount">Valor recebido</label>
@@ -77,8 +78,8 @@
             <input id="payment_paid_at" name="paid_at" type="datetime-local" value="{{ now()->format('Y-m-d\\TH:i') }}">
           </div>
           <div class="field">
-            <label for="payment_reference">Referencia</label>
-            <input id="payment_reference" name="reference" maxlength="255">
+            <label for="payment_reference" data-receipt-reference-label>NSU / referência</label>
+            <input id="payment_reference" name="reference" maxlength="255" value="{{ old('reference') }}">
           </div>
           <div class="field full">
             <label for="payment_notes">Observacoes</label>

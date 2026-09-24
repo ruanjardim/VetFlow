@@ -74,6 +74,7 @@
   data-product-create-url="{{ route('products.create') }}?gtin=__GTIN__&from=sales"
   data-old-items="{{ json_encode($initialItems, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) }}"
   data-old-payments="{{ json_encode(old('payments', []), JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) }}"
+  data-payment-methods="{{ json_encode($paymentMethods->map->toPdvArray()->values(), JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) }}"
   data-initial-scan="{{ request('scan', '') }}">
   @csrf
   @if($editingQuote)
@@ -203,12 +204,10 @@
       <button type="button" class="secondary" data-pdv-close-payment aria-label="Fechar recebimento">Fechar</button>
     </div>
     <div class="pdv-payment-total">Total <strong data-pdv-payment-total>R$ 0,00</strong></div>
-    <div class="pdv-payment-shortcuts" aria-label="Forma de pagamento rápida">
-      <button type="button" class="secondary" data-pdv-method="cash">Dinheiro</button>
-      <button type="button" class="secondary" data-pdv-method="pix">PIX</button>
-      <button type="button" class="secondary" data-pdv-method="debit_card">Débito</button>
-      <button type="button" class="secondary" data-pdv-method="credit_card">Crédito</button>
-    </div>
+    <div class="pdv-payment-shortcuts" aria-label="Forma de pagamento rápida" data-pdv-method-shortcuts></div>
+    @can('payment-methods.manage')
+      <p class="pdv-payment-settings"><a href="{{ route('sales.payment-methods.index') }}" target="_blank" rel="noopener">Configurar maquininhas, taxas e prazos</a></p>
+    @endcan
     <div data-pdv-payments></div>
     <button type="button" class="secondary" data-pdv-add-payment>+ Adicionar pagamento</button>
     <div class="pdv-payment-reconciliation">

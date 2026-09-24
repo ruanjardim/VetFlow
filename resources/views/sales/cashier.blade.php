@@ -96,6 +96,10 @@
       <strong>{{ $money($stats['non_cash_received']) }}</strong>
     </div>
     <div class="stat">
+      <span>Taxas de cartão</span>
+      <strong>{{ $money($stats['card_fees'] ?? 0) }}</strong>
+    </div>
+    <div class="stat">
       <span>Troco</span>
       <strong>{{ $money($stats['change']) }}</strong>
     </div>
@@ -139,18 +143,27 @@
               <th>Forma</th>
               <th>Qtd</th>
               <th>Total</th>
+              <th>Taxas</th>
+              <th>Líquido</th>
             </tr>
           </thead>
           <tbody>
             @forelse($summary['payments_by_method'] as $method)
               <tr>
-                <td>{{ $method['label'] }}</td>
+                <td>
+                  {{ $method['label'] }}
+                  @if(($method['kind_label'] ?? $method['label']) !== $method['label'])
+                    <div class="muted">{{ $method['kind_label'] }}</div>
+                  @endif
+                </td>
                 <td>{{ $method['count'] }}</td>
                 <td>{{ $money($method['amount']) }}</td>
+                <td>{{ $money($method['fees'] ?? 0) }}</td>
+                <td>{{ $money($method['net'] ?? $method['amount']) }}</td>
               </tr>
             @empty
               <tr>
-                <td colspan="3" class="muted">Nenhum recebimento no periodo.</td>
+                <td colspan="5" class="muted">Nenhum recebimento no periodo.</td>
               </tr>
             @endforelse
           </tbody>
