@@ -1878,6 +1878,29 @@ textarea {
   align-content: start;
 }
 
+.cash-session-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.cash-session-grid table {
+  min-width: 0;
+}
+
+.cash-session-grid td:not(:first-child),
+.cash-session-grid th:not(:first-child) {
+  white-space: nowrap;
+}
+
+.cash-drawer-table td:last-child {
+  text-align: right;
+}
+
+@media (max-width: 900px) {
+  .cash-session-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 .receipt-table table {
   min-width: 620px;
 }
