@@ -430,18 +430,10 @@ class SaleService extends BaseService
                 ]);
             }
 
-            $payment = $sale->payments()->create([
-                'method' => $data['method'],
-                'amount' => $amount,
-                'installments' => max(1, (int) ($data['installments'] ?? 1)),
-                'card_brand' => $data['card_brand'] ?? null,
-                'acquirer' => $data['acquirer'] ?? null,
-                'paid_at' => $data['paid_at'] ?? now(),
-                'reference' => $data['reference'] ?? null,
-                'transaction_reference' => $data['transaction_reference'] ?? $data['reference'] ?? null,
-                'status' => 'paid',
-                'notes' => $data['notes'] ?? null,
-            ]);
+            $data['paid_at'] = $data['paid_at'] ?? now();
+            $data = app(PaymentMethodService::class)->snapshot($sale->clinic_id, $data);
+
+            $payment = $sale->payments()->create($this->paymentAttributes($data, $amount, 'paid'));
 
             $this->recalculateTotals($sale->refresh());
 
@@ -459,6 +451,7 @@ class SaleService extends BaseService
                 [
                     'payment_id' => $payment->id,
                     'method' => $payment->method,
+                    'payment_method_id' => $payment->payment_method_id,
                     'reference' => $payment->reference,
                 ],
                 false
@@ -480,7 +473,7 @@ class SaleService extends BaseService
             ->get();
 
         $payments = SalePayment::query()
-            ->with('sale.seller')
+            ->with(['sale.seller', 'paymentMethod'])
             ->whereBetween('paid_at', [$start, $end])
             ->whereHas('sale', fn ($query) => $query->where('status', 'completed'))
             ->where('status', 'paid')
@@ -508,6 +501,7 @@ class SaleService extends BaseService
         $total = $sales->sum(fn (Sale $sale) => (float) $sale->total);
         $paid = $sales->sum(fn (Sale $sale) => (float) $sale->paid_total);
         $received = $payments->sum(fn (SalePayment $payment) => (float) $payment->amount);
+        $cardFees = $payments->sum(fn (SalePayment $payment) => (float) $payment->fee_amount);
         $cashReceived = $payments
             ->where('method', 'cash')
             ->sum(fn (SalePayment $payment) => (float) $payment->amount);
@@ -540,6 +534,8 @@ class SaleService extends BaseService
                 'net_received' => max(0, $received - $refunds),
                 'paid_on_sales' => $paid,
                 'received' => $received,
+                'card_fees' => round((float) $cardFees, 2),
+                'net_of_fees' => round($received - $cardFees, 2),
                 'cash_received' => $cashReceived,
                 'cash_refunds' => $cashRefunds,
                 'non_cash_received' => max(0, $received - $cashReceived),
@@ -810,29 +806,52 @@ class SaleService extends BaseService
 
     private function syncPayments(Sale $sale, array $payments): void
     {
-        foreach ($payments as $payment) {
-            $method = $payment['method'] ?? null;
-            $amount = (float) ($payment['amount'] ?? 0);
+        $paymentMethods = app(PaymentMethodService::class);
 
-            if (! $method || $amount <= 0) {
+        foreach ($payments as $payment) {
+            $amount = round((float) ($payment['amount'] ?? 0), 2);
+
+            if ((empty($payment['method']) && empty($payment['payment_method_id'])) || $amount <= 0) {
                 continue;
             }
 
             $status = $payment['status'] ?? 'paid';
+            $payment['paid_at'] = $status === 'paid' ? ($payment['paid_at'] ?? now()) : null;
+            $payment = $paymentMethods->snapshot($sale->clinic_id, $payment);
 
-            $sale->payments()->create([
-                'method' => $method,
-                'amount' => $amount,
-                'installments' => max(1, (int) ($payment['installments'] ?? 1)),
-                'card_brand' => $payment['card_brand'] ?? null,
-                'acquirer' => $payment['acquirer'] ?? null,
-                'paid_at' => $status === 'paid' ? ($payment['paid_at'] ?? now()) : null,
-                'reference' => $payment['reference'] ?? null,
-                'transaction_reference' => $payment['transaction_reference'] ?? $payment['reference'] ?? null,
-                'status' => $status,
-                'notes' => $payment['notes'] ?? null,
-            ]);
+            if (empty($payment['method'])) {
+                continue;
+            }
+
+            $sale->payments()->create($this->paymentAttributes($payment, $amount, $status));
         }
+    }
+
+    /**
+     * Columns of a sale payment from a row normalized by
+     * PaymentMethodService::snapshot().
+     *
+     * @param array<string, mixed> $payment
+     * @return array<string, mixed>
+     */
+    private function paymentAttributes(array $payment, float $amount, string $status): array
+    {
+        return [
+            'method' => $payment['method'],
+            'payment_method_id' => $payment['payment_method_id'] ?? null,
+            'amount' => $amount,
+            'fee_amount' => $payment['fee_amount'] ?? 0,
+            'net_amount' => $payment['net_amount'] ?? $amount,
+            'installments' => max(1, (int) ($payment['installments'] ?? 1)),
+            'card_brand' => ($payment['card_brand'] ?? null) ?: null,
+            'acquirer' => ($payment['acquirer'] ?? null) ?: null,
+            'paid_at' => $payment['paid_at'] ?? null,
+            'expected_settlement_date' => $payment['expected_settlement_date'] ?? null,
+            'reference' => ($payment['reference'] ?? null) ?: null,
+            'transaction_reference' => ($payment['transaction_reference'] ?? null) ?: (($payment['reference'] ?? null) ?: null),
+            'status' => $status,
+            'notes' => $payment['notes'] ?? null,
+        ];
     }
 
     private function recalculateTotals(Sale $sale): void
@@ -1242,16 +1261,34 @@ class SaleService extends BaseService
         }
     }
 
+    /**
+     * Received amounts per clinic payment method ("Rede Visa Crédito"), with
+     * the card fees and the net amount. Payments recorded before the methods
+     * existed are grouped by kind.
+     */
     private function paymentsByMethod($payments): array
     {
         return $payments
-            ->groupBy('method')
-            ->map(fn ($items, string $method) => [
-                'method' => $method,
-                'label' => $this->paymentMethodLabel($method),
-                'amount' => $items->sum(fn (SalePayment $payment) => (float) $payment->amount),
-                'count' => $items->count(),
-            ])
+            ->groupBy(fn (SalePayment $payment) => $payment->payment_method_id
+                ? 'payment_method:'.$payment->payment_method_id
+                : 'kind:'.$payment->method)
+            ->map(function ($items) {
+                /** @var SalePayment $first */
+                $first = $items->first();
+                $amount = (float) $items->sum(fn (SalePayment $payment) => (float) $payment->amount);
+                $fees = (float) $items->sum(fn (SalePayment $payment) => (float) $payment->fee_amount);
+
+                return [
+                    'method' => $first->method,
+                    'payment_method_id' => $first->payment_method_id,
+                    'label' => $first->methodLabel(),
+                    'kind_label' => $first->kindLabel(),
+                    'amount' => $amount,
+                    'fees' => round($fees, 2),
+                    'net' => round($amount - $fees, 2),
+                    'count' => $items->count(),
+                ];
+            })
             ->sortByDesc('amount')
             ->values()
             ->all();
