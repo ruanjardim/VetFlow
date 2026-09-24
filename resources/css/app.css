@@ -1870,6 +1870,14 @@ textarea {
   margin: 18px 0 0;
 }
 
+.receivables-day-total td {
+  background: #f8fafc;
+}
+
+[data-payment-method-form] .field {
+  align-content: start;
+}
+
 .receipt-table table {
   min-width: 620px;
 }
