@@ -16,10 +16,12 @@ use App\Modules\Tutors\Models\Tutor;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Tests\Concerns\OpensCashSessions;
 use Tests\TestCase;
 
 class SaleQuotesAndSaleTypeTest extends TestCase
 {
+    use OpensCashSessions;
     use RefreshDatabase;
 
     private Clinic $clinic;
@@ -38,6 +40,7 @@ class SaleQuotesAndSaleTypeTest extends TestCase
 
         $this->clinic = $this->clinic('Clinica Orcamento', '00000000000501');
         $this->user = $this->userForClinic($this->clinic, ['sales.manage']);
+        $this->openCashSession($this->user);
         $this->product = Product::query()->create([
             'clinic_id' => $this->clinic->id,
             'name' => 'Ração adulto 15kg',
