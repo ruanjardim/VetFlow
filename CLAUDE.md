@@ -73,14 +73,11 @@ git checkout -b feat/<assunto>      # toda branch nova sai daqui
 
 Última atualização: 24/09/2026.
 
-- **No ar:** PR #24 (caixa por operador, item 4 do plano de Vendas), PR #23
-  (formas de pagamento por maquininha e recebíveis de cartão, item 3), ambos
-  sobre o schema do PR #22, e PR #21 (orçamento no PDV e tipo de
-  venda/delivery, itens 1 e 2), sobre o schema do PR #20. Regras em
-  `docs/modules/sales.md`.
-- **Schema do item 5 já está no ar** (PR #22): `customer_credit_entries`
-  (com `cash_session_id`). O PR do saldo do cliente pode ir direto com o
-  código, sem esperar cron.
+- **No ar — plano de Vendas completo:** PR #25 (saldo do cliente, item 5),
+  PR #24 (caixa por operador, item 4) e PR #23 (formas de pagamento por
+  maquininha e recebíveis de cartão, item 3), todos sobre o schema do PR #22,
+  e PR #21 (orçamento no PDV e tipo de venda/delivery, itens 1 e 2), sobre o
+  schema do PR #20. Regras em `docs/modules/sales.md`.
 - **Testes que recebem dinheiro** precisam de caixa aberto: use o trait
   `Tests\Concerns\OpensCashSessions` (`$this->openCashSession($user)`).
 - **Antes disso:** PR #18 (banho e tosa). Agenda por
@@ -102,7 +99,8 @@ git checkout -b feat/<assunto>      # toda branch nova sai daqui
   2. Pet: foto e castrado.
   3. Depois, a parte da clínica.
 - **Plano de Vendas** (aprovado em 23/09/2026, com as decisões padrão): um PR
-  por item, nesta ordem. Itens 1 a 4 entregues; **o próximo é o 5**.
+  por item, nesta ordem. **Todos entregues** (23-24/09/2026). O próximo passo
+  é o item 2 da lista acima: **Pet (foto e castrado)**.
   1. ✅ **Orçamento no PDV:** seletor Venda/Orçamento, código `ORC-`, validade
      (padrão de 7 dias), impressão/WhatsApp, lista de orçamentos e
      "converter em venda", que abre o PDV preenchido. Não mexe em estoque,
@@ -119,7 +117,7 @@ git checkout -b feat/<assunto>      # toda branch nova sai daqui
      pelo gestor. Receber, estornar e cancelar venda paga exigem caixa
      aberto (o estorno sai do caixa de quem cancela). Caixa esquecido aberto
      fecha sozinho às 23:59 (como no SimplesVet) e fica para conferência.
-  5. **Saldo do cliente:** venda "paga depois" (só com cliente), crédito
+  5. ✅ **Saldo do cliente:** venda "paga depois" (só com cliente), crédito
      como forma de pagamento, troco como crédito, adiantamento (vira
      receita quando usado), quitação de várias vendas e devolução em
      crédito. O saldo aparece no PDV, na ficha do tutor e numa lista.
@@ -170,7 +168,7 @@ git checkout -b feat/<assunto>      # toda branch nova sai daqui
   `resources/js/app.js` e `resources/css/app.css`, com nome
   `assets/app-<hash>.<ext>` e o `public/build/manifest.json` atualizado no
   mesmo formato. Não reconstrua o `landing.css` se a fonte dele não mudou. Os
-  PRs #21, #23 e #24 saíram assim; a próxima sessão com npm pode rodar
+  PRs #21, #23, #24 e #25 saíram assim; a próxima sessão com npm pode rodar
   `npm run build`.
 - Sem push na sessão, os PRs saíram pelo GitHub web no Chrome do usuário:
   arquivos numa branch nova, PR e merge. O classificador de segurança do

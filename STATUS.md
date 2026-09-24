@@ -29,6 +29,10 @@ The local working tree was clean before this documentation pass.
   (card fees posted as one expense per machine), automatic closing of
   sessions left open overnight, and manager review. Receiving requires an
   open session (see `docs/modules/sales.md`).
+- Customer balance: sales to be paid later (fiado) for identified customers,
+  customer credit (advance, change kept as credit, returns and cancellations
+  as credit) used as a payment method, receipt of several open sales at once,
+  credit given back, and a balance list and page (see `docs/modules/sales.md`).
 
 - Laravel application structure.
 - Modular backend under `app/Modules`.

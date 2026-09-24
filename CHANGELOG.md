@@ -15,6 +15,13 @@ This project follows the spirit of Keep a Changelog, with one practical adjustme
 
 ### Added
 
+- Customer balance (saldo do cliente): the PDV can finish a sale to be paid
+  later (fiado) for an identified customer and keep the change as credit;
+  customer credit comes from advances, returns and cancellations and pays
+  sales in the PDV, later receipts and settlements. "Saldo de clientes" lists
+  who owes and who has credit; the customer page receives several open sales
+  at once (oldest first), registers advances and gives credit back, with the
+  credit statement. Advances are not revenue until used.
 - Cash sessions per operator (caixa): the operator opens the cash in the PDV
   with the change float, registers supplies, withdrawals and expenses (paid
   expenses in the financial module), and closes with the counted cash and the
