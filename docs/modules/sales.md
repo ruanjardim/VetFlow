@@ -33,6 +33,9 @@ financial income, returns, refunds, cancellations, and sale event history.
 - Keep payment methods per clinic (one per card machine and type) and snapshot
   the card fee, net amount, and expected settlement date on each payment.
 - Present the expected card settlements (recebíveis) per installment.
+- Run one cash session per operator: opening with a change float, supplies,
+  withdrawals and expenses, closing with the counted values per method, card
+  fees posted as expenses per machine, and the manager review.
 
 ## Key Classes
 
@@ -45,12 +48,15 @@ financial income, returns, refunds, cancellations, and sale event history.
 | `SaleType` | Sale type catalog and delivery normalization. |
 | `PaymentMethodController` | Payment method admin and the card receivables report. |
 | `PaymentMethodService` | Default methods, payment snapshots (fee, net, settlement), and installment schedules. |
+| `CashSessionController` | Operator cash (open, movements, closing) and the manager list, review, and reopen. |
+| `CashSessionService` | Session lifecycle, expected amounts per method, card fee expenses, and the automatic closing. |
 | `SaleProfitabilityService` | Return-adjusted gross profitability reporting. |
 | `ProductAbcAnalysisService` | Product revenue ranking, cumulative ABC bands, filters, and pagination. |
 | `SaleRepository` | Data access. |
 | `Sale`, `SaleItem`, `SalePayment`, `SaleEvent` | Sale domain models. |
 | `SaleQuote`, `SaleQuoteItem` | Quote domain models. |
 | `PaymentMethod` | Clinic payment method (card machine, fees, settlement, installments). |
+| `CashSession`, `CashSessionMovement` | Operator cash session and its supplies, withdrawals, expenses, and refunds. |
 | `CashRegisterClosure` | Cashier closure model. |
 
 ## Tables
@@ -61,6 +67,8 @@ financial income, returns, refunds, cancellations, and sale event history.
 - `sale_quote_items`
 - `sale_payments`
 - `payment_methods`
+- `cash_sessions`
+- `cash_session_movements`
 - `sale_events`
 - `cash_register_closures`
 - `inventory_movements`
@@ -206,9 +214,52 @@ financial income, returns, refunds, cancellations, and sale event history.
   = upfront`). Cents that do not divide evenly go to the last installment.
   The default period is the next 60 days.
 - The cashier summary groups receipts by method name with fees and net
-  amount, and shows the card fees of the period. The cashier closure still
-  reconciles by kind; posting the fees as one expense per machine at closing
-  comes with the cash sessions (plan item 4).
+  amount, and shows the card fees of the period. The card fees become
+  expenses when the operator closes the cash session (see below).
+
+## Cash Sessions (Caixa por Operador)
+
+- Each operator has their own cash session per clinic (`CX-000001`), opened
+  with the change float (fundo de troco). The suggested float is what the
+  operator (or, for a first session, the clinic) left in the drawer at the
+  last closing.
+- **Receiving requires an open session.** Finishing a sale with received
+  payments (PDV or advanced form), registering a later receipt, refunding a
+  return, or cancelling a paid sale all need the operator's open session in
+  the sale clinic.
+  Suspending a sale, saving a quote, and finishing a sale to be paid later
+  do not. The PDV shows the session and opens it in a dialog (AJAX) before
+  the payment dialog when needed.
+- Payments of completed sales and later receipts get `cash_session_id`; the
+  sale gets the session where it was received (used for the change).
+- Movements: supply (suprimento, money in), withdrawal (sangria, money out:
+  safe, bank, commission paid in cash), and expense (despesa, money out that
+  also becomes a paid expense in the financial module). Withdrawals and
+  expenses cannot exceed the expected cash. Refunds are recorded
+  automatically in the operator's session: a return refund (on the machine
+  the sale used, when the refund goes back the same way), and the
+  cancellation of a paid sale (what the customer paid minus the change and
+  earlier return refunds, cash first). Receipts always stay in the session
+  where they happened, even when the sale is cancelled later.
+- Expected cash = float + cash received − change + supplies − withdrawals −
+  expenses − cash refunds. The other methods are expected by clinic method
+  (received − refunds), with their card fees.
+- Closing by the operator: counted cash (required), counted totals per
+  method (prefilled with the expected), the cash left in the drawer for the
+  next session (the rest is collected), and notes. The session stores the
+  expected, counted, and difference totals and a `closing_snapshot`; the card
+  fees become one paid expense per card machine (acquirer, or the method
+  name when it has none), dated at the closing.
+- A session left open from a previous day is closed automatically at 23:59
+  of its opening day (like SimplesVet), with the expected values as counted,
+  everything left in the drawer, and a flag for the manager. It happens the
+  next time anyone of the clinic opens the PDV or the cash pages.
+- Review: users with `cash-sessions.review` see every session of the clinic,
+  with filters, and **conferir e encerrar** a closed session (status
+  `reviewed`) or **reabrir** it (the fee expenses are cancelled; the operator
+  closes again). Operators only see and move their own sessions.
+- The legacy period closure (`sales.cashier.close`) still exists for history,
+  but the cashier page now links to the sessions.
 
 ## Status Concepts
 
@@ -237,7 +288,9 @@ are applied.
 
 Protected by `sales.manage`. The payment method admin and the card
 receivables report use `payment-methods.manage` (administrator and financial
-roles), mapped to the `pdv` plan feature.
+roles), mapped to the `pdv` plan feature. Reviewing and reopening cash
+sessions uses `cash-sessions.review` (administrator and financial roles),
+also mapped to `pdv`.
 
 ## Tests
 
@@ -247,3 +300,4 @@ Relevant coverage is present in:
 - `tests/Feature/ProductAbcAnalysisTest.php`
 - `tests/Feature/SaleQuotesAndSaleTypeTest.php`
 - `tests/Feature/PaymentMethodsTest.php`
+- `tests/Feature/CashSessionsTest.php`
