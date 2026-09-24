@@ -10,8 +10,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
  * Money moved inside a cash session outside of the sale receipts: supply
- * (suprimento), withdrawal (sangria), expense paid from the drawer (despesa)
- * and sale refunds.
+ * (suprimento), withdrawal (sangria), expense paid from the drawer (despesa),
+ * sale refunds, and customer credit received (advance, change kept as
+ * credit) or given back.
  */
 class CashSessionMovement extends Model
 {
@@ -22,13 +23,15 @@ class CashSessionMovement extends Model
         'withdrawal' => 'Sangria',
         'expense' => 'Despesa',
         'refund' => 'Estorno de venda',
+        'credit_deposit' => 'Crédito de cliente recebido',
+        'credit_refund' => 'Crédito devolvido ao cliente',
     ];
 
     /** Types the operator registers by hand. */
     public const MANUAL_TYPES = ['supply', 'withdrawal', 'expense'];
 
     /** Types that take money out of the session. */
-    public const OUTGOING_TYPES = ['withdrawal', 'expense', 'refund'];
+    public const OUTGOING_TYPES = ['withdrawal', 'expense', 'refund', 'credit_refund'];
 
     protected $table = 'cash_session_movements';
 

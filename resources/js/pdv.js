@@ -53,6 +53,13 @@ document.addEventListener('DOMContentLoaded', () => {
   const cashLink = find('[data-pdv-cash-link]');
   const cashOpenButton = find('[data-pdv-cash-open]');
   let afterCashOpen = null;
+  const customerBalance = find('[data-pdv-customer-balance]');
+  const payLater = find('[data-pdv-pay-later]');
+  const changeAsCredit = find('[data-pdv-change-as-credit]');
+  const customerOptionsHint = find('[data-pdv-customer-options-hint]');
+  const CREDIT = 'customer_credit';
+  let customerCredit = 0;
+  let balanceSerial = 0;
   const hasDelivery = () => Boolean(saleType && deliveryTypes.includes(saleType.value));
   const isQuoteMode = () => form.dataset.pdvMode === 'quote';
   const brl = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -199,11 +206,24 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Payment methods of the selected clinic (one per card machine and type).
   // A global user sees none until a clinic is chosen.
+  // The customer's credit works as one more payment method while the
+  // identified customer has some.
+  const creditMethod = () => ({
+    id: CREDIT,
+    name: 'Crédito do cliente (' + brl.format(customerCredit) + ')',
+    kind: CREDIT,
+    max_installments: 1,
+    requires_reference: false,
+    reference_label: 'Referência',
+  });
   const availableMethods = () => {
     if (clinic && !selectedClinic()) return [];
-    return paymentMethods.filter((method) => !clinic || String(method.clinic_id) === selectedClinic());
+    const methods = paymentMethods.filter((method) => !clinic || String(method.clinic_id) === selectedClinic());
+    return tutor.value && customerCredit > 0 ? [creditMethod(), ...methods] : methods;
   };
-  const methodById = (id) => paymentMethods.find((method) => String(method.id) === String(id || ''));
+  const methodById = (id) => (String(id || '') === CREDIT && customerCredit > 0
+    ? creditMethod()
+    : paymentMethods.find((method) => String(method.id) === String(id || '')));
   const rowMethod = (row) => methodById(row.querySelector('[data-pdv-payment-method]').value);
   const rowKind = (row) => rowMethod(row)?.kind || '';
   const isCardKind = (kind) => kind === 'credit_card' || kind === 'debit_card';
@@ -261,12 +281,13 @@ document.addEventListener('DOMContentLoaded', () => {
       row.querySelector('[data-pdv-reference-label]').textContent = (selected?.reference_label || 'Referência') + (required ? '' : ' (opcional)');
       totals();
     };
+    row.dataset.wantedMethod = payment.method === CREDIT ? CREDIT : String(payment.payment_method_id || '');
     row.pdvRefreshMethods = () => {
-      const previous = method.value;
+      const previous = method.value || row.dataset.wantedMethod || '';
       fillMethodOptions(method, previous);
       updateCard();
     };
-    fillMethodOptions(method, payment.payment_method_id, payment.method || '');
+    fillMethodOptions(method, payment.method === CREDIT ? CREDIT : payment.payment_method_id, payment.method || '');
     amount.value = moneyInput(parseMoney(payment.amount));
     installments.dataset.initial = String(payment.installments || 1);
     brand.value = payment.card_brand || '';
@@ -510,13 +531,24 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!currentCash()) { openCashDialog(openPayment); return; }
     const { total, paid, balance, change } = totals();
     if (total <= 0 || rows().length === 0) { message(paymentStatus, 'Inclua itens com valor.', 'warning'); return; }
+    if (payLater?.checked && tutor.value) {
+      paymentRows().forEach((row) => {
+        if (!row.querySelector('[data-pdv-payment-method]').value && parseMoney(row.querySelector('[data-pdv-payment-amount]').value) <= 0) row.remove();
+      });
+    }
     if (paymentRows().some((row) => !row.querySelector('[data-pdv-payment-method]').value || parseMoney(row.querySelector('[data-pdv-payment-amount]').value) <= 0)) {
       message(paymentStatus, 'Informe a forma e o valor de cada pagamento.', 'warning'); return;
     }
     const cash = paymentRows().filter((row) => rowKind(row) === 'cash')
       .reduce((sum, row) => sum + parseMoney(row.querySelector('[data-pdv-payment-amount]').value), 0);
-    if (balance > 0) { message(paymentStatus, 'Faltam ' + money(balance) + ' para concluir.', 'warning'); return; }
-    if (change > cash) { message(paymentStatus, 'Troco só pode sair de valor recebido em dinheiro.', 'warning'); return; }
+    const fiado = Boolean(payLater?.checked && tutor.value);
+    const keepChange = Boolean(changeAsCredit?.checked && tutor.value);
+    if (balance > 0 && !fiado) { message(paymentStatus, 'Faltam ' + money(balance) + ' para concluir. Com o cliente identificado, dá para marcar "receber depois".', 'warning'); return; }
+    if (change > cash && !keepChange) { message(paymentStatus, 'Troco só pode sair de valor recebido em dinheiro.', 'warning'); return; }
+    const creditUsed = paymentRows().filter((row) => rowKind(row) === CREDIT)
+      .reduce((sum, row) => sum + parseMoney(row.querySelector('[data-pdv-payment-amount]').value), 0);
+    if (creditUsed > Math.round(customerCredit * 100)) { message(paymentStatus, 'O cliente tem ' + brl.format(customerCredit) + ' de crédito.', 'warning'); return; }
+    if (creditUsed > total) { message(paymentStatus, 'O crédito usado não pode passar do total da venda.', 'warning'); return; }
     const missingReference = paymentRows().find((row) => rowMethod(row)?.requires_reference && !row.querySelector('[data-pdv-reference]').value.trim());
     if (missingReference) {
       const selected = rowMethod(missingReference);
@@ -585,7 +617,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const row = paymentRows().find((entry) => !entry.querySelector('[data-pdv-payment-method]').value) || addPayment();
     row.querySelector('[data-pdv-payment-method]').value = button.dataset.pdvMethod;
     row.querySelector('[data-pdv-payment-method]').dispatchEvent(new Event('change'));
-    row.querySelector('[data-pdv-payment-amount]').value = moneyInput(totals().balance);
+    const due = totals().balance;
+    row.querySelector('[data-pdv-payment-amount]').value = moneyInput(button.dataset.pdvMethod === CREDIT ? Math.min(due, Math.round(customerCredit * 100)) : due);
     row.querySelector('[data-pdv-payment-amount]').focus();
     totals();
   });
@@ -621,7 +654,48 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     customerSummary.firstChild.textContent = tutor.value ? tutor.selectedOptions[0].textContent + ' · Alterar cliente ' : 'Consumidor não identificado · Identificar cliente ';
   };
-  tutor.addEventListener('change', () => { syncCustomer(); syncDelivery(true); });
+  const syncCustomerOptions = () => {
+    const identified = Boolean(tutor.value);
+    [payLater, changeAsCredit].forEach((input) => {
+      if (!input) return;
+      input.disabled = !identified;
+      if (!identified) input.checked = false;
+    });
+    if (customerOptionsHint) customerOptionsHint.hidden = identified;
+  };
+  const refreshCustomerBalance = async () => {
+    const serial = ++balanceSerial;
+    customerCredit = 0;
+    if (customerBalance) { customerBalance.hidden = true; customerBalance.replaceChildren(); }
+    syncCustomerOptions();
+    renderShortcuts();
+    paymentRows().forEach((row) => row.pdvRefreshMethods?.());
+    if (!tutor.value || !form.dataset.customerBalanceUrl) return;
+    try {
+      const response = await fetch(form.dataset.customerBalanceUrl.replace('__TUTOR__', encodeURIComponent(tutor.value)), { headers: { Accept: 'application/json' } });
+      if (!response.ok || serial !== balanceSerial) return;
+      const data = await response.json();
+      customerCredit = Number(data.credit) || 0;
+      if (customerBalance && (Number(data.debt) > 0 || customerCredit !== 0)) {
+        const parts = [];
+        if (Number(data.debt) > 0) parts.push('Deve ' + brl.format(Number(data.debt)) + ' em ' + data.open_sales + (Number(data.open_sales) === 1 ? ' venda' : ' vendas'));
+        if (customerCredit !== 0) parts.push('crédito de ' + brl.format(customerCredit));
+        customerBalance.append(parts.join(' · ') + ' · ');
+        const link = document.createElement('a');
+        link.href = data.url;
+        link.target = '_blank';
+        link.rel = 'noopener';
+        link.textContent = 'ver saldo';
+        customerBalance.append(link);
+        customerBalance.classList.toggle('is-debt', Number(data.debt) > 0);
+        customerBalance.hidden = false;
+      }
+      renderShortcuts();
+      paymentRows().forEach((row) => row.pdvRefreshMethods?.());
+      totals();
+    } catch { /* balance is informative only */ }
+  };
+  tutor.addEventListener('change', () => { syncCustomer(); syncDelivery(true); refreshCustomerBalance(); });
   clinic?.addEventListener('change', () => {
     ++searchSerial;
     clearResults();
@@ -631,6 +705,7 @@ document.addEventListener('DOMContentLoaded', () => {
     paymentRows().forEach((row) => row.pdvRefreshMethods?.());
   });
   syncCustomer();
+  refreshCustomerBalance();
 
   const tutorAddress = () => tutor.selectedOptions[0]?.dataset.address || '';
   function syncDelivery(tutorChanged = false) {

@@ -1895,6 +1895,16 @@ textarea {
   text-align: right;
 }
 
+.customer-credit-refund {
+  border-top: 1px solid #e2e8f0;
+  margin-top: 18px;
+  padding-top: 16px;
+}
+
+.tutor-balance {
+  margin-bottom: 16px;
+}
+
 @media (max-width: 900px) {
   .cash-session-grid {
     grid-template-columns: 1fr;

@@ -85,6 +85,7 @@
                 <a class="{{ request()->routeIs('sales.create') ? 'is-active' : '' }}" href="{{ route('sales.create') }}">Ponto de venda</a>
                 <a class="{{ request()->routeIs('sales.cash-sessions.*') ? 'is-active' : '' }}" href="{{ route('sales.cash-sessions.index') }}">Caixa</a>
                 <a class="{{ request()->routeIs('sales.quotes.*') ? 'is-active' : '' }}" href="{{ route('sales.quotes.index') }}">Orçamentos</a>
+                <a class="{{ request()->routeIs('sales.customer-balances.*') ? 'is-active' : '' }}" href="{{ route('sales.customer-balances.index') }}">Saldo de clientes</a>
                 <a class="{{ request()->routeIs('sales.index', 'sales.edit', 'sales.receipt', 'sales.returns.*', 'sales.cancel') ? 'is-active' : '' }}" href="{{ route('sales.index') }}">Histórico de vendas</a>
                 <a class="{{ request()->routeIs('sales.cashier', 'sales.cashier.close') ? 'is-active' : '' }}" href="{{ route('sales.cashier') }}">Movimentos de caixa</a>
                 <a class="{{ request()->routeIs('sales.profitability') ? 'is-active' : '' }}" href="{{ route('sales.profitability') }}">Rentabilidade</a>

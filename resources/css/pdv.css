@@ -68,6 +68,11 @@
 .pdv-payment-total strong{font-size:23px}
 .pdv-payment-shortcuts{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:14px}
 .pdv-payment-shortcuts .muted{font-size:13px}
+.pdv-payment-options{display:grid;gap:6px;margin:-6px 0 14px;font-size:14px}
+.pdv-payment-options label{display:flex;align-items:center;gap:8px}
+.pdv-payment-options input[disabled]+*{opacity:.6}
+.pdv-customer-balance{grid-column:1/-1;margin:0;font-size:13px;color:#334155}
+.pdv-customer-balance.is-debt{color:#b45309}
 .pdv-payment-settings{margin:-6px 0 12px;font-size:13px}
 .pdv-payment-row{display:grid;gap:10px;margin-bottom:10px;padding:12px;border:1px solid #e2e8f0;border-radius:9px}
 .pdv-payment-fields{display:grid;grid-template-columns:minmax(145px,1.4fr) minmax(110px,1fr) auto;gap:9px;align-items:end}

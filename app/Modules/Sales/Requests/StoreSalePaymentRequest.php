@@ -4,6 +4,7 @@ namespace App\Modules\Sales\Requests;
 
 use App\Modules\Sales\Models\Sale;
 use App\Modules\Sales\Requests\Concerns\ValidatesPaymentMethods;
+use App\Modules\Sales\Services\CustomerBalanceService;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
@@ -30,10 +31,12 @@ class StoreSalePaymentRequest extends FormRequest
             $amount = str_replace(',', '.', $amount);
         }
 
-        $payment = $this->normalizePaymentMethodInput($this->saleClinicId(), [
-            'payment_method_id' => $this->input('payment_method_id'),
-            'method' => $this->input('method'),
-        ]);
+        $payment = $this->input('payment_method_id') === CustomerBalanceService::CREDIT_METHOD
+            ? ['payment_method_id' => null, 'method' => CustomerBalanceService::CREDIT_METHOD]
+            : $this->normalizePaymentMethodInput($this->saleClinicId(), [
+                'payment_method_id' => $this->input('payment_method_id'),
+                'method' => $this->input('method'),
+            ]);
 
         $this->merge([
             'amount' => $amount,
@@ -53,7 +56,7 @@ class StoreSalePaymentRequest extends FormRequest
                     ->where(fn ($query) => $query->where('clinic_id', $this->saleClinicId()))
                     ->whereNull('deleted_at'),
             ],
-            'method' => ['required_without:payment_method_id', 'nullable', 'string', Rule::in(['cash', 'pix', 'debit_card', 'credit_card', 'transfer', 'other'])],
+            'method' => ['required_without:payment_method_id', 'nullable', 'string', Rule::in(['cash', 'pix', 'debit_card', 'credit_card', 'transfer', 'other', CustomerBalanceService::CREDIT_METHOD])],
             'amount' => ['required', 'numeric', 'gt:0'],
             'installments' => ['nullable', 'integer', 'min:1', 'max:120'],
             'card_brand' => ['nullable', 'string', 'max:80'],

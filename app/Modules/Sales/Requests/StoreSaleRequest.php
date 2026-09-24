@@ -11,6 +11,7 @@ use App\Modules\Sales\Models\SaleQuote;
 use App\Modules\Sales\Requests\Concerns\NormalizesSaleInput;
 use App\Modules\Sales\Requests\Concerns\ValidatesPaymentMethods;
 use App\Modules\Sales\Services\CashSessionService;
+use App\Modules\Sales\Services\CustomerBalanceService;
 use App\Modules\Sales\Support\SaleType;
 use App\Modules\ServiceOrders\Models\ServiceOrder;
 use Illuminate\Foundation\Http\FormRequest;
@@ -90,7 +91,9 @@ class StoreSaleRequest extends FormRequest
             'items.*.discount_total' => ['nullable', 'numeric', 'min:0'],
 
             'payments' => ['nullable', 'array'],
-            'payments.*.method' => ['nullable', 'string', Rule::in(['cash', 'pix', 'debit_card', 'credit_card', 'transfer', 'other'])],
+            'pay_later' => ['nullable', 'boolean'],
+            'change_as_credit' => ['nullable', 'boolean'],
+            'payments.*.method' => ['nullable', 'string', Rule::in(['cash', 'pix', 'debit_card', 'credit_card', 'transfer', 'other', CustomerBalanceService::CREDIT_METHOD])],
             'payments.*.payment_method_id' => ['nullable', 'integer', $this->existsInCurrentClinic('payment_methods')->whereNull('deleted_at')],
             'payments.*.amount' => ['nullable', 'numeric', 'min:0'],
             'payments.*.installments' => ['nullable', 'integer', 'min:1', 'max:120'],
@@ -146,11 +149,24 @@ class StoreSaleRequest extends FormRequest
                 $validator->errors()->add('items', $message);
             }
 
+            $this->validateCustomerCredit($validator, $this->itemsTotal($items));
+
             if ($this->boolean('pdv_checkout')) {
                 $total = $this->itemsTotal($items);
                 $paid = 0.0;
                 $cash = 0.0;
                 $payments = $this->input('payments', []);
+                $payLater = $this->boolean('pay_later');
+                $changeAsCredit = $this->boolean('change_as_credit');
+
+                if (($payLater || $changeAsCredit) && ! $this->filled('tutor_id')) {
+                    $validator->errors()->add(
+                        'tutor_id',
+                        $payLater
+                            ? 'Para vender e receber depois (fiado), identifique o cliente.'
+                            : 'Para guardar o troco como crédito, identifique o cliente.'
+                    );
+                }
 
                 foreach (is_array($payments) ? $payments : [] as $payment) {
                     if (! is_array($payment)) {
@@ -178,10 +194,10 @@ class StoreSaleRequest extends FormRequest
                     }
                 }
 
-                if (round($paid, 2) < round($total, 2)) {
-                    $validator->errors()->add('payments', 'Receba o valor integral para finalizar no PDV.');
+                if (! $payLater && round($paid, 2) < round($total, 2)) {
+                    $validator->errors()->add('payments', 'Receba o valor integral para finalizar no PDV, ou marque "pagar depois" com o cliente identificado.');
                 }
-                if (round($paid - $total, 2) > round($cash, 2)) {
+                if (! $changeAsCredit && round($paid - $total, 2) > round($cash, 2)) {
                     $validator->errors()->add('payments', 'O troco não pode exceder o valor recebido em dinheiro.');
                 }
             }
@@ -306,6 +322,8 @@ class StoreSaleRequest extends FormRequest
             ->contains(fn ($payment) => is_array($payment)
                 && (float) ($payment['amount'] ?? 0) > 0
                 && (! empty($payment['method']) || ! empty($payment['payment_method_id']))
+                // Paying with the customer's credit moves no money.
+                && ($payment['method'] ?? null) !== CustomerBalanceService::CREDIT_METHOD
                 && ($payment['status'] ?? 'paid') === 'paid');
 
         if (! $receives) {
@@ -319,6 +337,46 @@ class StoreSaleRequest extends FormRequest
                 'cash_session',
                 'Abra o seu caixa antes de receber. No PDV, use "Abrir caixa" e informe o fundo de troco.'
             );
+        }
+    }
+
+    /**
+     * Paying with the customer's credit needs the customer, cannot go over
+     * the sale total and uses at most the credit available.
+     */
+    private function validateCustomerCredit(Validator $validator, float $total): void
+    {
+        if ($this->currentSaleIsLocked()) {
+            return;
+        }
+
+        $payments = $this->input('payments', []);
+        $creditUsed = round((float) collect(is_array($payments) ? $payments : [])
+            ->filter(fn ($payment) => is_array($payment)
+                && ($payment['method'] ?? null) === CustomerBalanceService::CREDIT_METHOD
+                && ($payment['status'] ?? 'paid') === 'paid')
+            ->sum(fn (array $payment) => max(0, (float) ($payment['amount'] ?? 0))), 2);
+
+        if ($creditUsed <= 0) {
+            return;
+        }
+
+        $tutorId = (int) $this->input('tutor_id');
+
+        if ($tutorId <= 0) {
+            $validator->errors()->add('payments', 'Para pagar com crédito, identifique o cliente.');
+
+            return;
+        }
+
+        if ($creditUsed - $total > 0.009) {
+            $validator->errors()->add('payments', 'O crédito usado não pode passar do total da venda.');
+        }
+
+        $available = app(CustomerBalanceService::class)->creditBalance($tutorId);
+
+        if ($creditUsed - $available > 0.009) {
+            $validator->errors()->add('payments', 'O cliente tem R$ '.number_format($available, 2, ',', '.').' de crédito disponível.');
         }
     }
 
