@@ -41,6 +41,18 @@ document.addEventListener('DOMContentLoaded', () => {
   try { deliveryTypes = JSON.parse(form.dataset.deliveryTypes || '[]'); } catch { deliveryTypes = []; }
   let paymentMethods = [];
   try { paymentMethods = JSON.parse(form.dataset.paymentMethods || '[]'); } catch { paymentMethods = []; }
+  let cashSessions = {};
+  try { cashSessions = JSON.parse(form.dataset.cashSessions || '{}') || {}; } catch { cashSessions = {}; }
+  let suggestedOpenings = {};
+  try { suggestedOpenings = JSON.parse(form.dataset.cashSuggested || '{}') || {}; } catch { suggestedOpenings = {}; }
+  const cashDialog = find('[data-pdv-cash-dialog]');
+  const cashOpening = find('[data-pdv-cash-opening]');
+  const cashStatus = find('[data-pdv-cash-status]');
+  const cashConfirm = find('[data-pdv-cash-confirm]');
+  const cashLabel = find('[data-pdv-cash-label]');
+  const cashLink = find('[data-pdv-cash-link]');
+  const cashOpenButton = find('[data-pdv-cash-open]');
+  let afterCashOpen = null;
   const hasDelivery = () => Boolean(saleType && deliveryTypes.includes(saleType.value));
   const isQuoteMode = () => form.dataset.pdvMode === 'quote';
   const brl = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -418,10 +430,75 @@ document.addEventListener('DOMContentLoaded', () => {
       openQuickProduct(gtin);
     }
   };
+  // Receiving requires the operator's open cash session in the sale clinic.
+  const cashClinicId = () => selectedClinic() || form.dataset.userClinicId || '';
+  const currentCash = () => cashSessions[cashClinicId()] || null;
+  const renderCash = () => {
+    if (!cashLabel) return;
+    const session = currentCash();
+    const needsClinic = Boolean(clinic) && !selectedClinic();
+    cashLabel.textContent = session
+      ? 'Caixa ' + session.code + ' aberto desde ' + session.opened_at
+      : (needsClinic ? 'Selecione a clínica para ver o caixa' : 'Caixa fechado');
+    cashLink.hidden = !session;
+    if (session) cashLink.href = session.url;
+    cashOpenButton.hidden = Boolean(session) || needsClinic;
+    cashOpenButton.disabled = isQuoteMode();
+  };
+  const openCashDialog = (then = null) => {
+    if (!cashClinicId()) { message(checkoutStatus, 'Selecione uma clínica.', 'warning'); return; }
+    afterCashOpen = then;
+    const suggested = Number(suggestedOpenings[cashClinicId()] || 0);
+    cashOpening.value = moneyInput(Math.round(suggested * 100));
+    message(cashStatus, '');
+    if (dialog.open) dialog.close();
+    cashDialog.showModal();
+    cashOpening.select();
+  };
+  const confirmCashOpen = async () => {
+    const clinicId = cashClinicId();
+    if (!clinicId) { message(cashStatus, 'Selecione uma clínica.', 'warning'); return; }
+    cashConfirm.disabled = true;
+    message(cashStatus, 'Abrindo caixa...');
+    try {
+      const response = await fetch(form.dataset.cashOpenUrl, {
+        method: 'POST',
+        headers: {
+          Accept: 'application/json',
+          'Content-Type': 'application/json',
+          'X-CSRF-TOKEN': form.querySelector('[name="_token"]').value,
+        },
+        body: JSON.stringify({
+          clinic_id: clinic ? clinicId : null,
+          opening_amount: (parseMoney(cashOpening.value) / 100).toFixed(2),
+        }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        const errors = data.errors ? Object.values(data.errors).flat() : [];
+        throw new Error(errors[0] || data.message || 'Não foi possível abrir o caixa.');
+      }
+      cashSessions[clinicId] = data.session;
+      renderCash();
+      cashDialog.close();
+      message(checkoutStatus, data.message || 'Caixa aberto.', 'success');
+      const next = afterCashOpen;
+      afterCashOpen = null;
+      if (next) next();
+    } catch (error) {
+      message(cashStatus, error.message || 'Não foi possível abrir o caixa.', 'error');
+    } finally {
+      cashConfirm.disabled = false;
+    }
+  };
   const openPayment = () => {
     if (isQuoteMode()) return;
     if (totals().total <= 0 || rows().length === 0) {
       message(checkoutStatus, 'Inclua um item com valor antes de receber.', 'warning');
+      return;
+    }
+    if (!currentCash()) {
+      openCashDialog(openPayment);
       return;
     }
     if (paymentRows().length === 0) addPayment();
@@ -430,6 +507,7 @@ document.addEventListener('DOMContentLoaded', () => {
   };
   const finish = () => {
     if (isQuoteMode()) return;
+    if (!currentCash()) { openCashDialog(openPayment); return; }
     const { total, paid, balance, change } = totals();
     if (total <= 0 || rows().length === 0) { message(paymentStatus, 'Inclua itens com valor.', 'warning'); return; }
     if (paymentRows().some((row) => !row.querySelector('[data-pdv-payment-method]').value || parseMoney(row.querySelector('[data-pdv-payment-amount]').value) <= 0)) {
@@ -458,7 +536,7 @@ document.addEventListener('DOMContentLoaded', () => {
   if (new URLSearchParams(window.location.search).get('scan')) search.value = form.dataset.initialScan || '';
   totals();
   if (search.value) lookupBarcode();
-  if (paymentRows().length && form.dataset.pdvMode !== 'quote') dialog.showModal();
+  if (paymentRows().length && form.dataset.pdvMode !== 'quote' && currentCash()) dialog.showModal();
 
   search.addEventListener('input', () => {
     window.clearTimeout(searchTimer);
@@ -485,6 +563,12 @@ document.addEventListener('DOMContentLoaded', () => {
   find('[data-pdv-add-custom]').addEventListener('click', () => addRow({ type: 'custom', quantity: 1, unit_price: 0 }).querySelector('[data-pdv-description]').focus());
   [discount, additions].forEach((input) => input.addEventListener('input', totals));
   find('[data-pdv-open-payment]')?.addEventListener('click', openPayment);
+  cashOpenButton?.addEventListener('click', () => openCashDialog());
+  cashConfirm?.addEventListener('click', confirmCashOpen);
+  cashOpening?.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter') { event.preventDefault(); confirmCashOpen(); }
+  });
+  find('[data-pdv-close-cash]')?.addEventListener('click', () => { afterCashOpen = null; cashDialog.close(); });
   find('[data-pdv-close-payment]').addEventListener('click', () => dialog.close());
   find('[data-pdv-close-quick-product]').addEventListener('click', () => { quickProductDialog.close(); search.focus(); });
   find('[data-pdv-save-quick-product]').addEventListener('click', saveQuickProduct);
@@ -543,6 +627,7 @@ document.addEventListener('DOMContentLoaded', () => {
     clearResults();
     syncCustomer();
     renderShortcuts();
+    renderCash();
     paymentRows().forEach((row) => row.pdvRefreshMethods?.());
   });
   syncCustomer();
@@ -588,6 +673,8 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     if (summaryLabel) summaryLabel.textContent = quote ? 'Orçamento em andamento' : 'Venda em andamento';
     if (quote && dialog.open) dialog.close();
+    if (quote && cashDialog?.open) cashDialog.close();
+    renderCash();
     message(checkoutStatus, '');
   };
   form.querySelectorAll('[data-pdv-mode-button]').forEach((button) => button.addEventListener('click', () => {

@@ -21,10 +21,12 @@ use App\Modules\Suppliers\Models\Supplier;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Tests\Concerns\OpensCashSessions;
 use Tests\TestCase;
 
 class OperationalFlowTest extends TestCase
 {
+    use OpensCashSessions;
     use RefreshDatabase;
 
     public function test_completed_sale_applies_stock_and_financial_records_for_current_clinic(): void
@@ -32,6 +34,7 @@ class OperationalFlowTest extends TestCase
         $clinic = $this->clinic('Clinica Operacional A', '00000000000201');
         $product = $this->product($clinic, 'Vacina V10', stock: 10, costPrice: 8, salePrice: 25);
         $user = $this->userForClinic($clinic, ['sales.manage']);
+        $this->openCashSession($user);
 
         $response = $this->actingAs($user)->post(route('sales.store'), [
             'status' => 'completed',
@@ -86,6 +89,7 @@ class OperationalFlowTest extends TestCase
         $clinic = $this->clinic('Clinica Recebimentos', '00000000000202');
         $product = $this->product($clinic, 'Antiparasitario', stock: 5, costPrice: 12, salePrice: 50);
         $user = $this->userForClinic($clinic, ['sales.manage']);
+        $this->openCashSession($user);
 
         $this->actingAs($user)->post(route('sales.store'), [
             'status' => 'completed',
@@ -162,7 +166,9 @@ class OperationalFlowTest extends TestCase
         $clinic = $this->clinic('Clinica Operadores', '00000000000203');
         $product = $this->product($clinic, 'Servico com operador', stock: 10, costPrice: 10, salePrice: 30);
         $sellerA = $this->userForClinic($clinic, ['sales.manage']);
+        $this->openCashSession($sellerA);
         $sellerB = $this->userForClinic($clinic, ['sales.manage']);
+        $this->openCashSession($sellerB);
 
         $this->actingAs($sellerA)->post(route('sales.store'), [
             'status' => 'completed',
@@ -222,6 +228,7 @@ class OperationalFlowTest extends TestCase
         $cashProduct = $this->product($clinic, 'Produto dinheiro', stock: 5, costPrice: 10, salePrice: 50);
         $pixProduct = $this->product($clinic, 'Produto pix', stock: 5, costPrice: 10, salePrice: 40);
         $user = $this->userForClinic($clinic, ['sales.manage']);
+        $this->openCashSession($user);
 
         $this->actingAs($user)->post(route('sales.store'), [
             'status' => 'completed',
@@ -378,6 +385,7 @@ class OperationalFlowTest extends TestCase
             'active' => true,
         ]);
         $user = $this->userForClinic($clinic, ['sales.manage']);
+        $this->openCashSession($user);
 
         $this->actingAs($user)->post(route('sales.store'), [
             'status' => 'completed',
@@ -456,7 +464,9 @@ class OperationalFlowTest extends TestCase
         $productA = $this->product($clinicA, 'Produto margem A', stock: 5, costPrice: 10, salePrice: 30);
         $productB = $this->product($clinicB, 'Produto margem B', stock: 5, costPrice: 20, salePrice: 60);
         $userA = $this->userForClinic($clinicA, ['sales.manage']);
+        $this->openCashSession($userA);
         $userB = $this->userForClinic($clinicB, ['sales.manage']);
+        $this->openCashSession($userB);
         $userWithoutPermission = $this->userForClinic($clinicA, []);
 
         foreach ([[$userA, $productA], [$userB, $productB]] as [$user, $product]) {
@@ -494,7 +504,9 @@ class OperationalFlowTest extends TestCase
         $product = $this->product($clinic, 'Produto comissao', stock: 10, costPrice: 60, salePrice: 100);
         $administrator = $this->userForClinic($clinic, ['sales.manage', 'commissions.manage']);
         $sellerA = $this->userForClinic($clinic, ['sales.manage']);
+        $this->openCashSession($sellerA);
         $sellerB = $this->userForClinic($clinic, ['sales.manage']);
+        $this->openCashSession($sellerB);
 
         $this->actingAs($sellerA)->post(route('sales.store'), [
             'status' => 'completed',
@@ -585,6 +597,7 @@ class OperationalFlowTest extends TestCase
         $clinic = $this->clinic('Clinica Venda Global A', '00000000000261');
         $product = $this->product($clinic, 'Vermifugo global', stock: 10, costPrice: 9, salePrice: 45);
         $user = $this->globalUser(['sales.manage']);
+        $this->openCashSession($user, $clinic);
 
         $response = $this->actingAs($user)->post(route('sales.store'), [
             'clinic_id' => $clinic->id,
@@ -700,6 +713,7 @@ class OperationalFlowTest extends TestCase
         $clinic = $this->clinic('Clinica Cancelamento A', '00000000000241');
         $product = $this->product($clinic, 'Antipulgas', stock: 10, costPrice: 12, salePrice: 35);
         $user = $this->userForClinic($clinic, ['sales.manage']);
+        $this->openCashSession($user);
 
         $this->actingAs($user)->post(route('sales.store'), [
             'status' => 'completed',
@@ -770,6 +784,7 @@ class OperationalFlowTest extends TestCase
         $clinic = $this->clinic('Clinica Devolucao A', '00000000000242');
         $product = $this->product($clinic, 'Racao retorno', stock: 10, costPrice: 8, salePrice: 20);
         $user = $this->userForClinic($clinic, ['sales.manage']);
+        $this->openCashSession($user);
 
         $this->actingAs($user)->post(route('sales.store'), [
             'status' => 'completed',
@@ -845,7 +860,9 @@ class OperationalFlowTest extends TestCase
         $productA = $this->product($clinicA, 'Shampoo caixa A', stock: 10, costPrice: 10, salePrice: 30);
         $productB = $this->product($clinicB, 'Shampoo caixa B', stock: 10, costPrice: 10, salePrice: 40);
         $userA = $this->userForClinic($clinicA, ['sales.manage']);
+        $this->openCashSession($userA);
         $userB = $this->userForClinic($clinicB, ['sales.manage']);
+        $this->openCashSession($userB);
 
         $this->actingAs($userA)->post(route('sales.store'), [
             'status' => 'completed',
@@ -980,6 +997,7 @@ class OperationalFlowTest extends TestCase
         $clinic = $this->clinic('Clinica Rastreabilidade Estoque', '00000000000223');
         $product = $this->product($clinic, 'Medicamento rastreado', stock: 5, costPrice: 10, salePrice: 30);
         $user = $this->userForClinic($clinic, ['inventory.manage', 'sales.manage']);
+        $this->openCashSession($user);
 
         $this->actingAs($user)->post(route('sales.store'), [
             'status' => 'completed',
@@ -1193,6 +1211,7 @@ class OperationalFlowTest extends TestCase
     {
         $clinic = $this->clinic('Clinica Cadastro Rapido', '00000000000406');
         $user = $this->userForClinic($clinic, ['sales.manage']);
+        $this->openCashSession($user);
 
         $response = $this->actingAs($user)->postJson(route('sales.quick-products.store'), [
             'gtin' => '7891000315507',
@@ -1232,6 +1251,7 @@ class OperationalFlowTest extends TestCase
         $clinic = $this->clinic('Clinica Checkout', '00000000000403');
         $product = $this->product($clinic, 'Antipulgas checkout', stock: 5, salePrice: 50);
         $user = $this->userForClinic($clinic, ['sales.manage']);
+        $this->openCashSession($user);
         $payload = [
             'pdv_checkout' => '1',
             'status' => 'completed',
@@ -1290,6 +1310,7 @@ class OperationalFlowTest extends TestCase
         $clinic = $this->clinic('Clinica Preco PDV', '00000000000405');
         $product = $this->product($clinic, 'Ração premium', stock: 3, salePrice: 50);
         $user = $this->userForClinic($clinic, ['sales.manage']);
+        $this->openCashSession($user);
 
         $this->actingAs($user)->post(route('sales.store'), [
             'pdv_checkout' => '1',

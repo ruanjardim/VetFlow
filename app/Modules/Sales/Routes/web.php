@@ -1,8 +1,31 @@
 <?php
 
+use App\Modules\Sales\Controllers\CashSessionController;
 use App\Modules\Sales\Controllers\SaleController;
 use App\Modules\Sales\Controllers\SaleQuoteController;
 use Illuminate\Support\Facades\Route;
+
+Route::get('sales/cash-sessions', [CashSessionController::class, 'index'])
+    ->name('sales.cash-sessions.index');
+
+Route::post('sales/cash-sessions', [CashSessionController::class, 'store'])
+    ->name('sales.cash-sessions.store');
+
+Route::get('sales/cash-sessions/{cashSession}', [CashSessionController::class, 'show'])
+    ->whereNumber('cashSession')
+    ->name('sales.cash-sessions.show');
+
+Route::post('sales/cash-sessions/{cashSession}/movements', [CashSessionController::class, 'storeMovement'])
+    ->whereNumber('cashSession')
+    ->name('sales.cash-sessions.movements.store');
+
+Route::get('sales/cash-sessions/{cashSession}/close', [CashSessionController::class, 'closeForm'])
+    ->whereNumber('cashSession')
+    ->name('sales.cash-sessions.close');
+
+Route::post('sales/cash-sessions/{cashSession}/close', [CashSessionController::class, 'close'])
+    ->whereNumber('cashSession')
+    ->name('sales.cash-sessions.close.store');
 
 Route::get('sales/quotes', [SaleQuoteController::class, 'index'])
     ->name('sales.quotes.index');

@@ -75,6 +75,11 @@ class Sale extends Model
         return $this->belongsTo(FinancialTransaction::class);
     }
 
+    public function cashSession(): BelongsTo
+    {
+        return $this->belongsTo(CashSession::class);
+    }
+
     public function seller(): BelongsTo
     {
         return $this->belongsTo(User::class, 'seller_user_id');

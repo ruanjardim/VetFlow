@@ -14,10 +14,12 @@ use App\Modules\Sales\Services\PaymentMethodService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Tests\Concerns\OpensCashSessions;
 use Tests\TestCase;
 
 class PaymentMethodsTest extends TestCase
 {
+    use OpensCashSessions;
     use RefreshDatabase;
 
     private Clinic $clinic;
@@ -32,6 +34,7 @@ class PaymentMethodsTest extends TestCase
 
         $this->clinic = $this->clinic('Clinica Maquininha', '00000000000601');
         $this->user = $this->userForClinic($this->clinic, ['sales.manage', 'payment-methods.manage']);
+        $this->openCashSession($this->user);
         $this->product = Product::query()->create([
             'clinic_id' => $this->clinic->id,
             'name' => 'Ração premium',
@@ -456,6 +459,7 @@ class PaymentMethodsTest extends TestCase
     {
         $otherClinic = $this->clinic('Outra Clinica', '00000000000604');
         $global = $this->userForClinic(null, ['sales.manage', 'payment-methods.manage']);
+        $this->openCashSession($global, $this->clinic);
         $service = app(PaymentMethodService::class);
         $pix = $service->forClinic($this->clinic->id)->firstWhere('kind', 'pix');
         $foreignPix = $service->forClinic($otherClinic->id)->firstWhere('kind', 'pix');

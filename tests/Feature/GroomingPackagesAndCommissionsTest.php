@@ -20,10 +20,12 @@ use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Tests\Concerns\OpensCashSessions;
 use Tests\TestCase;
 
 class GroomingPackagesAndCommissionsTest extends TestCase
 {
+    use OpensCashSessions;
     use RefreshDatabase;
 
     private Clinic $clinic;
@@ -58,6 +60,7 @@ class GroomingPackagesAndCommissionsTest extends TestCase
             'sales.manage',
             'commissions.manage',
         ], 'Gerente');
+        $this->openCashSession($this->manager, $this->clinic);
         $this->groomer = User::factory()->create([
             'name' => 'Adriana Tosadora',
             'active' => true,

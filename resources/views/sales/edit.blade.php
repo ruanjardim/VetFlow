@@ -54,6 +54,11 @@
         </div>
       </div>
       <div class="panel-body">
+        @unless($receiptCashSession)
+          <div class="alert warning">
+            Para registrar o recebimento, abra o seu caixa em <a href="{{ route('sales.cash-sessions.index', ['clinic_id' => $item->clinic_id]) }}">Caixa</a>.
+          </div>
+        @endunless
         <form method="POST" action="{{ route('sales.payments.store', $item->id) }}" class="form-grid" data-receipt-payment-form>
           @csrf
           <div class="field">

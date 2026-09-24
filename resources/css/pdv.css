@@ -43,6 +43,10 @@
 .pdv-cart-row small.is-error{color:#b42318;font-weight:700}
 .pdv-summary{position:sticky;top:16px;padding:20px;background:#0f172a;color:#f8fafc}
 .pdv-summary-head{display:grid;gap:5px;padding-bottom:17px;border-bottom:1px solid #334155}
+.pdv-cash{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;margin-bottom:14px;padding:9px 11px;border-radius:9px;background:#1e293b;color:#cbd5e1;font-size:13px}
+.pdv-cash a{color:#5eead4}
+.pdv-cash button{padding:5px 10px;font-size:13px}
+.pdv-payment-dialog.pdv-cash-dialog{width:min(420px,calc(100vw - 32px))}
 .pdv-summary-head>span{color:#cbd5e1;font-size:12px;text-transform:uppercase}
 .pdv-summary-head strong{font-size:clamp(30px,3vw,42px);line-height:1.1}
 .pdv-summary-lines{display:grid;gap:12px;padding:18px 0}
