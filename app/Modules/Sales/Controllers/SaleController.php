@@ -19,6 +19,7 @@ use App\Modules\Sales\Requests\ProductAbcAnalysisRequest;
 use App\Modules\Sales\Requests\StoreSalePaymentRequest;
 use App\Modules\Sales\Requests\StoreSaleRequest;
 use App\Modules\Sales\Requests\UpdateSaleRequest;
+use App\Modules\Sales\Services\CashSessionService;
 use App\Modules\Sales\Services\PaymentMethodService;
 use App\Modules\Sales\Services\ProductAbcAnalysisService;
 use App\Modules\Sales\Services\SaleProfitabilityService;
@@ -73,9 +74,17 @@ class SaleController extends BaseCrudController
 
         $quoteMode = $mode === 'quote';
         $formData = $this->formData(false);
+        $cashClinicIds = $this->sellingClinicIds($formData['clinics']);
+        $cashSessions = app(CashSessionService::class);
 
         return view('sales.create', array_merge($formData, [
             'paymentMethods' => $this->paymentMethodsFor($formData['clinics']),
+            'cashSessions' => collect($cashSessions->currentForClinics(auth()->user(), $cashClinicIds))
+                ->map(fn ($session) => $session->toPdvArray())
+                ->all(),
+            'suggestedOpenings' => collect($cashClinicIds)
+                ->mapWithKeys(fn (int $clinicId) => [$clinicId => $cashSessions->suggestedOpening(auth()->user(), $clinicId)])
+                ->all(),
             'serviceOrderCheckout' => $quoteMode
                 ? null
                 : ($this->serviceOrderCheckout() ?? $this->petPackageCheckout() ?? $this->quoteCheckout()),
@@ -114,6 +123,7 @@ class SaleController extends BaseCrudController
             'saleTypes' => SaleType::LABELS,
             'paymentMethodOptions' => $this->paymentMethodsFor($formData['clinics'], true),
             'receiptPaymentMethods' => app(PaymentMethodService::class)->activeForClinic($sale->clinic_id ? (int) $sale->clinic_id : null),
+            'receiptCashSession' => app(CashSessionService::class)->currentFor(auth()->user(), $sale->clinic_id ? (int) $sale->clinic_id : null),
         ]));
     }
 
@@ -687,14 +697,27 @@ class SaleController extends BaseCrudController
     private function paymentMethodsFor(Collection $clinics, bool $includeInactive = false): Collection
     {
         $service = app(PaymentMethodService::class);
-        $userClinicId = auth()->user()?->clinic_id;
-        $clinicIds = $userClinicId ? [(int) $userClinicId] : $clinics->pluck('id')->all();
 
-        return collect($clinicIds)
+        return collect($this->sellingClinicIds($clinics))
             ->flatMap(fn ($clinicId) => $includeInactive
                 ? $service->forClinic((int) $clinicId)
                 : $service->activeForClinic((int) $clinicId))
             ->values();
+    }
+
+    /**
+     * Clinics the user sells for: their own, or every clinic for a global
+     * user (the PDV filters by the selected clinic).
+     *
+     * @return array<int, int>
+     */
+    private function sellingClinicIds(Collection $clinics): array
+    {
+        $userClinicId = auth()->user()?->clinic_id;
+
+        return $userClinicId
+            ? [(int) $userClinicId]
+            : $clinics->pluck('id')->map(fn ($id) => (int) $id)->all();
     }
 
     private function formData(bool $includeCatalog = true): array
