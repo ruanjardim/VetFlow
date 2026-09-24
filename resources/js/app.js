@@ -792,6 +792,44 @@ document.addEventListener('DOMContentLoaded', () => {
       return { balance, paid, subtotal, total };
     };
 
+    // Payment rows list the clinic methods (one per card machine and type);
+    // the hidden kind keeps the legacy sale_payments.method in sync.
+    const saleClinicSelect = saleForm?.querySelector('select[name="clinic_id"]');
+    const syncPaymentKind = (select) => {
+      const kindInput = select.closest('td')?.querySelector('[data-sale-payment-kind]');
+
+      if (kindInput) {
+        kindInput.value = select.selectedOptions[0]?.dataset.kind || '';
+      }
+    };
+    const selectCashMethod = (select) => {
+      const cashOption = Array.from(select.options).find((option) => option.dataset.kind === 'cash' && !option.hidden && !option.disabled);
+
+      if (cashOption) {
+        select.value = cashOption.value;
+        syncPaymentKind(select);
+      }
+    };
+    const filterPaymentMethodsByClinic = () => {
+      const clinicId = saleClinicSelect?.value || '';
+
+      paymentMethods.forEach((select) => {
+        Array.from(select.options).forEach((option) => {
+          if (!option.dataset.clinicId) {
+            return;
+          }
+
+          option.hidden = Boolean(saleClinicSelect) && option.dataset.clinicId !== clinicId;
+        });
+
+        if (select.selectedOptions[0]?.hidden) {
+          select.value = '';
+        }
+
+        syncPaymentKind(select);
+      });
+    };
+
     const fillBalancePayment = () => {
       const { balance } = calculateSaleTotals();
 
@@ -809,7 +847,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const targetMethod = paymentMethods[targetIndex] || paymentMethods[0];
 
       if (targetMethod && !targetMethod.value) {
-        targetMethod.value = 'cash';
+        selectCashMethod(targetMethod);
       }
 
       calculateSaleTotals();
@@ -826,7 +864,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const targetMethod = paymentMethods[0];
 
       if (targetMethod && amount > 0 && !targetMethod.value) {
-        targetMethod.value = 'cash';
+        selectCashMethod(targetMethod);
       }
 
       calculateSaleTotals();
@@ -1188,6 +1226,11 @@ document.addEventListener('DOMContentLoaded', () => {
       applyMoneyMask(event.target);
       calculateSaleTotals();
     }));
+    paymentMethods.forEach((select) => select.addEventListener('change', () => syncPaymentKind(select)));
+    if (!isLocked) {
+      saleClinicSelect?.addEventListener('change', filterPaymentMethodsByClinic);
+      filterPaymentMethodsByClinic();
+    }
     saleForm?.addEventListener('submit', () => {
       normalizeMoneyField(discountInput);
       normalizeMoneyField(additionsInput);
@@ -1219,6 +1262,92 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     calculateSaleTotals();
+  }
+
+  const paymentMethodForm = document.querySelector('[data-payment-method-form]');
+
+  if (paymentMethodForm) {
+    const kindSelect = paymentMethodForm.querySelector('[data-payment-method-kind]');
+    const feeLabel = paymentMethodForm.querySelector('[data-payment-method-fee-label]');
+    const settlementInput = paymentMethodForm.querySelector('#settlement_days');
+    const maxInstallmentsInput = paymentMethodForm.querySelector('#max_installments');
+    const typicalSettlement = (kind) => ({ debit_card: 1, credit_card: 30 })[kind] ?? 0;
+    let previousKind = kindSelect?.value || '';
+    const toggleFields = (selector, visible) => {
+      paymentMethodForm.querySelectorAll(selector).forEach((field) => {
+        field.hidden = !visible;
+        field.querySelectorAll('input, select').forEach((input) => { input.disabled = !visible; });
+      });
+    };
+    const syncPaymentMethodKind = () => {
+      const kind = kindSelect?.value || '';
+      const credit = kind === 'credit_card';
+
+      toggleFields('[data-payment-method-card]', credit || kind === 'debit_card');
+      toggleFields('[data-payment-method-credit]', credit);
+
+      if (feeLabel) {
+        feeLabel.textContent = credit ? 'Taxa à vista (%)' : 'Taxa (%)';
+      }
+    };
+
+    kindSelect?.addEventListener('change', () => {
+      const kind = kindSelect.value;
+
+      // Suggests the usual settlement while the field still has the
+      // suggestion of the previous kind.
+      if (settlementInput && Number(settlementInput.value || 0) === typicalSettlement(previousKind)) {
+        settlementInput.value = String(typicalSettlement(kind));
+      }
+
+      if (kind === 'credit_card' && maxInstallmentsInput && Number(maxInstallmentsInput.value || 1) <= 1) {
+        maxInstallmentsInput.value = '12';
+      }
+
+      previousKind = kind;
+      syncPaymentMethodKind();
+    });
+    syncPaymentMethodKind();
+  }
+
+  const receiptPaymentForm = document.querySelector('[data-receipt-payment-form]');
+
+  if (receiptPaymentForm) {
+    const methodSelect = receiptPaymentForm.querySelector('[data-receipt-payment-method]');
+    const installmentsField = receiptPaymentForm.querySelector('[data-receipt-installments-field]');
+    const installmentsInput = receiptPaymentForm.querySelector('[data-receipt-installments]');
+    const referenceLabel = receiptPaymentForm.querySelector('[data-receipt-reference-label]');
+    const referenceInput = receiptPaymentForm.querySelector('#payment_reference');
+    const syncReceiptMethod = () => {
+      const option = methodSelect?.selectedOptions[0];
+      const kind = option?.dataset.kind || '';
+      const maxInstallments = Math.max(1, Number(option?.dataset.maxInstallments) || 1);
+      const required = option?.dataset.requiresReference === '1';
+      const label = kind === 'credit_card' || kind === 'debit_card'
+        ? 'NSU / autorização'
+        : (kind === 'pix' ? 'ID da transação Pix' : 'Referência');
+
+      if (installmentsField && installmentsInput) {
+        installmentsField.hidden = maxInstallments <= 1;
+        installmentsInput.disabled = maxInstallments <= 1;
+        installmentsInput.max = String(maxInstallments);
+
+        if (Number(installmentsInput.value) > maxInstallments) {
+          installmentsInput.value = String(maxInstallments);
+        }
+      }
+
+      if (referenceLabel) {
+        referenceLabel.textContent = label + (required ? '' : ' (opcional)');
+      }
+
+      if (referenceInput) {
+        referenceInput.required = required;
+      }
+    };
+
+    methodSelect?.addEventListener('change', syncReceiptMethod);
+    syncReceiptMethod();
   }
 
   const purchaseForm = document.querySelector('[data-purchase-form]');

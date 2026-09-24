@@ -36,8 +36,11 @@ document.addEventListener('DOMContentLoaded', () => {
   const modeInput = find('[data-pdv-mode-input]');
   const summaryLabel = find('[data-pdv-summary-label]');
   const saveQuote = find('[data-pdv-save-quote]');
+  const shortcuts = find('[data-pdv-method-shortcuts]');
   let deliveryTypes = [];
   try { deliveryTypes = JSON.parse(form.dataset.deliveryTypes || '[]'); } catch { deliveryTypes = []; }
+  let paymentMethods = [];
+  try { paymentMethods = JSON.parse(form.dataset.paymentMethods || '[]'); } catch { paymentMethods = []; }
   const hasDelivery = () => Boolean(saleType && deliveryTypes.includes(saleType.value));
   const isQuoteMode = () => form.dataset.pdvMode === 'quote';
   const brl = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -182,6 +185,28 @@ document.addEventListener('DOMContentLoaded', () => {
     return row;
   };
 
+  // Payment methods of the selected clinic (one per card machine and type).
+  // A global user sees none until a clinic is chosen.
+  const availableMethods = () => {
+    if (clinic && !selectedClinic()) return [];
+    return paymentMethods.filter((method) => !clinic || String(method.clinic_id) === selectedClinic());
+  };
+  const methodById = (id) => paymentMethods.find((method) => String(method.id) === String(id || ''));
+  const rowMethod = (row) => methodById(row.querySelector('[data-pdv-payment-method]').value);
+  const rowKind = (row) => rowMethod(row)?.kind || '';
+  const isCardKind = (kind) => kind === 'credit_card' || kind === 'debit_card';
+  const fillMethodOptions = (select, selectedId, fallbackKind = '') => {
+    const methods = availableMethods();
+    const selected = methods.find((method) => String(method.id) === String(selectedId || ''))
+      || (fallbackKind ? methods.find((method) => method.kind === fallbackKind) : null);
+    select.replaceChildren(new Option(methods.length ? 'Selecione' : 'Nenhuma forma ativa', ''));
+    methods.forEach((method) => {
+      const option = new Option(method.name, String(method.id));
+      option.dataset.kind = method.kind;
+      select.appendChild(option);
+    });
+    select.value = selected ? String(selected.id) : '';
+  };
   const addPayment = (payment = {}) => {
     const index = nextPayment++;
     const row = document.createElement('div');
@@ -189,41 +214,75 @@ document.addEventListener('DOMContentLoaded', () => {
     row.dataset.pdvPaymentRow = '';
     row.innerHTML = `
       <div class="pdv-payment-fields">
-        <div class="field"><label>Forma</label><select name="payments[${index}][method]" data-pdv-payment-method>
-          <option value="">Selecione</option><option value="cash">Dinheiro</option><option value="pix">PIX</option>
-          <option value="debit_card">Cartão de débito</option><option value="credit_card">Cartão de crédito</option>
-          <option value="transfer">Transferência</option><option value="other">Outro</option></select></div>
+        <div class="field"><label>Forma</label><select name="payments[${index}][payment_method_id]" data-pdv-payment-method></select>
+          <input type="hidden" name="payments[${index}][method]" data-pdv-payment-kind></div>
         <div class="field"><label>Valor</label><input name="payments[${index}][amount]" type="text" inputmode="decimal" data-pdv-payment-amount></div>
         <button type="button" class="secondary" data-pdv-remove-payment aria-label="Remover pagamento">Remover</button>
       </div>
       <div class="pdv-card-fields" data-pdv-card-fields hidden>
-        <div class="field"><label>Parcelas</label><input name="payments[${index}][installments]" type="number" min="1" max="120" value="1" data-pdv-installments></div>
-        <div class="field"><label>Bandeira</label><input name="payments[${index}][card_brand]" maxlength="80"></div>
-        <div class="field"><label>Operadora</label><input name="payments[${index}][acquirer]" maxlength="120"></div>
+        <div class="field" data-pdv-installments-field><label>Parcelas</label><select name="payments[${index}][installments]" data-pdv-installments></select></div>
+        <div class="field" data-pdv-brand-field><label>Bandeira</label><input name="payments[${index}][card_brand]" maxlength="80" data-pdv-card-brand></div>
       </div>
-      <div class="field pdv-reference"><label>Referência (opcional)</label><input name="payments[${index}][reference]" maxlength="255"></div>`;
+      <div class="field pdv-reference"><label data-pdv-reference-label>Referência (opcional)</label><input name="payments[${index}][reference]" maxlength="255" data-pdv-reference></div>`;
     const method = row.querySelector('[data-pdv-payment-method]');
+    const kind = row.querySelector('[data-pdv-payment-kind]');
     const amount = row.querySelector('[data-pdv-payment-amount]');
+    const installments = row.querySelector('[data-pdv-installments]');
+    const brand = row.querySelector('[data-pdv-card-brand]');
     const updateCard = () => {
-      const card = method.value === 'credit_card' || method.value === 'debit_card';
+      const selected = rowMethod(row);
+      const card = isCardKind(selected?.kind);
+      const maxInstallments = Math.max(1, Number(selected?.max_installments) || 1);
+      const wanted = Number(installments.value) || Number(installments.dataset.initial) || 1;
+      delete installments.dataset.initial;
+      const current = Math.min(maxInstallments, Math.max(1, wanted));
+      kind.value = selected?.kind || '';
       row.querySelector('[data-pdv-card-fields]').hidden = !card;
-      row.querySelector('[data-pdv-installments]').disabled = !card;
-      row.querySelector('[data-pdv-installments]').max = method.value === 'debit_card' ? '1' : '120';
-      if (method.value === 'debit_card') row.querySelector('[data-pdv-installments]').value = '1';
+      installments.replaceChildren(...Array.from({ length: maxInstallments }, (_, position) => new Option(position === 0 ? '1x à vista' : (position + 1) + 'x', String(position + 1))));
+      installments.value = String(current);
+      installments.disabled = !card;
+      row.querySelector('[data-pdv-installments-field]').hidden = maxInstallments <= 1;
+      const brandFromMethod = Boolean(selected?.card_brand);
+      row.querySelector('[data-pdv-brand-field]').hidden = !card || brandFromMethod;
+      brand.disabled = !card || brandFromMethod;
+      const required = Boolean(selected?.requires_reference);
+      row.querySelector('[data-pdv-reference-label]').textContent = (selected?.reference_label || 'Referência') + (required ? '' : ' (opcional)');
       totals();
     };
-    method.value = payment.method || '';
+    row.pdvRefreshMethods = () => {
+      const previous = method.value;
+      fillMethodOptions(method, previous);
+      updateCard();
+    };
+    fillMethodOptions(method, payment.payment_method_id, payment.method || '');
     amount.value = moneyInput(parseMoney(payment.amount));
-    row.querySelector('[data-pdv-installments]').value = payment.installments || 1;
-    row.querySelector('[name$="[card_brand]"]').value = payment.card_brand || '';
-    row.querySelector('[name$="[acquirer]"]').value = payment.acquirer || '';
-    row.querySelector('[name$="[reference]"]').value = payment.reference || payment.transaction_reference || '';
+    installments.dataset.initial = String(payment.installments || 1);
+    brand.value = payment.card_brand || '';
+    row.querySelector('[data-pdv-reference]').value = payment.reference || payment.transaction_reference || '';
     method.addEventListener('change', updateCard);
     amount.addEventListener('input', totals);
     row.querySelector('[data-pdv-remove-payment]').addEventListener('click', () => { row.remove(); totals(); });
     payments.appendChild(row);
     updateCard();
     return row;
+  };
+  const renderShortcuts = () => {
+    if (!shortcuts) return;
+    const methods = availableMethods();
+    shortcuts.replaceChildren(...methods.map((method) => {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'secondary';
+      button.dataset.pdvMethod = String(method.id);
+      button.textContent = method.name;
+      return button;
+    }));
+    if (!methods.length) {
+      const note = document.createElement('span');
+      note.className = 'muted';
+      note.textContent = clinic && !selectedClinic() ? 'Selecione a clínica para ver as formas de pagamento.' : 'Nenhuma forma de pagamento ativa.';
+      shortcuts.appendChild(note);
+    }
   };
 
   const clearResults = () => { results.replaceChildren(); results.hidden = true; activeResults = []; };
@@ -376,10 +435,17 @@ document.addEventListener('DOMContentLoaded', () => {
     if (paymentRows().some((row) => !row.querySelector('[data-pdv-payment-method]').value || parseMoney(row.querySelector('[data-pdv-payment-amount]').value) <= 0)) {
       message(paymentStatus, 'Informe a forma e o valor de cada pagamento.', 'warning'); return;
     }
-    const cash = paymentRows().filter((row) => row.querySelector('[data-pdv-payment-method]').value === 'cash')
+    const cash = paymentRows().filter((row) => rowKind(row) === 'cash')
       .reduce((sum, row) => sum + parseMoney(row.querySelector('[data-pdv-payment-amount]').value), 0);
     if (balance > 0) { message(paymentStatus, 'Faltam ' + money(balance) + ' para concluir.', 'warning'); return; }
     if (change > cash) { message(paymentStatus, 'Troco só pode sair de valor recebido em dinheiro.', 'warning'); return; }
+    const missingReference = paymentRows().find((row) => rowMethod(row)?.requires_reference && !row.querySelector('[data-pdv-reference]').value.trim());
+    if (missingReference) {
+      const selected = rowMethod(missingReference);
+      message(paymentStatus, 'Informe o ' + (selected.reference_label || 'NSU') + ' de ' + selected.name + '.', 'warning');
+      missingReference.querySelector('[data-pdv-reference]').focus();
+      return;
+    }
     if (!form.reportValidity()) return;
     status.value = 'completed';
     normalizeRows();
@@ -387,7 +453,8 @@ document.addEventListener('DOMContentLoaded', () => {
     form.requestSubmit();
   };
   try { Object.values(JSON.parse(form.dataset.oldItems || '[]')).forEach(addRow); } catch { /* no old cart */ }
-  try { Object.values(JSON.parse(form.dataset.oldPayments || '[]')).forEach(addPayment); } catch { /* no old payments */ }
+  renderShortcuts();
+  try { Object.values(JSON.parse(form.dataset.oldPayments || '[]')).forEach((payment) => addPayment(payment)); } catch { /* no old payments */ }
   if (new URLSearchParams(window.location.search).get('scan')) search.value = form.dataset.initialScan || '';
   totals();
   if (search.value) lookupBarcode();
@@ -428,14 +495,16 @@ document.addEventListener('DOMContentLoaded', () => {
     const row = addPayment({ amount: (totals().balance / 100).toFixed(2) });
     row.querySelector('[data-pdv-payment-method]').focus();
   });
-  form.querySelectorAll('[data-pdv-method]').forEach((button) => button.addEventListener('click', () => {
+  shortcuts?.addEventListener('click', (event) => {
+    const button = event.target.closest('[data-pdv-method]');
+    if (!button) return;
     const row = paymentRows().find((entry) => !entry.querySelector('[data-pdv-payment-method]').value) || addPayment();
     row.querySelector('[data-pdv-payment-method]').value = button.dataset.pdvMethod;
     row.querySelector('[data-pdv-payment-method]').dispatchEvent(new Event('change'));
     row.querySelector('[data-pdv-payment-amount]').value = moneyInput(totals().balance);
     row.querySelector('[data-pdv-payment-amount]').focus();
     totals();
-  }));
+  });
   find('[data-pdv-finish]').addEventListener('click', finish);
   find('[data-pdv-suspend]')?.addEventListener('click', (event) => {
     if (!rows().length) { event.preventDefault(); message(checkoutStatus, 'Inclua um item para suspender a venda.', 'warning'); }
@@ -469,7 +538,13 @@ document.addEventListener('DOMContentLoaded', () => {
     customerSummary.firstChild.textContent = tutor.value ? tutor.selectedOptions[0].textContent + ' · Alterar cliente ' : 'Consumidor não identificado · Identificar cliente ';
   };
   tutor.addEventListener('change', () => { syncCustomer(); syncDelivery(true); });
-  clinic?.addEventListener('change', () => { ++searchSerial; clearResults(); syncCustomer(); });
+  clinic?.addEventListener('change', () => {
+    ++searchSerial;
+    clearResults();
+    syncCustomer();
+    renderShortcuts();
+    paymentRows().forEach((row) => row.pdvRefreshMethods?.());
+  });
   syncCustomer();
 
   const tutorAddress = () => tutor.selectedOptions[0]?.dataset.address || '';
