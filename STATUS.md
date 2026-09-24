@@ -24,6 +24,11 @@ The local working tree was clean before this documentation pass.
   installment fees, settlement days, maximum installments and a required NSU
   option; each payment keeps its fee, net amount and expected settlement
   date, shown in the card receivables report (see `docs/modules/sales.md`).
+- Cash sessions per operator: opening in the PDV with a change float,
+  supplies, withdrawals and expenses, closing with counted values per method
+  (card fees posted as one expense per machine), automatic closing of
+  sessions left open overnight, and manager review. Receiving requires an
+  open session (see `docs/modules/sales.md`).
 
 - Laravel application structure.
 - Modular backend under `app/Modules`.

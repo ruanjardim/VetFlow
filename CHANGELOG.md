@@ -15,6 +15,15 @@ This project follows the spirit of Keep a Changelog, with one practical adjustme
 
 ### Added
 
+- Cash sessions per operator (caixa): the operator opens the cash in the PDV
+  with the change float, registers supplies, withdrawals and expenses (paid
+  expenses in the financial module), and closes with the counted cash and the
+  counted totals per method; differences are stored and the card fees become
+  one paid expense per card machine. Receiving (PDV, advanced form, later
+  receipts), return refunds and cancellations of paid sales require the
+  operator's open session, where the refunds are recorded. Sessions left open overnight close
+  automatically at 23:59 and wait for review. Managers with
+  `cash-sessions.review` list every session, review (encerrar) or reopen them.
 - Payment methods per card machine: each clinic registers its methods
   ("Rede Visa Crédito", "PagSeguro Débito") with kind, machine, brand, upfront
   and installment fees, settlement days, maximum installments and an optional
