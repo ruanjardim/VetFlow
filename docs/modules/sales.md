@@ -36,6 +36,9 @@ financial income, returns, refunds, cancellations, and sale event history.
 - Run one cash session per operator: opening with a change float, supplies,
   withdrawals and expenses, closing with the counted values per method, card
   fees posted as expenses per machine, and the manager review.
+- Keep the customer balance: sales to be paid later (fiado), customer credit
+  (advance, change kept as credit, returns as credit) used as a payment, the
+  receipt of several open sales at once, and credit given back.
 
 ## Key Classes
 
@@ -50,6 +53,8 @@ financial income, returns, refunds, cancellations, and sale event history.
 | `PaymentMethodService` | Default methods, payment snapshots (fee, net, settlement), and installment schedules. |
 | `CashSessionController` | Operator cash (open, movements, closing) and the manager list, review, and reopen. |
 | `CashSessionService` | Session lifecycle, expected amounts per method, card fee expenses, and the automatic closing. |
+| `CustomerBalanceController` | Customer balance list and page: settle open sales, advances, and credit given back; balance JSON for the PDV. |
+| `CustomerBalanceService` | Debt from open sales, the credit ledger, deposits, refunds, and settlements. |
 | `SaleProfitabilityService` | Return-adjusted gross profitability reporting. |
 | `ProductAbcAnalysisService` | Product revenue ranking, cumulative ABC bands, filters, and pagination. |
 | `SaleRepository` | Data access. |
@@ -57,6 +62,7 @@ financial income, returns, refunds, cancellations, and sale event history.
 | `SaleQuote`, `SaleQuoteItem` | Quote domain models. |
 | `PaymentMethod` | Clinic payment method (card machine, fees, settlement, installments). |
 | `CashSession`, `CashSessionMovement` | Operator cash session and its supplies, withdrawals, expenses, and refunds. |
+| `CustomerCreditEntry` | Customer credit ledger entry (signed amount). |
 | `CashRegisterClosure` | Cashier closure model. |
 
 ## Tables
@@ -69,6 +75,7 @@ financial income, returns, refunds, cancellations, and sale event history.
 - `payment_methods`
 - `cash_sessions`
 - `cash_session_movements`
+- `customer_credit_entries`
 - `sale_events`
 - `cash_register_closures`
 - `inventory_movements`
@@ -261,6 +268,35 @@ financial income, returns, refunds, cancellations, and sale event history.
 - The legacy period closure (`sales.cashier.close`) still exists for history,
   but the cashier page now links to the sessions.
 
+## Customer Balance (Saldo do Cliente)
+
+- **Debt (fiado):** completed sales of the customer still to be paid
+  (`payment_status` pending or partial, without returns). In the PDV, **receber
+  o que falta depois** finishes a sale with a partial payment or none, only
+  with the customer identified; receiving nothing needs no cash session.
+- **Credit:** a signed ledger in `customer_credit_entries`. It grows with an
+  advance (adiantamento, received with a clinic method in the operator's cash
+  session as a `credit_deposit` movement), the change kept as credit (the
+  change is considered given and deposited back in cash, so the drawer stays
+  right), a return refunded as credit, and the credit part of a cancelled
+  sale. It shrinks when used as a payment (`sale_payments.method =
+  customer_credit`, outside the cash session) or given back in money (a
+  `credit_refund` movement).
+- **Revenue:** an advance is not income; the sale that uses the credit is. A
+  return refunded as credit still posts the usual "Estorno venda" expense
+  (with `payment_method = customer_credit`), so revenue is not counted twice
+  when the credit is used later.
+- Using credit needs the customer, cannot exceed the sale total nor the
+  credit available. The PDV shows the balance when the customer is identified
+  (`sales.customer-balances.summary`) and offers the credit as a payment
+  method; the later receipt and the settlement also accept it.
+- **Saldo de clientes** (`sales.customer-balances.index`) lists who owes and
+  who has credit. The customer page receives several open sales at once
+  (oldest first, up to the debt), registers advances, gives credit back, and
+  shows the credit statement. The tutor page shows the balance with a link.
+- The cashier summary and the cash sessions leave customer credit payments
+  and returns as credit out of the money totals.
+
 ## Status Concepts
 
 Sale statuses include values such as:
@@ -301,3 +337,4 @@ Relevant coverage is present in:
 - `tests/Feature/SaleQuotesAndSaleTypeTest.php`
 - `tests/Feature/PaymentMethodsTest.php`
 - `tests/Feature/CashSessionsTest.php`
+- `tests/Feature/CustomerBalanceTest.php`
