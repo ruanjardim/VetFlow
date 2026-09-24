@@ -1310,6 +1310,53 @@ document.addEventListener('DOMContentLoaded', () => {
     syncPaymentMethodKind();
   }
 
+  const cashMovementForm = document.querySelector('[data-cash-movement-form]');
+
+  if (cashMovementForm) {
+    const typeSelect = cashMovementForm.querySelector('[data-cash-movement-type]');
+    const categoryField = cashMovementForm.querySelector('[data-cash-movement-category]');
+    const syncMovementType = () => {
+      if (categoryField) {
+        categoryField.hidden = typeSelect?.value !== 'expense';
+      }
+    };
+
+    typeSelect?.addEventListener('change', syncMovementType);
+    syncMovementType();
+  }
+
+  const cashCloseForm = document.querySelector('[data-cash-close-form]');
+
+  if (cashCloseForm) {
+    const countedInput = cashCloseForm.querySelector('[data-cash-close-counted]');
+    const differenceNote = cashCloseForm.querySelector('[data-cash-close-difference]');
+    const money = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
+    const toAmount = (value) => {
+      const raw = String(value || '').trim();
+      const normalized = raw.includes(',') ? raw.replace(/\./g, '').replace(',', '.') : raw;
+
+      return Number.parseFloat(normalized) || 0;
+    };
+    const syncDifference = () => {
+      if (!countedInput || !differenceNote) {
+        return;
+      }
+
+      if (!String(countedInput.value || '').trim()) {
+        differenceNote.textContent = '';
+        return;
+      }
+
+      const difference = Math.round((toAmount(countedInput.value) - Number(countedInput.dataset.expected || 0)) * 100) / 100;
+      differenceNote.textContent = Math.abs(difference) < 0.01
+        ? 'Bate com o esperado.'
+        : (difference > 0 ? 'Sobra de ' : 'Falta de ') + money.format(Math.abs(difference)) + '.';
+    };
+
+    countedInput?.addEventListener('input', syncDifference);
+    syncDifference();
+  }
+
   const receiptPaymentForm = document.querySelector('[data-receipt-payment-form]');
 
   if (receiptPaymentForm) {
