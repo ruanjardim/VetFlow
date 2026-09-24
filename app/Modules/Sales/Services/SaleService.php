@@ -183,6 +183,10 @@ class SaleService extends BaseService
                 ]);
             }
 
+            if ($sale->status === 'completed') {
+                $this->refundCancelledSale($sale, $reason);
+            }
+
             $sale->payments()->update(['status' => 'cancelled']);
 
             if ($sale->financialTransaction) {
@@ -335,6 +339,23 @@ class SaleService extends BaseService
             $refundMethod = $data['refund_method'] ?? 'cash';
 
             if ($refundAmount > 0) {
+                $cashSessions = app(CashSessionService::class);
+                $cashSessions->recordRefund(
+                    $cashSessions->requireOpenSession(
+                        auth()->user(),
+                        $sale->clinic_id ? (int) $sale->clinic_id : null,
+                        'refund_amount',
+                        'Abra o seu caixa para registrar o estorno ao cliente.'
+                    ),
+                    $sale,
+                    $refundAmount,
+                    $refundMethod,
+                    // The machine or account the sale was paid with, when the
+                    // refund goes back the same way.
+                    $sale->payments->where('status', 'paid')->firstWhere('method', $refundMethod)?->payment_method_id,
+                    $reason
+                );
+
                 FinancialTransaction::query()->create([
                     'clinic_id' => $sale->clinic_id,
                     'type' => 'expense',
@@ -432,6 +453,9 @@ class SaleService extends BaseService
 
             $data['paid_at'] = $data['paid_at'] ?? now();
             $data = app(PaymentMethodService::class)->snapshot($sale->clinic_id, $data);
+            $data['cash_session_id'] = app(CashSessionService::class)
+                ->requireOpenSession(auth()->user(), $sale->clinic_id ? (int) $sale->clinic_id : null, 'payment_method_id')
+                ->id;
 
             $payment = $sale->payments()->create($this->paymentAttributes($data, $amount, 'paid'));
 
@@ -807,6 +831,10 @@ class SaleService extends BaseService
     private function syncPayments(Sale $sale, array $payments): void
     {
         $paymentMethods = app(PaymentMethodService::class);
+        // Payments of a completed sale go to the operator's open cash
+        // session; suspended sales keep theirs out of any session.
+        $cashSessionId = $sale->status === 'completed' ? $this->currentCashSessionId($sale) : null;
+        $receivedInSession = false;
 
         foreach ($payments as $payment) {
             $amount = round((float) ($payment['amount'] ?? 0), 2);
@@ -823,8 +851,74 @@ class SaleService extends BaseService
                 continue;
             }
 
+            $payment['cash_session_id'] = $status === 'paid' ? $cashSessionId : null;
+            $receivedInSession = $receivedInSession || $payment['cash_session_id'] !== null;
+
             $sale->payments()->create($this->paymentAttributes($payment, $amount, $status));
         }
+
+        if ($receivedInSession) {
+            $sale->update(['cash_session_id' => $cashSessionId]);
+        }
+    }
+
+    /**
+     * Cancelling a completed sale gives back what the customer paid and did
+     * not get back yet (change and earlier return refunds deducted). The
+     * money leaves the canceller's open cash session, while the original
+     * payments stay in the session where they were received.
+     */
+    private function refundCancelledSale(Sale $sale, string $reason): void
+    {
+        $paid = $sale->payments->filter(fn (SalePayment $payment) => ($payment->status ?? 'paid') === 'paid');
+        $toRefund = round(max(0, (float) $paid->sum('amount') - (float) $sale->change_total - (float) $sale->refunded_total), 2);
+
+        if ($toRefund <= 0) {
+            return;
+        }
+
+        $cashSessions = app(CashSessionService::class);
+        $session = $cashSessions->requireOpenSession(
+            auth()->user(),
+            $sale->clinic_id ? (int) $sale->clinic_id : null,
+            'sale',
+            'Abra o seu caixa para devolver ao cliente o valor desta venda.'
+        );
+        // The change came out of the cash received, so cash goes first.
+        $changeLeft = (float) $sale->change_total;
+
+        foreach ($paid->sortBy(fn (SalePayment $payment) => $payment->method === 'cash' ? 0 : 1) as $payment) {
+            if ($toRefund <= 0) {
+                break;
+            }
+
+            $amount = (float) $payment->amount;
+
+            if ($payment->method === 'cash' && $changeLeft > 0) {
+                $deducted = min($amount, $changeLeft);
+                $amount -= $deducted;
+                $changeLeft -= $deducted;
+            }
+
+            $amount = round(min($amount, $toRefund), 2);
+
+            if ($amount <= 0) {
+                continue;
+            }
+
+            $cashSessions->recordRefund($session, $sale, $amount, (string) $payment->method, $payment->payment_method_id, $reason);
+            $toRefund = round($toRefund - $amount, 2);
+        }
+    }
+
+    /**
+     * Open cash session of the logged operator in the sale clinic.
+     */
+    private function currentCashSessionId(Sale $sale): ?int
+    {
+        return app(CashSessionService::class)
+            ->currentFor(auth()->user(), $sale->clinic_id ? (int) $sale->clinic_id : null)
+            ?->id;
     }
 
     /**
@@ -839,6 +933,7 @@ class SaleService extends BaseService
         return [
             'method' => $payment['method'],
             'payment_method_id' => $payment['payment_method_id'] ?? null,
+            'cash_session_id' => $payment['cash_session_id'] ?? null,
             'amount' => $amount,
             'fee_amount' => $payment['fee_amount'] ?? 0,
             'net_amount' => $payment['net_amount'] ?? $amount,
