@@ -30,7 +30,8 @@
             Esperado {{ $money($cash['expected']) }}: fundo {{ $money($cash['opening']) }}
             + recebido {{ $money($cash['received']) }} − troco {{ $money($cash['change']) }}
             + suprimentos {{ $money($cash['supplies']) }} − sangrias {{ $money($cash['withdrawals']) }}
-            − despesas {{ $money($cash['expenses']) }} − estornos {{ $money($cash['refunds']) }}.
+            − despesas {{ $money($cash['expenses']) }} − estornos {{ $money($cash['refunds']) }}@if(($cash['credit_deposits'] ?? 0) > 0 || ($cash['credit_refunds'] ?? 0) > 0)
+            + créditos recebidos {{ $money($cash['credit_deposits']) }} − créditos devolvidos {{ $money($cash['credit_refunds']) }}@endif.
           </p>
         </div>
       </div>

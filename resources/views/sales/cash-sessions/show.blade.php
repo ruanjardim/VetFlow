@@ -126,6 +126,10 @@
             <tr><td>Sangrias</td><td>{{ $signedMoney(-1 * $cash['withdrawals']) }}</td></tr>
             <tr><td>Despesas</td><td>{{ $signedMoney(-1 * $cash['expenses']) }}</td></tr>
             <tr><td>Estornos em dinheiro</td><td>{{ $signedMoney(-1 * $cash['refunds']) }}</td></tr>
+            @if(($cash['credit_deposits'] ?? 0) > 0 || ($cash['credit_refunds'] ?? 0) > 0)
+              <tr><td>Créditos de clientes recebidos</td><td>{{ $signedMoney($cash['credit_deposits'] ?? 0) }}</td></tr>
+              <tr><td>Créditos devolvidos a clientes</td><td>{{ $signedMoney(-1 * ($cash['credit_refunds'] ?? 0)) }}</td></tr>
+            @endif
             <tr><td><strong>Dinheiro esperado</strong></td><td><strong>{{ $money($cash['expected']) }}</strong></td></tr>
             @if($closed)
               <tr><td>Dinheiro contado</td><td>{{ $money($cash['counted'] ?? $session->counted_cash) }}</td></tr>
