@@ -1,9 +1,33 @@
 <?php
 
 use App\Modules\Sales\Controllers\CashSessionController;
+use App\Modules\Sales\Controllers\CustomerBalanceController;
 use App\Modules\Sales\Controllers\SaleController;
 use App\Modules\Sales\Controllers\SaleQuoteController;
 use Illuminate\Support\Facades\Route;
+
+Route::get('sales/customer-balances', [CustomerBalanceController::class, 'index'])
+    ->name('sales.customer-balances.index');
+
+Route::get('sales/customer-balances/{tutor}', [CustomerBalanceController::class, 'show'])
+    ->whereNumber('tutor')
+    ->name('sales.customer-balances.show');
+
+Route::get('sales/customer-balances/{tutor}/summary', [CustomerBalanceController::class, 'summary'])
+    ->whereNumber('tutor')
+    ->name('sales.customer-balances.summary');
+
+Route::post('sales/customer-balances/{tutor}/settle', [CustomerBalanceController::class, 'settle'])
+    ->whereNumber('tutor')
+    ->name('sales.customer-balances.settle');
+
+Route::post('sales/customer-balances/{tutor}/deposit', [CustomerBalanceController::class, 'deposit'])
+    ->whereNumber('tutor')
+    ->name('sales.customer-balances.deposit');
+
+Route::post('sales/customer-balances/{tutor}/refund', [CustomerBalanceController::class, 'refund'])
+    ->whereNumber('tutor')
+    ->name('sales.customer-balances.refund');
 
 Route::get('sales/cash-sessions', [CashSessionController::class, 'index'])
     ->name('sales.cash-sessions.index');
