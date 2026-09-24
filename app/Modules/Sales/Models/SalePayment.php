@@ -46,6 +46,10 @@ class SalePayment extends Model
 
     public function kindLabel(): string
     {
+        if ($this->method === 'customer_credit') {
+            return 'Crédito do cliente';
+        }
+
         return PaymentMethod::KIND_LABELS[$this->method] ?? 'Outro';
     }
 
