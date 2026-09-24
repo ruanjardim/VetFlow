@@ -20,6 +20,7 @@ class SalePayment extends Model
         'net_amount' => 'decimal:2',
         'installments' => 'integer',
         'payment_method_id' => 'integer',
+        'cash_session_id' => 'integer',
         'paid_at' => 'datetime',
         'expected_settlement_date' => 'date',
     ];
@@ -27,6 +28,11 @@ class SalePayment extends Model
     public function sale(): BelongsTo
     {
         return $this->belongsTo(Sale::class);
+    }
+
+    public function cashSession(): BelongsTo
+    {
+        return $this->belongsTo(CashSession::class);
     }
 
     /**
