@@ -1,6 +1,6 @@
 # VetFlow Status
 
-Updated: 2026-09-23
+Updated: 2026-09-24
 
 ## Current State
 
@@ -20,6 +20,10 @@ The local working tree was clean before this documentation pass.
 - PDV quotes (orçamentos) with validity, print/WhatsApp, editing, cancellation
   and conversion into a sale, plus a sale type on sales and quotes with
   delivery address and fee (see `docs/modules/sales.md`).
+- Payment methods per clinic, one per card machine and type, with upfront and
+  installment fees, settlement days, maximum installments and a required NSU
+  option; each payment keeps its fee, net amount and expected settlement
+  date, shown in the card receivables report (see `docs/modules/sales.md`).
 
 - Laravel application structure.
 - Modular backend under `app/Modules`.

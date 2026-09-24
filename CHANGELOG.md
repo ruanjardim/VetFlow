@@ -15,6 +15,16 @@ This project follows the spirit of Keep a Changelog, with one practical adjustme
 
 ### Added
 
+- Payment methods per card machine: each clinic registers its methods
+  ("Rede Visa Crédito", "PagSeguro Débito") with kind, machine, brand, upfront
+  and installment fees, settlement days, maximum installments and an optional
+  required NSU, starting from the six previous methods. The PDV shows one
+  shortcut per method, the installments allowed by the machine and the NSU
+  field; the advanced form and the later receipt use the same methods. Each
+  payment stores its method, fee, net amount and expected settlement date;
+  the cashier groups receipts by method with fees, and the new "Recebíveis de
+  cartão" report lists each installment by expected date. Managed with the new
+  `payment-methods.manage` permission.
 - PDV quotes (orçamentos): a Venda/Orçamento switch in the PDV saves the cart
   as a quote (`ORC-000001`) with validity (7 days by default), notes and sale
   type, without touching stock, money or commissions. Quotes have a list with
