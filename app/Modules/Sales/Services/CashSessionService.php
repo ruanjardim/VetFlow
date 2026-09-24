@@ -243,6 +243,7 @@ class CashSessionService
         $payments = SalePayment::query()
             ->with(['paymentMethod', 'sale'])
             ->where('cash_session_id', $session->id)
+            ->where('method', '!=', CustomerBalanceService::CREDIT_METHOD)
             ->whereIn('status', ['paid', 'cancelled'])
             ->whereHas('sale', fn ($query) => $query->whereIn('status', ['completed', 'returned', 'cancelled']))
             ->orderBy('paid_at')
@@ -266,24 +267,32 @@ class CashSessionService
             'withdrawals' => $sumType($cashMovements, 'withdrawal'),
             'expenses' => $sumType($cashMovements, 'expense'),
             'refunds' => $sumType($cashMovements, 'refund'),
+            'credit_deposits' => $sumType($cashMovements, 'credit_deposit'),
+            'credit_refunds' => $sumType($cashMovements, 'credit_refund'),
             'count' => $cashPayments->count(),
         ];
         $cash['expected'] = round(
             $cash['opening'] + $cash['received'] - $cash['change'] + $cash['supplies']
-            - $cash['withdrawals'] - $cash['expenses'] - $cash['refunds'],
+            - $cash['withdrawals'] - $cash['expenses'] - $cash['refunds']
+            + $cash['credit_deposits'] - $cash['credit_refunds'],
             2
         );
 
+        $otherMovements = $movements->where('method', '!=', 'cash');
         $methods = $this->methodRows(
             $payments->where('method', '!=', 'cash'),
-            $movements->where('method', '!=', 'cash')->where('type', 'refund')
+            $otherMovements->whereIn('type', ['refund', 'credit_refund']),
+            $otherMovements->where('type', 'credit_deposit')
         );
-        $fees = round((float) $feePayments->sum('fee_amount'), 2);
+        $depositFees = $movements
+            ->where('type', 'credit_deposit')
+            ->filter(fn (CashSessionMovement $movement) => (float) ($movement->metadata['fee_amount'] ?? 0) > 0);
+        $fees = round((float) $feePayments->sum('fee_amount') + (float) $depositFees->sum(fn (CashSessionMovement $movement) => (float) $movement->metadata['fee_amount']), 2);
 
         return [
             'cash' => $cash,
             'methods' => $methods,
-            'fees_by_machine' => $this->feesByMachine($feePayments),
+            'fees_by_machine' => $this->feesByMachine($feePayments, $depositFees),
             'payments' => $payments,
             'movements' => $movements,
             'totals' => [
@@ -509,9 +518,20 @@ class CashSessionService
     /**
      * @return Collection<int, array<string, mixed>>
      */
-    private function methodRows(Collection $payments, Collection $refunds): Collection
+    private function methodRows(Collection $payments, Collection $refunds, ?Collection $deposits = null): Collection
     {
         $rows = collect();
+
+        foreach ($deposits ?? collect() as $deposit) {
+            /** @var CashSessionMovement $deposit */
+            $key = $this->methodKey($deposit->payment_method_id, $deposit->method);
+            $label = $deposit->paymentMethod?->name ?? (PaymentMethod::KIND_LABELS[$deposit->method] ?? 'Outro');
+            $row = $rows->get($key, $this->emptyMethodRow($key, $deposit->paymentMethod, $deposit->method, $label));
+            $row['count']++;
+            $row['received'] += (float) $deposit->amount;
+            $row['fees'] += (float) ($deposit->metadata['fee_amount'] ?? 0);
+            $rows->put($key, $row);
+        }
 
         foreach ($payments as $payment) {
             /** @var SalePayment $payment */
@@ -574,19 +594,64 @@ class CashSessionService
      *
      * @return array<int, array{label: string, amount: float, count: int}>
      */
-    private function feesByMachine(Collection $payments): array
+    private function feesByMachine(Collection $payments, ?Collection $deposits = null): array
     {
-        return $payments
+        $fees = $payments
             ->filter(fn (SalePayment $payment) => (float) $payment->fee_amount > 0)
-            ->groupBy(fn (SalePayment $payment) => $payment->acquirer ?: $payment->methodLabel())
+            ->map(fn (SalePayment $payment) => [
+                'label' => $payment->acquirer ?: $payment->methodLabel(),
+                'amount' => (float) $payment->fee_amount,
+            ])
+            ->concat(($deposits ?? collect())->map(fn (CashSessionMovement $movement) => [
+                'label' => $movement->paymentMethod?->acquirer ?: ($movement->paymentMethod?->name ?? 'Outro'),
+                'amount' => (float) ($movement->metadata['fee_amount'] ?? 0),
+            ]));
+
+        return $fees
+            ->groupBy('label')
             ->map(fn (Collection $items, string $label) => [
                 'label' => $label,
-                'amount' => round((float) $items->sum('fee_amount'), 2),
+                'amount' => round((float) $items->sum('amount'), 2),
                 'count' => $items->count(),
             ])
             ->sortBy('label')
             ->values()
             ->all();
+    }
+
+    /**
+     * Customer credit received in the session (advance, or change kept as
+     * credit): money in, by the method used.
+     *
+     * @param array<string, mixed> $attributes
+     */
+    public function recordCreditDeposit(CashSession $session, float $amount, string $kind, ?int $paymentMethodId, string $description, array $attributes = []): CashSessionMovement
+    {
+        return $this->createMovement($session, $attributes + [
+            'type' => 'credit_deposit',
+            'method' => $kind,
+            'payment_method_id' => $paymentMethodId,
+            'amount' => round($amount, 2),
+            'description' => $description,
+            'created_by' => auth()->id(),
+        ]);
+    }
+
+    /**
+     * Customer credit given back in money: money out of the session.
+     *
+     * @param array<string, mixed> $attributes
+     */
+    public function recordCreditRefund(CashSession $session, float $amount, string $kind, ?int $paymentMethodId, string $description, array $attributes = []): CashSessionMovement
+    {
+        return $this->createMovement($session, $attributes + [
+            'type' => 'credit_refund',
+            'method' => $kind,
+            'payment_method_id' => $paymentMethodId,
+            'amount' => round($amount, 2),
+            'description' => $description,
+            'created_by' => auth()->id(),
+        ]);
     }
 
     /**

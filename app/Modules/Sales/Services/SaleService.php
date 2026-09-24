@@ -49,7 +49,8 @@ class SaleService extends BaseService
         return DB::transaction(function () use ($data) {
             $items = $data['items'] ?? [];
             $payments = $data['payments'] ?? [];
-            unset($data['items'], $data['payments']);
+            $changeAsCredit = (bool) ($data['change_as_credit'] ?? false);
+            unset($data['items'], $data['payments'], $data['pay_later'], $data['change_as_credit']);
 
             $serviceOrder = $this->serviceOrderWithItems($data['service_order_id'] ?? null);
 
@@ -75,6 +76,7 @@ class SaleService extends BaseService
             $this->syncItems($sale, $items);
             $this->syncPayments($sale, $payments);
             $this->recalculateTotals($sale);
+            $this->keepChangeAsCredit($sale->refresh(), $changeAsCredit);
             $this->applyCompletionEffects($sale->refresh());
 
             return $sale->refresh();
@@ -86,7 +88,8 @@ class SaleService extends BaseService
         return DB::transaction(function () use ($id, $data) {
             $items = $data['items'] ?? [];
             $payments = $data['payments'] ?? [];
-            unset($data['items'], $data['payments']);
+            $changeAsCredit = (bool) ($data['change_as_credit'] ?? false);
+            unset($data['items'], $data['payments'], $data['pay_later'], $data['change_as_credit']);
 
             /** @var Sale $sale */
             $sale = $this->repository->findOrFail($id);
@@ -130,6 +133,7 @@ class SaleService extends BaseService
                 $this->syncItems($sale->refresh(), $items);
                 $this->syncPayments($sale->refresh(), $payments);
                 $this->recalculateTotals($sale->refresh());
+                $this->keepChangeAsCredit($sale->refresh(), $changeAsCredit);
                 $this->applyCompletionEffects($sale->refresh());
             }
 
@@ -338,7 +342,18 @@ class SaleService extends BaseService
             $refundAmount = max(0, min($requestedRefund, $returnedValue));
             $refundMethod = $data['refund_method'] ?? 'cash';
 
-            if ($refundAmount > 0) {
+            if ($refundAmount > 0 && $refundMethod === CustomerBalanceService::CREDIT_METHOD) {
+                if (! $sale->tutor_id) {
+                    throw ValidationException::withMessages([
+                        'refund_method' => 'Devolução em crédito precisa de cliente identificado na venda.',
+                    ]);
+                }
+
+                app(CustomerBalanceService::class)->addEntry((int) $sale->tutor_id, $sale->clinic_id ? (int) $sale->clinic_id : null, 'return', $refundAmount, [
+                    'sale_id' => $sale->id,
+                    'description' => 'Devolução da venda '.$sale->code,
+                ]);
+            } elseif ($refundAmount > 0) {
                 $cashSessions = app(CashSessionService::class);
                 $cashSessions->recordRefund(
                     $cashSessions->requireOpenSession(
@@ -355,7 +370,9 @@ class SaleService extends BaseService
                     $sale->payments->where('status', 'paid')->firstWhere('method', $refundMethod)?->payment_method_id,
                     $reason
                 );
+            }
 
+            if ($refundAmount > 0) {
                 FinancialTransaction::query()->create([
                     'clinic_id' => $sale->clinic_id,
                     'type' => 'expense',
@@ -452,12 +469,37 @@ class SaleService extends BaseService
             }
 
             $data['paid_at'] = $data['paid_at'] ?? now();
-            $data = app(PaymentMethodService::class)->snapshot($sale->clinic_id, $data);
-            $data['cash_session_id'] = app(CashSessionService::class)
-                ->requireOpenSession(auth()->user(), $sale->clinic_id ? (int) $sale->clinic_id : null, 'payment_method_id')
-                ->id;
+            $usesCredit = ($data['method'] ?? null) === CustomerBalanceService::CREDIT_METHOD;
+
+            if ($usesCredit) {
+                if (! $sale->tutor_id) {
+                    throw ValidationException::withMessages(['payment_method_id' => 'Pagamento com crédito precisa de cliente identificado na venda.']);
+                }
+
+                app(CustomerBalanceService::class)->ensureCredit((int) $sale->tutor_id, $amount, 'amount');
+                $data = array_merge($data, [
+                    'payment_method_id' => null,
+                    'fee_amount' => 0,
+                    'net_amount' => $amount,
+                    'installments' => 1,
+                    'cash_session_id' => null,
+                ]);
+            } else {
+                $data = app(PaymentMethodService::class)->snapshot($sale->clinic_id, $data);
+                $data['cash_session_id'] = app(CashSessionService::class)
+                    ->requireOpenSession(auth()->user(), $sale->clinic_id ? (int) $sale->clinic_id : null, 'payment_method_id')
+                    ->id;
+            }
 
             $payment = $sale->payments()->create($this->paymentAttributes($data, $amount, 'paid'));
+
+            if ($usesCredit) {
+                app(CustomerBalanceService::class)->addEntry((int) $sale->tutor_id, $sale->clinic_id ? (int) $sale->clinic_id : null, 'sale_payment', -1 * $amount, [
+                    'sale_id' => $sale->id,
+                    'sale_payment_id' => $payment->id,
+                    'description' => 'Recebimento da venda '.$sale->code,
+                ]);
+            }
 
             $this->recalculateTotals($sale->refresh());
 
@@ -498,6 +540,7 @@ class SaleService extends BaseService
 
         $payments = SalePayment::query()
             ->with(['sale.seller', 'paymentMethod'])
+            ->where('method', '!=', CustomerBalanceService::CREDIT_METHOD)
             ->whereBetween('paid_at', [$start, $end])
             ->whereHas('sale', fn ($query) => $query->where('status', 'completed'))
             ->where('status', 'paid')
@@ -507,7 +550,10 @@ class SaleService extends BaseService
             ->where('event_type', 'refund')
             ->whereHas('sale')
             ->whereBetween('occurred_at', [$start, $end])
-            ->get();
+            ->get()
+            // A return given back as customer credit moves no money.
+            ->reject(fn (SaleEvent $event) => ($event->metadata['refund_method'] ?? null) === CustomerBalanceService::CREDIT_METHOD)
+            ->values();
 
         $openSales = Sale::query()
             ->with(['tutor', 'patient'])
@@ -836,6 +882,21 @@ class SaleService extends BaseService
         $cashSessionId = $sale->status === 'completed' ? $this->currentCashSessionId($sale) : null;
         $receivedInSession = false;
 
+        $credit = app(CustomerBalanceService::class);
+        $creditUsed = collect($payments)
+            ->filter(fn ($payment) => is_array($payment)
+                && ($payment['method'] ?? null) === CustomerBalanceService::CREDIT_METHOD
+                && ($payment['status'] ?? 'paid') === 'paid')
+            ->sum(fn (array $payment) => round((float) ($payment['amount'] ?? 0), 2));
+
+        if ($sale->status === 'completed' && $creditUsed > 0) {
+            if (! $sale->tutor_id) {
+                throw ValidationException::withMessages(['payments' => 'Pagamento com crédito precisa de cliente identificado.']);
+            }
+
+            $credit->ensureCredit((int) $sale->tutor_id, (float) $creditUsed);
+        }
+
         foreach ($payments as $payment) {
             $amount = round((float) ($payment['amount'] ?? 0), 2);
 
@@ -845,21 +906,70 @@ class SaleService extends BaseService
 
             $status = $payment['status'] ?? 'paid';
             $payment['paid_at'] = $status === 'paid' ? ($payment['paid_at'] ?? now()) : null;
-            $payment = $paymentMethods->snapshot($sale->clinic_id, $payment);
+            $usesCredit = ($payment['method'] ?? null) === CustomerBalanceService::CREDIT_METHOD;
+            $payment = $usesCredit
+                ? array_merge($payment, ['payment_method_id' => null, 'fee_amount' => 0, 'net_amount' => $amount, 'installments' => 1])
+                : $paymentMethods->snapshot($sale->clinic_id, $payment);
 
             if (empty($payment['method'])) {
                 continue;
             }
 
-            $payment['cash_session_id'] = $status === 'paid' ? $cashSessionId : null;
+            // Customer credit is not money coming in, so it stays out of the
+            // cash session.
+            $payment['cash_session_id'] = $status === 'paid' && ! $usesCredit ? $cashSessionId : null;
             $receivedInSession = $receivedInSession || $payment['cash_session_id'] !== null;
 
-            $sale->payments()->create($this->paymentAttributes($payment, $amount, $status));
+            $salePayment = $sale->payments()->create($this->paymentAttributes($payment, $amount, $status));
+
+            if ($usesCredit && $status === 'paid' && $sale->status === 'completed') {
+                $credit->addEntry((int) $sale->tutor_id, $sale->clinic_id ? (int) $sale->clinic_id : null, 'sale_payment', -1 * $amount, [
+                    'sale_id' => $sale->id,
+                    'sale_payment_id' => $salePayment->id,
+                    'description' => 'Venda '.$sale->code,
+                ]);
+            }
         }
 
         if ($receivedInSession) {
             $sale->update(['cash_session_id' => $cashSessionId]);
         }
+    }
+
+    /**
+     * The change of a completed sale kept as customer credit: the change is
+     * considered given and deposited back as credit, so the cash session
+     * stays balanced and the credit is not revenue until it is used.
+     */
+    private function keepChangeAsCredit(Sale $sale, bool $changeAsCredit): void
+    {
+        $change = round((float) $sale->change_total, 2);
+
+        if (! $changeAsCredit || $sale->status !== 'completed' || $change <= 0) {
+            return;
+        }
+
+        if (! $sale->tutor_id) {
+            throw ValidationException::withMessages(['change_as_credit' => 'Para guardar o troco como crédito, identifique o cliente.']);
+        }
+
+        $cashSessions = app(CashSessionService::class);
+        $session = $cashSessions->requireOpenSession(auth()->user(), $sale->clinic_id ? (int) $sale->clinic_id : null);
+        $movement = $cashSessions->recordCreditDeposit(
+            $session,
+            $change,
+            'cash',
+            app(PaymentMethodService::class)->defaultForKind($sale->clinic_id ? (int) $sale->clinic_id : null, 'cash')?->id,
+            'Troco guardado como crédito — venda '.$sale->code,
+            ['sale_id' => $sale->id, 'metadata' => ['tutor_id' => $sale->tutor_id]]
+        );
+
+        app(CustomerBalanceService::class)->addEntry((int) $sale->tutor_id, $sale->clinic_id ? (int) $sale->clinic_id : null, 'change', $change, [
+            'sale_id' => $sale->id,
+            'cash_session_id' => $session->id,
+            'description' => 'Troco da venda '.$sale->code,
+            'metadata' => ['cash_session_movement_id' => $movement->id],
+        ]);
     }
 
     /**
@@ -877,17 +987,17 @@ class SaleService extends BaseService
             return;
         }
 
-        $cashSessions = app(CashSessionService::class);
-        $session = $cashSessions->requireOpenSession(
-            auth()->user(),
-            $sale->clinic_id ? (int) $sale->clinic_id : null,
-            'sale',
-            'Abra o seu caixa para devolver ao cliente o valor desta venda.'
-        );
-        // The change came out of the cash received, so cash goes first.
+        // The change came out of the cash received, so cash goes first and
+        // the customer credit used in the sale comes back last.
+        $order = fn (SalePayment $payment) => match ($payment->method) {
+            'cash' => 0,
+            CustomerBalanceService::CREDIT_METHOD => 2,
+            default => 1,
+        };
         $changeLeft = (float) $sale->change_total;
+        $plan = [];
 
-        foreach ($paid->sortBy(fn (SalePayment $payment) => $payment->method === 'cash' ? 0 : 1) as $payment) {
+        foreach ($paid->sortBy($order) as $payment) {
             if ($toRefund <= 0) {
                 break;
             }
@@ -906,8 +1016,33 @@ class SaleService extends BaseService
                 continue;
             }
 
-            $cashSessions->recordRefund($session, $sale, $amount, (string) $payment->method, $payment->payment_method_id, $reason);
+            $plan[] = [$payment, $amount];
             $toRefund = round($toRefund - $amount, 2);
+        }
+
+        $moneyBack = collect($plan)->filter(fn (array $step) => $step[0]->method !== CustomerBalanceService::CREDIT_METHOD);
+        $cashSessions = app(CashSessionService::class);
+        $session = $moneyBack->isNotEmpty()
+            ? $cashSessions->requireOpenSession(
+                auth()->user(),
+                $sale->clinic_id ? (int) $sale->clinic_id : null,
+                'sale',
+                'Abra o seu caixa para devolver ao cliente o valor desta venda.'
+            )
+            : null;
+
+        foreach ($plan as [$payment, $amount]) {
+            if ($payment->method === CustomerBalanceService::CREDIT_METHOD) {
+                app(CustomerBalanceService::class)->addEntry((int) $sale->tutor_id, $sale->clinic_id ? (int) $sale->clinic_id : null, 'cancellation', $amount, [
+                    'sale_id' => $sale->id,
+                    'sale_payment_id' => $payment->id,
+                    'description' => 'Venda '.$sale->code.' cancelada',
+                ]);
+
+                continue;
+            }
+
+            $cashSessions->recordRefund($session, $sale, $amount, (string) $payment->method, $payment->payment_method_id, $reason);
         }
     }
 
