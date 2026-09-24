@@ -15,6 +15,19 @@ This project follows the spirit of Keep a Changelog, with one practical adjustme
 
 ### Added
 
+- PDV quotes (orçamentos): a Venda/Orçamento switch in the PDV saves the cart
+  as a quote (`ORC-000001`) with validity (7 days by default), notes and sale
+  type, without touching stock, money or commissions. Quotes have a list with
+  open/expired/converted/cancelled filters, a printable page, a WhatsApp
+  summary link, editing and cancellation while open, and "Converter em venda",
+  which opens the PDV with the quoted items and prices; completing that sale
+  marks the quote as converted and cancelling it reopens the quote.
+- Sale type on sales and quotes with the six SimplesVet options (in-store for
+  final consumer or resale, delivery/home service, delivery for resale, and
+  internet or phone orders shipped by carrier). Delivery and shipping types
+  carry a delivery address (prefilled from the customer) and a delivery fee
+  added to the total, shown on the receipt and kept out of item
+  profitability.
 - Banho e tosa agenda: day grid per professional with click-to-book free
   slots, booking duration (defaults to the sum of the services), statuses
   Agendado/Confirmado/Em espera/Em atendimento/Animal pronto/Não compareceu,

@@ -64,7 +64,9 @@ class SaleProfitabilityService
     {
         $items = $sale->items;
         $itemsNetTotal = $items->sum(fn (SaleItem $item) => $this->itemNetTotal($item));
-        $saleAdjustment = (float) $sale->total - $itemsNetTotal;
+        // The delivery fee is not item revenue, so it stays out of the
+        // proportional allocation of sale-level discounts and additions.
+        $saleAdjustment = (float) $sale->total - (float) ($sale->delivery_fee ?? 0) - $itemsNetTotal;
 
         return $items->map(function (SaleItem $item) use ($sale, $itemsNetTotal, $saleAdjustment) {
             $quantity = (float) $item->quantity;

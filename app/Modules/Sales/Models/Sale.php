@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Modules\Clinics\Models\Clinic;
 use App\Modules\Financial\Models\FinancialTransaction;
 use App\Modules\Patients\Models\Patient;
+use App\Modules\Sales\Support\SaleType;
 use App\Modules\ServiceOrders\Models\ServiceOrder;
 use App\Modules\Tutors\Models\Tutor;
 use Illuminate\Database\Eloquent\Model;
@@ -28,6 +29,7 @@ class Sale extends Model
         'subtotal' => 'decimal:2',
         'discount_total' => 'decimal:2',
         'additions_total' => 'decimal:2',
+        'delivery_fee' => 'decimal:2',
         'total' => 'decimal:2',
         'paid_total' => 'decimal:2',
         'change_total' => 'decimal:2',
@@ -91,5 +93,20 @@ class Sale extends Model
     public function events(): HasMany
     {
         return $this->hasMany(SaleEvent::class);
+    }
+
+    public function quote(): BelongsTo
+    {
+        return $this->belongsTo(SaleQuote::class, 'sale_quote_id');
+    }
+
+    public function saleTypeLabel(): string
+    {
+        return SaleType::label($this->sale_type);
+    }
+
+    public function hasDelivery(): bool
+    {
+        return SaleType::hasDelivery($this->sale_type);
     }
 }

@@ -15,6 +15,7 @@ use App\Modules\Sales\Models\Sale;
 use App\Modules\Sales\Models\SaleEvent;
 use App\Modules\Sales\Models\SaleItem;
 use App\Modules\Sales\Models\SalePayment;
+use App\Modules\Sales\Support\SaleType;
 use App\Modules\Commissions\Services\GroomingCommissionService;
 use App\Modules\PetShopServices\Models\PetPackage;
 use App\Modules\PetShopServices\Services\PetPackageService;
@@ -60,6 +61,7 @@ class SaleService extends BaseService
                 }
             }
 
+            $data = SaleType::normalizeDelivery($data);
             $data['code'] = $this->nextCode();
             $data['sold_at'] = $data['sold_at'] ?? now();
             $data['source'] = $data['source'] ?? 'pdv';
@@ -91,7 +93,17 @@ class SaleService extends BaseService
             $effectsAlreadyApplied = $sale->stock_applied || $sale->financial_applied;
 
             if ($effectsAlreadyApplied) {
-                unset($data['discount_total'], $data['status']);
+                // Totals are frozen once stock/financial effects exist, and the
+                // delivery data is part of that total.
+                unset(
+                    $data['discount_total'],
+                    $data['status'],
+                    $data['sale_type'],
+                    $data['delivery_fee'],
+                    $data['delivery_address']
+                );
+            } else {
+                $data = SaleType::normalizeDelivery($data);
             }
 
             $serviceOrder = $this->serviceOrderWithItems($data['service_order_id'] ?? null);
@@ -202,6 +214,10 @@ class SaleService extends BaseService
                 if ($petPackage) {
                     app(PetPackageService::class)->cancel($petPackage, 'venda '.$sale->code.' cancelada');
                 }
+            }
+
+            if ($sale->sale_quote_id) {
+                app(SaleQuoteService::class)->reopenAfterCancelledSale($sale);
             }
 
             $sale->update([
@@ -826,7 +842,8 @@ class SaleService extends BaseService
         $subtotal = (float) $sale->items->sum(fn (SaleItem $item) => $this->saleItemNetTotal($item));
         $discount = (float) ($sale->discount_total ?? 0);
         $additions = (float) ($sale->additions_total ?? 0);
-        $total = max(0, $subtotal + $additions - $discount);
+        $deliveryFee = (float) ($sale->delivery_fee ?? 0);
+        $total = max(0, $subtotal + $additions + $deliveryFee - $discount);
         $paid = (float) $sale->payments
             ->filter(fn (SalePayment $payment) => ($payment->status ?? 'paid') === 'paid')
             ->sum('amount');
@@ -916,6 +933,10 @@ class SaleService extends BaseService
             if ($petPackage && $petPackage->status === 'pending_payment') {
                 app(PetPackageService::class)->activate($petPackage, $sale);
             }
+        }
+
+        if ($sale->sale_quote_id) {
+            app(SaleQuoteService::class)->markConverted($sale);
         }
 
         if ((float) $sale->discount_total > 0) {

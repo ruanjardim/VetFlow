@@ -14,6 +14,13 @@
 .pdv-customer summary{cursor:pointer;font-weight:700}
 .pdv-customer-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:14px}
 .pdv-cart-heading{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.pdv-mode{display:inline-flex;justify-self:start;padding:4px;gap:4px;border:1px solid #dbe3ee;border-radius:10px;background:#f1f5f9}
+.pdv-mode button{min-width:120px;padding:8px 16px;border:0;border-radius:7px;background:transparent;color:#334155;font-weight:700}
+.pdv-mode button.is-active{background:#0f172a;color:#f8fafc;box-shadow:0 1px 3px rgba(15,23,42,.2)}
+.pdv-sale-type,.pdv-notes{border:1px solid #dbe3ee;border-radius:12px;background:#fff;padding:14px 18px}
+.pdv-sale-type{display:grid;gap:12px}
+.pdv-notes summary{cursor:pointer;font-weight:700}
+.pdv-notes textarea{width:100%;margin-top:10px}
 .pdv-cart-heading h2{margin:0}
 .pdv-cart-heading span{font-size:13px;color:#64748b}
 .pdv-cart{min-height:170px;padding:8px 16px}

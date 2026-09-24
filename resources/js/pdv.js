@@ -27,6 +27,19 @@ document.addEventListener('DOMContentLoaded', () => {
   const quickProductUnit = find('[data-pdv-quick-product-unit]');
   const quickProductCost = find('[data-pdv-quick-product-cost]');
   const quickProductStatus = find('[data-pdv-quick-product-status]');
+  const saleType = find('[data-pdv-sale-type]');
+  const delivery = find('[data-pdv-delivery]');
+  const deliveryAddress = find('[data-pdv-delivery-address]');
+  const deliveryFeeField = find('[data-pdv-delivery-fee-field]');
+  const deliveryFee = find('[data-pdv-delivery-fee]');
+  const validUntil = find('[data-pdv-valid-until]');
+  const modeInput = find('[data-pdv-mode-input]');
+  const summaryLabel = find('[data-pdv-summary-label]');
+  const saveQuote = find('[data-pdv-save-quote]');
+  let deliveryTypes = [];
+  try { deliveryTypes = JSON.parse(form.dataset.deliveryTypes || '[]'); } catch { deliveryTypes = []; }
+  const hasDelivery = () => Boolean(saleType && deliveryTypes.includes(saleType.value));
+  const isQuoteMode = () => form.dataset.pdvMode === 'quote';
   const brl = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
   const money = (cents) => brl.format(cents / 100);
   const parseMoney = (value) => {
@@ -69,6 +82,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     discount.value = (parseMoney(discount.value) / 100).toFixed(2);
     additions.value = (parseMoney(additions.value) / 100).toFixed(2);
+    if (deliveryFee) deliveryFee.value = (parseMoney(deliveryFee.value) / 100).toFixed(2);
   };
   const totals = () => {
     let gross = 0;
@@ -89,7 +103,8 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
     const saleDiscount = Math.min(gross - itemDiscounts, parseMoney(discount.value));
-    const total = Math.max(0, gross - itemDiscounts - saleDiscount + parseMoney(additions.value));
+    const fee = hasDelivery() && deliveryFee ? parseMoney(deliveryFee.value) : 0;
+    const total = Math.max(0, gross - itemDiscounts - saleDiscount + parseMoney(additions.value) + fee);
     const paid = paymentRows().reduce((sum, row) => sum + parseMoney(row.querySelector('[data-pdv-payment-amount]').value), 0);
     const balance = Math.max(0, total - paid);
     const change = Math.max(0, paid - total);
@@ -345,6 +360,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   };
   const openPayment = () => {
+    if (isQuoteMode()) return;
     if (totals().total <= 0 || rows().length === 0) {
       message(checkoutStatus, 'Inclua um item com valor antes de receber.', 'warning');
       return;
@@ -354,6 +370,7 @@ document.addEventListener('DOMContentLoaded', () => {
     paymentRows()[0]?.querySelector('[data-pdv-payment-method]')?.focus();
   };
   const finish = () => {
+    if (isQuoteMode()) return;
     const { total, paid, balance, change } = totals();
     if (total <= 0 || rows().length === 0) { message(paymentStatus, 'Inclua itens com valor.', 'warning'); return; }
     if (paymentRows().some((row) => !row.querySelector('[data-pdv-payment-method]').value || parseMoney(row.querySelector('[data-pdv-payment-amount]').value) <= 0)) {
@@ -374,7 +391,7 @@ document.addEventListener('DOMContentLoaded', () => {
   if (new URLSearchParams(window.location.search).get('scan')) search.value = form.dataset.initialScan || '';
   totals();
   if (search.value) lookupBarcode();
-  if (paymentRows().length) dialog.showModal();
+  if (paymentRows().length && form.dataset.pdvMode !== 'quote') dialog.showModal();
 
   search.addEventListener('input', () => {
     window.clearTimeout(searchTimer);
@@ -400,7 +417,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
   find('[data-pdv-add-custom]').addEventListener('click', () => addRow({ type: 'custom', quantity: 1, unit_price: 0 }).querySelector('[data-pdv-description]').focus());
   [discount, additions].forEach((input) => input.addEventListener('input', totals));
-  find('[data-pdv-open-payment]').addEventListener('click', openPayment);
+  find('[data-pdv-open-payment]')?.addEventListener('click', openPayment);
   find('[data-pdv-close-payment]').addEventListener('click', () => dialog.close());
   find('[data-pdv-close-quick-product]').addEventListener('click', () => { quickProductDialog.close(); search.focus(); });
   find('[data-pdv-save-quick-product]').addEventListener('click', saveQuickProduct);
@@ -420,8 +437,16 @@ document.addEventListener('DOMContentLoaded', () => {
     totals();
   }));
   find('[data-pdv-finish]').addEventListener('click', finish);
-  find('[data-pdv-suspend]').addEventListener('click', (event) => {
+  find('[data-pdv-suspend]')?.addEventListener('click', (event) => {
     if (!rows().length) { event.preventDefault(); message(checkoutStatus, 'Inclua um item para suspender a venda.', 'warning'); }
+  });
+  saveQuote?.addEventListener('click', (event) => {
+    if (!rows().length) {
+      event.preventDefault();
+      message(checkoutStatus, 'Inclua um item para salvar o orçamento.', 'warning');
+      return;
+    }
+    if (!form.reportValidity()) event.preventDefault();
   });
   form.addEventListener('submit', () => {
     if (status.value === 'draft') {
@@ -443,9 +468,58 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     customerSummary.firstChild.textContent = tutor.value ? tutor.selectedOptions[0].textContent + ' · Alterar cliente ' : 'Consumidor não identificado · Identificar cliente ';
   };
-  tutor.addEventListener('change', syncCustomer);
+  tutor.addEventListener('change', () => { syncCustomer(); syncDelivery(true); });
   clinic?.addEventListener('change', () => { ++searchSerial; clearResults(); syncCustomer(); });
   syncCustomer();
+
+  const tutorAddress = () => tutor.selectedOptions[0]?.dataset.address || '';
+  function syncDelivery(tutorChanged = false) {
+    if (!saleType) return;
+    const show = hasDelivery();
+    if (delivery) delivery.hidden = !show;
+    if (deliveryFeeField) deliveryFeeField.hidden = !show;
+    if (show && deliveryAddress) {
+      const address = tutorAddress();
+      const untouched = !deliveryAddress.value.trim() || deliveryAddress.dataset.autofilled === '1';
+      if (address && untouched && (tutorChanged || !deliveryAddress.value.trim())) {
+        deliveryAddress.value = address;
+        deliveryAddress.dataset.autofilled = '1';
+      }
+    }
+    totals();
+  }
+  deliveryAddress?.addEventListener('input', () => { deliveryAddress.dataset.autofilled = '0'; });
+  saleType?.addEventListener('change', () => syncDelivery(false));
+  deliveryFee?.addEventListener('input', totals);
+  syncDelivery(false);
+
+  const setMode = (mode) => {
+    const quote = mode === 'quote';
+    form.dataset.pdvMode = quote ? 'quote' : 'sale';
+    if (modeInput) modeInput.value = form.dataset.pdvMode;
+    form.querySelectorAll('[data-pdv-sale-only]').forEach((node) => {
+      node.hidden = quote;
+      if (node.matches('button')) node.disabled = quote;
+    });
+    form.querySelectorAll('[data-pdv-quote-only]').forEach((node) => {
+      node.hidden = !quote;
+      if (node.matches('button')) node.disabled = !quote;
+    });
+    if (validUntil) validUntil.disabled = !quote;
+    form.querySelectorAll('[data-pdv-mode-button]').forEach((button) => {
+      const active = button.dataset.pdvModeButton === form.dataset.pdvMode;
+      button.classList.toggle('is-active', active);
+      button.setAttribute('aria-pressed', active ? 'true' : 'false');
+    });
+    if (summaryLabel) summaryLabel.textContent = quote ? 'Orçamento em andamento' : 'Venda em andamento';
+    if (quote && dialog.open) dialog.close();
+    message(checkoutStatus, '');
+  };
+  form.querySelectorAll('[data-pdv-mode-button]').forEach((button) => button.addEventListener('click', () => {
+    setMode(button.dataset.pdvModeButton);
+    search.focus();
+  }));
+  setMode(form.dataset.pdvMode);
   document.addEventListener('keydown', (event) => {
     if (!['F2', 'F4', 'F6', 'F8', 'F10'].includes(event.key)) return;
     event.preventDefault();
@@ -453,6 +527,6 @@ document.addEventListener('DOMContentLoaded', () => {
     if (event.key === 'F4') { customer.open = true; tutor.focus(); }
     if (event.key === 'F6') discount.focus();
     if (event.key === 'F8') openPayment();
-    if (event.key === 'F10') { if (!dialog.open) openPayment(); else finish(); }
+    if (event.key === 'F10' && !isQuoteMode()) { if (!dialog.open) openPayment(); else finish(); }
   });
 });

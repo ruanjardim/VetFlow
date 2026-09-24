@@ -6,6 +6,10 @@ use App\Http\Requests\Concerns\ValidatesTenantScopedReferences;
 use App\Modules\Inventory\Services\ProductLotService;
 use App\Modules\PetShopServices\Models\PetShopService;
 use App\Modules\Products\Models\Product;
+use App\Modules\Sales\Models\Sale;
+use App\Modules\Sales\Models\SaleQuote;
+use App\Modules\Sales\Requests\Concerns\NormalizesSaleInput;
+use App\Modules\Sales\Support\SaleType;
 use App\Modules\ServiceOrders\Models\ServiceOrder;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -13,6 +17,7 @@ use Illuminate\Validation\Validator;
 
 class StoreSaleRequest extends FormRequest
 {
+    use NormalizesSaleInput;
     use ValidatesTenantScopedReferences;
 
     public function authorize(): bool
@@ -26,44 +31,10 @@ class StoreSaleRequest extends FormRequest
 
         $data['discount_total'] = $this->normalizeDecimalValue($data['discount_total'] ?? null);
         $data['additions_total'] = $this->normalizeDecimalValue($data['additions_total'] ?? null);
+        $data['delivery_fee'] = $this->normalizeDecimalValue($data['delivery_fee'] ?? null);
 
         if (isset($data['items']) && is_array($data['items'])) {
-            $data['items'] = array_map(function ($item) {
-                if (! is_array($item)) {
-                    return $item;
-                }
-
-                $item['quantity'] = $this->normalizeDecimalValue($item['quantity'] ?? null);
-                $item['unit_price'] = $this->normalizeDecimalValue($item['unit_price'] ?? null);
-                $item['original_unit_price'] = $this->normalizeDecimalValue($item['original_unit_price'] ?? null);
-                $item['discount_total'] = $this->normalizeDecimalValue($item['discount_total'] ?? null);
-
-                if ($this->boolean('pdv_checkout') && $item['unit_price'] !== null && $item['unit_price'] !== '') {
-                    $item['original_unit_price'] = $item['unit_price'];
-                }
-
-                $quantity = (float) ($item['quantity'] ?? 0);
-                $unitPrice = (float) ($item['unit_price'] ?? 0);
-                $description = trim((string) ($item['description'] ?? ''));
-                $hasCatalogItem = ! empty($item['product_id']) || ! empty($item['petshop_service_id']);
-                $hasManualEntry = $description !== '' || $unitPrice > 0;
-
-                if (! $hasCatalogItem && $hasManualEntry) {
-                    $item['type'] = 'custom';
-                    $item['product_id'] = null;
-                    $item['petshop_service_id'] = null;
-                }
-
-                if ($unitPrice > 0 && $quantity <= 0) {
-                    $item['quantity'] = '1';
-                }
-
-                if (($item['type'] ?? '') === 'custom' && $description === '' && $unitPrice > 0) {
-                    $item['description'] = 'Item avulso';
-                }
-
-                return $item;
-            }, $data['items']);
+            $data['items'] = $this->normalizeItemsInput($data['items'], $this->boolean('pdv_checkout'));
         }
 
         if (isset($data['payments']) && is_array($data['payments'])) {
@@ -92,6 +63,10 @@ class StoreSaleRequest extends FormRequest
             'patient_id' => ['nullable', 'integer', $this->existsInCurrentClinic('patients')],
             'service_order_id' => ['nullable', 'integer', $this->existsInCurrentClinic('service_orders')],
             'pet_package_id' => ['nullable', 'integer', $this->existsInCurrentClinic('pet_packages')],
+            'sale_quote_id' => ['nullable', 'integer', $this->existsInCurrentClinic('sale_quotes')],
+            'sale_type' => ['nullable', 'string', Rule::in(SaleType::keys())],
+            'delivery_fee' => ['nullable', 'numeric', 'min:0'],
+            'delivery_address' => ['nullable', 'string', 'max:500'],
             'status' => ['required', 'string', Rule::in(['draft', 'completed', 'cancelled', 'returned'])],
             'sold_at' => ['nullable', 'date'],
             'source' => ['nullable', 'string', 'max:40'],
@@ -132,12 +107,16 @@ class StoreSaleRequest extends FormRequest
             'items.*.product_id.exists' => 'Um dos produtos informados nao foi encontrado.',
             'items.*.petshop_service_id.exists' => 'Um dos servicos informados nao foi encontrado.',
             'payments.*.method.in' => 'Informe uma forma de pagamento valida.',
+            'sale_quote_id.exists' => 'O orçamento informado não foi encontrado.',
+            'sale_type.in' => 'Informe um tipo de venda válido.',
         ];
     }
 
     public function withValidator(Validator $validator): void
     {
         $validator->after(function (Validator $validator) {
+            $this->validateQuoteConversion($validator);
+
             if ($this->input('status') !== 'completed') {
                 return;
             }
@@ -259,8 +238,49 @@ class StoreSaleRequest extends FormRequest
 
         $discount = (float) ($this->input('discount_total') ?? 0);
         $additions = (float) ($this->input('additions_total') ?? 0);
+        $deliveryFee = SaleType::hasDelivery($this->input('sale_type'))
+            ? max(0, (float) ($this->input('delivery_fee') ?? 0))
+            : 0.0;
 
-        return max(0, round($subtotal + $additions - $discount, 2));
+        return max(0, round($subtotal + $additions + $deliveryFee - $discount, 2));
+    }
+
+    /**
+     * A quote can back a single non-cancelled sale, and only while it is open.
+     */
+    private function validateQuoteConversion(Validator $validator): void
+    {
+        $quoteId = (int) $this->input('sale_quote_id');
+
+        if ($quoteId <= 0 || $validator->errors()->has('sale_quote_id')) {
+            return;
+        }
+
+        $quote = SaleQuote::query()->find($quoteId);
+
+        if (! $quote) {
+            return;
+        }
+
+        $currentSaleId = (int) $this->route('sale');
+        $alreadyLinked = Sale::query()
+            ->where('sale_quote_id', $quote->id)
+            ->where('status', '!=', 'cancelled')
+            ->when($currentSaleId > 0, fn ($query) => $query->whereKeyNot($currentSaleId))
+            ->exists();
+
+        if ($alreadyLinked) {
+            $validator->errors()->add('sale_quote_id', 'Este orçamento já está vinculado a outra venda.');
+
+            return;
+        }
+
+        $linkedToCurrentSale = $currentSaleId > 0
+            && (int) $quote->converted_sale_id === $currentSaleId;
+
+        if (! $quote->isOpen() && ! $linkedToCurrentSale) {
+            $validator->errors()->add('sale_quote_id', 'Este orçamento não está aberto para conversão.');
+        }
     }
 
     private function stockErrors(array $items): array
@@ -324,25 +344,5 @@ class StoreSaleRequest extends FormRequest
         }
 
         return 0.0;
-    }
-
-    private function normalizeDecimalValue(mixed $value): mixed
-    {
-        if ($value === null || $value === '' || ! is_string($value)) {
-            return $value;
-        }
-
-        $normalized = trim($value);
-
-        if ($normalized === '') {
-            return $value;
-        }
-
-        if (str_contains($normalized, ',')) {
-            $normalized = str_replace('.', '', $normalized);
-            $normalized = str_replace(',', '.', $normalized);
-        }
-
-        return $normalized;
     }
 }
