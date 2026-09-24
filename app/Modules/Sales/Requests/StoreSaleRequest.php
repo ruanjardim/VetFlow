@@ -10,6 +10,7 @@ use App\Modules\Sales\Models\Sale;
 use App\Modules\Sales\Models\SaleQuote;
 use App\Modules\Sales\Requests\Concerns\NormalizesSaleInput;
 use App\Modules\Sales\Requests\Concerns\ValidatesPaymentMethods;
+use App\Modules\Sales\Services\CashSessionService;
 use App\Modules\Sales\Support\SaleType;
 use App\Modules\ServiceOrders\Models\ServiceOrder;
 use Illuminate\Foundation\Http\FormRequest;
@@ -123,6 +124,7 @@ class StoreSaleRequest extends FormRequest
         $validator->after(function (Validator $validator) {
             $this->validateQuoteConversion($validator);
             $this->validatePaymentMethods($validator);
+            $this->validateOpenCashSession($validator);
 
             if ($this->input('status') !== 'completed') {
                 return;
@@ -264,16 +266,8 @@ class StoreSaleRequest extends FormRequest
             return;
         }
 
-        $currentSaleId = (int) $this->route('sale');
-
-        if ($currentSaleId > 0) {
-            $currentSale = Sale::query()->find($currentSaleId);
-
-            // Payments of a sale with stock or financial effects are frozen
-            // and ignored on update, so they are not validated again.
-            if ($currentSale && ($currentSale->stock_applied || $currentSale->financial_applied)) {
-                return;
-            }
+        if ($this->currentSaleIsLocked()) {
+            return;
         }
 
         $clinicId = $this->tenantReferenceClinicId();
@@ -294,6 +288,55 @@ class StoreSaleRequest extends FormRequest
                 $validator->errors()->add('payments', $message);
             }
         }
+    }
+
+    /**
+     * Receiving money requires an open cash session of the operator in the
+     * sale clinic. Suspended sales and sales finished without any received
+     * payment do not.
+     */
+    private function validateOpenCashSession(Validator $validator): void
+    {
+        if ($this->input('status') !== 'completed' || $this->currentSaleIsLocked()) {
+            return;
+        }
+
+        $payments = $this->input('payments', []);
+        $receives = collect(is_array($payments) ? $payments : [])
+            ->contains(fn ($payment) => is_array($payment)
+                && (float) ($payment['amount'] ?? 0) > 0
+                && (! empty($payment['method']) || ! empty($payment['payment_method_id']))
+                && ($payment['status'] ?? 'paid') === 'paid');
+
+        if (! $receives) {
+            return;
+        }
+
+        $session = app(CashSessionService::class)->currentFor($this->user(), $this->tenantReferenceClinicId());
+
+        if (! $session) {
+            $validator->errors()->add(
+                'cash_session',
+                'Abra o seu caixa antes de receber. No PDV, use "Abrir caixa" e informe o fundo de troco.'
+            );
+        }
+    }
+
+    /**
+     * Payments of a sale with stock or financial effects are frozen and
+     * ignored on update, so they are not validated again.
+     */
+    private function currentSaleIsLocked(): bool
+    {
+        $currentSaleId = (int) $this->route('sale');
+
+        if ($currentSaleId <= 0) {
+            return false;
+        }
+
+        $currentSale = Sale::query()->find($currentSaleId);
+
+        return (bool) ($currentSale && ($currentSale->stock_applied || $currentSale->financial_applied));
     }
 
     /**
