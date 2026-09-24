@@ -127,6 +127,7 @@ Route::middleware(['auth', EnsureUserIsActive::class])->group(function () {
         'purchase-entries.manage' => app_path('Modules/PurchaseEntries/Routes/web.php'),
         'sales.manage' => app_path('Modules/Sales/Routes/web.php'),
         'payment-methods.manage' => app_path('Modules/Sales/Routes/payment-methods.php'),
+        'cash-sessions.review' => app_path('Modules/Sales/Routes/cash-sessions-review.php'),
         'schedules.manage' => app_path('Modules/Schedules/Routes/web.php'),
         'service-orders.manage' => app_path('Modules/ServiceOrders/Routes/web.php'),
         'suppliers.manage' => app_path('Modules/Suppliers/Routes/web.php'),
