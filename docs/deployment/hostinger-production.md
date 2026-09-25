@@ -61,13 +61,42 @@ After changing environment variables, rebuild the Laravel configuration cache:
 php artisan config:cache
 ```
 
+## hPanel Cron Job commands
+
+hPanel escapes shell special characters such as `&` in **Custom** Cron Job
+commands and rejects commands longer than 255 characters after escaping. A
+command such as `cd <dir> && php artisan migrate --force` is accepted but runs
+nothing, and hPanel reports no error. Use a single command that calls
+`artisan` by its absolute path; Laravel resolves the application directory
+from that path, so no `cd` is needed. **View output** on the Cron Job shows the
+output of its last run.
+
+## Migrations cron
+
+The Git deployment only runs `composer install`. Migrations and the
+authorization and plan catalogs are applied by an hourly **Custom** Cron Job
+(minute 0):
+
+```bash
+/usr/bin/php /home/u804718109/domains/vetflowsys.com.br/public_html/artisan migrate --force --seed
+```
+
+`--seed` runs `Database\Seeders\DatabaseSeeder`, which in production only calls
+the idempotent `AuthorizationSeeder` and `SaasPlanSeeder`; the demo user is
+limited to the local and testing environments. Keep example data out of
+`DatabaseSeeder`, because this Cron Job runs it every hour.
+
+Ship schema changes in their own pull request, before the code that needs
+them. Merge the code only after the next run, once **View output** or the
+Migrations check in `/operations/report.json` shows no pending migration.
+
 ## Queue cron
 
 Create a **Custom** Cron Job in hPanel. Use the PHP CLI path and application
 directory shown by the account. The command shape is:
 
 ```bash
-cd <absolute-application-directory> && <absolute-php-cli> artisan vetflow:queue:drain --max-jobs=25 --max-time=45 --timeout=30 --tries=3
+<absolute-php-cli> <absolute-application-directory>/artisan vetflow:queue:drain --max-jobs=25 --max-time=45 --timeout=30 --tries=3
 ```
 
 Schedule it every five minutes after testing that exact command once from the

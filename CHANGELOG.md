@@ -284,6 +284,11 @@ This project follows the spirit of Keep a Changelog, with one practical adjustme
 
 ### Fixed
 
+- Production migrations: the Hostinger Cron Job now calls `artisan` by its
+  absolute path (`migrate --force --seed`). The previous `cd ... && ...`
+  command never ran because hPanel escapes `&`, which left the September
+  migrations pending and broke the PDV, cash, package and commission pages.
+  The runbook documents the hPanel command rules.
 - Weekly schedule queries now include dated events on the final day of the
   displayed range across SQLite, MySQL, and PostgreSQL date representations.
 
