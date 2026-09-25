@@ -39,9 +39,13 @@ git checkout -b feat/<assunto>      # toda branch nova sai daqui
     `resources/css`, rode `npm run build` e commite `public/build`
     (manifest e assets) no mesmo PR.
 - Migrations e seeders rodam por um cron de hora em hora na Hostinger (hPanel >
-  Avançado > Cron Jobs, modo "Personalizado", minuto 0). É o único cron da
-  conta:
+  Avançado > Cron Jobs, modo "Personalizado", minuto 0). Este é o cron de
+  migrations da conta:
   `/usr/bin/php /home/u804718109/domains/vetflowsys.com.br/public_html/artisan migrate --force --seed`.
+
+  Além dele, mantenha o cron da fila descrito em
+  `docs/deployment/hostinger-production.md`, executado a cada cinco minutos. Sem
+  esse segundo cron, lembretes e demais jobs assíncronos permanecem pendentes.
   - O `--seed` roda o `DatabaseSeeder`, que em produção só chama o
     `AuthorizationSeeder` e o `SaasPlanSeeder` (idempotentes; o usuário de
     demonstração só existe em local/testing). Não ponha dados de exemplo no

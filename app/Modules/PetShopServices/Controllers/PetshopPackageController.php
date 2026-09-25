@@ -4,8 +4,8 @@ namespace App\Modules\PetShopServices\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Modules\Clinics\Models\Clinic;
-use App\Modules\PetShopServices\Models\PetShopService;
 use App\Modules\PetShopServices\Models\PetshopPackage;
+use App\Modules\PetShopServices\Models\PetShopService;
 use App\Modules\PetShopServices\Services\PetPackageService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -15,9 +15,7 @@ use Illuminate\View\View;
 /** Catalogo de pacotes (modelos) de banho e tosa. */
 class PetshopPackageController extends Controller
 {
-    public function __construct(private readonly PetPackageService $packages)
-    {
-    }
+    public function __construct(private readonly PetPackageService $packages) {}
 
     public function index(): View
     {
@@ -57,6 +55,7 @@ class PetshopPackageController extends Controller
     private function validated(Request $request): array
     {
         $clinicRequired = $request->user()?->clinic_id === null;
+        $clinicId = $request->user()?->clinic_id ?? ($request->integer('clinic_id') ?: null);
 
         return $request->validate([
             'clinic_id' => [Rule::requiredIf($clinicRequired), 'nullable', 'integer', Rule::exists('clinics', 'id')->where('active', true)],
@@ -67,8 +66,8 @@ class PetshopPackageController extends Controller
             'active' => ['nullable', 'boolean'],
             'items' => ['required', 'array'],
             'items.*.petshop_service_id' => ['nullable', 'integer', Rule::exists('petshop_services', 'id')->when(
-                $request->user()?->clinic_id !== null,
-                fn ($rule) => $rule->where('clinic_id', $request->user()->clinic_id)
+                $clinicId !== null,
+                fn ($rule) => $rule->where('clinic_id', $clinicId)
             )],
             'items.*.quantity' => ['nullable', 'integer', 'min:1', 'max:100'],
         ], [

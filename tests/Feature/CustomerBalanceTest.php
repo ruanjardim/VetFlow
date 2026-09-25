@@ -21,6 +21,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use Tests\Concerns\OpensCashSessions;
 use Tests\TestCase;
 
@@ -188,6 +189,29 @@ class CustomerBalanceTest extends TestCase
             ->assertSee('Adiantamento')
             ->assertSee('Usado em venda')
             ->assertSee('R$ 30,00');
+    }
+
+    public function test_a_negative_credit_entry_cannot_overdraw_the_customer_balance(): void
+    {
+        $this->actingAs($this->operator);
+        $balances = app(CustomerBalanceService::class);
+        $balances->deposit($this->tutor, 60, $this->method('cash')->id, null, $this->operator);
+
+        try {
+            $balances->addEntry(
+                $this->tutor->id,
+                $this->clinic->id,
+                'sale_payment',
+                -61,
+                ['description' => 'Tentativa de saldo negativo']
+            );
+            $this->fail('O lançamento negativo acima do saldo deveria ser rejeitado.');
+        } catch (ValidationException $exception) {
+            $this->assertArrayHasKey('payments', $exception->errors());
+        }
+
+        $this->assertEquals(60, $balances->creditBalance($this->tutor->id));
+        $this->assertSame(1, CustomerCreditEntry::query()->count());
     }
 
     public function test_change_can_be_kept_as_credit_for_an_identified_customer(): void

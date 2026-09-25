@@ -7,12 +7,14 @@ use App\Modules\PetShopServices\Models\PetPackage;
 use App\Modules\PetShopServices\Models\PetPackageBalance;
 use App\Modules\PetShopServices\Models\PetPackageUsage;
 use App\Modules\PetShopServices\Models\PetshopPackage;
+use App\Modules\PetShopServices\Models\PetShopService;
 use App\Modules\Sales\Models\Sale;
 use App\Modules\ServiceOrders\Models\ServiceOrder;
 use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -42,17 +44,28 @@ class PetPackageService
                 ]);
             }
 
+            $clinicId = (int) (auth()->user()?->clinic_id ?? $data['clinic_id'] ?? $package?->clinic_id);
+            $serviceIds = $items->pluck('petshop_service_id')->all();
+            $servicesInClinic = PetShopService::query()
+                ->withoutGlobalScopes()
+                ->where('clinic_id', $clinicId)
+                ->whereIn('id', $serviceIds)
+                ->count();
+
+            if ($clinicId <= 0 || $servicesInClinic !== count($serviceIds)) {
+                throw ValidationException::withMessages([
+                    'items' => 'Todos os serviços do pacote devem pertencer à clínica selecionada.',
+                ]);
+            }
+
             $attributes = [
                 'name' => $data['name'],
                 'description' => $data['description'] ?? null,
                 'price' => (float) $data['price'],
                 'validity_days' => ! empty($data['validity_days']) ? (int) $data['validity_days'] : null,
                 'active' => (bool) ($data['active'] ?? true),
+                'clinic_id' => $clinicId,
             ];
-
-            if (array_key_exists('clinic_id', $data) && $data['clinic_id']) {
-                $attributes['clinic_id'] = (int) $data['clinic_id'];
-            }
 
             if ($package) {
                 $package->update($attributes);
@@ -81,6 +94,18 @@ class PetPackageService
             /** @var Patient $patient */
             $patient = Patient::query()->findOrFail($data['patient_id']);
 
+            if ((int) $template->clinic_id !== (int) $patient->clinic_id) {
+                throw ValidationException::withMessages([
+                    'patient_id' => 'O pet e o pacote devem pertencer à mesma clínica.',
+                ]);
+            }
+
+            if ($template->items->contains(fn ($item) => (int) $item->service?->clinic_id !== (int) $template->clinic_id)) {
+                throw ValidationException::withMessages([
+                    'petshop_package_id' => 'O pacote possui um serviço de outra clínica e precisa ser corrigido antes da venda.',
+                ]);
+            }
+
             $startsOn = CarbonImmutable::parse($data['starts_on'] ?? today());
             $price = array_key_exists('price', $data) && $data['price'] !== null && $data['price'] !== ''
                 ? (float) $data['price']
@@ -92,7 +117,7 @@ class PetPackageService
                 'petshop_package_id' => $template->id,
                 'patient_id' => $patient->id,
                 'tutor_id' => $patient->tutor_id,
-                'code' => $this->nextCode(),
+                'code' => 'PCT-TMP-'.(string) Str::uuid(),
                 'name' => $template->name,
                 'price' => $price,
                 'status' => 'pending_payment',
@@ -101,6 +126,7 @@ class PetPackageService
                 'notes' => $data['notes'] ?? null,
                 'created_by' => auth()->id(),
             ]);
+            $package->update(['code' => $this->codeForId((int) $package->id)]);
 
             $allocated = 0.0;
             $lastIndex = $template->items->count() - 1;
@@ -166,18 +192,24 @@ class PetPackageService
      *
      * @return Collection<int, PetPackageBalance>
      */
-    public function usableBalances(int $patientId, CarbonInterface $onDate): Collection
+    public function usableBalances(int $patientId, CarbonInterface $onDate, bool $lockForUpdate = false): Collection
     {
         $date = $onDate->toDateString();
 
-        return PetPackageBalance::query()
-            ->with(['package', 'usages'])
+        $query = PetPackageBalance::query()
             ->whereHas('package', fn ($query) => $query
                 ->where('patient_id', $patientId)
                 ->where('status', 'active')
                 ->whereDate('starts_on', '<=', $date)
                 ->where(fn ($validity) => $validity->whereNull('expires_on')->orWhereDate('expires_on', '>=', $date)))
-            ->get()
+            ->orderBy('id');
+
+        if ($lockForUpdate) {
+            $query->lockForUpdate();
+        }
+
+        return $query->get()
+            ->load(['package', 'usages'])
             ->filter(fn (PetPackageBalance $balance) => $balance->remaining() > 0)
             ->sortBy(fn (PetPackageBalance $balance) => $balance->package->expires_on?->timestamp ?? PHP_INT_MAX)
             ->values();
@@ -186,8 +218,22 @@ class PetPackageService
     /** Libera o saldo reservado pela comanda. */
     public function releaseForOrder(ServiceOrder $order): void
     {
-        PetPackageUsage::query()->where('service_order_id', $order->id)->delete();
-        $order->items()->whereNotNull('pet_package_balance_id')->update(['pet_package_balance_id' => null]);
+        DB::transaction(function () use ($order): void {
+            $balanceIds = PetPackageUsage::query()
+                ->where('service_order_id', $order->id)
+                ->pluck('pet_package_balance_id');
+
+            if ($balanceIds->isNotEmpty()) {
+                PetPackageBalance::query()
+                    ->whereIn('id', $balanceIds)
+                    ->orderBy('id')
+                    ->lockForUpdate()
+                    ->get();
+            }
+
+            PetPackageUsage::query()->where('service_order_id', $order->id)->delete();
+            $order->items()->whereNotNull('pet_package_balance_id')->update(['pet_package_balance_id' => null]);
+        });
     }
 
     /**
@@ -196,62 +242,64 @@ class PetPackageService
      */
     public function consumeForOrder(ServiceOrder $order): bool
     {
-        $this->releaseForOrder($order);
+        return DB::transaction(function () use ($order): bool {
+            $this->releaseForOrder($order);
 
-        if (
-            $order->use_package_balance === false
-            || ! $order->patient_id
-            || in_array($order->status, ['cancelled', 'no_show'], true)
-        ) {
-            return false;
-        }
-
-        $onDate = CarbonImmutable::parse($order->scheduled_at ?? $order->opened_at ?? now());
-        $balances = $this->usableBalances((int) $order->patient_id, $onDate);
-
-        if ($balances->isEmpty()) {
-            return false;
-        }
-
-        $covered = false;
-        $order->load('items');
-
-        foreach ($order->items as $item) {
-            $quantity = (float) $item->quantity;
-
-            if ($item->type !== 'service' || ! $item->petshop_service_id || $quantity <= 0 || floor($quantity) != $quantity) {
-                continue;
+            if (
+                $order->use_package_balance === false
+                || ! $order->patient_id
+                || in_array($order->status, ['cancelled', 'no_show'], true)
+            ) {
+                return false;
             }
 
-            /** @var PetPackageBalance|null $balance */
-            $balance = $balances->first(fn (PetPackageBalance $candidate) => (int) $candidate->petshop_service_id === (int) $item->petshop_service_id
-                && $candidate->remaining() >= (int) $quantity);
+            $onDate = CarbonImmutable::parse($order->scheduled_at ?? $order->opened_at ?? now());
+            $balances = $this->usableBalances((int) $order->patient_id, $onDate, true);
 
-            if (! $balance) {
-                continue;
+            if ($balances->isEmpty()) {
+                return false;
             }
 
-            $usage = $balance->usages()->create([
-                'pet_package_id' => $balance->pet_package_id,
-                'service_order_id' => $order->id,
-                'service_order_item_id' => $item->id,
-                'quantity' => (int) $quantity,
-                'unit_value' => $balance->unit_value,
-                'used_at' => now(),
-            ]);
-            $balance->setRelation('usages', $balance->usages->push($usage));
+            $covered = false;
+            $order->load('items');
 
-            $item->update([
-                'pet_package_balance_id' => $balance->id,
-                'unit_price' => 0,
-                'total' => 0,
-                'description' => $this->stripSuffix((string) $item->description).self::PACKAGE_SUFFIX.$balance->package->code,
-            ]);
+            foreach ($order->items as $item) {
+                $quantity = (float) $item->quantity;
 
-            $covered = true;
-        }
+                if ($item->type !== 'service' || ! $item->petshop_service_id || $quantity <= 0 || floor($quantity) != $quantity) {
+                    continue;
+                }
 
-        return $covered;
+                /** @var PetPackageBalance|null $balance */
+                $balance = $balances->first(fn (PetPackageBalance $candidate) => (int) $candidate->petshop_service_id === (int) $item->petshop_service_id
+                    && $candidate->remaining() >= (int) $quantity);
+
+                if (! $balance) {
+                    continue;
+                }
+
+                $usage = $balance->usages()->create([
+                    'pet_package_id' => $balance->pet_package_id,
+                    'service_order_id' => $order->id,
+                    'service_order_item_id' => $item->id,
+                    'quantity' => (int) $quantity,
+                    'unit_value' => $balance->unit_value,
+                    'used_at' => now(),
+                ]);
+                $balance->setRelation('usages', $balance->usages->push($usage));
+
+                $item->update([
+                    'pet_package_balance_id' => $balance->id,
+                    'unit_price' => 0,
+                    'total' => 0,
+                    'description' => $this->stripSuffix((string) $item->description).self::PACKAGE_SUFFIX.$balance->package->code,
+                ]);
+
+                $covered = true;
+            }
+
+            return $covered;
+        });
     }
 
     public function stripSuffix(string $description): string
@@ -271,10 +319,8 @@ class PetPackageService
             ->update(['status' => 'expired']);
     }
 
-    private function nextCode(): string
+    private function codeForId(int $id): string
     {
-        $nextId = ((int) PetPackage::withTrashed()->withoutGlobalScopes()->max('id')) + 1;
-
-        return 'PCT-'.str_pad((string) $nextId, 6, '0', STR_PAD_LEFT);
+        return 'PCT-'.str_pad((string) $id, 6, '0', STR_PAD_LEFT);
     }
 }
