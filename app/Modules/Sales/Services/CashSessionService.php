@@ -9,9 +9,9 @@ use App\Modules\Sales\Models\CashSessionMovement;
 use App\Modules\Sales\Models\PaymentMethod;
 use App\Modules\Sales\Models\Sale;
 use App\Modules\Sales\Models\SalePayment;
-use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -50,7 +50,7 @@ class CashSessionService
      * Open sessions of the user keyed by clinic, for the PDV of a global
      * user who sells for more than one clinic.
      *
-     * @param iterable<int, int> $clinicIds
+     * @param  iterable<int, int>  $clinicIds
      * @return array<int, CashSession>
      */
     public function currentForClinics(?User $user, iterable $clinicIds): array
@@ -105,6 +105,7 @@ class CashSessionService
     public function open(User $user, int $clinicId, float $openingAmount, ?string $notes = null): CashSession
     {
         return DB::transaction(function () use ($user, $clinicId, $openingAmount, $notes) {
+            User::query()->whereKey($user->id)->lockForUpdate()->firstOrFail();
             $this->closeStaleSessions($clinicId);
 
             $existing = $this->query()
@@ -122,7 +123,7 @@ class CashSessionService
 
             $session = new CashSession([
                 'user_id' => $user->id,
-                'code' => $this->nextCode(),
+                'code' => 'TMP-'.Str::random(16),
                 'status' => 'open',
                 'opened_at' => now(),
                 'opening_amount' => round(max(0, $openingAmount), 2),
@@ -130,6 +131,7 @@ class CashSessionService
             ]);
             $session->clinic_id = $clinicId;
             $session->save();
+            $session->update(['code' => $this->codeForId((int) $session->id)]);
 
             return $session;
         });
@@ -139,7 +141,7 @@ class CashSessionService
      * Supply, withdrawal or expense registered by the operator. An expense
      * also becomes a paid expense in the financial module.
      *
-     * @param array<string, mixed> $data
+     * @param  array<string, mixed>  $data
      */
     public function addMovement(CashSession $session, string $type, array $data, ?User $by = null): CashSessionMovement
     {
@@ -310,7 +312,7 @@ class CashSessionService
      * closing (session left open from a previous day) takes the expected
      * values as counted and stays flagged for the manager review.
      *
-     * @param array<string, mixed> $data
+     * @param  array<string, mixed>  $data
      */
     public function close(CashSession $session, array $data, ?User $by = null, bool $automatic = false): CashSession
     {
@@ -623,7 +625,7 @@ class CashSessionService
      * Customer credit received in the session (advance, or change kept as
      * credit): money in, by the method used.
      *
-     * @param array<string, mixed> $attributes
+     * @param  array<string, mixed>  $attributes
      */
     public function recordCreditDeposit(CashSession $session, float $amount, string $kind, ?int $paymentMethodId, string $description, array $attributes = []): CashSessionMovement
     {
@@ -640,7 +642,7 @@ class CashSessionService
     /**
      * Customer credit given back in money: money out of the session.
      *
-     * @param array<string, mixed> $attributes
+     * @param  array<string, mixed>  $attributes
      */
     public function recordCreditRefund(CashSession $session, float $amount, string $kind, ?int $paymentMethodId, string $description, array $attributes = []): CashSessionMovement
     {
@@ -655,7 +657,7 @@ class CashSessionService
     }
 
     /**
-     * @param array<string, mixed> $attributes
+     * @param  array<string, mixed>  $attributes
      */
     private function createMovement(CashSession $session, array $attributes): CashSessionMovement
     {
@@ -683,15 +685,9 @@ class CashSessionService
         return $this->query()->lockForUpdate()->findOrFail($session->id);
     }
 
-    private function nextCode(): string
+    private function codeForId(int $id): string
     {
-        $last = $this->query()
-            ->where('code', 'like', self::CODE_PREFIX.'%')
-            ->orderByDesc('id')
-            ->value('code');
-        $number = $last ? ((int) substr((string) $last, strlen(self::CODE_PREFIX))) + 1 : 1;
-
-        return self::CODE_PREFIX.str_pad((string) $number, 6, '0', STR_PAD_LEFT);
+        return self::CODE_PREFIX.str_pad((string) $id, 6, '0', STR_PAD_LEFT);
     }
 
     private function query()

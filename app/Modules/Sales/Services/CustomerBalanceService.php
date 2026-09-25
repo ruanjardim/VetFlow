@@ -98,21 +98,35 @@ class CustomerBalanceService
     /**
      * Adds a signed entry to the customer credit.
      *
-     * @param array<string, mixed> $links
+     * @param  array<string, mixed>  $links
      */
-    public function addEntry(int $tutorId, ?int $clinicId, string $type, float $amount, array $links = []): CustomerCreditEntry
-    {
-        $entry = new CustomerCreditEntry($links + [
-            'tutor_id' => $tutorId,
-            'type' => $type,
-            'amount' => round($amount, 2),
-            'created_by' => auth()->id(),
-            'occurred_at' => now(),
-        ]);
-        $entry->clinic_id = $clinicId;
-        $entry->save();
+    public function addEntry(
+        int $tutorId,
+        ?int $clinicId,
+        string $type,
+        float $amount,
+        array $links = [],
+        string $validationField = 'payments'
+    ): CustomerCreditEntry {
+        return DB::transaction(function () use ($tutorId, $clinicId, $type, $amount, $links, $validationField): CustomerCreditEntry {
+            $amount = round($amount, 2);
 
-        return $entry;
+            if ($amount < 0) {
+                $this->ensureCredit($tutorId, abs($amount), $validationField);
+            }
+
+            $entry = new CustomerCreditEntry($links + [
+                'tutor_id' => $tutorId,
+                'type' => $type,
+                'amount' => $amount,
+                'created_by' => auth()->id(),
+                'occurred_at' => now(),
+            ]);
+            $entry->clinic_id = $clinicId;
+            $entry->save();
+
+            return $entry;
+        });
     }
 
     /**
@@ -120,6 +134,12 @@ class CustomerBalanceService
      */
     public function ensureCredit(int $tutorId, float $amount, string $field = 'payments'): void
     {
+        Tutor::query()
+            ->withoutGlobalScopes()
+            ->whereKey($tutorId)
+            ->lockForUpdate()
+            ->firstOrFail();
+
         $available = $this->creditBalance($tutorId);
 
         if (round($amount - $available, 2) > 0) {
@@ -186,7 +206,7 @@ class CustomerBalanceService
                 'payment_method_id' => $method->id,
                 'description' => $text,
                 'metadata' => ['cash_session_movement_id' => $movement->id],
-            ]);
+            ], 'amount');
         });
     }
 
@@ -194,7 +214,7 @@ class CustomerBalanceService
      * Pays several open sales at once, oldest first (quitação). The payment
      * is a clinic method or the customer's credit.
      *
-     * @param array<string, mixed> $payment
+     * @param  array<string, mixed>  $payment
      * @return array<int, array{sale_id: int, code: string, amount: float}>
      */
     public function settle(Tutor $tutor, float $amount, array $payment): array

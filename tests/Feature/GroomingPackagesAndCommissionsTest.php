@@ -13,6 +13,7 @@ use App\Modules\Patients\Models\Patient;
 use App\Modules\PetShopServices\Models\PetPackage;
 use App\Modules\PetShopServices\Models\PetshopPackage;
 use App\Modules\PetShopServices\Models\PetShopService;
+use App\Modules\PetShopServices\Services\PetPackageService;
 use App\Modules\Sales\Models\Sale;
 use App\Modules\ServiceOrders\Models\ServiceOrder;
 use App\Modules\Tutors\Models\Tutor;
@@ -110,6 +111,71 @@ class GroomingPackagesAndCommissionsTest extends TestCase
             ->assertOk()
             ->assertSee('Clubinho G')
             ->assertSee('4× Banho');
+    }
+
+    public function test_global_operator_cannot_add_a_service_from_another_clinic_to_a_package(): void
+    {
+        $otherClinic = Clinic::query()->create([
+            'corporate_name' => 'PetShop Externo',
+            'trade_name' => 'PetShop Externo',
+            'cnpj' => '00000000004002',
+            'active' => true,
+        ]);
+        $foreignService = PetShopService::query()->withoutGlobalScopes()->create([
+            'clinic_id' => $otherClinic->id,
+            'name' => 'Banho externo',
+            'base_price' => 70,
+            'duration_minutes' => 60,
+            'active' => true,
+            'requires_appointment' => true,
+        ]);
+        $global = $this->userWith(['petshop-services.manage'], 'Suporte global');
+        $global->update(['clinic_id' => null]);
+
+        $this->actingAs($global)
+            ->post(route('petshop-packages.store'), [
+                'clinic_id' => $this->clinic->id,
+                'name' => 'Pacote inválido',
+                'price' => 200,
+                'items' => [['petshop_service_id' => $foreignService->id, 'quantity' => 4]],
+            ])
+            ->assertSessionHasErrors('items.0.petshop_service_id');
+
+        $this->assertDatabaseCount('petshop_packages', 0);
+    }
+
+    public function test_global_operator_cannot_sell_a_package_to_a_pet_from_another_clinic(): void
+    {
+        $template = $this->template();
+        $otherClinic = Clinic::query()->create([
+            'corporate_name' => 'PetShop Externo',
+            'trade_name' => 'PetShop Externo',
+            'cnpj' => '00000000004003',
+            'active' => true,
+        ]);
+        $foreignTutor = Tutor::query()->withoutGlobalScopes()->create([
+            'clinic_id' => $otherClinic->id,
+            'name' => 'Tutor externo',
+            'phone' => '21999999998',
+            'active' => true,
+        ]);
+        $foreignDog = Patient::query()->withoutGlobalScopes()->create([
+            'clinic_id' => $otherClinic->id,
+            'tutor_id' => $foreignTutor->id,
+            'name' => 'Pet externo',
+        ]);
+        $global = $this->userWith(['service-orders.manage', 'petshop-services.manage', 'sales.manage'], 'Suporte global');
+        $global->update(['clinic_id' => null]);
+
+        $this->actingAs($global)
+            ->post(route('pet-packages.store'), [
+                'petshop_package_id' => $template->id,
+                'patient_id' => $foreignDog->id,
+                'starts_on' => '2026-09-23',
+            ])
+            ->assertSessionHasErrors('patient_id');
+
+        $this->assertDatabaseCount('pet_packages', 0);
     }
 
     public function test_selling_a_package_goes_to_the_pdv_and_payment_activates_it(): void
@@ -370,7 +436,7 @@ class GroomingPackagesAndCommissionsTest extends TestCase
 
     public function test_releasing_a_package_without_pdv_requires_cashier_permission(): void
     {
-        $package = app(\App\Modules\PetShopServices\Services\PetPackageService::class)->sell([
+        $package = app(PetPackageService::class)->sell([
             'petshop_package_id' => $this->template()->id,
             'patient_id' => $this->dog->id,
             'starts_on' => '2026-09-23',
@@ -397,7 +463,7 @@ class GroomingPackagesAndCommissionsTest extends TestCase
     private function template(): PetshopPackage
     {
         auth()->login($this->manager);
-        $template = app(\App\Modules\PetShopServices\Services\PetPackageService::class)->saveTemplate([
+        $template = app(PetPackageService::class)->saveTemplate([
             'name' => 'Clubinho G',
             'price' => 200,
             'validity_days' => 30,
@@ -412,7 +478,7 @@ class GroomingPackagesAndCommissionsTest extends TestCase
     {
         $template = $this->template();
         auth()->login($this->manager);
-        $package = app(\App\Modules\PetShopServices\Services\PetPackageService::class)->sell([
+        $package = app(PetPackageService::class)->sell([
             'petshop_package_id' => $template->id,
             'patient_id' => $this->dog->id,
             'starts_on' => '2026-09-23',
