@@ -38,21 +38,32 @@ git checkout -b feat/<assunto>      # toda branch nova sai daqui
   - **`public/build` é versionado.** Mexeu em `resources/js` ou
     `resources/css`, rode `npm run build` e commite `public/build`
     (manifest e assets) no mesmo PR.
-- Migrations e seeders rodam por um cron de hora em hora na Hostinger:
-  `cd /home/u804718109/domains/vetflowsys.com.br/public_html && php artisan migrate --force`,
-  seguido de `db:seed --class=AuthorizationSeeder --force` e
-  `db:seed --class=SaasPlanSeeder --force`.
+- Migrations e seeders rodam por um cron de hora em hora na Hostinger (hPanel >
+  Avançado > Cron Jobs, modo "Personalizado", minuto 0). É o único cron da
+  conta:
+  `/usr/bin/php /home/u804718109/domains/vetflowsys.com.br/public_html/artisan migrate --force --seed`.
+  - O `--seed` roda o `DatabaseSeeder`, que em produção só chama o
+    `AuthorizationSeeder` e o `SaasPlanSeeder` (idempotentes; o usuário de
+    demonstração só existe em local/testing). Não ponha dados de exemplo no
+    `DatabaseSeeder`: o cron roda ele toda hora.
+  - **No cron do hPanel, um comando só e com caminho absoluto.** O hPanel
+    escapa caracteres especiais como `&`: um comando `cd ... && php artisan ...`
+    é aceito, mas não roda nada e não mostra erro. Foi assim que as migrations
+    ficaram paradas até 24/09/2026 e o PDV, o caixa, os pacotes e as comissões
+    deram erro 500. O limite é de 255 caracteres, contados depois do escape.
   - Até o próximo cron (no máximo 1 hora), o código novo rodaria com o banco
     antigo. Por isso, **migration vai antes, num PR só com o schema** (aditivo:
     tabela nova, coluna nullable ou com default). O PR do código só entra
-    depois que o cron rodou (espere uma hora cheia depois do merge do schema).
+    depois que o cron rodou: espere a hora cheia depois do merge do schema e
+    **confira** em "Ver resultado", no cron do hPanel, ou no check
+    "Migrations" de `/operations/report.json` ("Nenhuma migration pendente").
   - As migrations precisam rodar em SQLite (testes), PostgreSQL (job do CI)
-    e MySQL (produção).
+    e MySQL (produção). O MySQL exige que a coluna do `->after()` exista e
+    limita nomes de índice e de chave estrangeira a 64 caracteres; SQLite e
+    PostgreSQL não reclamam disso.
   - Permissão nova vai em `App\Support\Auth\PermissionCatalog` (o
     AuthorizationSeeder sincroniza). Recurso de plano vai em
     `App\Modules\Saas\Support\FeatureCatalog` (o SaasPlanSeeder sincroniza).
-- Pendência do usuário no hPanel: apagar o cron antigo, de minuto em minuto,
-  que aponta para o caminho errado (`/home/u804718109/public_html`).
 - Runbook completo: `docs/deployment/hostinger-production.md`.
 
 ## 3. Como trabalhar (combinado com o usuário)
@@ -78,6 +89,13 @@ git checkout -b feat/<assunto>      # toda branch nova sai daqui
   maquininha e recebíveis de cartão, item 3), todos sobre o schema do PR #22,
   e PR #21 (orçamento no PDV e tipo de venda/delivery, itens 1 e 2), sobre o
   schema do PR #20. Regras em `docs/modules/sales.md`.
+- **24/09/2026 — produção corrigida:** o cron antigo (`cd ... && ...`) nunca
+  aplicou nada, então as migrations de 08/09 a 23/09 estavam pendentes e o
+  PDV, o caixa, os pacotes e as comissões davam erro 500. Elas rodaram por
+  volta das 06:50 (horário de Brasília) pelo cron novo da seção 2, que substituiu o
+  antigo; o relatório de operações ficou sem migration pendente e os 54 links
+  do menu respondem 200. O cron de minuto em minuto no caminho errado também
+  foi apagado.
 - **Testes que recebem dinheiro** precisam de caixa aberto: use o trait
   `Tests\Concerns\OpensCashSessions` (`$this->openCashSession($user)`).
 - **Antes disso:** PR #18 (banho e tosa). Agenda por
@@ -87,8 +105,7 @@ git checkout -b feat/<assunto>      # toda branch nova sai daqui
   tosador (gerada ao finalizar a comanda; o fechamento vira conta a pagar).
   Regras em `docs/modules/petshop-operations.md`.
 - **PR #17** (mesma branch `feat/banho-tosa`, com base
-  `codex/hostinger-production-candidate`) ficou aberto e é redundante; pode
-  ser fechado.
+  `codex/hostinger-production-candidate`) era redundante e foi fechado.
 - **Pendente:** avançar a `main` até a `0-hostinger-production` com um
   fast-forward (`git push origin origin/0-hostinger-production:main`). A
   main é ancestral pura da produção, então não há conflito, e nada publica a
@@ -174,3 +191,6 @@ git checkout -b feat/<assunto>      # toda branch nova sai daqui
   arquivos numa branch nova, PR e merge. O classificador de segurança do
   Claude bloqueia commit direto na `0-hostinger-production`: use sempre
   branch + PR.
+- No hPanel, a tradução automática do Chrome pode deixar a lista de crons e
+  os campos de horário desatualizados na tela depois de salvar ou remover.
+  Recarregue a página antes de clicar em "Remover" e confira o que ficou.
