@@ -44,11 +44,13 @@ class Clinic extends Model
         'timezone',
         'currency',
         'language',
+        'grooming_schedule',
         'active',
     ];
 
     protected $casts = [
         'active' => 'boolean',
+        'grooming_schedule' => 'array',
     ];
 
     protected static function booted(): void

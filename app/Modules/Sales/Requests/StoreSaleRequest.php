@@ -84,6 +84,13 @@ class StoreSaleRequest extends FormRequest
             'items.*.type' => ['nullable', 'string', Rule::in(['product', 'service', 'custom'])],
             'items.*.product_id' => ['nullable', 'integer', $this->existsInCurrentClinic('products')],
             'items.*.petshop_service_id' => ['nullable', 'integer', $this->existsInCurrentClinic('petshop_services')],
+            'items.*.service_order_item_id' => [
+                'nullable',
+                'integer',
+                Rule::exists('service_order_items', 'id')->where(
+                    fn ($query) => $query->where('service_order_id', $this->input('service_order_id'))
+                ),
+            ],
             'items.*.description' => ['nullable', 'string', 'max:255'],
             'items.*.quantity' => ['nullable', 'numeric', 'min:0.001'],
             'items.*.unit_price' => ['nullable', 'numeric', 'min:0'],
@@ -115,6 +122,7 @@ class StoreSaleRequest extends FormRequest
             'service_order_id.exists' => 'A comanda informada nao foi encontrada.',
             'items.*.product_id.exists' => 'Um dos produtos informados nao foi encontrado.',
             'items.*.petshop_service_id.exists' => 'Um dos servicos informados nao foi encontrado.',
+            'items.*.service_order_item_id.exists' => 'Um dos itens não pertence à comanda informada.',
             'payments.*.method.in' => 'Informe uma forma de pagamento valida.',
             'payments.*.payment_method_id.exists' => 'A forma de pagamento informada não foi encontrada neste estabelecimento.',
             'sale_quote_id.exists' => 'O orçamento informado não foi encontrado.',
@@ -231,6 +239,7 @@ class StoreSaleRequest extends FormRequest
                 'type' => $item->type,
                 'product_id' => $item->product_id,
                 'petshop_service_id' => $item->petshop_service_id,
+                'service_order_item_id' => $item->id,
                 'description' => $item->description,
                 'quantity' => $item->quantity,
                 'unit_price' => $item->unit_price,

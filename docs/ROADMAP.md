@@ -1,6 +1,6 @@
 # VetFlow Roadmap
 
-Updated: 2026-09-01
+Updated: 2026-09-28
 
 This roadmap describes the product direction that should stay visible while VetFlow evolves. It is intentionally high-level and should be revised as implementation priorities change.
 
@@ -172,6 +172,9 @@ The product should feel different from a generic CRUD system by connecting the c
 - Restore evidence can be registered through a bounded and sanitized JSON
   intake, while operational execution is separated from read-only readiness
   access and the actual restore remains confined to an isolated database.
+- Banho & Tosa supports clinic and professional schedules, daily breaks,
+  holidays and temporary blocks, proportional commission reconciliation for
+  partial returns, and a separate eight-item operational pilot checklist.
 
 ## Current Near-Term Priorities
 
@@ -179,7 +182,8 @@ The product should feel different from a generic CRUD system by connecting the c
    evidence current for every production release.
 2. Establish a separate staging environment with fictitious data before any
    high-risk schema or integration change.
-3. Define the first pilot scope, release notes, and support owner.
+3. Run and formally record the first real Banho & Tosa pilot, including its
+   eight-item checklist, scope, release notes, and support owner.
 4. Complete the commercial, legal, and LGPD operating decisions documented by
    the incident and production runbooks.
 5. Validate replenishment suggestions with pilot data and tune the history

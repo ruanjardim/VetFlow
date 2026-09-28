@@ -1,6 +1,6 @@
 # VetFlow Status
 
-Updated: 2026-09-24
+Updated: 2026-09-28
 
 ## Current State
 
@@ -14,9 +14,11 @@ The local working tree was clean before this documentation pass.
 
 ## What Exists
 
-- Banho e tosa operation: agenda per professional with free slots, conflicts,
-  recurrence and check-in; operational board; size-based prices; PDV checkout
-  from the order (see `docs/modules/petshop-operations.md`).
+- Banho e tosa operation: per-clinic and per-professional availability,
+  intervals, holidays and blocks; agenda with free slots, conflicts, recurrence
+  and check-in; operational board; size-based prices; packages; PDV checkout;
+  and commission reconciliation for partial returns (see
+  `docs/modules/petshop-operations.md`).
 - PDV quotes (orçamentos) with validity, print/WhatsApp, editing, cancellation
   and conversion into a sale, plus a sale type on sales and quotes with
   delivery address and fee (see `docs/modules/sales.md`).
@@ -227,6 +229,9 @@ The local working tree was clean before this documentation pass.
   and release SHA; consolidated approval is evidence-bound, becomes stale when
   a source gate changes, and is available as print-friendly and no-cache JSON
   reports.
+- Banho & Tosa has a separate eight-item, release-scoped operational checklist
+  in the same center. It records the real module pilot without weakening or
+  replacing the 12 mandatory release smoke tests.
 - Administrators can prepare and verify the synthetic runtime probe from the
   Operations Center. Every transition is append-only and scoped by clinic,
   environment, and release SHA, while evidence paths and sentinel hashes remain

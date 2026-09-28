@@ -15,6 +15,13 @@ This project follows the spirit of Keep a Changelog, with one practical adjustme
 
 ### Added
 
+- Per-clinic Banho & Tosa weekly availability with lunch breaks and grid
+  intervals, optional professional overrides, and dated clinic/professional
+  blocks for holidays, time off, and operational exceptions. Booking and slot
+  suggestions enforce the configured availability.
+- A separate eight-item Banho & Tosa validation checklist in the Operations
+  Center, scoped to clinic, environment, and release without changing the 12
+  mandatory release smoke gates.
 - Customer balance (saldo do cliente): the PDV can finish a sale to be paid
   later (fiado) for an identified customer and keep the change as credit;
   customer credit comes from advances, returns and cancellations and pays
@@ -77,6 +84,8 @@ This project follows the spirit of Keep a Changelog, with one practical adjustme
   when the order is finished (discount prorated, package sessions valued at the
   package price per session), reversal when the order is reopened, statement
   per professional, and settlement that creates the payable in Financeiro.
+  Partial service returns now reconcile the commission proportionally and
+  idempotently, including after settlement and before a later cancellation.
 - The visual agenda can filter by area (Clínica / Banho e tosa) and shows
   grooming bookings.
 

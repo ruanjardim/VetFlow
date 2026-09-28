@@ -1,6 +1,6 @@
 # VetFlow Release Checklist
 
-Updated: 2026-08-23
+Updated: 2026-09-28
 
 Use this checklist for a staging release and before the first production pilot.
 It complements the [deployment guide](deployment.md); it does not replace a
@@ -134,6 +134,15 @@ Run the command without `--backup-confirmed` in local or testing environments.
 
 Do not perform destructive smoke tests in a real clinic. Use a dedicated
 staging or pilot-validation clinic.
+
+### Banho & Tosa pilot validation
+
+For a release that changes Banho & Tosa, also complete the separate eight-item
+module checklist in the Operations Center: agenda/availability, booking/pricing,
+service lifecycle, package balance, PDV/receipt, commission/returns,
+cash/financial effects, and audit/tenant isolation. Record the real pilot
+operator and concise evidence for every item. This module checklist does not
+replace or modify the 12 required release smoke checks above.
 
 ## 7. Release Decision
 

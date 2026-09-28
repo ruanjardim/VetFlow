@@ -24,6 +24,10 @@ Route::middleware(EnsureUserHasPermission::class.':operations.execute')->group(f
         ->where('checkKey', '[a-z_]+')
         ->name('operations.smoke-checks.store');
 
+    Route::post('/operations/grooming-smoke-checks/{checkKey}', [OperationsController::class, 'storeGroomingSmokeCheck'])
+        ->where('checkKey', '[a-z_]+')
+        ->name('operations.grooming-smoke-checks.store');
+
     Route::post('/operations/runtime-probes', [OperationsController::class, 'prepareRuntimeProbe'])
         ->name('operations.runtime-probes.prepare');
 

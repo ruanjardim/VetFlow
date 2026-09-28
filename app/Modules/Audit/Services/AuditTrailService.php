@@ -22,6 +22,10 @@ class AuditTrailService
         'saas.plan.updated' => 'Plano SaaS atualizado',
         'saas.subscription.updated' => 'Assinatura SaaS atualizada',
         'saas.tenant.onboarded' => 'Estabelecimento implantado',
+        'grooming.schedule.clinic.updated' => 'Expediente do Banho & Tosa atualizado',
+        'grooming.schedule.professional.updated' => 'Disponibilidade de profissional atualizada',
+        'grooming.schedule.block.created' => 'Bloqueio da agenda criado',
+        'grooming.schedule.block.deleted' => 'Bloqueio da agenda removido',
     ];
 
     /**

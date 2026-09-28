@@ -3,6 +3,7 @@
 namespace App\Modules\ServiceOrders\Services;
 
 use App\Models\User;
+use App\Modules\Clinics\Models\Clinic;
 use App\Modules\ServiceOrders\Models\ServiceOrder;
 use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
@@ -23,18 +24,36 @@ class GroomingAgendaService
         'every_4_weeks' => ['label' => 'A cada 4 semanas', 'weeks' => 4],
     ];
 
-    public function opensAt(CarbonInterface $day): CarbonImmutable
+    public function __construct(private readonly GroomingAvailabilityService $availability) {}
+
+    public function opensAt(CarbonInterface $day, ?int $clinicId = null, ?int $assignedUserId = null): CarbonImmutable
     {
-        return $this->timeOn($day, (string) config('petshop.grooming.opens_at', '08:00'));
+        [$clinic, $professional] = $this->availabilityContext($clinicId, $assignedUserId);
+        $first = $clinic
+            ? $this->availability->workingIntervals($day, $clinic, $professional)->first()
+            : null;
+
+        return $first[0] ?? $this->timeOn($day, (string) config('petshop.grooming.opens_at', '08:00'));
     }
 
-    public function closesAt(CarbonInterface $day): CarbonImmutable
+    public function closesAt(CarbonInterface $day, ?int $clinicId = null, ?int $assignedUserId = null): CarbonImmutable
     {
-        return $this->timeOn($day, (string) config('petshop.grooming.closes_at', '18:00'));
+        [$clinic, $professional] = $this->availabilityContext($clinicId, $assignedUserId);
+        $last = $clinic
+            ? $this->availability->workingIntervals($day, $clinic, $professional)->last()
+            : null;
+
+        return $last[1] ?? $this->timeOn($day, (string) config('petshop.grooming.closes_at', '18:00'));
     }
 
-    public function slotMinutes(): int
+    public function slotMinutes(?int $clinicId = null): int
     {
+        $clinic = $clinicId ? Clinic::query()->find($clinicId) : null;
+
+        if ($clinic) {
+            return $this->availability->scheduleFor($clinic)['slot_minutes'];
+        }
+
         return max(5, (int) config('petshop.grooming.slot_minutes', 30));
     }
 
@@ -102,6 +121,7 @@ class GroomingAgendaService
     public function dayGrid(CarbonInterface $day, ?int $clinicId): array
     {
         $day = CarbonImmutable::parse($day->toDateString());
+        $clinic = $clinicId ? Clinic::query()->find($clinicId) : null;
         $orders = $this->ordersForDay($day, $clinicId);
         $professionals = $this->agendaProfessionals($clinicId, $orders);
 
@@ -109,6 +129,7 @@ class GroomingAgendaService
             ->map(fn (User $user) => [
                 'id' => $user->id,
                 'name' => $user->name,
+                'professional' => $user,
                 'orders' => $orders->where('assigned_user_id', $user->id)->values(),
             ])
             ->values();
@@ -122,24 +143,53 @@ class GroomingAgendaService
             $columns->push([
                 'id' => null,
                 'name' => 'Sem profissional',
+                'professional' => null,
                 'orders' => $unassigned,
             ]);
         }
 
-        $opens = $this->opensAt($day);
-        $closes = $this->closesAt($day);
-        $slotMinutes = $this->slotMinutes();
+        $slotMinutes = $this->slotMinutes($clinicId);
+        $workingIntervals = $clinic
+            ? $columns->flatMap(fn (array $column) => $this->availability->workingIntervals(
+                $day,
+                $clinic,
+                $column['professional']
+            ))
+            : collect();
+        $opens = $workingIntervals->isNotEmpty()
+            ? $workingIntervals->min(fn (array $interval) => $interval[0])
+            : $this->opensAt($day);
+        $closes = $workingIntervals->isNotEmpty()
+            ? $workingIntervals->max(fn (array $interval) => $interval[1])
+            : $this->closesAt($day);
 
         $firstOrder = $orders->min('scheduled_at');
         $lastEnd = $orders->map(fn (ServiceOrder $order) => $order->scheduledEnd())->filter()->max();
 
-        $gridStart = $firstOrder && $firstOrder->lt($opens) ? $this->floorToSlot(CarbonImmutable::parse($firstOrder)) : $opens;
+        $gridStart = $firstOrder && $firstOrder->lt($opens) ? $this->floorToSlot(CarbonImmutable::parse($firstOrder), $slotMinutes) : $opens;
         $gridEnd = $lastEnd && $lastEnd->gt($closes) ? CarbonImmutable::parse($lastEnd) : $closes;
 
         $slots = collect();
         for ($cursor = $gridStart; $cursor->lt($gridEnd); $cursor = $cursor->addMinutes($slotMinutes)) {
             $slots->push($cursor);
         }
+
+        $columns = $columns->map(function (array $column) use ($clinic, $slots, $slotMinutes): array {
+            $blocks = $clinic
+                ? $this->availability->blocksForDay($slots->first() ?? now(), $clinic, $column['professional'])
+                : collect();
+            $column['availableSlots'] = $clinic
+                ? $slots->filter(fn (CarbonImmutable $slot): bool => $this->availability->availabilityIssue(
+                    $clinic,
+                    $column['professional'],
+                    $slot,
+                    $slotMinutes,
+                    $blocks,
+                ) === null)->map->format('H:i')->values()->all()
+                : [];
+
+            return $column;
+        });
 
         return [
             'day' => $day,
@@ -149,6 +199,7 @@ class GroomingAgendaService
             'gridStart' => $gridStart,
             'columns' => $columns,
             'orders' => $orders,
+            'closed' => $workingIntervals->isEmpty(),
             'summary' => [
                 'total' => $orders->count(),
                 'waiting' => $orders->whereIn('status', ServiceOrder::PRE_ARRIVAL_STATUSES)->count(),
@@ -212,8 +263,12 @@ class GroomingAgendaService
     ): Collection {
         $day = CarbonImmutable::parse($day->toDateString());
         $duration = max(5, $durationMinutes);
-        $closes = $this->closesAt($day);
         $now = CarbonImmutable::now();
+        [$clinic, $professional] = $this->availabilityContext($clinicId, $assignedUserId);
+
+        if (! $clinic) {
+            return collect();
+        }
 
         $busy = $assignedUserId === null
             ? collect()
@@ -230,17 +285,31 @@ class GroomingAgendaService
                 ]);
 
         $slots = collect();
+        $blocks = $this->availability->blocksForDay($day, $clinic, $professional);
 
-        for ($cursor = $this->opensAt($day); $cursor->addMinutes($duration)->lte($closes); $cursor = $cursor->addMinutes($this->slotMinutes())) {
-            if ($day->isSameDay($now) && $cursor->lt($now)) {
-                continue;
-            }
+        foreach ($this->availability->workingIntervals($day, $clinic, $professional) as $workingInterval) {
+            for (
+                $cursor = $workingInterval[0];
+                $cursor->addMinutes($duration)->lte($workingInterval[1]);
+                $cursor = $cursor->addMinutes($this->slotMinutes($clinicId))
+            ) {
+                if ($day->isSameDay($now) && $cursor->lt($now)) {
+                    continue;
+                }
 
-            $end = $cursor->addMinutes($duration);
-            $overlaps = $busy->contains(fn (array $interval) => $interval[0]->lt($end) && $interval[1]->gt($cursor));
+                $end = $cursor->addMinutes($duration);
+                $overlaps = $busy->contains(fn (array $interval) => $interval[0]->lt($end) && $interval[1]->gt($cursor));
+                $unavailable = $this->availability->availabilityIssue(
+                    $clinic,
+                    $professional,
+                    $cursor,
+                    $duration,
+                    $blocks,
+                );
 
-            if (! $overlaps) {
-                $slots->push($cursor->format('H:i'));
+                if (! $overlaps && $unavailable === null) {
+                    $slots->push($cursor->format('H:i'));
+                }
             }
         }
 
@@ -274,9 +343,32 @@ class GroomingAgendaService
         return CarbonImmutable::parse($day->toDateString())->setTime($hour, $minute);
     }
 
-    private function floorToSlot(CarbonImmutable $time): CarbonImmutable
+    public function availabilityIssue(
+        ?int $clinicId,
+        ?int $assignedUserId,
+        CarbonInterface $start,
+        int $durationMinutes,
+    ): ?string {
+        [$clinic, $professional] = $this->availabilityContext($clinicId, $assignedUserId);
+
+        return $clinic
+            ? $this->availability->availabilityIssue($clinic, $professional, $start, $durationMinutes)
+            : 'Selecione uma clínica válida para consultar a disponibilidade.';
+    }
+
+    /** @return array{0: ?Clinic, 1: ?User} */
+    private function availabilityContext(?int $clinicId, ?int $assignedUserId): array
     {
-        $slot = $this->slotMinutes();
+        $clinic = $clinicId ? Clinic::query()->find($clinicId) : null;
+        $professional = $clinic && $assignedUserId
+            ? User::query()->where('clinic_id', $clinic->id)->find($assignedUserId)
+            : null;
+
+        return [$clinic, $professional];
+    }
+
+    private function floorToSlot(CarbonImmutable $time, int $slot): CarbonImmutable
+    {
         $minutes = intdiv($time->hour * 60 + $time->minute, $slot) * $slot;
 
         return $time->startOfDay()->addMinutes($minutes);

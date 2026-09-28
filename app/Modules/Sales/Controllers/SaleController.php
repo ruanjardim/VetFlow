@@ -597,6 +597,7 @@ class SaleController extends BaseCrudController
                     'type' => $item->type,
                     'product_id' => $item->product_id,
                     'petshop_service_id' => $item->petshop_service_id,
+                    'service_order_item_id' => $item->id,
                     'description' => $item->description,
                     'quantity' => (float) $item->quantity,
                     'unit_price' => (float) $item->unit_price,

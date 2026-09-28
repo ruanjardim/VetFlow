@@ -62,11 +62,49 @@ class OperationsSmokeChecklistService
         ],
     ];
 
+    /** @var array<string, array{label: string, description: string}> */
+    private const GROOMING_CHECKS = [
+        'grooming_schedule' => [
+            'label' => 'Agenda e disponibilidade',
+            'description' => 'Expediente, intervalo, bloqueio e conflito foram validados para a clínica e o profissional.',
+        ],
+        'grooming_booking' => [
+            'label' => 'Agendamento e preço',
+            'description' => 'Agendamento, duração, porte do pet, serviço e preço ficaram consistentes.',
+        ],
+        'grooming_lifecycle' => [
+            'label' => 'Fluxo do atendimento',
+            'description' => 'Chegada, início, animal pronto, falta e cancelamento respeitaram os estados operacionais.',
+        ],
+        'grooming_package' => [
+            'label' => 'Pacote e saldo',
+            'description' => 'Venda, ativação, consumo e liberação de sessão do pacote foram conferidos.',
+        ],
+        'grooming_checkout' => [
+            'label' => 'PDV e recebimento',
+            'description' => 'A comanda chegou ao PDV com cliente, pet, itens, preços e pagamento corretos.',
+        ],
+        'grooming_commission_return' => [
+            'label' => 'Comissão e devolução',
+            'description' => 'Comissão, fechamento, devolução parcial e estorno integral foram reconciliados.',
+        ],
+        'grooming_financial' => [
+            'label' => 'Caixa e financeiro',
+            'description' => 'Venda, estorno, caixa e conta a pagar de comissão fecharam sem divergência.',
+        ],
+        'grooming_audit' => [
+            'label' => 'Histórico e segregação',
+            'description' => 'Históricos, permissões, logs e isolamento entre clínicas foram revisados.',
+        ],
+    ];
+
     public function __construct(private readonly ReleaseIdentityService $releaseIdentity) {}
 
     public static function label(string $checkKey): string
     {
-        return self::CHECKS[$checkKey]['label'] ?? 'Item operacional';
+        return self::CHECKS[$checkKey]['label']
+            ?? self::GROOMING_CHECKS[$checkKey]['label']
+            ?? 'Item operacional';
     }
 
     /**
@@ -74,14 +112,41 @@ class OperationsSmokeChecklistService
      */
     public function summary(User $user): array
     {
+        return $this->summaryFor($user, self::CHECKS);
+    }
+
+    /**
+     * @return array{available: bool, completed: int, total: int, items: array<int, array<string, mixed>>}
+     */
+    public function groomingSummary(User $user): array
+    {
+        return $this->summaryFor($user, self::GROOMING_CHECKS);
+    }
+
+    public function record(User $user, string $checkKey, bool $completed, ?string $note): OperationsSmokeCheck
+    {
+        return $this->recordFor($user, self::CHECKS, $checkKey, $completed, $note);
+    }
+
+    public function recordGrooming(User $user, string $checkKey, bool $completed, ?string $note): OperationsSmokeCheck
+    {
+        return $this->recordFor($user, self::GROOMING_CHECKS, $checkKey, $completed, $note);
+    }
+
+    /**
+     * @param  array<string, array{label: string, description: string}>  $checks
+     * @return array{available: bool, completed: int, total: int, items: array<int, array<string, mixed>>}
+     */
+    private function summaryFor(User $user, array $checks): array
+    {
         $sha = $this->releaseIdentity->sha();
 
         if ($sha === null) {
             return [
                 'available' => false,
                 'completed' => 0,
-                'total' => count(self::CHECKS),
-                'items' => $this->emptyItems(),
+                'total' => count($checks),
+                'items' => $this->emptyItems($checks),
             ];
         }
 
@@ -99,7 +164,7 @@ class OperationsSmokeChecklistService
             ->unique('check_key')
             ->keyBy('check_key');
 
-        $items = collect(self::CHECKS)->map(function (array $definition, string $key) use ($latest): array {
+        $items = collect($checks)->map(function (array $definition, string $key) use ($latest): array {
             $decision = $latest->get($key);
 
             return [
@@ -116,14 +181,20 @@ class OperationsSmokeChecklistService
         return [
             'available' => true,
             'completed' => collect($items)->where('completed', true)->count(),
-            'total' => count(self::CHECKS),
+            'total' => count($checks),
             'items' => $items,
         ];
     }
 
-    public function record(User $user, string $checkKey, bool $completed, ?string $note): OperationsSmokeCheck
-    {
-        if (! array_key_exists($checkKey, self::CHECKS)) {
+    /** @param array<string, array{label: string, description: string}> $checks */
+    private function recordFor(
+        User $user,
+        array $checks,
+        string $checkKey,
+        bool $completed,
+        ?string $note,
+    ): OperationsSmokeCheck {
+        if (! array_key_exists($checkKey, $checks)) {
             throw ValidationException::withMessages(['check' => 'O item de smoke test informado não existe.']);
         }
 
@@ -146,10 +217,13 @@ class OperationsSmokeChecklistService
         ]));
     }
 
-    /** @return array<int, array<string, mixed>> */
-    private function emptyItems(): array
+    /**
+     * @param  array<string, array{label: string, description: string}>  $checks
+     * @return array<int, array<string, mixed>>
+     */
+    private function emptyItems(array $checks): array
     {
-        return collect(self::CHECKS)->map(fn (array $definition, string $key): array => [
+        return collect($checks)->map(fn (array $definition, string $key): array => [
             'key' => $key,
             'label' => $definition['label'],
             'description' => $definition['description'],
