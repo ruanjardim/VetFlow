@@ -68,7 +68,7 @@
 </div>
 
 @if(! isset($medicalRecord))
-  <script>
+  <script nonce="{{ $cspNonce }}">
     document.getElementById('appointment_id').addEventListener('change', function () {
       const patientId = this.options[this.selectedIndex].dataset.patientId;
 

@@ -54,7 +54,7 @@
   </div>
 </div>
 
-<script>
+<script nonce="{{ $cspNonce }}">
   (() => {
     const patientInput = document.getElementById('patient_id');
     const tutorInput = document.getElementById('tutor_id');

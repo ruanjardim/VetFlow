@@ -23,7 +23,7 @@
   <meta name="twitter:image" content="https://vetflowsys.com.br/images/auth-malinois-square.webp">
   <link rel="preload" as="image" href="{{ asset('images/auth-malinois-square.webp') }}" type="image/webp">
   @vite('resources/css/landing.css')
-  <script type="application/ld+json">
+  <script type="application/ld+json" nonce="{{ $cspNonce }}">
   {
     "@@context": "https://schema.org",
     "@graph": [

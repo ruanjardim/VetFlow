@@ -21,7 +21,7 @@
       </p>
     </div>
     <div class="actions">
-      <button type="button" class="secondary" onclick="window.print()">Imprimir</button>
+      <button type="button" class="secondary" data-print-page>Imprimir</button>
       <a class="button secondary" href="{{ $whatsappUrl }}" target="_blank" rel="noopener">Enviar pelo WhatsApp</a>
       @if($editable)
         <a class="button" href="{{ route('sales.create', ['quote_id' => $quote->id]) }}">Converter em venda</a>

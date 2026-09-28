@@ -196,12 +196,14 @@ through tenant-safe queues, emit the current preparation report, and triage a
 multi-clinic portfolio by readiness status. A reproducible fictitious scenario
 exercises the blocked path before any rule is tuned from pilot evidence.
 
-The first staging candidate is KingHost shared Linux hosting, using only
-fictitious data and a bounded authenticated cron bridge because shared hosting
-does not supervise a permanent queue worker. External provisioning remains
-pending. The next delivery focus is to pass the contract gate, prove backup
-restoration, validate persistent storage and queue processing, execute the
-release checklist in staging, and define release/support ownership.
+Production runs on Hostinger shared Linux hosting at
+`https://vetflowsys.com.br`, deployed from the `0-hostinger-production` branch.
+Because the plan does not supervise a permanent worker, production uses the
+database queue and a bounded CLI Cron Job every five minutes. Release identity,
+isolated backup restoration, persistent storage, asynchronous processing, the
+12-item smoke checklist, and the final human go/no-go decision are release
+gates in the Operations Center. KingHost remains only a historical staging
+candidate and is not the production target.
 
 The global Clinics registry now has a standalone operational guide and an
 explicit global-administrator authorization boundary. Thin or overlapping

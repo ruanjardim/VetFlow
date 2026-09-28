@@ -14,6 +14,7 @@ This directory contains the working documentation for VetFlow.
 - [Continuous integration](ci.md)
 - [Deployment guide](deployment.md)
 - [Hostinger production runbook](deployment/hostinger-production.md)
+- [Hostinger incident response](deployment/hostinger-incident-response.md)
 - [KingHost staging runbook](deployment/kinghost-staging.md)
 - [Render demonstration deployment](deploy/render.md)
 - [Release checklist](release-checklist.md)

@@ -1,7 +1,9 @@
 # Hostinger Production Runbook
 
-This runbook covers the current VetFlow deployment at
-`https://vetflowsys.com.br`. It complements the provider-neutral
+This runbook is the source of truth for the current VetFlow deployment at
+`https://vetflowsys.com.br`. Production deploys from
+`0-hostinger-production`; every release must expose its full commit through
+`/ops/release`. It complements the provider-neutral
 [deployment guide](../deployment.md), the
 [release checklist](../release-checklist.md), the
 [backup restore drill](backup-restore-drill.md), and the
@@ -110,6 +112,12 @@ output, and the hPanel execution timestamp in the release evidence. A successful
 empty run is useful, but the runtime probe below must also prove that a real job
 was consumed.
 
+Validate failure handling without business data by using only the synthetic
+runtime-probe job: prove the configured attempt limit, confirm its UUID in
+`queue:failed`, restore the synthetic sentinel, run `queue:retry <UUID>`, and
+verify the probe. Finish with `queue:failed` returning no entries. Never force a
+failure in reminders, sales, inventory, financial, or clinical jobs.
+
 ## Backup and isolated restore
 
 Before migrations:
@@ -148,6 +156,24 @@ php artisan view:cache
 
 Run `storage:link` only if the link is absent or broken. Persist `.env`, the
 Laravel storage directory, and user uploads outside any replace-on-deploy step.
+
+## Security headers
+
+Laravel emits the application policy on every response and Apache removes the
+PHP version header. Production responses must include HSTS, `nosniff`, denied
+framing, `strict-origin-when-cross-origin`, a restrictive Permissions Policy,
+and a CSP with request-specific script nonces. Inline scripts are forbidden;
+the temporary `style-src 'unsafe-inline'` allowance exists only for the current
+server-rendered progress bars and CSS custom properties. Re-test the public
+page, login, authenticated forms, print views, and ViaCEP lookup after changing
+the CSP.
+
+Check with:
+
+```bash
+curl -sS -D - -o /dev/null https://vetflowsys.com.br/
+curl -sS https://vetflowsys.com.br/ops/release
+```
 
 ## Runtime evidence and release gate
 
@@ -195,6 +221,12 @@ pre-migration database backup. If the smoke test fails:
 4. rebuild Laravel caches;
 5. confirm `/up`, `/ops/release`, login, clinic context, and logs before
    reopening use.
+
+Do not restore a database merely because application rollback was requested.
+Database restoration requires a separate decision based on incompatible schema
+or confirmed data corruption and must always target an isolated database first.
+For triage, evidence preservation, notification, and LGPD escalation, follow
+the [incident-response runbook](hostinger-incident-response.md).
 
 Hostinger references:
 

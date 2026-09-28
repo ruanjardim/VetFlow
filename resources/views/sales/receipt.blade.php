@@ -21,7 +21,7 @@
     </div>
     <div class="actions">
       <a class="button" href="{{ route('sales.create') }}">Nova venda</a>
-      <button type="button" onclick="window.print()">Imprimir</button>
+      <button type="button" data-print-page>Imprimir</button>
       @if($sale->status === 'completed')
         <a class="button secondary" href="{{ route('sales.returns.create', $sale->id) }}">Devolver</a>
       @endif

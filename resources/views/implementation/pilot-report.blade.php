@@ -15,7 +15,7 @@
     </div>
 
     <div class="row-actions">
-      <button class="button" type="button" onclick="window.print()">Imprimir</button>
+      <button class="button" type="button" data-print-page>Imprimir</button>
       <a
         class="button secondary"
         href="{{ route('implementation.pilots.report-json', $report['clinic']['id']) }}"

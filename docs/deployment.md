@@ -3,9 +3,11 @@
 This is a production-readiness guide for VetFlow. It documents the intended
 deployment concerns without locking the project to one hosting provider.
 
-Provider-specific staging instructions live in the
-[KingHost staging runbook](deployment/kinghost-staging.md). The current
-production host has a separate [Hostinger production runbook](deployment/hostinger-production.md).
+The active production environment is Hostinger/hPanel at
+`https://vetflowsys.com.br`; use the
+[Hostinger production runbook](deployment/hostinger-production.md) for all
+production changes. The KingHost document is retained only as a historical
+staging option and is not the source of truth for current production.
 
 ## Required Runtime
 
@@ -16,8 +18,8 @@ production host has a separate [Hostinger production runbook](deployment/hosting
 - Node/Vite assets built before release.
 - A persistent database, preferably MySQL or MariaDB for production.
 - A persistent storage disk for uploaded product images and future documents.
-- A queue worker, or the explicitly bounded staging cron bridge documented for
-  a provider that cannot supervise a permanent worker.
+- A queue worker, or the bounded Hostinger CLI Cron Job used by production when
+  the hosting plan cannot supervise a permanent worker.
 
 ## Environment
 
@@ -133,3 +135,5 @@ least 32 characters, and a valid header.
 
 Use the complete [release checklist](release-checklist.md) to record the
 pre-release validation, rollback decision, smoke tests, and release evidence.
+During an outage or suspected compromise, follow the
+[Hostinger incident-response runbook](deployment/hostinger-incident-response.md).

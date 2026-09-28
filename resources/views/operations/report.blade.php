@@ -12,7 +12,7 @@
     <div class="row-actions">
       <a class="button secondary" href="{{ route('operations.index') }}">Voltar</a>
       <a class="button secondary" href="{{ route('operations.report.json') }}">Baixar JSON</a>
-      <button type="button" onclick="window.print()">Imprimir</button>
+      <button type="button" data-print-page>Imprimir</button>
     </div>
   </section>
 

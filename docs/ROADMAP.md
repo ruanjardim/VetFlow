@@ -99,8 +99,9 @@ The product should feel different from a generic CRUD system by connecting the c
 - A consolidated four-period view now brings together validation volume,
   evidence coverage, maturity, and latest human-review status. It explicitly
   treats the date windows as overlapping rather than independent samples.
-- The selected KingHost staging candidate has a provider-specific runbook and
-  a bounded, token-protected queue cron bridge that remains disabled by default.
+- Hostinger is the active production provider, with a provider-specific
+  runbook, database queue, bounded CLI Cron Job, restore drill, and incident
+  response procedure. The earlier KingHost plan is historical staging context.
 - Sales expose realized gross profitability by item type, category, and item,
   adjusted for discounts and returns while preserving historical cost
   snapshots.
@@ -174,12 +175,13 @@ The product should feel different from a generic CRUD system by connecting the c
 
 ## Current Near-Term Priorities
 
-1. Pass the KingHost contract gate, provision staging, and validate the
-   selected hosting target without real clinic data.
-2. Execute and record the database restore drill against the provisioned
-   staging environment before the first pilot.
-3. Run the release checklist and smoke tests in staging.
-4. Define the first pilot scope, release notes, and support owner.
+1. Keep the Hostinger backup/restore, runtime probe, and 12-item release smoke
+   evidence current for every production release.
+2. Establish a separate staging environment with fictitious data before any
+   high-risk schema or integration change.
+3. Define the first pilot scope, release notes, and support owner.
+4. Complete the commercial, legal, and LGPD operating decisions documented by
+   the incident and production runbooks.
 5. Validate replenishment suggestions with pilot data and tune the history
    window or quantity rule only when real evidence supports the change.
 

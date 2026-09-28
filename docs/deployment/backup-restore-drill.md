@@ -27,8 +27,8 @@ Immediately after exporting the database, record a provider-safe identifier:
 
 ```bash
 php artisan vetflow:backup:snapshot \
-  --identifier=kinghost-staging-20260823-01 \
-  --output=/secure/evidence/kinghost-staging-20260823-01-manifest.json
+  --identifier=hostinger-production-YYYYMMDD-HHMM \
+  --output=/secure/evidence/hostinger-production-YYYYMMDD-HHMM-manifest.json
 ```
 
 The manifest contains only the database driver, hashed connection identity,
@@ -56,9 +56,9 @@ Do not add these credentials to Git or to the evidence file.
 
 ```bash
 php artisan vetflow:backup:verify \
-  --manifest=/secure/evidence/kinghost-staging-20260823-01-manifest.json \
+  --manifest=/secure/evidence/hostinger-production-YYYYMMDD-HHMM-manifest.json \
   --connection=backup_restore \
-  --evidence=/secure/evidence/kinghost-staging-20260823-01-evidence.json
+  --evidence=/secure/evidence/hostinger-production-YYYYMMDD-HHMM-evidence.json
 ```
 
 The command fails when migrations, table presence, row totals, maximum IDs, or
@@ -72,7 +72,7 @@ Use a successful, recent evidence file in the release diagnostic:
 
 ```bash
 php artisan vetflow:release:check \
-  --backup-evidence=/secure/evidence/kinghost-staging-20260823-01-evidence.json
+  --backup-evidence=/secure/evidence/hostinger-production-YYYYMMDD-HHMM-evidence.json
 ```
 
 Evidence is accepted for 30 days by default. Adjust
