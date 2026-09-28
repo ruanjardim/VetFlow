@@ -19,4 +19,8 @@
 
 <IfModule mod_headers.c>
     Header always unset X-Powered-By
+    # Hostinger injects an upgrade-only CSP at the web-server layer. Replace it
+    # here so static and Laravel responses receive the same complete policy.
+    Header always unset Content-Security-Policy
+    Header always set Content-Security-Policy "default-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; object-src 'none'; script-src 'self' 'sha256-etofdwIDe5TQ507BSfKVANn3zhVLFNuH7OHf0PZLGGY='; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https://viacep.com.br; frame-src 'none'; manifest-src 'self'; media-src 'self'; upgrade-insecure-requests"
 </IfModule>

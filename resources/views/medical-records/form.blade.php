@@ -66,15 +66,3 @@
   <div class="field full"><label for="notes">Observações adicionais</label><textarea id="notes" name="notes">{{ old('notes', $medicalRecord->notes ?? '') }}</textarea></div>
   <div class="field full"><div class="actions"><button type="submit">Salvar prontuário</button><a class="button secondary" href="{{ route('medical-records.index') }}">Cancelar</a></div></div>
 </div>
-
-@if(! isset($medicalRecord))
-  <script nonce="{{ $cspNonce }}">
-    document.getElementById('appointment_id').addEventListener('change', function () {
-      const patientId = this.options[this.selectedIndex].dataset.patientId;
-
-      if (patientId) {
-        document.getElementById('patient_id').value = patientId;
-      }
-    });
-  </script>
-@endif

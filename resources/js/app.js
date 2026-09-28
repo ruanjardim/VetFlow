@@ -244,6 +244,27 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
+  const linkedPatientSelect = document.getElementById('patient_id');
+  const linkedTutorSelect = document.getElementById('tutor_id');
+
+  linkedPatientSelect?.addEventListener('change', () => {
+    const tutorId = linkedPatientSelect.selectedOptions?.[0]?.dataset.tutorId;
+
+    if (tutorId && linkedTutorSelect) {
+      linkedTutorSelect.value = tutorId;
+    }
+  });
+
+  const linkedAppointmentSelect = document.getElementById('appointment_id');
+
+  linkedAppointmentSelect?.addEventListener('change', () => {
+    const patientId = linkedAppointmentSelect.selectedOptions?.[0]?.dataset.patientId;
+
+    if (patientId && linkedPatientSelect) {
+      linkedPatientSelect.value = patientId;
+    }
+  });
+
   document.querySelectorAll('[data-catalog-search]').forEach((search) => {
     const table = search.closest('.panel')?.querySelector('[data-catalog-table]');
     const rows = Array.from(table?.querySelectorAll('[data-catalog-row]') || []);

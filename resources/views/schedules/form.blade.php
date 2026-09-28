@@ -61,18 +61,3 @@
     </div>
   </div>
 </div>
-
-<script nonce="{{ $cspNonce }}">
-  (() => {
-    const patientInput = document.getElementById('patient_id');
-    const tutorInput = document.getElementById('tutor_id');
-
-    patientInput?.addEventListener('change', () => {
-      const tutorId = patientInput.options[patientInput.selectedIndex]?.dataset.tutorId;
-
-      if (tutorId) {
-        tutorInput.value = tutorId;
-      }
-    });
-  })();
-</script>
