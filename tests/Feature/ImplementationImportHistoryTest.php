@@ -130,6 +130,76 @@ class ImplementationImportHistoryTest extends TestCase
         );
     }
 
+    public function test_team_activation_summarizes_active_access_and_professional_identification(): void
+    {
+        $clinic = $this->clinic('Clínica Equipe', '12345678000184');
+        $otherClinic = $this->clinic('Clínica Externa', '12345678000185');
+        $user = $this->authorizedUser($clinic);
+        $administrator = Role::query()->create([
+            'name' => 'Administrador',
+            'slug' => 'administrador',
+            'description' => 'Administração da clínica.',
+            'system' => true,
+            'active' => true,
+        ]);
+        DB::table('user_roles')->insert([
+            'ulid' => (string) Str::ulid(),
+            'user_id' => $user->id,
+            'role_id' => $administrator->id,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        User::factory()->create([
+            'clinic_id' => $clinic->id,
+            'active' => true,
+            'veterinary_license_number' => '12345',
+            'veterinary_license_state' => 'RJ',
+            'grooming_professional' => true,
+        ]);
+        User::factory()->create([
+            'clinic_id' => $clinic->id,
+            'active' => false,
+            'grooming_professional' => true,
+        ]);
+        User::factory()->create([
+            'clinic_id' => $otherClinic->id,
+            'active' => true,
+            'veterinary_license_number' => '99999',
+            'veterinary_license_state' => 'SP',
+            'grooming_professional' => true,
+        ]);
+        ImplementationPilotCheck::query()->create([
+            'clinic_id' => $clinic->id,
+            'user_id' => $user->id,
+            'clinic_name' => $clinic->trade_name,
+            'user_name' => $user->name,
+            'check_key' => 'access_validated',
+            'check_label' => 'Acessos da equipe validados',
+            'completed' => true,
+            'decided_at' => now(),
+        ]);
+
+        $response = $this->actingAs($user)->get(route('implementation.index'));
+
+        $response
+            ->assertOk()
+            ->assertSee('Ativação da equipe')
+            ->assertSee('Acessos validados')
+            ->assertSee('Revisar validação')
+            ->assertDontSee(route('access-users.create'));
+
+        $activation = $response->viewData('teamActivations')[0];
+
+        $this->assertSame($clinic->id, $activation['clinic_id']);
+        $this->assertSame(2, $activation['active_users']);
+        $this->assertSame(1, $activation['administrators']);
+        $this->assertSame(1, $activation['veterinarians']);
+        $this->assertSame(1, $activation['grooming_professionals']);
+        $this->assertSame(1, $activation['operational_professionals']);
+        $this->assertTrue($activation['access_validation']['completed']);
+    }
+
     public function test_onboarding_quality_only_evaluates_completed_blocks_in_the_accessible_clinic(): void
     {
         $ownClinic = $this->clinic('Clínica Qualidade', '12345678000196');

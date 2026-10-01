@@ -24,6 +24,7 @@ use App\Modules\Implementation\Services\ImplementationPilotReadinessService;
 use App\Modules\Implementation\Services\ImplementationPilotReleaseService;
 use App\Modules\Implementation\Services\ImplementationPilotReportService;
 use App\Modules\Implementation\Services\ImplementationReadinessService;
+use App\Modules\Implementation\Services\ImplementationTeamActivationService;
 use App\Modules\Implementation\Services\ImplementationWorkflowService;
 use App\Modules\Implementation\Services\PatientCsvImportService;
 use App\Modules\Implementation\Services\ProductCsvImportService;
@@ -290,6 +291,7 @@ class ImplementationController extends Controller
         private readonly ImplementationImportService $implementationImporter,
         private readonly ImplementationReadinessService $implementationReadiness,
         private readonly ImplementationDataQualityService $implementationDataQuality,
+        private readonly ImplementationTeamActivationService $teamActivation,
         private readonly ImplementationPilotChecklistService $pilotChecklist,
         private readonly ImplementationPilotHistoryService $pilotHistory,
         private readonly ImplementationPilotPortfolioService $pilotPortfolio,
@@ -342,6 +344,7 @@ class ImplementationController extends Controller
             $onboardingReadiness
         );
         $pilotChecklists = $this->pilotChecklist->forClinics($clinics);
+        $teamActivations = $this->teamActivation->forClinics($clinics, $pilotChecklists);
         $pilotReleases = $this->pilotRelease->forClinics($clinics);
         $pilotReadiness = $this->pilotReadiness->forClinics(
             $clinics,
@@ -401,6 +404,7 @@ class ImplementationController extends Controller
             'recentImports' => $this->implementationImporter->recentFor($user),
             'onboardingReadiness' => $onboardingReadiness,
             'onboardingQuality' => $onboardingQuality,
+            'teamActivations' => $teamActivations,
             'pilotChecklists' => $pilotChecklists,
             'pilotReleases' => $pilotReleases,
             'pilotReadiness' => $pilotPortfolio['items'],

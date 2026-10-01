@@ -3,7 +3,12 @@
     ->map(fn ($roleId) => (int) $roleId)
     ->all();
   $isGlobalActor = auth()->user()->clinic_id === null;
+  $defaultClinicId = $accessUser?->clinic_id ?? $preferredClinicId ?? null;
 @endphp
+
+@if($returnTo)
+  <input type="hidden" name="return_to" value="{{ $returnTo }}">
+@endif
 
 <div class="form-grid">
   <div class="field">
@@ -43,7 +48,7 @@
       <select id="clinic_id" name="clinic_id">
         <option value="">Acesso global</option>
         @foreach($clinics as $clinic)
-          <option value="{{ $clinic->id }}" @selected((string) old('clinic_id', $accessUser?->clinic_id) === (string) $clinic->id)>
+          <option value="{{ $clinic->id }}" @selected((string) old('clinic_id', $defaultClinicId) === (string) $clinic->id)>
             {{ $clinic->trade_name ?? $clinic->corporate_name }}
           </option>
         @endforeach
@@ -136,7 +141,7 @@
   <div class="field full">
     <div class="actions">
       <button type="submit">Salvar acesso</button>
-      <a class="button secondary" href="{{ route('access-users.index') }}">Cancelar</a>
+      <a class="button secondary" href="{{ $returnTo === 'implementation' ? route('implementation.index') : route('access-users.index') }}">Cancelar</a>
     </div>
   </div>
 </div>

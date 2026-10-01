@@ -170,6 +170,70 @@ class AccessManagementTest extends TestCase
         ]);
     }
 
+    public function test_implementation_handoff_prefills_clinic_and_returns_after_creation(): void
+    {
+        $this->seed(AuthorizationSeeder::class);
+
+        $clinic = $this->clinic('Clínica em Implantação', '00000000000302');
+        $actor = User::factory()->create([
+            'clinic_id' => null,
+            'active' => true,
+        ]);
+        $this->attachRole($actor, $this->role('administrador'));
+        $receptionist = $this->role('atendimento');
+
+        $this->actingAs($actor)
+            ->get(route('implementation.index'))
+            ->assertOk()
+            ->assertSee('Ativação da equipe')
+            ->assertSee(route('access-users.create', [
+                'clinic_id' => $clinic->id,
+                'return_to' => 'implementation',
+            ]));
+
+        $this->actingAs($actor)
+            ->get(route('access-users.create', [
+                'clinic_id' => $clinic->id,
+                'return_to' => 'implementation',
+            ]))
+            ->assertOk()
+            ->assertViewHas('preferredClinicId', $clinic->id)
+            ->assertViewHas('returnTo', 'implementation');
+
+        $this->post(route('access-users.store'), [
+            'clinic_id' => $clinic->id,
+            'name' => 'Recepção do Piloto',
+            'email' => 'recepcao-piloto@vetflow.test',
+            'password' => 'Password123!',
+            'password_confirmation' => 'Password123!',
+            'active' => '1',
+            'role_ids' => [$receptionist->id],
+            'return_to' => 'implementation',
+        ])
+            ->assertRedirect(route('implementation.index'))
+            ->assertSessionHasNoErrors();
+
+        $this->assertDatabaseHas('users', [
+            'clinic_id' => $clinic->id,
+            'email' => 'recepcao-piloto@vetflow.test',
+        ]);
+
+        $this->post(route('access-users.store'), [
+            'clinic_id' => $clinic->id,
+            'name' => 'Retorno Inválido',
+            'email' => 'retorno-invalido@vetflow.test',
+            'password' => 'Password123!',
+            'password_confirmation' => 'Password123!',
+            'active' => '1',
+            'role_ids' => [$receptionist->id],
+            'return_to' => 'https://example.test',
+        ])->assertSessionHasErrors('return_to');
+
+        $this->assertDatabaseMissing('users', [
+            'email' => 'retorno-invalido@vetflow.test',
+        ]);
+    }
+
     public function test_only_active_system_presets_can_be_assigned(): void
     {
         $this->seed(AuthorizationSeeder::class);
