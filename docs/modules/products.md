@@ -44,6 +44,13 @@ record, even when it is linked to a shared global product.
 ## Important Behavior
 
 - Product records are tenant-scoped through `clinic_id`.
+- Clinic users inherit their own clinic when creating products. Global users
+  must choose an active clinic explicitly; the create form preselects it only
+  when the workflow already supplied a clinic or there is exactly one active
+  clinic.
+- Returning from product creation to Sales, Inventory, or Purchase Entries
+  preserves the product clinic in the destination URL so cross-clinic
+  operators do not continue in the wrong tenant context.
 - `gtin` and `barcode` are normalized together when possible.
 - `stock_quantity` is changed by inventory movements, not directly by sales or
   purchases.

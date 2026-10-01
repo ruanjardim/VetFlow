@@ -89,6 +89,123 @@ class ClinicTenantIsolationTest extends TestCase
         $this->assertSame($clinicB->id, $created->fresh()->clinic_id);
     }
 
+    public function test_global_user_product_form_requires_and_preselects_the_only_active_clinic(): void
+    {
+        $clinic = $this->clinic('Clinica Unica Produtos', '00000000000123');
+        $user = User::factory()->create([
+            'active' => true,
+            'clinic_id' => null,
+        ]);
+        $this->grantPermissions($user, ['products.manage']);
+
+        $response = $this->actingAs($user)->get(route('products.create'));
+
+        $response
+            ->assertOk()
+            ->assertSee('name="clinic_id"', false)
+            ->assertSee('value="'.$clinic->id.'" selected', false);
+    }
+
+    public function test_global_user_cannot_create_product_without_a_clinic(): void
+    {
+        $user = User::factory()->create([
+            'active' => true,
+            'clinic_id' => null,
+        ]);
+        $this->grantPermissions($user, ['products.manage']);
+
+        $response = $this->actingAs($user)
+            ->from(route('products.create'))
+            ->post(route('products.store'), [
+                'name' => 'Produto sem clinica',
+            ]);
+
+        $response
+            ->assertRedirect(route('products.create'))
+            ->assertSessionHasErrors(['clinic_id']);
+
+        $this->assertDatabaseMissing('products', [
+            'name' => 'Produto sem clinica',
+        ]);
+    }
+
+    public function test_global_user_cannot_create_product_for_an_inactive_clinic(): void
+    {
+        $clinic = $this->clinic('Clinica Inativa Produtos', '00000000000127');
+        $clinic->update(['active' => false]);
+        $user = User::factory()->create([
+            'active' => true,
+            'clinic_id' => null,
+        ]);
+        $this->grantPermissions($user, ['products.manage']);
+
+        $response = $this->actingAs($user)
+            ->from(route('products.create'))
+            ->post(route('products.store'), [
+                'clinic_id' => $clinic->id,
+                'name' => 'Produto para clinica inativa',
+            ]);
+
+        $response
+            ->assertRedirect(route('products.create'))
+            ->assertSessionHasErrors(['clinic_id']);
+
+        $this->assertDatabaseMissing('products', [
+            'name' => 'Produto para clinica inativa',
+        ]);
+    }
+
+    public function test_global_user_creates_product_for_selected_clinic_and_keeps_context_on_return(): void
+    {
+        $clinic = $this->clinic('Clinica Produto Selecionado', '00000000000124');
+        $user = User::factory()->create([
+            'active' => true,
+            'clinic_id' => null,
+        ]);
+        $this->grantPermissions($user, ['products.manage']);
+
+        $response = $this->actingAs($user)->post(route('products.store'), [
+            'clinic_id' => $clinic->id,
+            'name' => 'Produto da clinica selecionada',
+            'gtin' => '7891000315507',
+            'return_to' => 'sales',
+        ]);
+
+        $response
+            ->assertRedirect(route('sales.create', [
+                'scan' => '7891000315507',
+                'clinic_id' => $clinic->id,
+            ]))
+            ->assertSessionHasNoErrors();
+
+        $this->assertDatabaseHas('products', [
+            'clinic_id' => $clinic->id,
+            'name' => 'Produto da clinica selecionada',
+        ]);
+    }
+
+    public function test_clinic_user_product_creation_ignores_spoofed_clinic(): void
+    {
+        $clinicA = $this->clinic('Clinica Produto A', '00000000000125');
+        $clinicB = $this->clinic('Clinica Produto B', '00000000000126');
+        $user = $this->clinicUser($clinicA);
+        $this->grantPermissions($user, ['products.manage']);
+
+        $response = $this->actingAs($user)->post(route('products.store'), [
+            'clinic_id' => $clinicB->id,
+            'name' => 'Produto carimbado pela requisicao',
+        ]);
+
+        $response
+            ->assertRedirect(route('products.index'))
+            ->assertSessionHasNoErrors();
+
+        $this->assertDatabaseHas('products', [
+            'clinic_id' => $clinicA->id,
+            'name' => 'Produto carimbado pela requisicao',
+        ]);
+    }
+
     public function test_new_clinical_core_tables_are_tenant_scoped(): void
     {
         $clinicA = $this->clinic('Clinica A', '00000000000131');
@@ -203,7 +320,13 @@ class ClinicTenantIsolationTest extends TestCase
             'active' => true,
             'clinic_id' => null,
         ]);
-        $this->grantPermissions($user, ['clinics.manage', 'purchase-entries.manage', 'sales.manage']);
+        $this->grantPermissions($user, ['clinics.manage', 'products.manage', 'purchase-entries.manage', 'sales.manage']);
+
+        $this->actingAs($user)
+            ->get(route('products.create'))
+            ->assertOk()
+            ->assertSee('Nenhuma clinica cadastrada.')
+            ->assertSee(route('clinics.create'));
 
         $this->actingAs($user)
             ->get(route('purchase-entries.create'))

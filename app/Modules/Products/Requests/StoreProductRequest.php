@@ -3,6 +3,7 @@
 namespace App\Modules\Products\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class StoreProductRequest extends FormRequest
 {
@@ -14,6 +15,7 @@ class StoreProductRequest extends FormRequest
     protected function prepareForValidation(): void
     {
         $this->merge([
+            'clinic_id' => $this->user()?->clinic_id ?? $this->input('clinic_id'),
             'cost_price' => $this->normalizeDecimalValue($this->input('cost_price')),
             'sale_price' => $this->normalizeDecimalValue($this->input('sale_price')),
             'stock_quantity' => $this->normalizeDecimalValue($this->input('stock_quantity')),
@@ -24,7 +26,13 @@ class StoreProductRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'clinic_id' => ['nullable', 'integer', 'exists:clinics,id'],
+            'clinic_id' => [
+                'required',
+                'integer',
+                Rule::exists('clinics', 'id')
+                    ->where('active', true)
+                    ->whereNull('deleted_at'),
+            ],
             'name' => ['required', 'string', 'max:255'],
             'category' => ['nullable', 'string', 'max:255'],
             'brand' => ['nullable', 'string', 'max:255'],
@@ -52,6 +60,7 @@ class StoreProductRequest extends FormRequest
     {
         return [
             'name.required' => 'Informe o nome do produto.',
+            'clinic_id.required' => 'Selecione a clinica do produto.',
             'clinic_id.exists' => 'A clinica informada nao foi encontrada.',
             'cost_price.numeric' => 'Informe um custo valido.',
             'sale_price.numeric' => 'Informe um preco de venda valido.',
