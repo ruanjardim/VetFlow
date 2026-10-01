@@ -3,6 +3,7 @@
 namespace App\Modules\Products\Controllers;
 
 use App\Core\Base\BaseCrudController;
+use App\Modules\Clinics\Models\Clinic;
 use App\Modules\Products\Models\Product;
 use App\Modules\Products\Requests\ProductPricingRadarRequest;
 use App\Modules\Products\Requests\StoreProductRequest;
@@ -22,6 +23,15 @@ class ProductController extends BaseCrudController
         $this->viewPath = 'products';
         $this->routeName = 'products';
         $this->viewVariable = 'products';
+    }
+
+    public function create(): View
+    {
+        $clinics = auth()->user()?->clinic_id === null
+            ? Clinic::query()->active()->orderBy('trade_name')->orderBy('corporate_name')->get()
+            : collect();
+
+        return view('products.create', compact('clinics'));
     }
 
     public function index()
@@ -51,13 +61,19 @@ class ProductController extends BaseCrudController
 
         if ($request->input('return_to') === 'sales') {
             return redirect()
-                ->route('sales.create', ['scan' => $scan])
+                ->route('sales.create', array_filter([
+                    'scan' => $scan,
+                    'clinic_id' => $product->clinic_id,
+                ]))
                 ->with('success', 'Produto cadastrado com sucesso. O PDV vai buscar este EAN automaticamente.');
         }
 
         if ($request->input('return_to') === 'inventory') {
             return redirect()
-                ->route('inventory-movements.create', ['scan' => $scan])
+                ->route('inventory-movements.create', array_filter([
+                    'scan' => $scan,
+                    'clinic_id' => $product->clinic_id,
+                ]))
                 ->with('success', 'Produto cadastrado com sucesso. O estoque vai buscar este EAN automaticamente.');
         }
 
@@ -65,7 +81,7 @@ class ProductController extends BaseCrudController
             return redirect()
                 ->route('purchase-entries.create', array_filter([
                     'scan' => $scan,
-                    'clinic_id' => $request->input('clinic_id'),
+                    'clinic_id' => $product->clinic_id,
                 ]))
                 ->with('success', 'Produto cadastrado com sucesso. A entrada vai buscar este EAN automaticamente.');
         }
