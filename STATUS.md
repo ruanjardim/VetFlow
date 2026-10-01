@@ -198,6 +198,10 @@ The local working tree was clean before this documentation pass.
 - Guided onboarding coverage in the Implementation assistant, calculated from
   the latest successful import of each supported block without duplicating
   imported data or crossing clinic boundaries.
+- The Implementation assistant summarizes active access and professional
+  identification per clinic and hands authorized operators to collaborator
+  creation with the clinic preselected, while human access validation remains
+  the pilot authority.
 - Completed onboarding blocks receive a read-only, tenant-safe data-quality
   review with explicit pending-record counts; blocks not yet imported remain
   marked as awaiting evaluation.

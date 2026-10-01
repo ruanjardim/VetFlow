@@ -19,6 +19,16 @@ clinic-registration fallback for compatibility. Operators without either
 permission receive guidance instead of a link that would end in a forbidden
 page.
 
+For each accessible clinic, the assistant also exposes an activation panel
+before the migration and pilot sections. It reports only observable access
+facts: active users, active administrators, veterinarians with both CRMV
+fields, and collaborators marked as Banho e Tosa professionals. It does not
+turn those counts into automatic readiness. The existing human
+`access_validated` checklist decision remains the authority for pilot
+preparation. Operators with `users.manage` can open Access directly or create
+a collaborator with the destination clinic preselected; after that creation,
+the guided handoff returns to Implementation.
+
 1. Select an active destination clinic.
 2. Select CSV or Excel as the data source.
 3. Choose a supported data block, download its template, and upload the
@@ -241,6 +251,7 @@ tipo,descricao,pessoa_documento,valor,vencimento,status,forma_pagamento,data_pag
 | `ImplementationImportService` | Runs the selected importer and durable audit write in one outer transaction, and scopes recent history queries. |
 | `ImplementationReadinessService` | Builds tenant-safe onboarding coverage from the latest successful execution of each supported import block. |
 | `ImplementationDataQualityService` | Consolidates transparent, read-only quality checks for completed onboarding blocks in the accessible clinic scope. |
+| `ImplementationTeamActivationService` | Summarizes active access and professional-identification facts per accessible clinic without approving the pilot automatically. |
 | `ImplementationPilotChecklistService` | Builds the latest checklist state and appends auditable completion or reopening decisions. |
 | `ImplementationPilotHistoryService` | Reads the four clinic-scoped audit streams with independent pagination for the consolidated pilot history. |
 | `ImplementationPilotPortfolioService` | Summarizes, prioritizes, and filters current readiness across accessible clinics. |
@@ -347,7 +358,9 @@ checks, append-only pilot decisions, checklist clinic isolation, and no history
 for blocked imports. It also covers append-only pilot-plan revisions and their
 clinic boundary, approval preconditions, evidence snapshots, and automatic
 staleness after a source decision changes, the consolidated tenant-safe pilot
-history, current-state report export, and multi-clinic portfolio filtering.
+history, current-state report export, multi-clinic portfolio filtering, and
+tenant-safe team-activation counts linked to the latest human access-validation
+decision.
 
 `tests/Feature/ImplementationExcelTest.php` covers all six Excel imports,
 first-worksheet date normalization, `implementation_excel` trace metadata,

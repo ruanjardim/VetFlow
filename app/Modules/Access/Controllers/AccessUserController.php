@@ -26,12 +26,22 @@ class AccessUserController extends Controller
 
     public function create(Request $request): View
     {
-        return view('access.users.create', $this->service->formData($request->user()));
+        return view('access.users.create', $this->service->formData(
+            $request->user(),
+            preferredClinicId: $request->integer('clinic_id') ?: null,
+            returnTo: $request->string('return_to')->toString()
+        ));
     }
 
     public function store(StoreAccessUserRequest $request): RedirectResponse
     {
         $this->service->create($request->user(), $request->validated());
+
+        if ($request->validated('return_to') === 'implementation') {
+            return redirect()
+                ->route('implementation.index')
+                ->with('success', 'Colaborador criado. Continue a ativação da equipe desta clínica.');
+        }
 
         return redirect()
             ->route('access-users.index')

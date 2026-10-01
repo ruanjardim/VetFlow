@@ -15,6 +15,10 @@ This project follows the spirit of Keep a Changelog, with one practical adjustme
 
 ### Added
 
+- A tenant-safe team-activation panel in the Implementation assistant with
+  observable active-access, administrator, CRMV and Banho e Tosa professional
+  counts, plus a permission-aware handoff that preselects the clinic when
+  creating a collaborator and returns to the onboarding workflow.
 - A permission-aware first-client handoff between SaaS onboarding and the
   Implementation assistant, keeping clinic, subscription, and initial
   administrator creation transactional while avoiding unauthorized dead-end

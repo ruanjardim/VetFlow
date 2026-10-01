@@ -24,6 +24,12 @@ the last selected role that grants `users.manage`.
 | `GET /access/users/{user}/edit` | Opens a tenant-scoped user record. |
 | `PUT /access/users/{user}` | Updates profile, status, optional password, and roles. |
 
+When the create screen is opened from Implementation, a global administrator
+can receive an allowlisted clinic preset. The saved collaborator still passes
+through the same tenant, role, license, and audit rules; after success, the
+operator returns to the Implementation assistant. Arbitrary return URLs are
+not accepted.
+
 The module is implemented by:
 
 - `AccessUserController`;
@@ -107,6 +113,7 @@ php artisan db:seed --class=AuthorizationSeeder --force
 - clinic-scoped list and edit behavior;
 - clinic stamping during creation;
 - global administrator clinic selection;
+- the Implementation handoff with clinic preselection and safe return;
 - rejection of custom or inactive roles;
 - soft-deleted role link restoration;
 - protection against administrator self-lockout.

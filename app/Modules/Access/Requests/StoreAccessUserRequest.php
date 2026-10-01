@@ -44,6 +44,7 @@ class StoreAccessUserRequest extends FormRequest
                         ->whereNull('deleted_at')
                 ),
             ],
+            'return_to' => ['nullable', 'string', Rule::in(['implementation'])],
         ];
     }
 

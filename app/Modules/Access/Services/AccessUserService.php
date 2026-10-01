@@ -37,14 +37,26 @@ class AccessUserService
     }
 
     /**
-     * @return array{accessUser: ?User, roles: Collection, clinics: Collection}
+     * @return array{accessUser: ?User, roles: Collection, clinics: Collection, preferredClinicId: ?int, returnTo: ?string}
      */
-    public function formData(User $actor, ?User $accessUser = null): array
-    {
+    public function formData(
+        User $actor,
+        ?User $accessUser = null,
+        ?int $preferredClinicId = null,
+        ?string $returnTo = null
+    ): array {
+        $clinics = $this->repository->availableClinics($actor);
+        $preferredClinicId = $actor->clinic_id === null
+            && $clinics->contains('id', $preferredClinicId)
+                ? $preferredClinicId
+                : null;
+
         return [
             'accessUser' => $accessUser,
             'roles' => $this->repository->assignableRoles(),
-            'clinics' => $this->repository->availableClinics($actor),
+            'clinics' => $clinics,
+            'preferredClinicId' => $preferredClinicId,
+            'returnTo' => $returnTo === 'implementation' ? 'implementation' : null,
         ];
     }
 

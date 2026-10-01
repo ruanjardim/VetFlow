@@ -70,6 +70,84 @@
     </div>
   @endif
 
+  @if(!empty($teamActivations))
+    <section class="panel" id="team-activation">
+      <div class="panel-body">
+        <div class="implementation-heading">
+          <div>
+            <span class="eyebrow">Próximas ações</span>
+            <h2>Ativação da equipe</h2>
+            <p class="muted">
+              Confira os acessos e identifique os profissionais que participarão da operação inicial.
+              As contagens orientam o trabalho, mas somente a validação humana conclui esta etapa.
+            </p>
+          </div>
+        </div>
+
+        <div class="implementation-readiness-list">
+          @foreach($teamActivations as $activation)
+            <article class="implementation-readiness-card {{ $activation['access_validation']['completed'] ? 'readiness-approved' : '' }}">
+              <div class="implementation-readiness-header">
+                <div>
+                  <h3>{{ $activation['clinic_name'] }}</h3>
+                  <p class="muted">
+                    {{ $activation['operational_professionals'] }} profissionais identificados para a operação
+                  </p>
+                </div>
+
+                <span class="implementation-readiness-status">
+                  {{ $activation['access_validation']['completed'] ? 'Acessos validados' : 'Validação pendente' }}
+                </span>
+              </div>
+
+              <div class="implementation-summary">
+                <div><span>Acessos ativos</span><strong>{{ $activation['active_users'] }}</strong></div>
+                <div><span>Administradores</span><strong>{{ $activation['administrators'] }}</strong></div>
+                <div><span>Veterinários com CRMV</span><strong>{{ $activation['veterinarians'] }}</strong></div>
+                <div><span>Profissionais de banho e tosa</span><strong>{{ $activation['grooming_professionals'] }}</strong></div>
+              </div>
+
+              @if($activation['access_validation']['completed'])
+                <p class="implementation-quality-summary">
+                  Última validação por {{ $activation['access_validation']['user_name'] }}
+                  em {{ $activation['access_validation']['decided_at']?->format('d/m/Y H:i') }}.
+                </p>
+              @else
+                <p class="implementation-quality-summary">
+                  Cadastre a equipe, atribua os perfis necessários e depois confirme a revisão no checklist do piloto.
+                </p>
+              @endif
+
+              <div class="row-actions">
+                @can('users.manage')
+                  <a
+                    class="button"
+                    href="{{ route('access-users.create', [
+                      'clinic_id' => $activation['clinic_id'],
+                      'return_to' => 'implementation',
+                    ]) }}"
+                  >
+                    Novo colaborador
+                  </a>
+
+                  <a class="button secondary" href="{{ route('access-users.index') }}">
+                    Gerenciar acessos
+                  </a>
+                @else
+                  <span class="muted">O cadastro da equipe exige a permissão de gestão de usuários.</span>
+                @endcan
+
+                <a class="button secondary" href="#pilot-access-{{ $activation['clinic_id'] }}">
+                  {{ $activation['access_validation']['completed'] ? 'Revisar validação' : 'Validar no checklist' }}
+                </a>
+              </div>
+            </article>
+          @endforeach
+        </div>
+      </div>
+    </section>
+  @endif
+
   @if(($pilotPortfolio['total'] ?? 0) > 0)
     <section class="panel implementation-pilot-readiness">
       <div class="panel-body">
@@ -416,6 +494,9 @@
                     class="implementation-pilot-check {{ $check['completed'] ? 'completed' : 'pending' }}"
                     method="POST"
                     action="{{ route('implementation.pilot-checks.store') }}"
+                    @if($check['key'] === 'access_validated')
+                      id="pilot-access-{{ $checklist['clinic_id'] }}"
+                    @endif
                   >
                     @csrf
                     <input type="hidden" name="clinic_id" value="{{ $checklist['clinic_id'] }}">
