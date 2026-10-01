@@ -92,8 +92,40 @@ class AuthorizationTest extends TestCase
             ->assertOk()
             ->assertSee('Assistente de Implantação')
             ->assertSee('Clínica destino')
+            ->assertSee('Nenhuma clínica ativa está disponível.')
+            ->assertSee('Solicite a um administrador global')
+            ->assertDontSee(route('clinics.create'))
+            ->assertDontSee(route('saas.onboarding.create'));
+    }
+
+    public function test_global_saas_operator_is_sent_to_transactional_onboarding_when_no_clinic_exists(): void
+    {
+        $user = User::factory()->create(['active' => true, 'clinic_id' => null]);
+        $this->grantPermission($user, 'implementation.manage');
+        $this->grantPermission($user, 'saas.manage');
+
+        $this->actingAs($user)
+            ->get(route('implementation.index'))
+            ->assertOk()
+            ->assertSee('Implante o primeiro cliente antes de iniciar.')
+            ->assertSee('Implantar primeiro cliente')
+            ->assertSee(route('saas.onboarding.create'))
+            ->assertDontSee(route('clinics.create'));
+    }
+
+    public function test_clinic_manager_keeps_the_authorized_direct_registration_fallback(): void
+    {
+        $user = User::factory()->create(['active' => true, 'clinic_id' => null]);
+        $this->grantPermission($user, 'implementation.manage');
+        $this->grantPermission($user, 'clinics.manage');
+
+        $this->actingAs($user)
+            ->get(route('implementation.index'))
+            ->assertOk()
             ->assertSee('Cadastre uma clínica antes de iniciar.')
-            ->assertSee('Cadastrar clínica');
+            ->assertSee('Cadastrar clínica')
+            ->assertSee(route('clinics.create'))
+            ->assertDontSee(route('saas.onboarding.create'));
     }
 
     public function test_user_with_implementation_permission_can_download_migration_template(): void
@@ -115,13 +147,15 @@ class AuthorizationTest extends TestCase
         bool $roleActive = true,
         bool $permissionActive = true
     ): void {
-        $permission = Permission::query()->create([
-            'name' => 'Test permission',
-            'slug' => $permissionSlug,
-            'description' => 'Test permission',
-            'group' => 'Tests',
-            'active' => $permissionActive,
-        ]);
+        $permission = Permission::query()->updateOrCreate(
+            ['slug' => $permissionSlug],
+            [
+                'name' => 'Test permission',
+                'description' => 'Test permission',
+                'group' => 'Tests',
+                'active' => $permissionActive,
+            ]
+        );
 
         $role = Role::query()->create([
             'name' => 'Test role',

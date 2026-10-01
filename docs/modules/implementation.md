@@ -11,6 +11,14 @@ validation, mapping review, and explicit confirmation.
 
 ## Current Flow
 
+Before the import wizard, a global SaaS operator should use the transactional
+client onboarding entry point. It creates the clinic, subscription, and initial
+administrator together, then exposes a direct handoff back to this assistant
+from the establishment page. An authorized clinic manager keeps the direct
+clinic-registration fallback for compatibility. Operators without either
+permission receive guidance instead of a link that would end in a forbidden
+page.
+
 1. Select an active destination clinic.
 2. Select CSV or Excel as the data source.
 3. Choose a supported data block, download its template, and upload the

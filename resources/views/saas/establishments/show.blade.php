@@ -1,7 +1,24 @@
 @extends('layouts.admin')
 @section('title', 'Assinatura do estabelecimento - VetFlow')
 @section('content')
-  <header class="topbar"><div><h1>{{ $clinic->trade_name ?: $clinic->corporate_name }}</h1><p>{{ $clinic->corporate_name }} · {{ $clinic->documentLabel() }}: {{ $clinic->formattedDocument() }}</p></div><a class="button secondary" href="{{ route('saas.establishments.index') }}">Voltar</a></header>
+  <header class="topbar">
+    <div>
+      <h1>{{ $clinic->trade_name ?: $clinic->corporate_name }}</h1>
+      <p>{{ $clinic->corporate_name }} · {{ $clinic->documentLabel() }}: {{ $clinic->formattedDocument() }}</p>
+    </div>
+
+    <div class="row-actions">
+      @can('implementation.manage')
+        <form method="POST" action="{{ route('implementation.clinic') }}">
+          @csrf
+          <input type="hidden" name="clinic_id" value="{{ $clinic->id }}">
+          <button class="button" type="submit">Continuar implantação</button>
+        </form>
+      @endcan
+
+      <a class="button secondary" href="{{ route('saas.establishments.index') }}">Voltar</a>
+    </div>
+  </header>
 
   <section class="grid stats">
     <div class="stat"><span>Plano atual</span><strong>{{ $clinic->subscription?->plan?->name ?? 'Sem plano' }}</strong></div>

@@ -119,6 +119,21 @@ class SaasFoundationTest extends TestCase
         $this->assertSame(4, app(SubscriptionFeatureService::class)->limit($clinic->id, 'max_users'));
     }
 
+    public function test_establishment_page_links_authorized_operator_back_to_implementation(): void
+    {
+        $operator = $this->userWithPermissions(null, ['saas.manage', 'implementation.manage']);
+        $clinic = $this->clinic();
+
+        $this->actingAs($operator)
+            ->get(route('saas.establishments.show', $clinic))
+            ->assertOk()
+            ->assertSee('Continuar implantação')
+            ->assertSee(route('implementation.clinic'));
+
+        $this->post(route('implementation.clinic'), ['clinic_id' => $clinic->id])
+            ->assertRedirect(route('implementation.index', ['step' => 2]));
+    }
+
     public function test_direct_module_url_is_blocked_when_plan_does_not_include_feature(): void
     {
         $clinic = $this->clinic();

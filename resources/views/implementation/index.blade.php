@@ -22,6 +22,12 @@
       @endif
 
       @if(auth()->user()?->clinic_id === null)
+        @can('saas.manage')
+          <a class="button" href="{{ route('saas.onboarding.create') }}">
+            Implantar cliente
+          </a>
+        @endcan
+
         @can('clinics.manage')
           <a class="button secondary" href="{{ route('clinics.index') }}">
             Clínicas
@@ -37,14 +43,30 @@
 
   @if($clinicsCount === 0)
     <div class="alert warning action-alert">
-      <div>
-        <strong>Cadastre uma clínica antes de iniciar.</strong>
-        <span>A implantação precisa de uma clínica ativa para receber os dados importados.</span>
-      </div>
+      @can('saas.manage')
+        <div>
+          <strong>Implante o primeiro cliente antes de iniciar.</strong>
+          <span>O onboarding cria a clínica, a assinatura e o administrador inicial em uma única transação.</span>
+        </div>
 
-      <a class="button secondary" href="{{ route('clinics.create') }}">
-        Cadastrar clínica
-      </a>
+        <a class="button" href="{{ route('saas.onboarding.create') }}">
+          Implantar primeiro cliente
+        </a>
+      @elsecan('clinics.manage')
+        <div>
+          <strong>Cadastre uma clínica antes de iniciar.</strong>
+          <span>A implantação precisa de uma clínica ativa para receber os dados importados.</span>
+        </div>
+
+        <a class="button secondary" href="{{ route('clinics.create') }}">
+          Cadastrar clínica
+        </a>
+      @else
+        <div>
+          <strong>Nenhuma clínica ativa está disponível.</strong>
+          <span>Solicite a um administrador global a implantação do primeiro cliente.</span>
+        </div>
+      @endcan
     </div>
   @endif
 
