@@ -8,6 +8,8 @@ use App\Modules\Commissions\Models\GroomingCommissionSettlement;
 use App\Modules\Financial\Models\FinancialTransaction;
 use App\Modules\PetShopServices\Models\PetPackageUsage;
 use App\Modules\PetShopServices\Models\PetShopService;
+use App\Modules\Sales\Models\Sale;
+use App\Modules\Sales\Models\SaleItem;
 use App\Modules\ServiceOrders\Models\ServiceOrder;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Collection;
@@ -56,11 +58,6 @@ class GroomingCommissionService
             ->where('service_order_id', $order->id)
             ->where('kind', 'earning')
             ->whereIn('status', ['pending', 'settled'])
-            ->whereNotExists(function ($query): void {
-                $query->select(DB::raw(1))
-                    ->from('grooming_commissions as reversal')
-                    ->whereColumn('reversal.reverses_id', 'grooming_commissions.id');
-            })
             ->exists();
 
         if ($hasActive || ! $order->assigned_user_id || ! $order->assignedUser) {
@@ -132,35 +129,130 @@ class GroomingCommissionService
         foreach ($earnings as $earning) {
             if ($earning->status === 'pending') {
                 $earning->update(['status' => 'cancelled']);
+                GroomingCommission::query()
+                    ->withoutGlobalScopes()
+                    ->where('reverses_id', $earning->id)
+                    ->where('status', 'pending')
+                    ->update(['status' => 'cancelled']);
 
                 continue;
             }
 
-            $alreadyReversed = GroomingCommission::query()
+            $reversed = GroomingCommission::query()
                 ->withoutGlobalScopes()
                 ->where('reverses_id', $earning->id)
-                ->exists();
+                ->whereIn('status', ['pending', 'settled'])
+                ->get();
+            $baseToReverse = round(max(
+                0,
+                abs((float) $earning->base_amount) - abs((float) $reversed->sum('base_amount'))
+            ), 2);
+            $amountToReverse = round(max(
+                0,
+                abs((float) $earning->amount) - abs((float) $reversed->sum('amount'))
+            ), 2);
 
-            if ($alreadyReversed) {
+            if ($baseToReverse <= 0 && $amountToReverse <= 0) {
                 continue;
             }
 
-            GroomingCommission::query()->create([
-                'clinic_id' => $earning->clinic_id,
-                'user_id' => $earning->user_id,
-                'service_order_id' => $earning->service_order_id,
-                'service_order_item_id' => $earning->service_order_item_id,
-                'petshop_service_id' => $earning->petshop_service_id,
-                'reverses_id' => $earning->id,
-                'kind' => 'reversal',
-                'description' => 'Estorno: '.$earning->description,
-                'base_amount' => -1 * (float) $earning->base_amount,
-                'percentage' => $earning->percentage,
-                'amount' => -1 * (float) $earning->amount,
-                'status' => 'pending',
-                'earned_at' => now(),
-            ]);
+            $this->createReversal($earning, $baseToReverse, $amountToReverse, 'Estorno');
         }
+    }
+
+    /**
+     * Ajusta a comissão pela quantidade cumulativa devolvida na venda.
+     *
+     * O cálculo é idempotente: cada execução compara o estorno proporcional
+     * esperado com os estornos já registrados e grava somente a diferença.
+     */
+    public function syncForSaleReturns(Sale|int $sale): void
+    {
+        $sale = $sale instanceof Sale
+            ? $sale->fresh(['items'])
+            : Sale::query()->withoutGlobalScopes()->with('items')->find($sale);
+
+        if (! $sale || ! $sale->service_order_id) {
+            return;
+        }
+
+        DB::transaction(function () use ($sale): void {
+            $serviceItems = $sale->items
+                ->where('type', 'service')
+                ->filter(fn (SaleItem $item) => $item->petshop_service_id
+                    && (float) $item->quantity > 0
+                    && (float) $item->returned_quantity > 0);
+
+            foreach ($serviceItems as $saleItem) {
+                $query = GroomingCommission::query()
+                    ->withoutGlobalScopes()
+                    ->where('service_order_id', $sale->service_order_id)
+                    ->where('kind', 'earning')
+                    ->whereIn('status', ['pending', 'settled']);
+
+                if ($saleItem->service_order_item_id) {
+                    $query->where('service_order_item_id', $saleItem->service_order_item_id);
+                } else {
+                    $sameServiceItems = $serviceItems
+                        ->where('petshop_service_id', $saleItem->petshop_service_id);
+
+                    if ($sameServiceItems->count() !== 1) {
+                        continue;
+                    }
+
+                    $query->where('petshop_service_id', $saleItem->petshop_service_id);
+                }
+
+                $earnings = $query->lockForUpdate()->get();
+                $ratio = min(1, (float) $saleItem->returned_quantity / (float) $saleItem->quantity);
+
+                foreach ($earnings as $earning) {
+                    $reversed = GroomingCommission::query()
+                        ->withoutGlobalScopes()
+                        ->where('reverses_id', $earning->id)
+                        ->whereIn('status', ['pending', 'settled'])
+                        ->get();
+                    $targetBase = round(abs((float) $earning->base_amount) * $ratio, 2);
+                    $targetAmount = round(abs((float) $earning->amount) * $ratio, 2);
+                    $baseToReverse = round(max(0, $targetBase - abs((float) $reversed->sum('base_amount'))), 2);
+                    $amountToReverse = round(max(0, $targetAmount - abs((float) $reversed->sum('amount'))), 2);
+
+                    if ($baseToReverse <= 0 && $amountToReverse <= 0) {
+                        continue;
+                    }
+
+                    $this->createReversal(
+                        $earning,
+                        $baseToReverse,
+                        $amountToReverse,
+                        'Devolução proporcional'
+                    );
+                }
+            }
+        });
+    }
+
+    private function createReversal(
+        GroomingCommission $earning,
+        float $baseAmount,
+        float $amount,
+        string $prefix,
+    ): GroomingCommission {
+        return GroomingCommission::query()->create([
+            'clinic_id' => $earning->clinic_id,
+            'user_id' => $earning->user_id,
+            'service_order_id' => $earning->service_order_id,
+            'service_order_item_id' => $earning->service_order_item_id,
+            'petshop_service_id' => $earning->petshop_service_id,
+            'reverses_id' => $earning->id,
+            'kind' => 'reversal',
+            'description' => $prefix.': '.$earning->description,
+            'base_amount' => -1 * round($baseAmount, 2),
+            'percentage' => $earning->percentage,
+            'amount' => -1 * round($amount, 2),
+            'status' => 'pending',
+            'earned_at' => now(),
+        ]);
     }
 
     /**

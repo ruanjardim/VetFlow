@@ -1,6 +1,6 @@
 # VetFlow Project Context
 
-Updated: 2026-08-26
+Updated: 2026-09-28
 
 ## Product
 
@@ -176,6 +176,10 @@ the configured deadline, a near-expiry warning, expiration, failure, absence,
 or an invalid future date without gaining access to paths, fingerprints,
 hashes, sentinels, or file contents. Temporal validity remains only one part of
 the complete technical gate.
+Banho & Tosa additionally has a dedicated eight-item operational checklist in
+the Operations Center. It is release- and clinic-scoped like the general smoke
+history, while remaining separate from the 12-item technical release gate so a
+module pilot cannot silently approve a production release.
 The Implementation assistant now derives onboarding coverage per clinic from
 its append-only successful import summaries. Completed blocks also receive a
 read-only quality review based on six documented, tenant-scoped checks. Blocks
@@ -204,6 +208,12 @@ isolated backup restoration, persistent storage, asynchronous processing, the
 12-item smoke checklist, and the final human go/no-go decision are release
 gates in the Operations Center. KingHost remains only a historical staging
 candidate and is not the production target.
+
+The Banho & Tosa agenda stores weekly availability per clinic, optional
+professional overrides, lunch breaks, and dated clinic/professional blocks.
+Bookings enforce those rules alongside overlap checks. Service checkout keeps
+the source order-item identity so cumulative partial returns reconcile pending
+or settled grooming commissions proportionally and idempotently.
 
 The global Clinics registry now has a standalone operational guide and an
 explicit global-administrator authorization boundary. Thin or overlapping

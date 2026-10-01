@@ -100,6 +100,13 @@ Completing or reopening an item appends an `operations_smoke_checks` event; it
 does not overwrite an earlier decision. Current state is isolated by clinic,
 environment, and full release SHA, and every event keeps its actor and note.
 
+The same screen also exposes a separate eight-item Banho & Tosa validation
+checklist. It covers the module's agenda and availability, booking and pricing,
+service lifecycle, packages, PDV, commissions and returns, cash/financial
+effects, and audit/tenant isolation. Its evidence is append-only and bound to
+the current release, but it deliberately does not alter the 12-item release
+gate. A real pilot operator must record those module results explicitly.
+
 ## Consolidated Decision
 
 Five gates consolidate release identity, platform diagnostics, runtime-probe

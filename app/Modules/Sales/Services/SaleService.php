@@ -3,11 +3,14 @@
 namespace App\Modules\Sales\Services;
 
 use App\Core\Base\BaseService;
+use App\Modules\Commissions\Services\GroomingCommissionService;
 use App\Modules\Financial\Models\FinancialTransaction;
 use App\Modules\Inventory\Models\InventoryMovement;
 use App\Modules\Inventory\Services\InventoryMovementService;
 use App\Modules\Inventory\Services\ProductLotService;
+use App\Modules\PetShopServices\Models\PetPackage;
 use App\Modules\PetShopServices\Models\PetShopService;
+use App\Modules\PetShopServices\Services\PetPackageService;
 use App\Modules\Products\Models\Product;
 use App\Modules\Sales\Contracts\SaleRepositoryInterface;
 use App\Modules\Sales\Models\CashRegisterClosure;
@@ -16,9 +19,6 @@ use App\Modules\Sales\Models\SaleEvent;
 use App\Modules\Sales\Models\SaleItem;
 use App\Modules\Sales\Models\SalePayment;
 use App\Modules\Sales\Support\SaleType;
-use App\Modules\Commissions\Services\GroomingCommissionService;
-use App\Modules\PetShopServices\Models\PetPackage;
-use App\Modules\PetShopServices\Services\PetPackageService;
 use App\Modules\ServiceOrders\Models\ServiceOrder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Carbon;
@@ -418,6 +418,12 @@ class SaleService extends BaseService
                 'return_total' => $newReturnTotal,
                 'refunded_total' => $newRefundedTotal,
             ]);
+
+            if ($sale->service_order_id) {
+                app(GroomingCommissionService::class)->syncForSaleReturns(
+                    $sale->refresh()->load('items')
+                );
+            }
 
             $this->recordSaleEvent(
                 $sale->refresh(),
@@ -1060,7 +1066,7 @@ class SaleService extends BaseService
      * Columns of a sale payment from a row normalized by
      * PaymentMethodService::snapshot().
      *
-     * @param array<string, mixed> $payment
+     * @param  array<string, mixed>  $payment
      * @return array<string, mixed>
      */
     private function paymentAttributes(array $payment, float $amount, string $status): array

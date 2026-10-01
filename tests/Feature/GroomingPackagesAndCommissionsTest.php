@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Modules\Clinics\Models\Clinic;
 use App\Modules\Commissions\Models\GroomingCommission;
 use App\Modules\Commissions\Models\GroomingCommissionSettlement;
+use App\Modules\Commissions\Services\GroomingCommissionService;
 use App\Modules\Financial\Models\FinancialTransaction;
 use App\Modules\Patients\Models\Patient;
 use App\Modules\PetShopServices\Models\PetPackage;
@@ -432,6 +433,123 @@ class GroomingPackagesAndCommissionsTest extends TestCase
             ->assertSessionHasNoErrors();
 
         $this->assertSame('cancelled', GroomingCommission::query()->sole()->status);
+    }
+
+    public function test_partial_service_returns_reduce_pending_commission_proportionally(): void
+    {
+        $this->book('2026-09-23 10:00', [
+            'items' => [[
+                'type' => 'service',
+                'petshop_service_id' => $this->bath->id,
+                'quantity' => 2,
+            ]],
+        ]);
+        $order = ServiceOrder::query()->sole();
+        $order->update(['status' => 'waiting_pickup']);
+
+        $this->actingAs($this->manager)
+            ->post(route('sales.store'), [
+                'status' => 'completed',
+                'source' => 'pdv',
+                'service_order_id' => $order->id,
+                'tutor_id' => $this->tutor->id,
+                'patient_id' => $this->dog->id,
+                'payments' => [['method' => 'pix', 'amount' => 200]],
+            ])
+            ->assertSessionHasNoErrors();
+
+        $sale = Sale::query()->with('items')->sole();
+        $saleItem = $sale->items->sole();
+        $earning = GroomingCommission::query()->where('kind', 'earning')->sole();
+        $this->assertSame($order->items()->sole()->id, $saleItem->service_order_item_id);
+        $this->assertSame('200.00', (string) $earning->base_amount);
+        $this->assertSame('80.00', (string) $earning->amount);
+
+        $this->actingAs($this->manager)
+            ->post(route('sales.returns.store', $sale->id), [
+                'reason' => 'Serviço devolvido parcialmente',
+                'refund_method' => 'pix',
+                'refund_amount' => 100,
+                'items' => [$saleItem->id => ['quantity' => 1]],
+            ])
+            ->assertSessionHasNoErrors();
+
+        $firstReversal = GroomingCommission::query()->where('kind', 'reversal')->sole();
+        $this->assertSame('-100.00', (string) $firstReversal->base_amount);
+        $this->assertSame('-40.00', (string) $firstReversal->amount);
+        $this->assertSame('completed', $sale->refresh()->status);
+
+        $this->actingAs($this->manager)
+            ->post(route('sales.returns.store', $sale->id), [
+                'reason' => 'Restante devolvido',
+                'refund_method' => 'pix',
+                'refund_amount' => 100,
+                'items' => [$saleItem->id => ['quantity' => 1]],
+            ])
+            ->assertSessionHasNoErrors();
+
+        $reversals = GroomingCommission::query()->where('kind', 'reversal')->get();
+        $this->assertCount(2, $reversals);
+        $this->assertSame(-200.0, (float) $reversals->sum('base_amount'));
+        $this->assertSame(-80.0, (float) $reversals->sum('amount'));
+        $this->assertSame('returned', $sale->refresh()->status);
+
+        app(GroomingCommissionService::class)
+            ->syncForSaleReturns($sale);
+        $this->assertSame(3, GroomingCommission::query()->count());
+    }
+
+    public function test_cancelling_after_a_settled_partial_return_only_reverses_the_remaining_commission(): void
+    {
+        $this->book('2026-09-23 10:00', [
+            'items' => [[
+                'type' => 'service',
+                'petshop_service_id' => $this->bath->id,
+                'quantity' => 2,
+            ]],
+        ]);
+        $order = ServiceOrder::query()->sole();
+        $order->update(['status' => 'waiting_pickup']);
+
+        $this->actingAs($this->manager)
+            ->post(route('sales.store'), [
+                'status' => 'completed',
+                'source' => 'pdv',
+                'service_order_id' => $order->id,
+                'tutor_id' => $this->tutor->id,
+                'patient_id' => $this->dog->id,
+                'payments' => [['method' => 'pix', 'amount' => 200]],
+            ])
+            ->assertSessionHasNoErrors();
+
+        $sale = Sale::query()->with('items')->sole();
+        $saleItem = $sale->items->sole();
+
+        $this->actingAs($this->manager)
+            ->post(route('grooming-commissions.settle'), [
+                'user_id' => $this->groomer->id,
+                'until' => '2026-09-30',
+                'due_date' => '2026-10-05',
+            ])
+            ->assertSessionHasNoErrors();
+
+        $this->actingAs($this->manager)
+            ->post(route('sales.returns.store', $sale->id), [
+                'reason' => 'Metade devolvida',
+                'refund_method' => 'pix',
+                'refund_amount' => 100,
+                'items' => [$saleItem->id => ['quantity' => 1]],
+            ])
+            ->assertSessionHasNoErrors();
+
+        $this->actingAs($this->manager)
+            ->patch(route('sales.cancel', $sale->id), ['reason' => 'Cancelamento final'])
+            ->assertSessionHasNoErrors();
+
+        $reversals = GroomingCommission::query()->where('kind', 'reversal')->get();
+        $this->assertCount(2, $reversals);
+        $this->assertSame(-200.0, (float) $reversals->sum('base_amount'));
+        $this->assertSame(-80.0, (float) $reversals->sum('amount'));
     }
 
     public function test_releasing_a_package_without_pdv_requires_cashier_permission(): void

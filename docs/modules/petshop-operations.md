@@ -16,16 +16,19 @@ modules.
 2. Mark the groomers and bathers as **Atende banho e tosa** in
    Administration > Users. They become the columns of the agenda. Without any
    flagged user, every active clinic user is shown.
-3. Book from **Banho e tosa > Agenda**: click a free slot (professional and
+3. Configure the clinic opening hours, lunch break, slot interval, professional
+   overrides, holidays, time off, and temporary blocks in **Banho e tosa >
+   Agenda > Configurar agenda**.
+4. Book from **Banho e tosa > Agenda**: click a free slot (professional and
    time are prefilled) or use the form, which lists the professional's free
    slots for the booking duration. A booking is a service order with status
    `scheduled` (or `confirmed`).
-4. On arrival, use **Chegou** (check-in, `open`, label "Em espera"), then
+5. On arrival, use **Chegou** (check-in, `open`, label "Em espera"), then
    `in_service`, then `waiting_pickup` (label "Animal pronto"). `no_show`
    records a missed booking and frees the slot.
-5. From `waiting_pickup`, open **Receber no PDV**. The quick PDV opens with the
+6. From `waiting_pickup`, open **Receber no PDV**. The quick PDV opens with the
    order's responsible person, pet, items, prices, and discount.
-6. Select the payment method and complete the sale. Completion closes the
+7. Select the payment method and complete the sale. Completion closes the
    linked service order and creates the existing sale, financial, and inventory
    effects.
 
@@ -41,12 +44,19 @@ explicitly select an active clinic.
   `waiting_pickup`. A new or edited booking cannot overlap another blocking
   booking of the same professional unless **Encaixe** (`allow_overlap`) is
   checked. Bookings without a professional never conflict.
+- The clinic schedule defines active weekdays, opening/closing times, an
+  optional daily break, and the grid interval. A professional can inherit it or
+  keep an individual weekly schedule. Clinic-wide and professional-specific
+  date/time blocks cover holidays, time off, and other exceptions.
+- New and recurring bookings are rejected when they start outside the applicable
+  working period, cross a break, or overlap a configured block. Existing
+  bookings remain editable when only unrelated fields change after a later
+  availability update.
 - Duration: the informed `duration_minutes`, otherwise the sum of the services'
   `duration_minutes`, otherwise 60 minutes.
-- Business hours for the grid and slot suggestions come from
+- A clinic without a saved schedule inherits the safe defaults in
   `config/petshop.php` (`PETSHOP_GROOMING_OPENS_AT`, `..._CLOSES_AT`,
-  `..._SLOT_MINUTES`; defaults 08:00-18:00 every 30 minutes). This is an
-  operational assumption until a per-clinic setting exists.
+  `..._SLOT_MINUTES`; defaults 08:00-18:00 every 30 minutes).
 - Recurrence (create only): weekly, every 2, 3 or 4 weeks, 2 to 12 total
   occurrences, sharing a `recurrence_group`. Every occurrence is conflict
   checked; the whole request fails and lists the conflicting dates.
@@ -93,14 +103,24 @@ the base price. The form preselects the same price.
 - If the order leaves `finished` (sale cancelled, status changed), pending
   entries are cancelled and settled ones get a negative reversal entry that is
   deducted in the next settlement.
+- Partial service returns create only the proportional commission reversal.
+  The reconciliation is cumulative and idempotent, works before or after a
+  settlement, and a later full cancellation reverses only the remaining value.
 - **Comissões** (`commissions.manage`): summary per professional, statement and
   "Fechar e gerar conta", which settles every pending entry up to the date and
   creates a pending `expense` financial transaction (reference
   `COMISSAO-BT`). A settlement is refused when the net pending total is zero or
   negative.
-- Not handled yet: partial item returns do not adjust commission (only full
-  cancellation does); sales-based commission rules in Financeiro remain a
-  separate preview.
+- Sales-based commission rules in Financeiro remain a separate preview and do
+  not replace the grooming commission ledger.
+
+## Operational Validation
+
+The Operations Center contains an eight-item, release-scoped Banho & Tosa
+checklist for agenda, booking, lifecycle, packages, checkout, commission and
+returns, cash/financial consistency, and audit/tenant isolation. This checklist
+records the real pilot evidence without changing the 12 mandatory release smoke
+tests or automatically approving a go-live decision.
 
 ## Integrity Rules
 
@@ -127,6 +147,7 @@ needed for the operational and checkout flow.
 - `tests/Feature/GroomingAgendaTest.php`
 - `tests/Feature/GroomingPackagesAndCommissionsTest.php`
 - `tests/Feature/ServiceOrderBoardTest.php`
-- `tests/Feature/SalesQuickPdvTest.php`
+- `tests/Feature/CashSessionsTest.php`
 - `tests/Feature/OperationalFlowTest.php`
 - `tests/Feature/PurchaseAndClinicalFlowTest.php`
+- `tests/Feature/OperationsConsoleTest.php`

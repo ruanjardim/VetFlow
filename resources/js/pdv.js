@@ -149,7 +149,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const type = item.type || 'custom';
     const productId = String(item.product_id || '');
     const serviceId = String(item.petshop_service_id || '');
-    const existing = productId
+    const serviceOrderItemId = String(item.service_order_item_id || '');
+    const existing = serviceOrderItemId ? null : productId
       ? rows().find((row) => row.dataset.type === 'product' && row.dataset.productId === productId)
       : serviceId ? rows().find((row) => row.dataset.type === 'service' && row.dataset.serviceId === serviceId) : null;
     if (existing) {
@@ -165,12 +166,14 @@ document.addEventListener('DOMContentLoaded', () => {
     row.dataset.type = type;
     row.dataset.productId = productId;
     row.dataset.serviceId = serviceId;
+    row.dataset.serviceOrderItemId = serviceOrderItemId;
     if (item.stock_quantity !== undefined) row.dataset.stock = String(item.stock_quantity);
     row.innerHTML = `
       <div class="pdv-row-top"><span data-pdv-kind></span><button type="button" class="secondary" data-pdv-remove aria-label="Remover item">Remover</button></div>
       <input type="hidden" name="items[${index}][type]">
       <input type="hidden" name="items[${index}][product_id]">
       <input type="hidden" name="items[${index}][petshop_service_id]">
+      <input type="hidden" name="items[${index}][service_order_item_id]">
       <div class="field pdv-description"><label>Item</label><input name="items[${index}][description]" maxlength="255" data-pdv-description required></div>
       <div class="pdv-row-fields">
         <div class="field"><label>Qtd</label><div class="pdv-quantity"><button type="button" class="secondary" data-pdv-minus aria-label="Diminuir quantidade">−</button><input name="items[${index}][quantity]" type="number" min="0.001" step="0.001" data-pdv-quantity required><button type="button" class="secondary" data-pdv-plus aria-label="Aumentar quantidade">+</button></div></div>
@@ -182,6 +185,7 @@ document.addEventListener('DOMContentLoaded', () => {
     row.querySelector('[name$="[type]"]').value = type;
     row.querySelector('[name$="[product_id]"]').value = productId;
     row.querySelector('[name$="[petshop_service_id]"]').value = serviceId;
+    row.querySelector('[name$="[service_order_item_id]"]').value = serviceOrderItemId;
     row.querySelector('[data-pdv-kind]').textContent = type === 'product' ? 'Produto' : type === 'service' ? 'Serviço' : 'Avulso';
     row.querySelector('[data-pdv-description]').value = item.description || '';
     row.querySelector('[data-pdv-quantity]').value = String(item.quantity || 1);

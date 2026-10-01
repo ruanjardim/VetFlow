@@ -79,6 +79,30 @@
     </div>
   </section>
 
+  <section class="panel">
+    <div class="panel-heading">
+      <div>
+        <h2>Validação do Banho & Tosa</h2>
+        <p>{{ $report['grooming_smoke_checklist']['completed'] }} de {{ $report['grooming_smoke_checklist']['total'] }} itens concluídos para esta release.</p>
+      </div>
+    </div>
+    <div class="panel-body table-wrap">
+      <table>
+        <thead><tr><th>Item</th><th>Status</th><th>Responsável</th><th>Decisão</th></tr></thead>
+        <tbody>
+          @foreach($report['grooming_smoke_checklist']['items'] as $item)
+            <tr>
+              <td>{{ $item['label'] }}</td>
+              <td>{{ $item['completed'] ? 'Concluído' : 'Pendente' }}</td>
+              <td>{{ $item['actor'] ?? '-' }}</td>
+              <td>{{ $item['decided_at'] ? \Carbon\CarbonImmutable::parse($item['decided_at'])->format('d/m/Y H:i') : '-' }}</td>
+            </tr>
+          @endforeach
+        </tbody>
+      </table>
+    </div>
+  </section>
+
   @if($report['decision'])
     <section class="panel">
       <div class="panel-heading"><div><h2>Decisão humana</h2></div></div>

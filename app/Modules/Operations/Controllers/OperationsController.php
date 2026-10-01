@@ -46,6 +46,7 @@ class OperationsController extends Controller
             'readiness' => $state['readiness'],
             'evidence' => $state['evidence'],
             'smokeChecklist' => $state['smoke_checklist'],
+            'groomingSmokeChecklist' => $state['grooming_smoke_checklist'],
             'runtimeProbeRuns' => $this->runtimeProbeRuns->summary(request()->user()),
             'backupEvidenceHistory' => $this->backupEvidence->summary(request()->user()),
             'operationsGuidance' => $this->operationsGuidance->plan($state, $canExecuteOperations),
@@ -111,6 +112,21 @@ class OperationsController extends Controller
         );
 
         return back()->with('success', 'Decisão do smoke test registrada no histórico.');
+    }
+
+    public function storeGroomingSmokeCheck(
+        StoreOperationsSmokeCheckRequest $request,
+        string $checkKey,
+    ): RedirectResponse {
+        $data = $request->validated();
+        $this->smokeChecklist->recordGrooming(
+            $request->user(),
+            $checkKey,
+            $data['action'] === 'complete',
+            $data['note'] ?? null,
+        );
+
+        return back()->with('success', 'Validação do Banho & Tosa registrada no histórico.');
     }
 
     public function prepareRuntimeProbe(Request $request): RedirectResponse

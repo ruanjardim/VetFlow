@@ -429,4 +429,63 @@
       </div>
     </div>
   </section>
+
+  <section id="grooming-smoke-checklist" class="panel">
+    <div class="panel-heading">
+      <div>
+        <span class="eyebrow">Piloto funcional</span>
+        <h2>Validação do Banho & Tosa</h2>
+        <p>Checklist próprio do módulo, ligado à clínica, ambiente e commit atuais. Ele não altera os 12 gates técnicos da release.</p>
+      </div>
+      <span class="badge {{ $groomingSmokeChecklist['completed'] === $groomingSmokeChecklist['total'] ? 'success' : 'warning' }}">
+        {{ $groomingSmokeChecklist['completed'] }} de {{ $groomingSmokeChecklist['total'] }}
+      </span>
+    </div>
+
+    <div class="panel-body">
+      @unless($groomingSmokeChecklist['available'])
+        <div class="alert warning">Identifique o commit publicado antes de registrar a validação do módulo.</div>
+      @endunless
+
+      <div class="implementation-checklist-items">
+        @foreach($groomingSmokeChecklist['items'] as $item)
+          <article class="implementation-checklist-item {{ $item['completed'] ? 'completed' : '' }}">
+            <div class="implementation-checklist-copy">
+              <span aria-hidden="true">{{ $item['completed'] ? '✓' : '○' }}</span>
+              <div>
+                <strong>{{ $item['label'] }}</strong>
+                <p class="muted">{{ $item['description'] }}</p>
+                @if($item['actor'])
+                  <small>Última decisão por {{ $item['actor'] }} em {{ $item['decided_at']->format('d/m/Y H:i') }}</small>
+                @else
+                  <small>Ainda sem decisão registrada para esta release.</small>
+                @endif
+              </div>
+            </div>
+
+            <form method="POST" action="{{ route('operations.grooming-smoke-checks.store', $item['key']) }}" class="form-grid compact-filter-grid">
+              @csrf
+              <input type="hidden" name="action" value="{{ $item['completed'] ? 'reopen' : 'complete' }}">
+              <div class="field">
+                <label for="grooming-smoke-note-{{ $item['key'] }}">Evidência ou observação</label>
+                <input
+                  id="grooming-smoke-note-{{ $item['key'] }}"
+                  name="note"
+                  maxlength="500"
+                  value="{{ $item['note'] }}"
+                  placeholder="Atendimento, caixa ou conferência realizada"
+                  @disabled(!$groomingSmokeChecklist['available'] || !$canExecuteOperations)
+                >
+              </div>
+              <div class="field implementation-portfolio-filter-actions">
+                <button type="submit" class="{{ $item['completed'] ? 'secondary' : '' }}" @disabled(!$groomingSmokeChecklist['available'] || !$canExecuteOperations)>
+                  {{ $item['completed'] ? 'Reabrir item' : 'Marcar concluído' }}
+                </button>
+              </div>
+            </form>
+          </article>
+        @endforeach
+      </div>
+    </div>
+  </section>
 @endsection

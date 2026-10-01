@@ -24,6 +24,7 @@
       <p>{{ ucfirst($day->locale('pt_BR')->translatedFormat('l, d \d\e F \d\e Y')) }} · clique em um horário livre para agendar.</p>
     </div>
     <div class="actions">
+      <a class="button secondary" href="{{ route('service-orders.grooming-settings', $clinicQuery) }}">Configurar agenda</a>
       <a class="button secondary" href="{{ route('service-orders.board', ['date' => $day->toDateString()]) }}">Operação do dia</a>
       <a class="button" href="{{ route('service-orders.create', array_merge($clinicQuery, ['status' => 'scheduled', 'scheduled_at' => $day->toDateString().' '.$gridStart->format('H:i')])) }}">Novo agendamento</a>
     </div>
@@ -60,6 +61,9 @@
   @if(! $selectedClinicId)
     <div class="panel"><p>Selecione uma clínica para ver a agenda.</p></div>
   @else
+    @if($closed)
+      <div class="alert warning">Não há expediente configurado para este dia. Atendimentos já existentes continuam visíveis, mas novos horários ficam bloqueados.</div>
+    @endif
     <div class="panel grooming-agenda-wrap">
       <div
         class="grooming-agenda"
@@ -89,9 +93,10 @@
                         && $order->scheduled_at->lt($slotEnd)
                         && $order->scheduledEnd()->gt($slot);
                 });
+                $isAvailable = in_array($slot->format('H:i'), $column['availableSlots'], true);
                 $isPast = $slot->lt(now()->subMinutes($slotMinutes));
               @endphp
-              @if($busy || $isPast)
+              @if($busy || $isPast || ! $isAvailable)
                 <div class="grooming-agenda-slot is-blocked" aria-hidden="true"></div>
               @else
                 <a

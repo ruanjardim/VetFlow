@@ -29,6 +29,7 @@ class OperationsReleaseDecisionService
             runtimeEvidencePath: $evidence['runtime']['path'],
         );
         $smoke = $this->smokeChecklist->summary($user);
+        $groomingSmoke = $this->smokeChecklist->groomingSummary($user);
         $gates = $this->gates($release['release']['sha'], $readiness, $smoke);
         $gatesPassed = collect($gates)->every('passed');
         $publicEvidence = [
@@ -52,6 +53,7 @@ class OperationsReleaseDecisionService
             'evidence' => $publicEvidence,
             'evidence_validity' => $evidenceValidity,
             'smoke_checklist' => $smoke,
+            'grooming_smoke_checklist' => $groomingSmoke,
             'gates' => $gates,
             'gates_passed' => $gatesPassed,
             'evidence_snapshot' => $snapshot,
@@ -117,6 +119,18 @@ class OperationsReleaseDecisionService
                 'completed' => $state['smoke_checklist']['completed'],
                 'total' => $state['smoke_checklist']['total'],
                 'items' => collect($state['smoke_checklist']['items'])
+                    ->map(fn (array $item): array => [
+                        'key' => $item['key'],
+                        'label' => $item['label'],
+                        'completed' => $item['completed'],
+                        'actor' => $item['actor'],
+                        'decided_at' => $item['decided_at']?->toIso8601String(),
+                    ])->all(),
+            ],
+            'grooming_smoke_checklist' => [
+                'completed' => $state['grooming_smoke_checklist']['completed'],
+                'total' => $state['grooming_smoke_checklist']['total'],
+                'items' => collect($state['grooming_smoke_checklist']['items'])
                     ->map(fn (array $item): array => [
                         'key' => $item['key'],
                         'label' => $item['label'],

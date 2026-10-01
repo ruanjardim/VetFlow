@@ -139,6 +139,60 @@ class OperationsConsoleTest extends TestCase
             ->assertDontSee('Reaberto para nova conferência.');
     }
 
+    public function test_grooming_checklist_is_release_scoped_without_changing_the_twelve_release_checks(): void
+    {
+        Storage::fake('local');
+        $sha = str_repeat('b', 40);
+        config(['operations.release.sha' => $sha, 'filesystems.default' => 'local']);
+        $clinic = Clinic::query()->create([
+            'corporate_name' => 'Clínica Operações Banho e Tosa',
+            'trade_name' => 'Clínica Operações Banho e Tosa',
+            'cnpj' => '00000000000903',
+            'active' => true,
+        ]);
+        $operator = $this->userWithPermission(['operations.readiness', 'operations.execute'], $clinic);
+        $checkKeys = [
+            'grooming_schedule',
+            'grooming_booking',
+            'grooming_lifecycle',
+            'grooming_package',
+            'grooming_checkout',
+            'grooming_commission_return',
+            'grooming_financial',
+            'grooming_audit',
+        ];
+
+        foreach ($checkKeys as $checkKey) {
+            $this->actingAs($operator)->post(
+                route('operations.grooming-smoke-checks.store', $checkKey),
+                ['action' => 'complete', 'note' => 'Validado no piloto.']
+            )->assertRedirect()->assertSessionHasNoErrors();
+        }
+
+        $this->get(route('operations.index'))
+            ->assertOk()
+            ->assertSee('Validação do Banho &amp; Tosa', false)
+            ->assertSee('8 de 8')
+            ->assertSee('Comissão e devolução');
+
+        $this->get(route('operations.report.json'))
+            ->assertOk()
+            ->assertJsonPath('smoke_checklist.completed', 0)
+            ->assertJsonPath('smoke_checklist.total', 12)
+            ->assertJsonPath('grooming_smoke_checklist.completed', 8)
+            ->assertJsonPath('grooming_smoke_checklist.total', 8);
+
+        $this->post(route('operations.grooming-smoke-checks.store', 'grooming_audit'), [
+            'action' => 'reopen',
+            'note' => 'Revisão adicional necessária.',
+        ])->assertRedirect();
+
+        $this->get(route('operations.report.json'))
+            ->assertOk()
+            ->assertJsonPath('grooming_smoke_checklist.completed', 7)
+            ->assertJsonPath('smoke_checklist.total', 12);
+    }
+
     public function test_release_decision_is_bound_to_current_evidence_and_exported_without_cache(): void
     {
         Storage::fake('local');

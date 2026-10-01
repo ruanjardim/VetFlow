@@ -4,6 +4,7 @@ namespace App\Modules\ServiceOrders\Requests;
 
 use App\Http\Requests\Concerns\ValidatesTenantScopedReferences;
 use App\Modules\Patients\Models\Patient;
+use App\Modules\PetShopServices\Models\PetShopService;
 use App\Modules\ServiceOrders\Models\ServiceOrder;
 use App\Modules\ServiceOrders\Services\GroomingAgendaService;
 use Carbon\CarbonImmutable;
@@ -93,6 +94,7 @@ class StoreServiceOrderRequest extends FormRequest
 
     public function withValidator(Validator $validator): void
     {
+        $validator->after(fn (Validator $validator) => $this->validateScheduleAvailability($validator));
         $validator->after(fn (Validator $validator) => $this->validateScheduleConflicts($validator));
 
         $validator->after(function (Validator $validator): void {
@@ -121,6 +123,62 @@ class StoreServiceOrderRequest extends FormRequest
     protected function currentOrderId(): ?int
     {
         return null;
+    }
+
+    private function validateScheduleAvailability(Validator $validator): void
+    {
+        if (
+            $validator->errors()->hasAny(['scheduled_at', 'assigned_user_id', 'duration_minutes', 'status'])
+            || ! $this->filled('scheduled_at')
+            || ! in_array($this->input('status'), ServiceOrder::BLOCKING_STATUSES, true)
+        ) {
+            return;
+        }
+
+        $agenda = app(GroomingAgendaService::class);
+        $clinicId = $this->user()?->clinic_id ?? ($this->filled('clinic_id') ? $this->integer('clinic_id') : null);
+        $duration = $this->filled('duration_minutes')
+            ? $this->integer('duration_minutes')
+            : $this->estimatedDuration();
+        $first = CarbonImmutable::parse($this->input('scheduled_at'));
+        $currentOrderId = $this->currentOrderId();
+
+        if ($currentOrderId !== null) {
+            $current = ServiceOrder::query()->find($currentOrderId);
+
+            if (
+                $current
+                && (int) $current->assigned_user_id === $this->integer('assigned_user_id')
+                && $current->scheduled_at?->equalTo($first)
+                && $current->effectiveDuration() === $duration
+            ) {
+                return;
+            }
+        }
+
+        $dates = collect([$first])->concat(
+            $currentOrderId === null
+                ? $agenda->recurrenceDates($first, $this->input('recurrence_frequency'), $this->integer('recurrence_count'))
+                : []
+        );
+
+        $issues = $dates->map(function (CarbonImmutable $start) use ($agenda, $clinicId, $duration): ?string {
+            $issue = $agenda->availabilityIssue(
+                $clinicId,
+                $this->integer('assigned_user_id'),
+                $start,
+                $duration,
+            );
+
+            return $issue ? $start->format('d/m H:i').': '.$issue : null;
+        })->filter()->values();
+
+        if ($issues->isNotEmpty()) {
+            $validator->errors()->add(
+                'scheduled_at',
+                'Horário fora da disponibilidade configurada. '.$issues->implode(' ')
+            );
+        }
     }
 
     /**
@@ -194,7 +252,7 @@ class StoreServiceOrderRequest extends FormRequest
 
         $minutes = $serviceIds === []
             ? 0
-            : (int) \App\Modules\PetShopServices\Models\PetShopService::query()->whereIn('id', $serviceIds)->sum('duration_minutes');
+            : (int) PetShopService::query()->whereIn('id', $serviceIds)->sum('duration_minutes');
 
         return $minutes > 0 ? $minutes : ServiceOrder::DEFAULT_DURATION_MINUTES;
     }
