@@ -15,6 +15,10 @@ This project follows the spirit of Keep a Changelog, with one practical adjustme
 
 ### Added
 
+- A permission-aware first-client handoff between SaaS onboarding and the
+  Implementation assistant, keeping clinic, subscription, and initial
+  administrator creation transactional while avoiding unauthorized dead-end
+  links.
 - Per-clinic Banho & Tosa weekly availability with lunch breaks and grid
   intervals, optional professional overrides, and dated clinic/professional
   blocks for holidays, time off, and operational exceptions. Booking and slot
