@@ -78,7 +78,7 @@ class GroomingScheduleController extends Controller
             ]))
             ->with('success', $professional
                 ? 'Disponibilidade do profissional atualizada.'
-                : 'Expediente da clínica atualizado.');
+                : 'Configuração da grade atualizada.');
     }
 
     public function storeBlock(StoreGroomingScheduleBlockRequest $request): RedirectResponse

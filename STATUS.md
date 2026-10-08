@@ -1,6 +1,6 @@
 # VetFlow Status
 
-Updated: 2026-09-28
+Updated: 2026-10-08
 
 ## Current State
 
@@ -14,10 +14,10 @@ The local working tree was clean before this documentation pass.
 
 ## What Exists
 
-- Banho e tosa operation: per-clinic and per-professional availability,
-  intervals, holidays and blocks; agenda with free slots, conflicts, recurrence
-  and check-in; operational board; size-based prices; packages; PDV checkout;
-  and commission reconciliation for partial returns (see
+- Banho e tosa operation: 24-hour internal booking with clinic/professional
+  blocks, cross-midnight conflicts, configurable grid interval, recurrence and
+  check-in; operational board; size-based prices; packages; PDV checkout; and
+  commission reconciliation for partial returns (see
   `docs/modules/petshop-operations.md`).
 - PDV quotes (orçamentos) with validity, print/WhatsApp, editing, cancellation
   and conversion into a sale, plus a sale type on sales and quotes with

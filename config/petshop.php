@@ -6,9 +6,10 @@ return [
     | Agenda de Banho e Tosa
     |--------------------------------------------------------------------------
     |
-    | Horario de funcionamento usado para montar a grade do dia e sugerir
-    | horarios livres por profissional. Premissa inicial ajustavel por
-    | ambiente ate existir configuracao por clinica.
+    | A agenda interna aceita agendamentos durante as 24 horas. O intervalo
+    | controla somente a granularidade da grade e das sugestoes. Os horarios
+    | abaixo continuam disponiveis para normalizar configuracoes legadas, mas
+    | nao restringem novos agendamentos.
     |
     */
     'grooming' => [

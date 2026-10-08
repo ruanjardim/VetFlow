@@ -128,9 +128,10 @@ class GroomingAvailabilityService
         }
 
         $before = ['grooming_schedule' => $clinic->grooming_schedule];
+        $current = $this->normalizeSchedule($clinic->grooming_schedule ?? []);
         $saved = $this->normalizeSchedule([
             'slot_minutes' => $data['slot_minutes'] ?? null,
-            'days' => $data['days'] ?? [],
+            'days' => $data['days'] ?? $current['days'],
         ]);
         $clinic->update(['grooming_schedule' => $saved]);
         $this->audit->record(
@@ -148,42 +149,29 @@ class GroomingAvailabilityService
      */
     public function workingIntervals(CarbonInterface $day, Clinic $clinic, ?User $professional = null): Collection
     {
-        $schedule = $this->scheduleFor($clinic, $professional);
-        $definition = $schedule['days'][(string) $day->dayOfWeek] ?? null;
+        $start = CarbonImmutable::parse($day->toDateString())->startOfDay();
 
-        if (! $definition || ! $definition['enabled']) {
-            return collect();
-        }
-
-        $opens = $this->timeOn($day, $definition['opens_at']);
-        $closes = $this->timeOn($day, $definition['closes_at']);
-
-        if ($opens->gte($closes)) {
-            return collect();
-        }
-
-        $breakStart = $definition['break_start']
-            ? $this->timeOn($day, $definition['break_start'])
-            : null;
-        $breakEnd = $definition['break_end']
-            ? $this->timeOn($day, $definition['break_end'])
-            : null;
-
-        if ($breakStart && $breakEnd && $breakStart->gt($opens) && $breakEnd->gt($breakStart) && $breakEnd->lt($closes)) {
-            return collect([
-                [$opens, $breakStart],
-                [$breakEnd, $closes],
-            ]);
-        }
-
-        return collect([[$opens, $closes]]);
+        return collect([[$start, $start->addDay()]]);
     }
 
     /** @return Collection<int, GroomingScheduleBlock> */
     public function blocksForDay(CarbonInterface $day, Clinic $clinic, ?User $professional = null): Collection
     {
         $start = CarbonImmutable::parse($day->toDateString())->startOfDay();
-        $end = $start->endOfDay();
+        $end = $start->addDay();
+
+        return $this->blocksForRange($start, $end, $clinic, $professional);
+    }
+
+    /** @return Collection<int, GroomingScheduleBlock> */
+    public function blocksForRange(
+        CarbonInterface $start,
+        CarbonInterface $end,
+        Clinic $clinic,
+        ?User $professional = null,
+    ): Collection {
+        $start = CarbonImmutable::parse($start);
+        $end = CarbonImmutable::parse($end);
 
         return GroomingScheduleBlock::query()
             ->withoutGlobalScopes()
@@ -210,14 +198,7 @@ class GroomingAvailabilityService
     ): ?string {
         $start = CarbonImmutable::parse($start);
         $end = $start->addMinutes(max(5, $durationMinutes));
-        $insideWorkingInterval = $this->workingIntervals($start, $clinic, $professional)
-            ->contains(fn (array $interval): bool => $start->gte($interval[0]) && $end->lte($interval[1]));
-
-        if (! $insideWorkingInterval) {
-            return 'O horário está fora do expediente ou atravessa um intervalo configurado.';
-        }
-
-        $block = ($blocks ?? $this->blocksForDay($start, $clinic, $professional))
+        $block = ($blocks ?? $this->blocksForRange($start, $end, $clinic, $professional))
             ->first(fn (GroomingScheduleBlock $candidate): bool => $candidate->starts_at->lt($end)
                 && $candidate->ends_at->gt($start));
 
@@ -303,12 +284,5 @@ class GroomingAvailabilityService
     private function normalizeOptionalTime(mixed $time): ?string
     {
         return $time !== null && $time !== '' ? $this->normalizeTime($time) : null;
-    }
-
-    private function timeOn(CarbonInterface $day, string $time): CarbonImmutable
-    {
-        [$hour, $minute] = array_map('intval', explode(':', $time));
-
-        return CarbonImmutable::parse($day->toDateString())->setTime($hour, $minute);
     }
 }

@@ -248,14 +248,15 @@ class GroomingAgendaTest extends TestCase
             ->assertOk()
             ->json('slots');
 
-        $this->assertContains('08:00', $slots);
+        $this->assertContains('07:00', $slots);
         $this->assertContains('09:00', $slots);
         $this->assertNotContains('09:30', $slots);
         $this->assertNotContains('10:00', $slots);
         $this->assertNotContains('11:00', $slots);
         $this->assertContains('11:30', $slots);
         $this->assertContains('17:00', $slots);
-        $this->assertNotContains('17:30', $slots);
+        $this->assertContains('17:30', $slots);
+        $this->assertContains('23:30', $slots);
 
         $freeForOther = $this->actingAs($this->operator)
             ->getJson(route('service-orders.availability', [
@@ -268,7 +269,37 @@ class GroomingAgendaTest extends TestCase
         $this->assertContains('10:00', $freeForOther);
     }
 
-    public function test_clinic_hours_breaks_and_blocks_are_enforced_by_the_agenda(): void
+    public function test_grid_interval_can_be_updated_without_erasing_legacy_schedule_data(): void
+    {
+        $this->clinic->update([
+            'grooming_schedule' => [
+                'slot_minutes' => 30,
+                'days' => [
+                    3 => [
+                        'enabled' => true,
+                        'opens_at' => '09:00',
+                        'break_start' => '12:00',
+                        'break_end' => '13:00',
+                        'closes_at' => '17:00',
+                    ],
+                ],
+            ],
+        ]);
+
+        $this->actingAs($this->operator)
+            ->put(route('service-orders.grooming-settings.update'), [
+                'slot_minutes' => 15,
+            ])
+            ->assertSessionHasNoErrors();
+
+        $schedule = $this->clinic->refresh()->grooming_schedule;
+
+        $this->assertSame(15, $schedule['slot_minutes']);
+        $this->assertSame('09:00', $schedule['days']['3']['opens_at']);
+        $this->assertSame('17:00', $schedule['days']['3']['closes_at']);
+    }
+
+    public function test_weekly_hours_and_breaks_do_not_limit_the_24h_agenda_but_blocks_are_enforced(): void
     {
         $this->actingAs($this->operator)
             ->put(route('service-orders.grooming-settings.update'), [
@@ -301,13 +332,15 @@ class GroomingAgendaTest extends TestCase
             ->assertOk()
             ->json('slots');
 
-        $this->assertNotContains('08:00', $slots);
+        $this->assertContains('08:00', $slots);
         $this->assertContains('09:00', $slots);
         $this->assertContains('11:00', $slots);
-        $this->assertNotContains('11:30', $slots);
+        $this->assertContains('11:30', $slots);
+        $this->assertContains('12:00', $slots);
         $this->assertContains('13:00', $slots);
         $this->assertContains('16:00', $slots);
-        $this->assertNotContains('16:30', $slots);
+        $this->assertContains('16:30', $slots);
+        $this->assertContains('23:30', $slots);
 
         $this->actingAs($this->operator)
             ->getJson(route('service-orders.availability', [
@@ -316,17 +349,18 @@ class GroomingAgendaTest extends TestCase
                 'duration_minutes' => 60,
             ]))
             ->assertOk()
-            ->assertJsonPath('slots', []);
+            ->assertJsonFragment(['00:00'])
+            ->assertJsonFragment(['23:30']);
 
         $this->actingAs($this->operator)
-            ->post(route('service-orders.store'), $this->bookingPayload('2026-09-23 12:00'))
-            ->assertSessionHasErrors('scheduled_at');
+            ->post(route('service-orders.store'), $this->bookingPayload('2026-09-23 20:00'))
+            ->assertSessionHasNoErrors();
 
         $this->actingAs($this->operator)
             ->post(route('service-orders.store'), $this->bookingPayload('2026-09-23 08:00', [
                 'assigned_user_id' => null,
             ]))
-            ->assertSessionHasErrors('scheduled_at');
+            ->assertSessionHasNoErrors();
 
         $this->actingAs($this->operator)
             ->post(route('service-orders.grooming-settings.blocks.store'), [
@@ -358,9 +392,28 @@ class GroomingAgendaTest extends TestCase
         $this->actingAs($this->operator)
             ->post(route('service-orders.store'), $this->bookingPayload('2026-09-23 13:00'))
             ->assertSessionHasErrors('scheduled_at');
+
+        $this->actingAs($this->operator)
+            ->post(route('service-orders.grooming-settings.blocks.store'), [
+                'user_id' => $this->groomer->id,
+                'starts_at' => '2026-09-24 00:15',
+                'ends_at' => '2026-09-24 01:00',
+                'reason' => 'Limpeza',
+            ])
+            ->assertSessionHasNoErrors();
+
+        $lateSlots = $this->actingAs($this->operator)
+            ->getJson(route('service-orders.availability', [
+                'date' => '2026-09-23',
+                'assigned_user_id' => $this->groomer->id,
+                'duration_minutes' => 60,
+            ]))
+            ->json('slots');
+
+        $this->assertNotContains('23:30', $lateSlots);
     }
 
-    public function test_professional_schedule_can_override_and_then_inherit_the_clinic_hours(): void
+    public function test_professional_weekly_schedule_does_not_reduce_24h_availability(): void
     {
         $this->actingAs($this->operator)
             ->put(route('service-orders.grooming-settings.update'), [
@@ -392,8 +445,9 @@ class GroomingAgendaTest extends TestCase
             ]))
             ->json('slots');
 
-        $this->assertNotContains('09:00', $groomerSlots);
+        $this->assertContains('09:00', $groomerSlots);
         $this->assertContains('10:00', $groomerSlots);
+        $this->assertContains('23:30', $groomerSlots);
         $this->assertContains('09:00', $otherSlots);
 
         $this->actingAs($this->operator)
@@ -414,6 +468,36 @@ class GroomingAgendaTest extends TestCase
         $this->assertContains('09:00', $inheritedSlots);
     }
 
+    public function test_booking_conflicts_continue_across_midnight(): void
+    {
+        $this->actingAs($this->operator)
+            ->post(route('service-orders.store'), $this->bookingPayload('2026-09-23 23:30'))
+            ->assertSessionHasNoErrors();
+
+        $nextDaySlots = $this->actingAs($this->operator)
+            ->getJson(route('service-orders.availability', [
+                'date' => '2026-09-24',
+                'assigned_user_id' => $this->groomer->id,
+                'duration_minutes' => 60,
+            ]))
+            ->assertOk()
+            ->json('slots');
+
+        $this->assertNotContains('00:00', $nextDaySlots);
+        $this->assertNotContains('00:30', $nextDaySlots);
+        $this->assertContains('01:00', $nextDaySlots);
+
+        $this->actingAs($this->operator)
+            ->post(route('service-orders.store'), $this->bookingPayload('2026-09-24 00:00'))
+            ->assertSessionHasErrors('scheduled_at');
+
+        $this->actingAs($this->operator)
+            ->post(route('service-orders.store'), $this->bookingPayload('2026-09-24 00:00', [
+                'assigned_user_id' => $this->otherGroomer->id,
+            ]))
+            ->assertSessionHasNoErrors();
+    }
+
     public function test_schedule_settings_and_blocks_stay_inside_the_operator_clinic(): void
     {
         $otherClinic = $this->clinic('PetShop Agenda Externo', '00000000003003');
@@ -428,6 +512,9 @@ class GroomingAgendaTest extends TestCase
             ->get(route('service-orders.grooming-settings', ['clinic_id' => $otherClinic->id]))
             ->assertOk()
             ->assertSee($this->clinic->trade_name)
+            ->assertSee('Agenda 24 horas')
+            ->assertSee('Salvar intervalo da grade')
+            ->assertDontSee('Salvar expediente da clínica')
             ->assertDontSee('Feriado externo');
 
         $this->actingAs($this->operator)
