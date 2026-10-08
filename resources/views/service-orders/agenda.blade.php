@@ -21,7 +21,7 @@
   <header class="topbar">
     <div>
       <h1>Agenda banho e tosa</h1>
-      <p>{{ ucfirst($day->locale('pt_BR')->translatedFormat('l, d \d\e F \d\e Y')) }} · clique em um horário livre para agendar.</p>
+      <p>{{ ucfirst($day->locale('pt_BR')->translatedFormat('l, d \d\e F \d\e Y')) }} · agenda interna disponível 24 horas; clique em um horário livre para agendar.</p>
     </div>
     <div class="actions">
       <a class="button secondary" href="{{ route('service-orders.grooming-settings', $clinicQuery) }}">Configurar agenda</a>
@@ -61,9 +61,6 @@
   @if(! $selectedClinicId)
     <div class="panel"><p>Selecione uma clínica para ver a agenda.</p></div>
   @else
-    @if($closed)
-      <div class="alert warning">Não há expediente configurado para este dia. Atendimentos já existentes continuam visíveis, mas novos horários ficam bloqueados.</div>
-    @endif
     <div class="panel grooming-agenda-wrap">
       <div
         class="grooming-agenda"

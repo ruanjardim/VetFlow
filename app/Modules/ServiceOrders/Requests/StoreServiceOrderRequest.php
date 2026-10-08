@@ -176,7 +176,7 @@ class StoreServiceOrderRequest extends FormRequest
         if ($issues->isNotEmpty()) {
             $validator->errors()->add(
                 'scheduled_at',
-                'Horário fora da disponibilidade configurada. '.$issues->implode(' ')
+                'Horário bloqueado na agenda. '.$issues->implode(' ')
             );
         }
     }

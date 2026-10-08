@@ -16,9 +16,9 @@ modules.
 2. Mark the groomers and bathers as **Atende banho e tosa** in
    Administration > Users. They become the columns of the agenda. Without any
    flagged user, every active clinic user is shown.
-3. Configure the clinic opening hours, lunch break, slot interval, professional
-   overrides, holidays, time off, and temporary blocks in **Banho e tosa >
-   Agenda > Configurar agenda**.
+3. The internal agenda accepts bookings during all 24 hours of every day. Set
+   the grid interval and register holidays, time off, or temporary blocks in
+   **Banho e tosa > Agenda > Configurar agenda**.
 4. Book from **Banho e tosa > Agenda**: click a free slot (professional and
    time are prefilled) or use the form, which lists the professional's free
    slots for the booking duration. A booking is a service order with status
@@ -44,19 +44,19 @@ explicitly select an active clinic.
   `waiting_pickup`. A new or edited booking cannot overlap another blocking
   booking of the same professional unless **Encaixe** (`allow_overlap`) is
   checked. Bookings without a professional never conflict.
-- The clinic schedule defines active weekdays, opening/closing times, an
-  optional daily break, and the grid interval. A professional can inherit it or
-  keep an individual weekly schedule. Clinic-wide and professional-specific
-  date/time blocks cover holidays, time off, and other exceptions.
-- New and recurring bookings are rejected when they start outside the applicable
-  working period, cross a break, or overlap a configured block. Existing
-  bookings remain editable when only unrelated fields change after a later
-  availability update.
+- The booking window is the complete calendar day, from 00:00 through the last
+  grid slot before midnight. The store or clinic team decides which time to use;
+  saved legacy opening hours, weekdays, breaks, and professional overrides do
+  not reduce this window.
+- Clinic-wide and professional-specific date/time blocks cover holidays, time
+  off, and other exceptions. New and recurring bookings are rejected when they
+  overlap one of these explicit blocks. A booking that starts late may continue
+  after midnight, and conflict/block checks include the following day.
 - Duration: the informed `duration_minutes`, otherwise the sum of the services'
   `duration_minutes`, otherwise 60 minutes.
-- A clinic without a saved schedule inherits the safe defaults in
-  `config/petshop.php` (`PETSHOP_GROOMING_OPENS_AT`, `..._CLOSES_AT`,
-  `..._SLOT_MINUTES`; defaults 08:00-18:00 every 30 minutes).
+- The clinic controls only the suggestion/grid interval through
+  `PETSHOP_GROOMING_SLOT_MINUTES` when no saved value exists (30 minutes by
+  default).
 - Recurrence (create only): weekly, every 2, 3 or 4 weeks, 2 to 12 total
   occurrences, sharing a `recurrence_group`. Every occurrence is conflict
   checked; the whole request fails and lists the conflicting dates.

@@ -16,23 +16,28 @@ class UpdateGroomingScheduleRequest extends FormRequest
 
     protected function prepareForValidation(): void
     {
-        $days = $this->input('days', []);
+        $prepared = [
+            'inherit' => $this->boolean('inherit'),
+        ];
 
-        if (is_array($days)) {
-            foreach ($days as $weekday => $definition) {
-                if (! is_array($definition)) {
-                    continue;
+        if ($this->has('days')) {
+            $days = $this->input('days');
+
+            if (is_array($days)) {
+                foreach ($days as $weekday => $definition) {
+                    if (! is_array($definition)) {
+                        continue;
+                    }
+
+                    $days[$weekday]['enabled'] = array_key_exists('enabled', $definition)
+                        && filter_var($definition['enabled'], FILTER_VALIDATE_BOOL);
                 }
-
-                $days[$weekday]['enabled'] = array_key_exists('enabled', $definition)
-                    && filter_var($definition['enabled'], FILTER_VALIDATE_BOOL);
             }
+
+            $prepared['days'] = $days;
         }
 
-        $this->merge([
-            'days' => $days,
-            'inherit' => $this->boolean('inherit'),
-        ]);
+        $this->merge($prepared);
     }
 
     public function rules(): array
@@ -60,7 +65,7 @@ class UpdateGroomingScheduleRequest extends FormRequest
                 'integer',
                 Rule::in(GroomingAvailabilityService::SLOT_OPTIONS),
             ],
-            'days' => [Rule::requiredIf(! $this->boolean('inherit')), 'nullable', 'array'],
+            'days' => ['nullable', 'array'],
             'days.*.enabled' => ['required', 'boolean'],
             'days.*.opens_at' => ['nullable', 'date_format:H:i'],
             'days.*.break_start' => ['nullable', 'date_format:H:i'],

@@ -6,7 +6,7 @@
   <header class="topbar">
     <div>
       <h1>Configuração da agenda</h1>
-      <p>Defina expediente, intervalos, folgas, feriados e bloqueios do Banho & Tosa.</p>
+      <p>A agenda interna aceita horários durante as 24 horas do dia. Ajuste a grade e registre somente as indisponibilidades reais.</p>
     </div>
     <div class="actions">
       <a class="button secondary" href="{{ route('service-orders.agenda', array_filter(['clinic_id' => auth()->user()?->clinic_id === null ? $clinic?->id : null])) }}">Voltar à agenda</a>
@@ -36,9 +36,10 @@
   @else
     <section class="panel">
       <div class="panel-heading">
-        <div><span class="eyebrow">Padrão da clínica</span><h2>{{ $clinic->trade_name ?? $clinic->corporate_name }}</h2></div>
+        <div><span class="eyebrow">Agenda 24 horas</span><h2>{{ $clinic->trade_name ?? $clinic->corporate_name }}</h2></div>
       </div>
       <div class="panel-body">
+        <p>Os horários de 00:00 a 23:59 ficam disponíveis para a equipe da loja ou clínica agendar. Conflitos com outro atendimento e os bloqueios cadastrados abaixo continuam sendo respeitados.</p>
         <form method="POST" action="{{ route('service-orders.grooming-settings.update') }}">
           @csrf
           @method('PUT')
@@ -51,45 +52,8 @@
               @endforeach
             </select>
           </div>
-          @include('service-orders._grooming-schedule-fields', ['schedule' => $clinicSchedule])
-          <div class="actions" style="margin-top: 1rem;"><button type="submit">Salvar expediente da clínica</button></div>
+          <div class="actions" style="margin-top: 1rem;"><button type="submit">Salvar intervalo da grade</button></div>
         </form>
-      </div>
-    </section>
-
-    <section class="panel">
-      <div class="panel-heading">
-        <div><span class="eyebrow">Disponibilidade individual</span><h2>Profissionais</h2><p>Sem configuração própria, o profissional herda o expediente da clínica.</p></div>
-      </div>
-      <div class="panel-body">
-        <form method="GET" action="{{ route('service-orders.grooming-settings') }}" class="form-grid compact-filter-grid">
-          @if(auth()->user()?->clinic_id === null)<input type="hidden" name="clinic_id" value="{{ $clinic->id }}">@endif
-          <div class="field">
-            <label for="professional_id">Profissional</label>
-            <select id="professional_id" name="professional_id">
-              <option value="">Selecione</option>
-              @foreach($professionals as $option)
-                <option value="{{ $option->id }}" @selected($professional?->id === $option->id)>{{ $option->name }}{{ $option->grooming_professional ? '' : ' · não marcado como Banho & Tosa' }}</option>
-              @endforeach
-            </select>
-          </div>
-          <div class="field"><button type="submit">Abrir disponibilidade</button></div>
-        </form>
-
-        @if($professional)
-          <form method="POST" action="{{ route('service-orders.grooming-settings.update') }}" style="margin-top: 1rem;">
-            @csrf
-            @method('PUT')
-            @if(auth()->user()?->clinic_id === null)<input type="hidden" name="clinic_id" value="{{ $clinic->id }}">@endif
-            <input type="hidden" name="user_id" value="{{ $professional->id }}">
-            <label style="display: inline-flex; gap: .5rem; align-items: center; margin-bottom: 1rem;">
-              <input type="checkbox" name="inherit" value="1" @checked(old('inherit', $professionalInherits))>
-              Usar o expediente da clínica
-            </label>
-            @include('service-orders._grooming-schedule-fields', ['schedule' => $professionalSchedule])
-            <div class="actions" style="margin-top: 1rem;"><button type="submit">Salvar disponibilidade de {{ $professional->name }}</button></div>
-          </form>
-        @endif
       </div>
     </section>
 
