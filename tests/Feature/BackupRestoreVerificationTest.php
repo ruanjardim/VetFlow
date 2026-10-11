@@ -22,6 +22,14 @@ class BackupRestoreVerificationTest extends TestCase
         parent::tearDown();
     }
 
+    public function test_backup_restore_connection_uses_a_compatible_utf8mb4_default(): void
+    {
+        $connection = config('database.connections.backup_restore');
+
+        $this->assertSame('utf8mb4', $connection['charset']);
+        $this->assertSame('utf8mb4_unicode_ci', $connection['collation']);
+    }
+
     public function test_isolated_restore_matching_the_snapshot_generates_passed_evidence(): void
     {
         [$source, $restore] = $this->prepareDatabases();

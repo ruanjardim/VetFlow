@@ -126,7 +126,7 @@ return [
             'database' => env('RESTORE_DB_DATABASE', database_path('restore-drill.sqlite')),
             'username' => env('RESTORE_DB_USERNAME'),
             'password' => env('RESTORE_DB_PASSWORD'),
-            'charset' => env('RESTORE_DB_CHARSET', 'utf8'),
+            'charset' => env('RESTORE_DB_CHARSET', 'utf8mb4'),
             'collation' => env('RESTORE_DB_COLLATION', 'utf8mb4_unicode_ci'),
             'prefix' => '',
             'prefix_indexes' => true,
