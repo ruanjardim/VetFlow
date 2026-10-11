@@ -20,6 +20,7 @@ This directory contains the working documentation for VetFlow.
 - [Release checklist](release-checklist.md)
 - [Backup restore drill](deployment/backup-restore-drill.md)
 - [Runtime operations probe](deployment/runtime-operations-probe.md)
+- [Fiscal homologation activation](deployment/fiscal-homologation.md)
 - [Roadmap](ROADMAP.md)
 
 ## Database Notes
@@ -45,6 +46,7 @@ The employee/access note documents the current decision to use `users`,
 - [Suppliers](modules/suppliers.md)
 - [Sales](modules/sales.md)
 - [Financial](modules/financial.md)
+- [Fiscal](modules/fiscal.md)
 - [Clinical Core](modules/clinical-core.md)
 - [Patient Clinical Alerts](modules/patient-clinical-alerts.md)
 - [Patient Clinical Timeline](modules/patient-clinical-timeline.md)

@@ -10,6 +10,7 @@ use App\Http\Middleware\EnsureUserHasPermission;
 use App\Http\Middleware\EnsureUserIsActive;
 use App\Http\Middleware\EnsureUserIsGlobal;
 use App\Modules\Dashboard\Http\Controllers\DashboardController;
+use App\Modules\Fiscal\Controllers\FocusNfeWebhookController;
 use App\Modules\ProductIntelligence\Controllers\GlobalProductController;
 use App\Modules\ProductIntelligence\Controllers\ProductIntelligenceApiController;
 use App\Modules\Saas\Support\FeatureCatalog;
@@ -40,6 +41,10 @@ Route::get('/ops/cron/queue', QueueCronController::class)
 Route::get('/ops/release', ReleaseIdentityController::class)
     ->middleware('throttle:30,1')
     ->name('operations.release');
+
+Route::post('/webhooks/focus-nfe/nfsen', FocusNfeWebhookController::class)
+    ->middleware('throttle:120,1')
+    ->name('webhooks.focus-nfe.nfsen');
 
 Route::view('/', 'public.home')->name('home');
 
@@ -116,6 +121,7 @@ Route::middleware(['auth', EnsureUserIsActive::class])->group(function () {
         'implementation.manage' => app_path('Modules/Implementation/Routes/web.php'),
         'operations.readiness' => app_path('Modules/Operations/Routes/web.php'),
         'financial.manage' => app_path('Modules/Financial/Routes/web.php'),
+        'fiscal.manage' => app_path('Modules/Fiscal/Routes/web.php'),
         'hospitalizations.manage' => app_path('Modules/Hospitalizations/Routes/web.php'),
         'inventory.manage' => app_path('Modules/Inventory/Routes/web.php'),
         'medical-records.manage' => app_path('Modules/MedicalRecords/Routes/web.php'),

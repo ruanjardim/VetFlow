@@ -149,6 +149,12 @@ class PermissionCatalog
                 'description' => 'Permite conferir, encerrar e reabrir os caixas dos operadores.',
             ],
             [
+                'slug' => 'fiscal.manage',
+                'name' => 'Gerenciar módulo fiscal',
+                'group' => 'Fiscal',
+                'description' => 'Permite configurar a preparação e acompanhar documentos fiscais do estabelecimento.',
+            ],
+            [
                 'slug' => 'products.manage',
                 'name' => 'Gerenciar produtos',
                 'group' => 'Estoque',
@@ -260,6 +266,7 @@ class PermissionCatalog
                     'patients.manage',
                     'service-orders.manage',
                     'sales.manage',
+                    'fiscal.manage',
                     'printers.manage',
                 ],
             ],
@@ -271,6 +278,7 @@ class PermissionCatalog
                     'sales.manage',
                     'payment-methods.manage',
                     'cash-sessions.review',
+                    'fiscal.manage',
                     'purchase-entries.manage',
                     'suppliers.manage',
                     'financial.manage',
