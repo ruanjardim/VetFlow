@@ -23,6 +23,9 @@ Important business areas:
 - Pet shop services and service orders.
 - Sales, payments, returns, and cash register closure.
 - Financial transactions.
+- Optional fiscal issuance through an account contracted and owned by each
+  clinic; VetFlow must not make its core PDV or non-fiscal receipt depend on a
+  third-party fiscal subscription.
 - Dashboards and reports.
 
 ## Technical Direction
@@ -199,6 +202,57 @@ Operators can now inspect the complete pilot history, correct quality issues
 through tenant-safe queues, emit the current preparation report, and triage a
 multi-clinic portfolio by readiness status. A reproducible fictitious scenario
 exercises the blocked path before any rule is tuned from pilot evidence.
+
+The fiscal foundation now prepares clinic-scoped NFC-e/NFS-e drafts, a
+reviewed Niterói NFS-e Nacional payload and a separate RJ NFC-e model 65
+payload in homologation. NFC-e requires an explicit SEFAZ/CSC/certificate
+checklist, independent per-series numbering, product IBS/CBS classification
+and closed payment/troco totals; the CSC itself is never stored. Mixed or
+globally adjusted sales now pass through one explicit fiscal-allocation review.
+The approved snapshot uses exact-cent proportional rules, is shared by both
+document types and cannot be silently recalculated after approval. Independent
+adapter, external-credential, HTTP and submission controls remain disabled by
+default. When explicitly activated, the asynchronous lifecycle supports
+idempotent submission and bounded status reconciliation for both document
+types, definitive cancellation with a frozen justification, and protected
+XML/DANFSe/DANFCe recovery. NFS-e additionally supports authenticated callback
+and webhook re-delivery. NFC-e refreshes its emission time at transmission,
+enforces the cancellation window and provides a separately confirmed,
+range-safe queue for numbering inutilization. Tenant-scoped operational alerts
+expose exhausted work and configurable processing/cancellation delays without
+leaking provider secrets. A clinic-scoped homologation gate now consolidates
+those controls with actual provider-event evidence and a password-confirmed,
+append-only human review. Its secret-free fingerprint becomes stale after
+profile or tax-catalog changes. A passing gate means only that the clinic is
+eligible for a separate production analysis; production issuance remains
+unavailable. The same safe read model produces a printable dossier and JSON
+download with the next action for every pending item, excluding secrets, raw
+payloads and internal evidence fingerprints.
+The same clinic scope now has a daily reconciliation of completed sales against
+their latest NFC-e/NFS-e preparations. It makes missing configuration, rateio,
+payload, submission, processing, rejection, cancellation, return review and
+authorization visible and exportable without inferring a legal duty to issue.
+A monthly document center complements that checklist with tenant-safe filters
+for operational competence, bounded preparation dates, NFC-e/NFS-e type,
+lifecycle status and sale. Its allowlisted, formula-safe private CSV excludes
+raw provider payloads, responses and credentials.
+When that reconciliation has no pending state, an authorized user can confirm
+an internal period closing with the current password. The append-only evidence
+becomes stale after a backdated sale, document change or profile change and does
+not represent a filing, tax settlement or accounting certification. Each
+historical closure has a printable and private no-cache JSON dossier built from
+its frozen sale/document evidence, with current/stale verification and an
+integrity hash that excludes provider secrets and payloads. A monthly history
+center searches those records by clinic, competence, responsible person and
+recalculated current/stale state without modifying the frozen evidence.
+Partial refunds and fully returned sales remain visible in that reconciliation
+and now open an assisted, evidence-bound fiscal review. The operator records
+the source and text of the human guidance; later item, amount, event or document
+changes make it stale. VetFlow deliberately performs no automatic return-note,
+adjustment or cancellation action from this record. Each historical review can
+be printed or exported as a private no-cache JSON dossier. The dossier uses the
+frozen safe evidence, identifies current versus superseded decisions and carries
+an integrity hash without exposing provider payloads or credentials.
 
 Production runs on Hostinger shared Linux hosting at
 `https://vetflowsys.com.br`, deployed from the `0-hostinger-production` branch.

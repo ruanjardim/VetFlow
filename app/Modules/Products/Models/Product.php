@@ -4,11 +4,13 @@ namespace App\Modules\Products\Models;
 
 use App\Models\Concerns\BelongsToClinicTenant;
 use App\Modules\Clinics\Models\Clinic;
+use App\Modules\Fiscal\Models\ProductFiscalProfile;
 use App\Modules\Inventory\Models\InventoryMovement;
 use App\Modules\ProductIntelligence\Models\GlobalProduct;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Product extends Model
@@ -48,6 +50,11 @@ class Product extends Model
     public function inventoryMovements(): HasMany
     {
         return $this->hasMany(InventoryMovement::class);
+    }
+
+    public function fiscalProfile(): HasOne
+    {
+        return $this->hasOne(ProductFiscalProfile::class);
     }
 
     public function scopeActive($query)

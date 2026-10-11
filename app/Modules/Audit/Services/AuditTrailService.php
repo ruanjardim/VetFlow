@@ -26,6 +26,19 @@ class AuditTrailService
         'grooming.schedule.professional.updated' => 'Disponibilidade de profissional atualizada',
         'grooming.schedule.block.created' => 'Bloqueio da agenda criado',
         'grooming.schedule.block.deleted' => 'Bloqueio da agenda removido',
+        'fiscal.dps-sequence.configured' => 'Sequência DPS configurada',
+        'fiscal.nfce-sequence.configured' => 'Sequência NFC-e configurada',
+        'fiscal.provider-credential.connected' => 'Conta Focus conectada',
+        'fiscal.provider-credential.rotated' => 'Token Focus substituído',
+        'fiscal.provider-credential.disconnected' => 'Conta Focus desconectada',
+        'fiscal.nfce-inutilization.queued' => 'Inutilização de NFC-e colocada na fila',
+        'fiscal.nfce-inutilization.processing' => 'Inutilização de NFC-e enviada',
+        'fiscal.nfce-inutilization.authorized' => 'Inutilização de NFC-e autorizada',
+        'fiscal.nfce-inutilization.rejected' => 'Inutilização de NFC-e rejeitada',
+        'fiscal.nfce-inutilization.failed' => 'Inutilização de NFC-e sem confirmação',
+        'fiscal.homologation-review.recorded' => 'Revisão da homologação fiscal registrada',
+        'fiscal.period-closure.recorded' => 'Fechamento fiscal operacional registrado',
+        'fiscal.return-review.recorded' => 'Revisão fiscal de devolução registrada',
     ];
 
     /**

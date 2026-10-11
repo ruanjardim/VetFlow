@@ -77,8 +77,8 @@
           </details>
         @endcanany
 
-        @canany(['sales.manage', 'payment-methods.manage'])
-          <details class="nav-group" @if(request()->routeIs('sales.*')) open @endif>
+        @canany(['sales.manage', 'payment-methods.manage', 'fiscal.manage'])
+          <details class="nav-group" @if(request()->routeIs('sales.*', 'fiscal.*')) open @endif>
             <summary><span>Vendas</span><span class="nav-chevron">⌄</span></summary>
             <div class="nav-submenu">
               @can('sales.manage')
@@ -95,6 +95,7 @@
                 <a class="{{ request()->routeIs('sales.receivables') ? 'is-active' : '' }}" href="{{ route('sales.receivables') }}">Recebíveis de cartão</a>
                 <a class="{{ request()->routeIs('sales.payment-methods.*') ? 'is-active' : '' }}" href="{{ route('sales.payment-methods.index') }}">Formas de pagamento</a>
               @endcan
+              @can('fiscal.manage')<a class="{{ request()->routeIs('fiscal.*') ? 'is-active' : '' }}" href="{{ route('fiscal.index') }}">Fiscal</a>@endcan
             </div>
           </details>
         @endcanany

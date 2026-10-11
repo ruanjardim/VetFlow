@@ -44,6 +44,7 @@ class FeatureCatalog
             'sales.manage' => 'pdv',
             'payment-methods.manage' => 'pdv',
             'cash-sessions.review' => 'pdv',
+            'fiscal.manage' => 'pdv',
             'products.manage' => 'products',
             'global-products.manage' => 'products',
             'inventory.manage' => 'inventory',

@@ -2,13 +2,13 @@
 
 namespace App\Modules\Sales\Models;
 
+use App\Modules\Inventory\Models\InventoryMovement;
 use App\Modules\PetShopServices\Models\PetShopService;
 use App\Modules\Products\Models\Product;
-use App\Modules\Inventory\Models\InventoryMovement;
 use App\Modules\ServiceOrders\Models\ServiceOrderItem;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class SaleItem extends Model
@@ -47,7 +47,7 @@ class SaleItem extends Model
 
     public function petShopService(): BelongsTo
     {
-        return $this->belongsTo(PetShopService::class);
+        return $this->belongsTo(PetShopService::class, 'petshop_service_id');
     }
 
     public function serviceOrderItem(): BelongsTo

@@ -17,8 +17,14 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->trustProxies(at: env('TRUSTED_PROXIES', '*'));
+        $middleware->validateCsrfTokens(except: [
+            'webhooks/focus-nfe/nfsen',
+        ]);
         $middleware->append(SecurityHeaders::class);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
-        //
+        $exceptions->dontFlash([
+            'focus_token',
+            'focus_token_confirmation',
+        ]);
     })->create();
