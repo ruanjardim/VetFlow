@@ -6,7 +6,7 @@
   <header class="topbar receipt-actions">
     <div>
       <h1>Teste de impressão</h1>
-      <p>Confirme o equipamento e o tamanho de papel na janela do sistema.</p>
+      <p>O navegador abrirá a janela do sistema; selecione a fila cadastrada para a impressora térmica.</p>
     </div>
     <div class="actions">
       <button type="button" data-print-page>Imprimir teste</button>
@@ -15,11 +15,16 @@
     </div>
   </header>
 
-  <div class="panel printer-test-card printer-paper-{{ $printer->paper_size }}">
+  <div class="alert info printer-browser-help">
+    Na primeira impressão, abra <strong>Mais definições</strong>, confirme o papel de 80 mm da Epson e desative
+    <strong>Cabeçalhos e rodapés</strong>. Essa opção do navegador é o que remove a URL e o número da página.
+  </div>
+
+  <div class="panel printer-test-card thermal-print-document printer-paper-{{ $printer->paper_size }}">
     <div class="panel-body printer-test-sheet">
       <div class="printer-test-logo">VetFlow</div>
       <h2>Teste de impressão</h2>
-      <p class="muted">Se este conteúdo estiver legível e alinhado, o fluxo de impressão pelo navegador está funcionando.</p>
+      <p class="printer-test-copy">Se este conteúdo estiver legível, centralizado e sem cortes laterais, a bobina está configurada corretamente.</p>
 
       <dl class="printer-test-details">
         <div><dt>Impressora</dt><dd>{{ $printer->name }}</dd></div>
@@ -33,6 +38,7 @@
       <div class="printer-test-bars" aria-hidden="true">
         @for($i = 0; $i < 18; $i++)<span></span>@endfor
       </div>
+      <p class="printer-test-characters">Á É Í Ó Ú · Ç · 1234567890 · R$ 10,00</p>
       <p class="printer-test-time">Gerado em {{ now()->format('d/m/Y H:i:s') }}</p>
     </div>
   </div>

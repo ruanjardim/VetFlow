@@ -1760,6 +1760,10 @@ textarea {
   max-width: 920px;
 }
 
+.thermal-receipt {
+  display: none;
+}
+
 .appointment-reminders-table {
   min-width: 1180px;
 }
@@ -1946,6 +1950,11 @@ textarea {
   text-align: center;
 }
 
+.printer-test-copy {
+  color: #475569;
+  line-height: 1.45;
+}
+
 .printer-test-logo {
   color: #0f766e;
   font-size: 28px;
@@ -2003,6 +2012,12 @@ textarea {
 .printer-test-time {
   color: #64748b;
   font-size: 12px;
+}
+
+.printer-test-characters {
+  font-size: 12px;
+  font-weight: 700;
+  overflow-wrap: anywhere;
 }
 
 .implementation-heading {
@@ -2690,6 +2705,11 @@ textarea {
 }
 
 @media print {
+  @page thermal-receipt {
+    size: auto;
+    margin: 0;
+  }
+
   body {
     background: #ffffff;
   }
@@ -2730,6 +2750,8 @@ textarea {
   }
 
   body:has(.receipt-card) .user-bar,
+  body:has(.printer-test-card) .user-bar,
+  body:has(.printer-test-card) .printer-browser-help,
   body:has(.pilot-report) .user-bar,
   body:has(.pilot-report) .pilot-report-actions,
   body:has(.pilot-report) .alert {
@@ -2744,19 +2766,172 @@ textarea {
   .printer-test-card {
     border: 0;
     box-shadow: none;
-    margin: 0 auto;
+    margin: 0;
   }
 
   .printer-paper-58mm {
-    max-width: 58mm;
+    max-width: none;
+    padding: 3mm;
+    width: 58mm;
   }
 
   .printer-paper-80mm {
-    max-width: 80mm;
+    max-width: none;
+    padding: 4mm;
+    width: 80mm;
   }
 
   .printer-paper-label {
     max-width: 100mm;
+  }
+
+  .thermal-print-document {
+    box-sizing: border-box;
+    color: #000000;
+    font-family: Arial, Helvetica, sans-serif;
+    page: thermal-receipt;
+  }
+
+  body:has(.printer-test-card),
+  body:has(.thermal-receipt) {
+    margin: 0;
+    min-height: auto;
+  }
+
+  body:has(.printer-test-card) .shell,
+  body:has(.printer-test-card) .main,
+  body:has(.thermal-receipt) .shell,
+  body:has(.thermal-receipt) .main {
+    margin: 0;
+    min-height: auto;
+    padding: 0;
+    width: auto;
+  }
+
+  body:has(.printer-test-card) .main > :not(.printer-test-card) {
+    display: none !important;
+  }
+
+  .printer-test-sheet {
+    font-size: 11px;
+  }
+
+  .printer-test-logo {
+    color: #000000;
+    font-size: 22px;
+  }
+
+  .printer-test-sheet h2 {
+    font-size: 17px;
+    margin: 2mm 0;
+  }
+
+  .printer-test-details {
+    margin: 4mm 0;
+    padding: 2mm 0;
+  }
+
+  .printer-test-details div {
+    gap: 2mm;
+    grid-template-columns: 21mm minmax(0, 1fr);
+    padding: 1mm 0;
+  }
+
+  .printer-test-details dd {
+    overflow-wrap: anywhere;
+  }
+
+  .printer-test-bars {
+    height: 12mm;
+    margin: 4mm auto 2mm;
+    max-width: 100%;
+  }
+
+  body:has(.thermal-receipt) .receipt-card {
+    display: none !important;
+  }
+
+  .thermal-receipt {
+    display: block;
+    font-size: 10.5px;
+    line-height: 1.35;
+    margin: 0;
+  }
+
+  .thermal-paper-58mm {
+    padding: 3mm;
+    width: 58mm;
+  }
+
+  .thermal-paper-80mm {
+    padding: 4mm;
+    width: 80mm;
+  }
+
+  .thermal-receipt-header,
+  .thermal-receipt-footer {
+    display: grid;
+    gap: 1mm;
+    text-align: center;
+  }
+
+  .thermal-receipt-header > strong {
+    font-size: 15px;
+  }
+
+  .thermal-divider {
+    border-top: 1px dashed #000000;
+    margin: 2.5mm 0;
+  }
+
+  .thermal-receipt-meta,
+  .thermal-items,
+  .thermal-totals,
+  .thermal-payments {
+    display: grid;
+    gap: 1.5mm;
+  }
+
+  .thermal-receipt-meta > div,
+  .thermal-totals > div,
+  .thermal-payments > div,
+  .thermal-item > div {
+    align-items: baseline;
+    display: flex;
+    gap: 2mm;
+    justify-content: space-between;
+  }
+
+  .thermal-receipt-meta > div strong,
+  .thermal-item > strong,
+  .thermal-payments span,
+  .thermal-notes p {
+    overflow-wrap: anywhere;
+  }
+
+  .thermal-item {
+    break-inside: avoid;
+    display: grid;
+    gap: 0.75mm;
+  }
+
+  .thermal-item > div span {
+    color: #222222;
+  }
+
+  .thermal-total {
+    border-bottom: 1px solid #000000;
+    border-top: 1px solid #000000;
+    font-size: 14px;
+    padding: 1.5mm 0;
+  }
+
+  .thermal-notes p {
+    margin: 1mm 0 0;
+  }
+
+  .thermal-receipt-footer {
+    font-size: 9px;
   }
 }
 

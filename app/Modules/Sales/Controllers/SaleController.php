@@ -12,6 +12,7 @@ use App\Modules\Products\Models\Product;
 use App\Modules\Products\Services\ProductLookupService;
 use App\Modules\Products\Services\ProductService;
 use App\Modules\Products\Support\Gtin;
+use App\Modules\Printers\Models\Printer;
 use App\Modules\Sales\Models\PaymentMethod;
 use App\Modules\Sales\Models\Sale;
 use App\Modules\Sales\Models\SaleQuote;
@@ -222,8 +223,17 @@ class SaleController extends BaseCrudController
         $sale = $this->service->findOrFail($id);
         $sale->load(['clinic', 'tutor', 'patient', 'serviceOrder', 'quote', 'items', 'payments.paymentMethod', 'events']);
 
+        $receiptPrinter = Printer::query()
+            ->where('clinic_id', $sale->clinic_id)
+            ->where('active', true)
+            ->where('purpose', 'receipt')
+            ->orderByDesc('is_default')
+            ->orderBy('name')
+            ->first();
+
         return view("{$this->viewPath}.receipt", [
             'sale' => $sale,
+            'receiptPrinter' => $receiptPrinter,
         ]);
     }
 
