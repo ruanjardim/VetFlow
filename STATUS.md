@@ -1,6 +1,6 @@
 # VetFlow Status
 
-Updated: 2026-10-08
+Updated: 2026-10-12
 
 ## Current State
 
@@ -44,6 +44,7 @@ The local working tree was clean before this documentation pass.
 - Database migrations for the current operational model.
 - A commercial SaaS foundation with editable plans and features, one subscription per clinic, per-subscription overrides, central entitlement checks, active-user limits, a global `/admin/saas` console, and transactional onboarding. Existing clinics retain full access through an internal compatibility plan.
 - A clinic-scoped printer configuration area for fiscal, non-fiscal, label, document, and other equipment, with connection and paper preferences, a single active default, browser print testing, audit history, and access for all six standard clinic roles.
+- Thermal printer testing and completed-sale receipts now use dedicated 58/80 mm print layouts that remove the application shell and browser page margins. Network receipt printers default to raw port 9100 when omitted; the browser still requires the workstation's installed print queue and keeps the receipt explicitly non-fiscal.
 - Feature tests for authentication, authorization, clinic tenant isolation, initial admin setup, and operational purchase/clinical flows.
 - Existing architecture and audit documentation under `docs/`.
 - Assisted CSV implementation workflow for Tutors, Patients, Suppliers,

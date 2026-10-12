@@ -131,6 +131,8 @@ class PrinterService
         if ($data['connection_type'] !== 'network') {
             $data['network_host'] = null;
             $data['network_port'] = null;
+        } elseif (blank($data['network_port'] ?? null)) {
+            $data['network_port'] = 9100;
         }
 
         return $data;

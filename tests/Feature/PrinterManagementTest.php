@@ -43,12 +43,33 @@ class PrinterManagementTest extends TestCase
             ->assertOk()
             ->assertSee('Teste de impressão')
             ->assertSee('data-print-page', false)
-            ->assertSee('printer-paper-80mm', false);
+            ->assertSee('thermal-print-document', false)
+            ->assertSee('printer-paper-80mm', false)
+            ->assertSee('Cabeçalhos e rodapés');
 
         $this->assertDatabaseHas('audit_events', [
             'clinic_id' => $clinic->id,
             'event' => 'printer.created',
             'subject_id' => (string) $printer->id,
+        ]);
+    }
+
+    public function test_network_printer_uses_raw_printing_port_when_it_is_omitted(): void
+    {
+        $clinic = $this->clinic('Clínica Ethernet', '00000000000805');
+        $user = $this->userForClinic($clinic, true);
+
+        $this->actingAs($user)->post(route('printers.store'), $this->payload([
+            'name' => 'Epson do caixa',
+            'connection_type' => 'network',
+            'network_host' => '10.77.20.150',
+            'network_port' => null,
+        ]))->assertSessionDoesntHaveErrors();
+
+        $this->assertDatabaseHas('printers', [
+            'clinic_id' => $clinic->id,
+            'name' => 'Epson do caixa',
+            'network_port' => 9100,
         ]);
     }
 

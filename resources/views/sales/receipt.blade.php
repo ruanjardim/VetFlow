@@ -12,6 +12,9 @@
       'cancelled' => 'Cancelada',
       'returned' => 'Devolvida',
     ];
+    $receiptPaperSize = in_array($receiptPrinter?->paper_size, ['58mm', '80mm'], true)
+      ? $receiptPrinter->paper_size
+      : '80mm';
   @endphp
 
   <header class="topbar receipt-actions">
@@ -21,7 +24,7 @@
     </div>
     <div class="actions">
       <a class="button" href="{{ route('sales.create') }}">Nova venda</a>
-      <button type="button" data-print-page>Imprimir</button>
+      <button type="button" data-print-page>Imprimir cupom</button>
       @if($sale->status === 'completed')
         <a class="button secondary" href="{{ route('sales.returns.create', $sale->id) }}">Devolver</a>
       @endif
@@ -228,4 +231,9 @@
       @endif
     </div>
   </div>
+
+  @include('sales.partials.thermal-receipt', [
+    'paperSize' => $receiptPaperSize,
+    'printer' => $receiptPrinter,
+  ])
 @endsection
