@@ -561,6 +561,12 @@ class SaleService extends BaseService
             ->reject(fn (SaleEvent $event) => ($event->metadata['refund_method'] ?? null) === CustomerBalanceService::CREDIT_METHOD)
             ->values();
 
+        $returnEvents = SaleEvent::query()
+            ->whereIn('event_type', ['partial_return', 'returned'])
+            ->whereHas('sale')
+            ->whereBetween('occurred_at', [$start, $end])
+            ->get();
+
         $openSales = Sale::query()
             ->with(['tutor', 'patient'])
             ->where('status', 'completed')
@@ -605,7 +611,7 @@ class SaleService extends BaseService
                 'discount' => $sales->sum(fn (Sale $sale) => (float) $sale->discount_total),
                 'additions' => $sales->sum(fn (Sale $sale) => (float) $sale->additions_total),
                 'total' => $total,
-                'returns' => $sales->sum(fn (Sale $sale) => (float) $sale->return_total),
+                'returns' => $returnEvents->sum(fn (SaleEvent $event) => (float) $event->amount),
                 'refunds' => $refunds,
                 'net_received' => max(0, $received - $refunds),
                 'paid_on_sales' => $paid,

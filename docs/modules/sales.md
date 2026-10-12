@@ -102,7 +102,9 @@ financial income, returns, refunds, cancellations, and sale event history.
 - Partial returns create stock entries and financial refund expenses without
   cancelling the original income record.
 - Cashier summary uses completed sales, paid payments, refunds, change, and
-  pending totals for the selected period.
+  pending totals for the selected period. Its return total comes from partial
+  and full return events that occurred in the period, so a fully returned sale
+  remains visible without being counted again as a completed sale.
 - Cashier closure reconciles each supported payment method separately. The
   expected value deducts refunds recorded in that method and, for cash, also
   deducts change. Expected, counted, and difference values are preserved in

@@ -301,6 +301,9 @@ This project follows the spirit of Keep a Changelog, with one practical adjustme
 
 ### Fixed
 
+- Cashier return totals now use the partial/full return events recorded in the
+  selected period, so a fully returned sale remains visible as a return after
+  its status changes from completed to returned.
 - Production migrations: the Hostinger Cron Job now calls `artisan` by its
   absolute path (`migrate --force --seed`). The previous `cd ... && ...`
   command never ran because hPanel escapes `&`, which left the September
