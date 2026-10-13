@@ -73,7 +73,7 @@
                 <td>{{ $row['count'] }}</td>
                 <td>{{ $money($row['expected']) }}</td>
                 <td>
-                  <input name="counted_methods[{{ $row['key'] }}]" type="text" inputmode="decimal" value="{{ old('counted_methods.'.$row['key'], $moneyInput($row['expected'])) }}" aria-label="Conferido em {{ $row['label'] }}" data-money-input>
+                  <input name="counted_methods[{{ $row['key'] }}]" type="text" inputmode="decimal" value="{{ old('counted_methods.'.$row['key'], $moneyInput($row['expected'])) }}" aria-label="Conferido em {{ $row['label'] }}" data-money-input data-cash-close-method data-expected="{{ $row['expected'] }}">
                 </td>
               </tr>
             @empty
@@ -99,8 +99,9 @@
     <div class="panel">
       <div class="panel-body form-grid">
         <div class="field full">
-          <label for="close_notes">Observação (opcional)</label>
-          <textarea id="close_notes" name="notes" rows="2" maxlength="2000" placeholder="Explique diferenças, se houver">{{ old('notes') }}</textarea>
+          <label for="close_notes">Observação do fechamento</label>
+          <textarea id="close_notes" name="notes" rows="2" maxlength="2000" placeholder="Obrigatória quando houver sobra ou falta" data-cash-close-notes>{{ old('notes') }}</textarea>
+          <small class="muted" data-cash-close-notes-hint>Se o total contado divergir do esperado, informe a justificativa antes de fechar.</small>
         </div>
         <div class="field full">
           <div class="actions">

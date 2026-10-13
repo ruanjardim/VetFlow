@@ -28,9 +28,10 @@ The local working tree was clean before this documentation pass.
   date, shown in the card receivables report (see `docs/modules/sales.md`).
 - Cash sessions per operator: opening in the PDV with a change float,
   supplies, withdrawals and expenses, closing with counted values per method
-  (card fees posted as one expense per machine), automatic closing of
-  sessions left open overnight, and manager review. Receiving requires an
-  open session (see `docs/modules/sales.md`).
+  (card fees posted as one expense per machine), mandatory explanation for
+  differences, 58/80 mm thermal closing report, append-only lifecycle audit,
+  automatic closing of sessions left open overnight, and manager review.
+  Receiving requires an open session (see `docs/modules/sales.md`).
 - Customer balance: sales to be paid later (fiado) for identified customers,
   customer credit (advance, change kept as credit, returns and cancellations
   as credit) used as a payment method, receipt of several open sales at once,
@@ -183,8 +184,9 @@ The local working tree was clean before this documentation pass.
 - Clinic-scoped sidebar identity with optional automatic, manually selected,
   or hidden animal icons. Automatic mode uses the clinic users' configured
   species of practice and falls back to a generic paw for mixed practices.
-- An append-only administrative audit trail for collaborator access and clinic
-  branding changes, with tenant isolation, actor and before/after snapshots,
+- An append-only administrative audit trail for collaborator access, clinic
+  branding, printers, SaaS configuration, Banho & Tosa availability, and cash
+  lifecycle changes, with tenant isolation, actor and before/after snapshots,
   password redaction, filtering, and a dedicated read permission.
 - A read-only backup/restore drill that captures privacy-safe database control
   totals, rejects the live source as a restore target, and produces evidence

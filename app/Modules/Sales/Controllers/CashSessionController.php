@@ -3,7 +3,10 @@
 namespace App\Modules\Sales\Controllers;
 
 use App\Models\User;
+use App\Modules\Audit\Models\AuditEvent;
+use App\Modules\Audit\Services\AuditTrailService;
 use App\Modules\Clinics\Models\Clinic;
+use App\Modules\Printers\Models\Printer;
 use App\Modules\Sales\Models\CashSession;
 use App\Modules\Sales\Models\CashSessionMovement;
 use App\Modules\Sales\Requests\CloseCashSessionRequest;
@@ -109,6 +112,38 @@ class CashSessionController
             'canOperate' => $session->isOpen() && ($session->user_id === $user->id || $user->can('cash-sessions.review')),
             'canReview' => $user->can('cash-sessions.review'),
             'movementTypes' => array_intersect_key(CashSessionMovement::TYPE_LABELS, array_flip(CashSessionMovement::MANUAL_TYPES)),
+            'auditEvents' => AuditEvent::query()
+                ->with('actor')
+                ->where('subject_type', $session->getMorphClass())
+                ->where('subject_id', (string) $session->id)
+                ->latest('occurred_at')
+                ->latest('id')
+                ->get(),
+            'auditEventLabels' => AuditTrailService::eventLabels(),
+        ]);
+    }
+
+    public function receipt(Request $request, int $cashSession): View
+    {
+        $session = $this->findVisible($request, $cashSession);
+        abort_if($session->isOpen(), 404);
+
+        $session->load(['clinic', 'user', 'closedBy', 'reviewedBy']);
+        $summary = $this->sessions->summary($session);
+        $figures = $session->closing_snapshot ?? $summary;
+        $receiptPrinter = Printer::query()
+            ->where('clinic_id', $session->clinic_id)
+            ->where('active', true)
+            ->where('purpose', 'receipt')
+            ->orderByDesc('is_default')
+            ->orderBy('name')
+            ->first();
+
+        return view('sales.cash-sessions.receipt', [
+            'session' => $session,
+            'summary' => $summary,
+            'figures' => $figures,
+            'receiptPrinter' => $receiptPrinter,
         ]);
     }
 

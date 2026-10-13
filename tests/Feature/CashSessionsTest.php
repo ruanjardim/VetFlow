@@ -5,8 +5,10 @@ namespace Tests\Feature;
 use App\Models\Permission;
 use App\Models\Role;
 use App\Models\User;
+use App\Modules\Audit\Models\AuditEvent;
 use App\Modules\Clinics\Models\Clinic;
 use App\Modules\Financial\Models\FinancialTransaction;
+use App\Modules\Printers\Models\Printer;
 use App\Modules\Products\Models\Product;
 use App\Modules\Sales\Models\CashSession;
 use App\Modules\Sales\Models\CashSessionMovement;
@@ -186,6 +188,7 @@ class CashSessionsTest extends TestCase
         $this->assertEquals(-5, (float) $session->difference_total);
         $this->assertEquals(100, (float) $session->cash_left);
         $this->assertEquals(45, $session->closing_snapshot['cash']['withdrawn']);
+        $this->assertSame('Faltaram 5 reais', $session->closing_notes);
 
         $fee = FinancialTransaction::query()->where('description', 'like', 'Taxas de cartão%')->sole();
         $this->assertSame('Taxas de cartão — Rede (caixa CX-000001)', $fee->description);
@@ -202,6 +205,83 @@ class CashSessionsTest extends TestCase
         $this->from(route('sales.create'))
             ->post(route('sales.store'), $this->pdvSale(50, [['payment_method_id' => $this->method('pix')->id, 'amount' => '50,00']]))
             ->assertSessionHasErrors('cash_session');
+    }
+
+    public function test_difference_requires_explanation_and_closing_receipt_uses_default_thermal_printer(): void
+    {
+        $session = $this->openCashSession($this->operator, $this->clinic, 100);
+        $this->actingAs($this->operator);
+
+        $this->post(route('sales.cash-sessions.close.store', $session->id), [
+            'counted_cash' => '90,00',
+            'cash_left' => '80,00',
+        ])->assertSessionHasErrors('notes');
+
+        $this->assertSame('open', $session->fresh()->status);
+
+        Printer::query()->create([
+            'clinic_id' => $this->clinic->id,
+            'name' => 'Epson Caixa',
+            'type' => 'non_fiscal',
+            'purpose' => 'receipt',
+            'connection_type' => 'network',
+            'paper_size' => '80mm',
+            'queue_name' => 'EPSON TM-T20X Recepção',
+            'network_host' => '10.77.20.150',
+            'network_port' => 9100,
+            'manufacturer' => 'Epson',
+            'model' => 'TM-T20X',
+            'is_default' => true,
+            'active' => true,
+        ]);
+
+        $this->post(route('sales.cash-sessions.close.store', $session->id), [
+            'counted_cash' => '90,00',
+            'cash_left' => '80,00',
+            'notes' => 'Faltaram dez reais na conferência da gaveta.',
+        ])->assertRedirect(route('sales.cash-sessions.show', $session->id));
+
+        $this->get(route('sales.cash-sessions.receipt', $session->id))
+            ->assertOk()
+            ->assertSee('FECHAMENTO DE CAIXA')
+            ->assertSee('RELATÓRIO GERENCIAL')
+            ->assertSee('DOCUMENTO SEM VALOR FISCAL')
+            ->assertSee('Faltaram dez reais na conferência da gaveta.')
+            ->assertSee('Epson Caixa')
+            ->assertSee('thermal-paper-80mm', false)
+            ->assertSee('data-print-page', false);
+
+        $this->assertSame(
+            ['cash.session.opened', 'cash.session.closed'],
+            AuditEvent::query()->where('subject_type', $session->getMorphClass())->where('subject_id', (string) $session->id)->orderBy('id')->pluck('event')->all()
+        );
+    }
+
+    public function test_offsetting_differences_between_methods_still_require_explanation(): void
+    {
+        $session = $this->openCashSession($this->operator, $this->clinic, 0);
+        $pix = $this->method('pix');
+        $this->actingAs($this->operator)
+            ->post(route('sales.store'), $this->pdvSale(10, [['payment_method_id' => $pix->id, 'amount' => '10,00']]))
+            ->assertSessionDoesntHaveErrors();
+
+        $payload = [
+            'counted_cash' => '10,00',
+            'counted_methods' => ['payment_method_'.$pix->id => '0,00'],
+            'cash_left' => '10,00',
+        ];
+
+        $this->post(route('sales.cash-sessions.close.store', $session->id), $payload)
+            ->assertSessionHasErrors('notes');
+        $this->assertSame('open', $session->fresh()->status);
+
+        $payload['notes'] = 'Pix lançado como dinheiro durante a conferência.';
+        $this->post(route('sales.cash-sessions.close.store', $session->id), $payload)
+            ->assertRedirect(route('sales.cash-sessions.show', $session->id));
+
+        $session = $session->fresh();
+        $this->assertEquals(0, (float) $session->difference_total);
+        $this->assertSame('Pix lançado como dinheiro durante a conferência.', $session->closing_notes);
     }
 
     public function test_manager_reviews_or_reopens_a_closed_session(): void
@@ -240,6 +320,10 @@ class CashSessionsTest extends TestCase
         $this->assertSame('reviewed', $session->status);
         $this->assertSame($this->manager->id, $session->reviewed_by);
         $this->assertSame('Conferido com o relatório da Rede', $session->review_notes);
+        $this->assertSame(
+            ['cash.session.opened', 'cash.session.closed', 'cash.session.reopened', 'cash.session.closed', 'cash.session.reviewed'],
+            AuditEvent::query()->where('subject_type', $session->getMorphClass())->where('subject_id', (string) $session->id)->orderBy('id')->pluck('event')->all()
+        );
 
         $this->post(route('sales.cash-sessions.reopen', $session->id))->assertSessionHasErrors('cash_session');
     }
@@ -392,6 +476,7 @@ class CashSessionsTest extends TestCase
         $outsider = $this->userFor($otherClinic, ['sales.manage', 'cash-sessions.review'], 'Fora');
 
         $this->actingAs($outsider)->get(route('sales.cash-sessions.show', $session->id))->assertNotFound();
+        $this->actingAs($outsider)->get(route('sales.cash-sessions.receipt', $session->id))->assertNotFound();
         $this->actingAs($outsider)->post(route('sales.cash-sessions.review', $session->id))->assertNotFound();
 
         // The colleague's own cash does not let them receive in the name of

@@ -5,9 +5,10 @@ Code path: `app/Modules/Audit`
 ## Purpose
 
 The Audit module keeps an append-only, clinic-scoped history of sensitive
-administrative changes. Its first integrations cover collaborator access and
-clinic sidebar branding. It is not a general application log and does not
-replace the source records.
+administrative and operational changes. Integrations include collaborator
+access, clinic branding, printer and SaaS configuration, Banho & Tosa
+availability, and the cash-session lifecycle. It is not a general application
+log and does not replace the source records.
 
 ## Recorded Events
 
@@ -16,6 +17,14 @@ replace the source records.
 | `access.user.created` | A collaborator account and its initial roles were created. |
 | `access.user.updated` | Profile, status, roles, or password state changed. |
 | `clinic.branding.updated` | The clinic changed its sidebar animal-icon settings. |
+| `printer.created` / `printer.updated` | A printer configuration was created or changed. |
+| `saas.plan.created` / `saas.plan.updated` | A SaaS plan was created or changed. |
+| `saas.subscription.updated` / `saas.tenant.onboarded` | Subscription or tenant onboarding changed. |
+| `grooming.schedule.*` | Clinic/professional availability or dated blocks changed. |
+| `cash.session.opened` | An operator cash session was opened. |
+| `cash.session.closed` | A session was closed, including automatic-close metadata. |
+| `cash.session.reviewed` | A manager reviewed and ended a closed session. |
+| `cash.session.reopened` | A manager reopened a session for a new closing. |
 
 Each event records the clinic, actor, subject type/id and label, changed fields,
 request IP/user agent, and occurrence time. Password values are never included;
@@ -28,8 +37,8 @@ the log stores only `password_changed: true` when applicable.
   tenant scope.
 - Global administrators can review events across clinics.
 - The module exposes no update or delete routes. Audit events are append-only.
-- Access changes and their audit record are committed in the same database
-  transaction.
+- Integrated domain changes and their audit record are committed in the same
+  database transaction when the originating workflow is transactional.
 
 ## Data Model
 

@@ -39,6 +39,10 @@ Route::get('sales/cash-sessions/{cashSession}', [CashSessionController::class, '
     ->whereNumber('cashSession')
     ->name('sales.cash-sessions.show');
 
+Route::get('sales/cash-sessions/{cashSession}/receipt', [CashSessionController::class, 'receipt'])
+    ->whereNumber('cashSession')
+    ->name('sales.cash-sessions.receipt');
+
 Route::post('sales/cash-sessions/{cashSession}/movements', [CashSessionController::class, 'storeMovement'])
     ->whereNumber('cashSession')
     ->name('sales.cash-sessions.movements.store');

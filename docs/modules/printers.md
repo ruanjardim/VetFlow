@@ -44,6 +44,9 @@ address, manufacturer, model, status, and default selection.
   monochrome thermal layout with zero page margins.
 - Completed sales print a compact non-fiscal receipt rather than the full
   administrative sale view.
+- Closed cash sessions print a compact management report with expected and
+  counted values, differences, cash left/collected, explanation, and manager
+  review. It uses the same active default receipt printer and roll setting.
 - The receipt remains explicitly marked `DOCUMENTO SEM VALOR FISCAL`; fiscal
   validity comes from an authorized NFC-e/NFS-e document, not from the Epson
   TM-T20X or another receipt printer.

@@ -27,7 +27,7 @@ class CloseCashSessionRequest extends BaseRequest
         return [
             'counted_cash' => ['required', 'numeric', 'min:0', 'max:9999999.99'],
             'counted_methods' => ['nullable', 'array'],
-            'counted_methods.*' => ['nullable', 'numeric', 'max:9999999.99'],
+            'counted_methods.*' => ['nullable', 'numeric', 'min:0', 'max:9999999.99'],
             'cash_left' => ['nullable', 'numeric', 'min:0', 'max:9999999.99'],
             'notes' => ['nullable', 'string', 'max:2000'],
         ];
@@ -39,6 +39,7 @@ class CloseCashSessionRequest extends BaseRequest
             'counted_cash.required' => 'Conte o dinheiro da gaveta e informe o valor.',
             'counted_cash.numeric' => 'Informe o dinheiro contado em reais, por exemplo 350,00.',
             'counted_methods.*.numeric' => 'Informe os totais de cada forma em reais.',
+            'counted_methods.*.min' => 'O valor conferido não pode ser negativo.',
         ];
     }
 }

@@ -25,6 +25,9 @@
     </div>
     <div class="actions">
       <a class="button secondary" href="{{ route('sales.cash-sessions.index', ['clinic_id' => $session->clinic_id]) }}">Caixas</a>
+      @if($closed)
+        <a class="button secondary" href="{{ route('sales.cash-sessions.receipt', $session->id) }}">Imprimir fechamento</a>
+      @endif
       @if($canOperate)
         <a class="button secondary" href="{{ route('sales.create') }}">Ponto de venda</a>
         <a class="button" href="{{ route('sales.cash-sessions.close', $session->id) }}">Fechar caixa</a>
@@ -237,6 +240,49 @@
           </form>
         </div>
       @endif
+    </div>
+  @endif
+
+  @if($auditEvents->isNotEmpty())
+    <div class="panel">
+      <div class="panel-heading">
+        <div>
+          <h2>Histórico do caixa</h2>
+          <p>Abertura, fechamento, conferência e eventuais reaberturas ficam registrados com responsável e horário.</p>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Quando</th>
+              <th>Ação</th>
+              <th>Responsável</th>
+              <th>Detalhe</th>
+            </tr>
+          </thead>
+          <tbody>
+            @foreach($auditEvents as $event)
+              @php
+                $eventNote = data_get($event->changes, 'closing_notes.after')
+                  ?: data_get($event->changes, 'review_notes.after');
+                $eventDifference = data_get($event->changes, 'difference_total.after');
+              @endphp
+              <tr>
+                <td>{{ $event->occurred_at?->format('d/m/Y H:i') }}</td>
+                <td>{{ $auditEventLabels[$event->event] ?? $event->event }}</td>
+                <td>{{ ($event->metadata['automatic'] ?? false) ? 'Automático' : ($event->actor?->name ?? 'Sistema') }}</td>
+                <td>
+                  @if($eventDifference !== null && abs((float) $eventDifference) >= 0.01)
+                    <span class="badge warning">{{ $signedMoney($eventDifference) }}</span>
+                  @endif
+                  {{ $eventNote ?: '-' }}
+                </td>
+              </tr>
+            @endforeach
+          </tbody>
+        </table>
+      </div>
     </div>
   @endif
 

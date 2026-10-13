@@ -40,8 +40,11 @@ This project follows the spirit of Keep a Changelog, with one practical adjustme
 - Cash sessions per operator (caixa): the operator opens the cash in the PDV
   with the change float, registers supplies, withdrawals and expenses (paid
   expenses in the financial module), and closes with the counted cash and the
-  counted totals per method; differences are stored and the card fees become
-  one paid expense per card machine. Receiving (PDV, advanced form, later
+  counted totals per method; differences require an operator explanation,
+  are stored, and the card fees become one paid expense per card machine.
+  Opening, closing, review and reopening are append-only audit events, and a
+  closed session has a print-ready 58/80 mm non-fiscal management report.
+  Receiving (PDV, advanced form, later
   receipts), return refunds and cancellations of paid sales require the
   operator's open session, where the refunds are recorded. Sessions left open overnight close
   automatically at 23:59 and wait for review. Managers with

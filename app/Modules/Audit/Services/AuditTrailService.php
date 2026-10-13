@@ -26,6 +26,10 @@ class AuditTrailService
         'grooming.schedule.professional.updated' => 'Disponibilidade de profissional atualizada',
         'grooming.schedule.block.created' => 'Bloqueio da agenda criado',
         'grooming.schedule.block.deleted' => 'Bloqueio da agenda removido',
+        'cash.session.opened' => 'Caixa aberto',
+        'cash.session.closed' => 'Caixa fechado',
+        'cash.session.reviewed' => 'Caixa conferido e encerrado',
+        'cash.session.reopened' => 'Caixa reaberto',
     ];
 
     /**

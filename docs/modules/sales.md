@@ -255,10 +255,17 @@ financial income, returns, refunds, cancellations, and sale event history.
   (received − refunds), with their card fees.
 - Closing by the operator: counted cash (required), counted totals per
   method (prefilled with the expected), the cash left in the drawer for the
-  next session (the rest is collected), and notes. The session stores the
+  next session (the rest is collected), and notes. Any difference in cash or
+  another method requires an explanation before the backend accepts the
+  closing, even when opposite differences cancel out in the grand total. The session stores the
   expected, counted, and difference totals and a `closing_snapshot`; the card
   fees become one paid expense per card machine (acquirer, or the method
   name when it has none), dated at the closing.
+- A closed or reviewed session has a print-ready management report that uses
+  the clinic's active default receipt printer and its 58/80 mm roll setting.
+  It contains operator, opening/closing times, expected and counted amounts,
+  differences, cash collected/left, closing explanation, and manager review.
+  It is explicitly marked as a non-fiscal internal report.
 - A session left open from a previous day is closed automatically at 23:59
   of its opening day (like SimplesVet), with the expected values as counted,
   everything left in the drawer, and a flag for the manager. It happens the
@@ -267,6 +274,9 @@ financial income, returns, refunds, cancellations, and sale event history.
   with filters, and **conferir e encerrar** a closed session (status
   `reviewed`) or **reabrir** it (the fee expenses are cancelled; the operator
   closes again). Operators only see and move their own sessions.
+- Opening, closing, manager review, and reopening produce append-only audit
+  events with the actor, time, changed state, and automatic-closing metadata.
+  The session page shows this lifecycle history.
 - The legacy period closure (`sales.cashier.close`) still exists for history,
   but the cashier page now links to the sessions.
 

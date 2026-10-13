@@ -1350,7 +1350,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
   if (cashCloseForm) {
     const countedInput = cashCloseForm.querySelector('[data-cash-close-counted]');
+    const countedMethods = [...cashCloseForm.querySelectorAll('[data-cash-close-method]')];
     const differenceNote = cashCloseForm.querySelector('[data-cash-close-difference]');
+    const notesInput = cashCloseForm.querySelector('[data-cash-close-notes]');
+    const notesHint = cashCloseForm.querySelector('[data-cash-close-notes-hint]');
     const money = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
     const toAmount = (value) => {
       const raw = String(value || '').trim();
@@ -1368,13 +1371,33 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
       }
 
-      const difference = Math.round((toAmount(countedInput.value) - Number(countedInput.dataset.expected || 0)) * 100) / 100;
-      differenceNote.textContent = Math.abs(difference) < 0.01
-        ? 'Bate com o esperado.'
-        : (difference > 0 ? 'Sobra de ' : 'Falta de ') + money.format(Math.abs(difference)) + '.';
+      const cashDifference = toAmount(countedInput.value) - Number(countedInput.dataset.expected || 0);
+      const methodsDifference = countedMethods.reduce((total, input) => {
+        return total + toAmount(input.value) - Number(input.dataset.expected || 0);
+      }, 0);
+      const difference = Math.round((cashDifference + methodsDifference) * 100) / 100;
+      const hasDifference = Math.abs(cashDifference) >= 0.01 || countedMethods.some((input) => {
+        return Math.abs(toAmount(input.value) - Number(input.dataset.expected || 0)) >= 0.01;
+      });
+      differenceNote.textContent = !hasDifference
+        ? 'Todos os valores contados batem com o esperado.'
+        : (Math.abs(difference) < 0.01
+            ? 'Há divergências entre as formas, embora o total geral esteja correto.'
+            : (difference > 0 ? 'Sobra total de ' : 'Falta total de ') + money.format(Math.abs(difference)) + '.');
+
+      if (notesInput) {
+        notesInput.required = hasDifference;
+      }
+
+      if (notesHint) {
+        notesHint.textContent = !hasDifference
+          ? 'Sem divergência: a observação é opcional.'
+          : 'Justificativa obrigatória para concluir este fechamento.';
+      }
     };
 
     countedInput?.addEventListener('input', syncDifference);
+    countedMethods.forEach((input) => input.addEventListener('input', syncDifference));
     syncDifference();
   }
 

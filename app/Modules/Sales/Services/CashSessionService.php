@@ -3,6 +3,7 @@
 namespace App\Modules\Sales\Services;
 
 use App\Models\User;
+use App\Modules\Audit\Services\AuditTrailService;
 use App\Modules\Financial\Models\FinancialTransaction;
 use App\Modules\Sales\Models\CashSession;
 use App\Modules\Sales\Models\CashSessionMovement;
@@ -24,7 +25,10 @@ class CashSessionService
 {
     public const CODE_PREFIX = 'CX-';
 
-    public function __construct(private readonly PaymentMethodService $paymentMethods) {}
+    public function __construct(
+        private readonly PaymentMethodService $paymentMethods,
+        private readonly AuditTrailService $audit
+    ) {}
 
     /**
      * The open session of the user in the clinic. Sessions left open from a
@@ -132,6 +136,17 @@ class CashSessionService
             $session->clinic_id = $clinicId;
             $session->save();
             $session->update(['code' => $this->codeForId((int) $session->id)]);
+
+            $this->audit->record(
+                'cash.session.opened',
+                $session,
+                [],
+                $this->auditSnapshot($session),
+                actor: $user,
+                metadata: filled($notes) ? ['opening_notes' => trim((string) $notes)] : [],
+                clinicId: $clinicId,
+                subjectLabel: $session->code
+            );
 
             return $session;
         });
@@ -344,6 +359,17 @@ class CashSessionService
                 : min(max(0, round((float) ($data['cash_left'] ?? 0), 2)), max(0, $countedCash));
             $expectedTotal = round($expectedCash + (float) $methods->sum('expected'), 2);
             $countedTotal = round($countedCash + (float) $methods->sum('counted'), 2);
+            $differenceTotal = round($countedTotal - $expectedTotal, 2);
+            $hasDifference = abs($countedCash - $expectedCash) >= 0.01
+                || $methods->contains(fn (array $row) => abs((float) $row['difference']) >= 0.01);
+
+            if (! $automatic && $hasDifference && blank($data['notes'] ?? null)) {
+                throw ValidationException::withMessages([
+                    'notes' => 'Explique a divergência antes de fechar o caixa.',
+                ]);
+            }
+
+            $before = $this->auditSnapshot($session);
 
             $fees = collect($summary['fees_by_machine'])
                 ->map(function (array $fee) use ($session, $closedAt) {
@@ -378,7 +404,7 @@ class CashSessionService
                 'counted_cash' => $countedCash,
                 'expected_total' => $expectedTotal,
                 'counted_total' => $countedTotal,
-                'difference_total' => round($countedTotal - $expectedTotal, 2),
+                'difference_total' => $differenceTotal,
                 'cash_left' => $cashLeft,
                 'closing_snapshot' => [
                     'version' => 1,
@@ -398,7 +424,19 @@ class CashSessionService
                 'metadata' => $metadata === [] ? null : $metadata,
             ]);
 
-            return $session->refresh();
+            $session->refresh();
+            $this->audit->record(
+                'cash.session.closed',
+                $session,
+                $before,
+                $this->auditSnapshot($session),
+                actor: $by,
+                metadata: ['automatic' => $automatic],
+                clinicId: $session->clinic_id,
+                subjectLabel: $session->code
+            );
+
+            return $session;
         });
     }
 
@@ -416,6 +454,8 @@ class CashSessionService
                 ]);
             }
 
+            $before = $this->auditSnapshot($session);
+
             $session->update([
                 'status' => 'reviewed',
                 'reviewed_at' => now(),
@@ -423,7 +463,18 @@ class CashSessionService
                 'review_notes' => filled($notes) ? trim((string) $notes) : null,
             ]);
 
-            return $session->refresh();
+            $session->refresh();
+            $this->audit->record(
+                'cash.session.reviewed',
+                $session,
+                $before,
+                $this->auditSnapshot($session),
+                actor: $by,
+                clinicId: $session->clinic_id,
+                subjectLabel: $session->code
+            );
+
+            return $session;
         });
     }
 
@@ -454,6 +505,8 @@ class CashSessionService
                     'cash_session' => 'O operador já tem o caixa '.$otherOpen->code.' aberto. Feche-o antes de reabrir este.',
                 ]);
             }
+
+            $before = $this->auditSnapshot($session);
 
             $feeTransactionIds = collect($session->closing_snapshot['fees_by_machine'] ?? [])
                 ->pluck('financial_transaction_id')
@@ -490,7 +543,18 @@ class CashSessionService
                 'metadata' => $metadata,
             ]);
 
-            return $session->refresh();
+            $session->refresh();
+            $this->audit->record(
+                'cash.session.reopened',
+                $session,
+                $before,
+                $this->auditSnapshot($session),
+                actor: $by,
+                clinicId: $session->clinic_id,
+                subjectLabel: $session->code
+            );
+
+            return $session;
         });
     }
 
@@ -688,6 +752,28 @@ class CashSessionService
     private function codeForId(int $id): string
     {
         return self::CODE_PREFIX.str_pad((string) $id, 6, '0', STR_PAD_LEFT);
+    }
+
+    /** @return array<string, mixed> */
+    private function auditSnapshot(CashSession $session): array
+    {
+        return [
+            'status' => $session->status,
+            'opened_at' => $session->opened_at?->toIso8601String(),
+            'opening_amount' => round((float) $session->opening_amount, 2),
+            'closed_at' => $session->closed_at?->toIso8601String(),
+            'closed_by' => $session->closed_by,
+            'expected_cash' => round((float) $session->expected_cash, 2),
+            'counted_cash' => round((float) $session->counted_cash, 2),
+            'expected_total' => round((float) $session->expected_total, 2),
+            'counted_total' => round((float) $session->counted_total, 2),
+            'difference_total' => round((float) $session->difference_total, 2),
+            'cash_left' => $session->cash_left === null ? null : round((float) $session->cash_left, 2),
+            'closing_notes' => $session->closing_notes,
+            'reviewed_at' => $session->reviewed_at?->toIso8601String(),
+            'reviewed_by' => $session->reviewed_by,
+            'review_notes' => $session->review_notes,
+        ];
     }
 
     private function query()
