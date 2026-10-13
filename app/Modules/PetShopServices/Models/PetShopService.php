@@ -4,8 +4,10 @@ namespace App\Modules\PetShopServices\Models;
 
 use App\Models\Concerns\BelongsToClinicTenant;
 use App\Modules\Clinics\Models\Clinic;
+use App\Modules\Fiscal\Models\ServiceFiscalProfile;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class PetShopService extends Model
@@ -37,6 +39,11 @@ class PetShopService extends Model
     public function tenantColumn(): string
     {
         return 'clinic_id';
+    }
+
+    public function fiscalProfile(): HasOne
+    {
+        return $this->hasOne(ServiceFiscalProfile::class, 'petshop_service_id');
     }
 
     public function scopeActive($query)

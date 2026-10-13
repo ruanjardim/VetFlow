@@ -1,6 +1,6 @@
 # VetFlow Status
 
-Updated: 2026-10-12
+Updated: 2026-10-13
 
 ## Current State
 
@@ -36,6 +36,108 @@ The local working tree was clean before this documentation pass.
   customer credit (advance, change kept as credit, returns and cancellations
   as credit) used as a payment method, receipt of several open sales at once,
   credit given back, and a balance list and page (see `docs/modules/sales.md`).
+- Fiscal foundation: clinic-scoped, homologation-only NFC-e/NFS-e settings,
+  manual and idempotent preparation from completed sales, immutable business
+  snapshots, and attributed lifecycle events. Homologation transmission has a
+  guarded opt-in path; production issuance remains unavailable (see
+  `docs/modules/fiscal.md`).
+- The fiscal commercial model is now bring-your-own-Focus-account. Each clinic
+  pays the provider directly and can connect, rotate or disconnect its own
+  homologation token through password-confirmed actions. The value is encrypted
+  at rest, never rendered again and isolated by clinic; disconnecting it does
+  not affect sales, cash operation or the visibly non-fiscal receipt.
+- Fiscal product/service readiness: versioned tax classifications, explicit
+  minimum-field diagnostics and tenant-safe pending/ready queues. Preparation
+  blocks free-form or unclassified lines. Mixed or globally adjusted sales now
+  receive a human-reviewed, immutable fiscal allocation that proportionally
+  divides discounts, additions and payments in exact cents, assigns delivery
+  and change explicitly, and reconciles the shared NFC-e/NFS-e total before a
+  payload can be generated.
+- Fiscal homologation now has a per-clinic evidence gate. It requires the
+  enabled document types to prove configuration, complete active catalogs,
+  authorization, controlled rejection, cancellation, delayed-status
+  reconciliation and protected XML/document downloads; NFS-e also requires
+  authenticated webhook receipt and resend. Human approval or follow-up is
+  password-confirmed, append-only and fingerprinted, becoming stale when the
+  profile or catalog changes. A printable dossier and no-cache JSON export
+  provide an actionable, allowlisted report for the clinic/accountant without
+  secret references or raw fiscal payloads. The result never enables production.
+- Daily fiscal reconciliation now compares each clinic's completed sales with
+  its latest NFC-e/NFS-e preparations and classifies configuration, allocation,
+  payload, submission, processing, authorization and human-review work. The
+  tenant-safe screen and formula-safe CSV are operational controls only:
+  absence of a preparation is not presented as proof of a tax obligation.
+- The clinic-scoped fiscal document center now groups prepared NFC-e and NFS-e
+  by operational competence, filters a bounded monthly period by type, status
+  and sale, and exports an allowlisted, formula-safe private CSV for conference.
+  Raw provider payloads, responses and credentials never enter that export.
+- Reconciled periods of up to 31 days now accept a password-confirmed internal
+  fiscal closing. The append-only record freezes a safe evidence snapshot,
+  reviewer, totals and audit event, prevents duplicate current confirmation and
+  becomes visibly stale after a sale, document or profile change. This remains
+  an operational control and is not a tax filing or accounting certification.
+  Every historical closure can be printed or exported as a private no-cache
+  JSON dossier containing only its frozen safe evidence, current/stale result
+  and integrity hash. A monthly tenant-safe history filters closures by clinic,
+  competence, responsible person and recalculated current/stale state.
+- Partial refunds and fully returned sales now enter an assisted fiscal review.
+  The tenant-safe, password-confirmed workflow freezes item, amount, event and
+  linked-document evidence; records either follow-up or a completed human
+  review with its guidance source; and becomes stale after any later change.
+  A current completed review reconciles the operational queue but never creates,
+  prescribes, transmits or cancels a fiscal document automatically. Every
+  historical decision has a printable, integrity-hashed dossier and a private
+  no-cache JSON equivalent built from its frozen secret-free evidence.
+- Municipality-aware NFS-e readiness now starts with Niterói/RJ (`3303302`):
+  the center maps its 2026 National NFS-e/DPS route, infers the municipality
+  from a Niterói clinic address, exposes missing issuer/certificate setup, and
+  enforces the city's same-service-subitem and same-ISS-rate grouping rule.
+  External submission remains disabled by default.
+- Focus NFe is the selected first provider boundary for Niterói NFS-e. The
+  Fiscal center stores only an external credential reference, and the isolated
+  adapter defines homologation submit/status/cancel requests with sanitized
+  responses. The default application still resolves the disabled provider and
+  keeps fiscal HTTP off, so no external request can originate without explicit
+  deployment activation.
+- A Focus NFS-e payload can now be generated locally after explicit fiscal
+  configuration. The workflow validates the frozen tomador, single service-tax
+  grouping, closed totals and mandatory 2026 IBS/CBS codes, then reserves the
+  next DPS number once and records the action. This remains a preparation
+  artifact until the independent server-side homologation gates are enabled.
+- NFC-e now has a separate RJ/model-65 preparation gate. The clinic confirms
+  SEFAZ-RJ credentialing and stores only the public six-digit CSC identifier
+  plus an opaque external reference, never the CSC value. A dedicated
+  per-series sequence, product IBS/CBS status/classification, deterministic
+  payment mapping and total/change reconciliation produce an idempotent local
+  Focus payload. The guarded homologation adapter can now submit, consult and
+  cancel it through the same idempotent queue while production remains
+  rejected; the short-lived emission time is refreshed at the attempt and the
+  NFS-e webhook remains outside the NFC-e flow.
+- NFC-e numbering gaps now have a separate confirmed inutilization queue. It
+  accepts only already-passed ranges with no prepared VetFlow document,
+  rejects overlaps, validates the Focus response against issuer/model/series/
+  range, and records the result and audit trail without storing a credential.
+- The Focus homologation lifecycle now has a dedicated idempotent submission
+  queue, bounded retries, non-regressing state transitions, delayed status
+  reconciliation and an authenticated replay-safe webhook with issuer
+  verification. All operational switches remain off, the concrete provider is
+  still unbound and tests use simulated responses, so this adds no live fiscal
+  traffic.
+- Guarded credential resolvers now support both customer-managed encrypted
+  database records and operations-managed external files. Both match the
+  document's frozen clinic/reference/provider/environment, while independent
+  outbound/submission/webhook switches and runtime diagnostics keep defaults
+  fully disabled.
+- Authorized NFS-e documents now have a guarded cancellation queue with a
+  frozen justification, bounded retries, provider-confirmed final state and
+  append-only events. The Fiscal center surfaces clinic-scoped alerts for
+  exhausted transmission/status/cancellation work and configurable stale
+  processing or cancellation queues; production remains unavailable.
+- Fiscal contingency now supports manual reconciliation after authorization or
+  an ambiguous cancellation, queued webhook resend with a cooldown, and
+  protected XML/DANFSe downloads. Artifact paths stay server-side, redirects
+  require an exact HTTPS host allowlist, and provider authentication is never
+  forwarded to the artifact host.
 
 - Laravel application structure.
 - Modular backend under `app/Modules`.

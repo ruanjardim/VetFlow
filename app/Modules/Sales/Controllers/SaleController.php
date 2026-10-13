@@ -4,6 +4,7 @@ namespace App\Modules\Sales\Controllers;
 
 use App\Core\Base\BaseCrudController;
 use App\Modules\Clinics\Models\Clinic;
+use App\Modules\Fiscal\Models\FiscalProfile;
 use App\Modules\Inventory\Services\ProductLotService;
 use App\Modules\Patients\Models\Patient;
 use App\Modules\PetShopServices\Models\PetPackage;
@@ -221,7 +222,7 @@ class SaleController extends BaseCrudController
     public function receipt(int $id)
     {
         $sale = $this->service->findOrFail($id);
-        $sale->load(['clinic', 'tutor', 'patient', 'serviceOrder', 'quote', 'items', 'payments.paymentMethod', 'events']);
+        $sale->load(['clinic', 'tutor', 'patient', 'serviceOrder', 'quote', 'items', 'payments.paymentMethod', 'events', 'fiscalDocuments']);
 
         $receiptPrinter = Printer::query()
             ->where('clinic_id', $sale->clinic_id)
@@ -234,6 +235,7 @@ class SaleController extends BaseCrudController
         return view("{$this->viewPath}.receipt", [
             'sale' => $sale,
             'receiptPrinter' => $receiptPrinter,
+            'fiscalProfile' => FiscalProfile::query()->where('clinic_id', $sale->clinic_id)->first(),
         ]);
     }
 

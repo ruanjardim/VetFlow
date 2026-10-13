@@ -30,6 +30,19 @@ class AuditTrailService
         'cash.session.closed' => 'Caixa fechado',
         'cash.session.reviewed' => 'Caixa conferido e encerrado',
         'cash.session.reopened' => 'Caixa reaberto',
+        'fiscal.dps-sequence.configured' => 'Sequência DPS configurada',
+        'fiscal.nfce-sequence.configured' => 'Sequência NFC-e configurada',
+        'fiscal.provider-credential.connected' => 'Conta Focus conectada',
+        'fiscal.provider-credential.rotated' => 'Token Focus substituído',
+        'fiscal.provider-credential.disconnected' => 'Conta Focus desconectada',
+        'fiscal.nfce-inutilization.queued' => 'Inutilização de NFC-e colocada na fila',
+        'fiscal.nfce-inutilization.processing' => 'Inutilização de NFC-e enviada',
+        'fiscal.nfce-inutilization.authorized' => 'Inutilização de NFC-e autorizada',
+        'fiscal.nfce-inutilization.rejected' => 'Inutilização de NFC-e rejeitada',
+        'fiscal.nfce-inutilization.failed' => 'Inutilização de NFC-e sem confirmação',
+        'fiscal.homologation-review.recorded' => 'Revisão da homologação fiscal registrada',
+        'fiscal.period-closure.recorded' => 'Fechamento fiscal operacional registrado',
+        'fiscal.return-review.recorded' => 'Revisão fiscal de devolução registrada',
     ];
 
     /**

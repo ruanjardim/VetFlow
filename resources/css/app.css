@@ -1121,6 +1121,10 @@ form.inline {
   grid-template-columns: minmax(220px, 1.4fr) repeat(4, minmax(150px, 1fr)) auto;
 }
 
+.fiscal-document-filter-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
 .compact-filter-grid {
   grid-template-columns: minmax(180px, 1fr) minmax(180px, 1fr) auto;
   margin-bottom: 14px;
