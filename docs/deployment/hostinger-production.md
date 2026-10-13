@@ -142,6 +142,11 @@ Confirm how hPanel runs post-deployment commands. The release must include the
 compiled Vite assets even when Node is unavailable on the web account. From the
 application directory, run the provider-neutral release sequence:
 
+The Composer `post-autoload-dump` hook first removes cached routes,
+configuration, events, and compiled Blade views left by the previous release.
+This makes Hostinger's automatic Git deployment safe even when it only runs
+`composer install`; package and service discovery manifests are preserved.
+
 ```bash
 composer install --no-dev --optimize-autoloader
 npm ci

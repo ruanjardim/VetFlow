@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-10-13
+
+- Fixed Hostinger Git deployments retaining routes, configuration, or compiled
+  Blade views from the previous release after `composer install`.
+
 All notable project changes should be recorded here.
 
 This project follows the spirit of Keep a Changelog, with one practical adjustment: unreleased internal work can be summarized by documentation or sprint slices before formal version tags exist.
