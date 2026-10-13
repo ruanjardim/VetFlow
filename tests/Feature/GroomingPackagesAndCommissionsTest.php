@@ -9,6 +9,7 @@ use App\Modules\Clinics\Models\Clinic;
 use App\Modules\Commissions\Models\GroomingCommission;
 use App\Modules\Commissions\Models\GroomingCommissionSettlement;
 use App\Modules\Commissions\Services\GroomingCommissionService;
+use App\Modules\Financial\Models\FinancialCategory;
 use App\Modules\Financial\Models\FinancialTransaction;
 use App\Modules\Patients\Models\Patient;
 use App\Modules\PetShopServices\Models\PetPackage;
@@ -397,6 +398,7 @@ class GroomingPackagesAndCommissionsTest extends TestCase
         $this->assertSame('pending', $payable->status);
         $this->assertSame('40.00', (string) $payable->amount);
         $this->assertStringContainsString('Adriana Tosadora', $payable->description);
+        $this->assertSame(FinancialCategory::CODE_COMMISSIONS, $payable->category()->value('system_code'));
 
         $this->actingAs($this->manager)
             ->post(route('grooming-commissions.settle'), [

@@ -7,6 +7,7 @@ use App\Models\Role;
 use App\Models\User;
 use App\Modules\Appointments\Models\Appointment;
 use App\Modules\Clinics\Models\Clinic;
+use App\Modules\Financial\Models\FinancialCategory;
 use App\Modules\Financial\Models\FinancialTransaction;
 use App\Modules\Inventory\Models\InventoryMovement;
 use App\Modules\Patients\Models\Patient;
@@ -18,6 +19,7 @@ use App\Modules\Schedules\Models\Schedule;
 use App\Modules\ServiceOrders\Models\ServiceOrder;
 use App\Modules\Suppliers\Models\Supplier;
 use App\Modules\Tutors\Models\Tutor;
+use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
@@ -88,6 +90,7 @@ class PurchaseAndClinicalFlowTest extends TestCase
         $this->assertCount(2, $payables);
         $this->assertTrue($payables->every(fn (FinancialTransaction $transaction) => (int) $transaction->clinic_id === $clinic->id));
         $this->assertSame([31.25, 31.25], $payables->map(fn ($transaction) => (float) $transaction->amount)->all());
+        $this->assertTrue($payables->every(fn (FinancialTransaction $transaction) => $transaction->category?->system_code === FinancialCategory::CODE_INVENTORY_PURCHASES));
     }
 
     public function test_purchase_entry_rejects_supplier_and_product_from_another_clinic(): void
@@ -218,7 +221,8 @@ class PurchaseAndClinicalFlowTest extends TestCase
         $gtin = '7891000315507';
         $user = $this->userForClinic($clinic, ['purchase-entries.manage']);
 
-        $this->app->instance(NfeAccessKeyImportService::class, new class {
+        $this->app->instance(NfeAccessKeyImportService::class, new class
+        {
             public function rememberXml(string $accessKey, string $xml): void
             {
                 throw new \RuntimeException('Cache indisponivel');
@@ -435,7 +439,7 @@ class PurchaseAndClinicalFlowTest extends TestCase
             'patient_id' => $localPatient->id,
             'tutor_id' => $localTutor->id,
             'title' => 'Agenda local listada',
-            'scheduled_date' => today()->endOfWeek(\Carbon\Carbon::SUNDAY),
+            'scheduled_date' => today()->endOfWeek(Carbon::SUNDAY),
             'scheduled_time' => '10:00',
             'status' => 'agendado',
         ]);

@@ -125,12 +125,13 @@
         @endcanany
 
         @canany(['financial.manage', 'commissions.manage'])
-          <details class="nav-group" @if(request()->routeIs('financial-transactions.*', 'commissions.*')) open @endif>
+          <details class="nav-group" @if(request()->routeIs('financial-transactions.*', 'financial-categories.*', 'commissions.*')) open @endif>
             <summary><span>Financeiro</span><span class="nav-chevron">⌄</span></summary>
             <div class="nav-submenu">
               @can('financial.manage')
                 <a class="{{ request()->routeIs('financial-transactions.index', 'financial-transactions.create', 'financial-transactions.edit') ? 'is-active' : '' }}" href="{{ route('financial-transactions.index') }}">Contas e lançamentos</a>
                 <a class="{{ request()->routeIs('financial-transactions.cash-flow') ? 'is-active' : '' }}" href="{{ route('financial-transactions.cash-flow') }}">Fluxo de caixa</a>
+                <a class="{{ request()->routeIs('financial-categories.*') ? 'is-active' : '' }}" href="{{ route('financial-categories.index') }}">Categorias</a>
               @endcan
               @can('commissions.manage')<a class="{{ request()->routeIs('commissions.*') ? 'is-active' : '' }}" href="{{ route('commissions.index') }}">Comissões</a>@endcan
             </div>

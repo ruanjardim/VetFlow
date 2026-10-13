@@ -7,6 +7,7 @@ use App\Models\Role;
 use App\Models\User;
 use App\Modules\Audit\Models\AuditEvent;
 use App\Modules\Clinics\Models\Clinic;
+use App\Modules\Financial\Models\FinancialCategory;
 use App\Modules\Financial\Models\FinancialTransaction;
 use App\Modules\Printers\Models\Printer;
 use App\Modules\Products\Models\Product;
@@ -194,6 +195,7 @@ class CashSessionsTest extends TestCase
         $this->assertSame('Taxas de cartão — Rede (caixa CX-000001)', $fee->description);
         $this->assertEquals(10, (float) $fee->amount);
         $this->assertSame('paid', $fee->status);
+        $this->assertSame(FinancialCategory::CODE_CARD_FEES, $fee->category()->value('system_code'));
         $this->assertSame($fee->id, $session->closing_snapshot['fees_by_machine'][0]['financial_transaction_id']);
 
         // A closed session takes no more movements and the next opening

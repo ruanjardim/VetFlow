@@ -9,10 +9,49 @@
       <p>Entradas, saidas e recebimentos.</p>
     </div>
     <div class="actions">
+      <a class="button secondary" href="{{ route('financial-categories.index') }}">Categorias</a>
       <a class="button secondary" href="{{ route('financial-transactions.cash-flow') }}">Fluxo de caixa</a>
       <a class="button" href="{{ route('financial-transactions.create') }}">Novo lancamento</a>
     </div>
   </header>
+
+  <form method="GET" action="{{ route('financial-transactions.index') }}" class="panel panel-body">
+    <div class="form-grid">
+      <div class="field">
+        <label for="filter-type">Tipo</label>
+        <select id="filter-type" name="type">
+          <option value="">Todos</option>
+          <option value="income" @selected(($filters['type'] ?? '') === 'income')>Entrada</option>
+          <option value="expense" @selected(($filters['type'] ?? '') === 'expense')>Saída</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="filter-status">Status</label>
+        <select id="filter-status" name="status">
+          <option value="">Todos</option>
+          <option value="pending" @selected(($filters['status'] ?? '') === 'pending')>Pendente</option>
+          <option value="paid" @selected(($filters['status'] ?? '') === 'paid')>Pago</option>
+          <option value="overdue" @selected(($filters['status'] ?? '') === 'overdue')>Vencido</option>
+          <option value="cancelled" @selected(($filters['status'] ?? '') === 'cancelled')>Cancelado</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="filter-category">Categoria</label>
+        <select id="filter-category" name="financial_category_id">
+          <option value="">Todas</option>
+          @foreach(($categories ?? collect()) as $category)
+            <option value="{{ $category->id }}" @selected((int) ($filters['financial_category_id'] ?? 0) === $category->id)>{{ $category->name }} ({{ $category->typeLabel() }})</option>
+          @endforeach
+        </select>
+      </div>
+      <div class="field full">
+        <div class="actions">
+          <button type="submit">Filtrar</button>
+          <a class="button secondary" href="{{ route('financial-transactions.index') }}">Limpar</a>
+        </div>
+      </div>
+    </div>
+  </form>
 
   @if(! empty($filters))
     <div class="alert-soft">
@@ -37,6 +76,7 @@
           <tr>
             <th>Descricao</th>
             <th>Tipo</th>
+            <th>Categoria</th>
             <th>Fornecedor</th>
             <th>Valor</th>
             <th>Vencimento</th>
@@ -83,6 +123,7 @@
                 @endif
               </td>
               <td>{{ $typeLabel }}</td>
+              <td>{{ $transaction->category?->name ?: '-' }}</td>
               <td>{{ $transaction->supplier?->name ?: '-' }}</td>
               <td>R$ {{ number_format((float) $transaction->amount, 2, ',', '.') }}</td>
               <td>{{ optional($transaction->due_date)->format('d/m/Y') }}</td>
@@ -130,7 +171,7 @@
             </tr>
           @empty
             <tr>
-              <td colspan="9" class="muted">Nenhum lancamento cadastrado.</td>
+              <td colspan="10" class="muted">Nenhum lancamento cadastrado.</td>
             </tr>
           @endforelse
         </tbody>

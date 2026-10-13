@@ -1,7 +1,25 @@
 <?php
 
+use App\Modules\Financial\Controllers\FinancialCategoryController;
 use App\Modules\Financial\Controllers\FinancialTransactionController;
 use Illuminate\Support\Facades\Route;
+
+Route::get('financial-categories', [FinancialCategoryController::class, 'index'])
+    ->name('financial-categories.index');
+
+Route::get('financial-categories/create', [FinancialCategoryController::class, 'create'])
+    ->name('financial-categories.create');
+
+Route::post('financial-categories', [FinancialCategoryController::class, 'store'])
+    ->name('financial-categories.store');
+
+Route::get('financial-categories/{financialCategory}/edit', [FinancialCategoryController::class, 'edit'])
+    ->whereNumber('financialCategory')
+    ->name('financial-categories.edit');
+
+Route::put('financial-categories/{financialCategory}', [FinancialCategoryController::class, 'update'])
+    ->whereNumber('financialCategory')
+    ->name('financial-categories.update');
 
 Route::get('financial-transactions/cash-flow', [FinancialTransactionController::class, 'cashFlow'])
     ->name('financial-transactions.cash-flow');

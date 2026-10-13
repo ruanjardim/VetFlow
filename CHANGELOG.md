@@ -20,6 +20,12 @@ This project follows the spirit of Keep a Changelog, with one practical adjustme
 
 ### Added
 
+- Added a clinic-scoped financial chart of categories with safe defaults,
+  custom income/expense categories, immutable types, activation and ordering.
+  The financial ledger now assigns a fallback category to manual entries,
+  validates category type and tenant, filters by category, and automatically
+  classifies sales, purchases, grooming commissions, refunds, card fees, cash
+  expenses and assisted imports without deleting historical classifications.
 - Added a clinic-scoped fiscal document center by operational competence. It
   combines bounded monthly date, NFC-e/NFS-e, lifecycle-status and sale filters,
   paginates the tenant-safe result and exports the full filtered conference list

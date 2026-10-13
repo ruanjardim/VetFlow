@@ -12,6 +12,10 @@ manual financial records, and dashboard/cash-flow summaries.
 - Register income and expense transactions.
 - Track due date, payment date, status, amount, payment method, reference, and
   notes.
+- Maintain a clinic-scoped chart of financial categories for income and
+  expenses.
+- Automatically classify sales, purchase entries, commissions, refunds, card
+  fees, cash expenses, and assisted financial imports.
 - Link payables to suppliers and purchase entries.
 - Link sale income to completed sales through `sales.financial_transaction_id`.
 - Keep sale-generated income read-only in Finance; receipts, cancellations, and
@@ -30,10 +34,14 @@ manual financial records, and dashboard/cash-flow summaries.
 | `FinancialTransactionService` | Filtering, state changes, and cash-flow summary. |
 | `FinancialTransactionRepository` | Data access. |
 | `FinancialTransaction` | Ledger model. |
+| `FinancialCategoryController` | Category listing, creation, and editing. |
+| `FinancialCategoryService` | Default categories and stable automatic classification. |
+| `FinancialCategory` | Clinic-scoped chart-of-accounts category. |
 
 ## Tables
 
 - `financial_transactions`
+- `financial_categories`
 - `purchase_entries`
 - `suppliers`
 - `sales`
@@ -48,6 +56,17 @@ manual financial records, and dashboard/cash-flow summaries.
 - Purchase entries can create multiple installment rows for the same purchase.
 - Sale returns can create expense transactions for refunds without cancelling
   the original sale income.
+- Each clinic receives a small default chart of categories lazily on first
+  financial use. Stable internal codes classify system-generated transactions;
+  display names remain editable.
+- A category type is immutable after creation so historical income/expense
+  reporting cannot be silently inverted. Categories are deactivated instead
+  of deleted; inactive categories remain visible on old records and may still
+  receive system-generated entries through their stable internal code.
+- A manual transaction without an explicit category is assigned to `Outras
+  entradas` or `Outras despesas` according to its type.
+- Category filters are available in the financial ledger. A submitted category
+  must belong to the current clinic and match the transaction type.
 - Financial CSV import accepts Portuguese labels and internal codes, resolves
   optional Suppliers inside the selected clinic, and requires payment dates
   for paid records.
@@ -68,7 +87,8 @@ The service calculates:
 ## Tenant Rules
 
 Financial transactions are tenant-scoped through `clinic_id`. Supplier and
-purchase-entry references must belong to the same selected/current clinic.
+purchase-entry and financial-category references must belong to the same
+selected/current clinic.
 
 ## Permissions
 
@@ -78,4 +98,6 @@ Protected by `financial.manage`.
 
 Relevant coverage is present in `tests/Feature/OperationalFlowTest.php` and
 `tests/Feature/PurchaseAndClinicalFlowTest.php`. The assisted import is covered
-by `tests/Feature/ImplementationFinancialCsvTest.php`.
+by `tests/Feature/ImplementationFinancialCsvTest.php`. Category defaults,
+immutability, tenant isolation, type validation and filtering are covered by
+`tests/Feature/FinancialCategoriesTest.php`.

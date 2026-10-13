@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Modules\Clinics\Models\Clinic;
 use App\Modules\Commissions\Models\CommissionRule;
 use App\Modules\Commissions\Services\CommissionService;
+use App\Modules\Financial\Models\FinancialCategory;
 use App\Modules\Financial\Models\FinancialTransaction;
 use App\Modules\Inventory\Models\InventoryMovement;
 use App\Modules\PetShopServices\Models\PetShopService;
@@ -82,6 +83,7 @@ class OperationalFlowTest extends TestCase
         $this->assertSame('income', $financialTransaction->type);
         $this->assertSame('paid', $financialTransaction->status);
         $this->assertEquals(50.0, (float) $financialTransaction->amount);
+        $this->assertSame(FinancialCategory::CODE_SALES, $financialTransaction->category()->value('system_code'));
     }
 
     public function test_pending_payment_only_counts_after_a_later_receipt_is_registered(): void

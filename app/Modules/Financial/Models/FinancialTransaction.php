@@ -44,6 +44,11 @@ class FinancialTransaction extends Model
         return $this->belongsTo(Supplier::class);
     }
 
+    public function category(): BelongsTo
+    {
+        return $this->belongsTo(FinancialCategory::class, 'financial_category_id');
+    }
+
     public function purchaseEntry(): BelongsTo
     {
         return $this->belongsTo(PurchaseEntry::class);

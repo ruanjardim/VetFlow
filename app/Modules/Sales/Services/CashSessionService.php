@@ -4,7 +4,9 @@ namespace App\Modules\Sales\Services;
 
 use App\Models\User;
 use App\Modules\Audit\Services\AuditTrailService;
+use App\Modules\Financial\Models\FinancialCategory;
 use App\Modules\Financial\Models\FinancialTransaction;
+use App\Modules\Financial\Services\FinancialCategoryService;
 use App\Modules\Sales\Models\CashSession;
 use App\Modules\Sales\Models\CashSessionMovement;
 use App\Modules\Sales\Models\PaymentMethod;
@@ -27,7 +29,8 @@ class CashSessionService
 
     public function __construct(
         private readonly PaymentMethodService $paymentMethods,
-        private readonly AuditTrailService $audit
+        private readonly AuditTrailService $audit,
+        private readonly FinancialCategoryService $financialCategories
     ) {}
 
     /**
@@ -195,6 +198,7 @@ class CashSessionService
             if ($type === 'expense') {
                 $financialTransactionId = FinancialTransaction::query()->create([
                     'clinic_id' => $session->clinic_id,
+                    'financial_category_id' => $this->financialCategories->idForCode($session->clinic_id, FinancialCategory::CODE_CASH_EXPENSES),
                     'type' => 'expense',
                     'description' => $description.' (caixa '.$session->code.')',
                     'amount' => $amount,
@@ -375,6 +379,7 @@ class CashSessionService
                 ->map(function (array $fee) use ($session, $closedAt) {
                     $transaction = FinancialTransaction::query()->create([
                         'clinic_id' => $session->clinic_id,
+                        'financial_category_id' => $this->financialCategories->idForCode($session->clinic_id, FinancialCategory::CODE_CARD_FEES),
                         'type' => 'expense',
                         'description' => 'Taxas de cartão — '.$fee['label'].' (caixa '.$session->code.')',
                         'amount' => $fee['amount'],

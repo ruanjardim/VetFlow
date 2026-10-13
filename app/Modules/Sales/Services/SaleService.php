@@ -4,7 +4,9 @@ namespace App\Modules\Sales\Services;
 
 use App\Core\Base\BaseService;
 use App\Modules\Commissions\Services\GroomingCommissionService;
+use App\Modules\Financial\Models\FinancialCategory;
 use App\Modules\Financial\Models\FinancialTransaction;
+use App\Modules\Financial\Services\FinancialCategoryService;
 use App\Modules\Inventory\Models\InventoryMovement;
 use App\Modules\Inventory\Services\InventoryMovementService;
 use App\Modules\Inventory\Services\ProductLotService;
@@ -39,7 +41,8 @@ class SaleService extends BaseService
     public function __construct(
         SaleRepositoryInterface $repository,
         private readonly InventoryMovementService $inventoryMovementService,
-        private readonly ProductLotService $lotService
+        private readonly ProductLotService $lotService,
+        private readonly FinancialCategoryService $financialCategories
     ) {
         $this->repository = $repository;
     }
@@ -375,6 +378,7 @@ class SaleService extends BaseService
             if ($refundAmount > 0) {
                 FinancialTransaction::query()->create([
                     'clinic_id' => $sale->clinic_id,
+                    'financial_category_id' => $this->financialCategories->idForCode($sale->clinic_id, FinancialCategory::CODE_SALE_REFUNDS),
                     'type' => 'expense',
                     'description' => 'Estorno venda '.$sale->code,
                     'amount' => $refundAmount,
@@ -1162,6 +1166,7 @@ class SaleService extends BaseService
         if (! $sale->financial_applied) {
             $financialTransaction = FinancialTransaction::query()->create([
                 'clinic_id' => $sale->clinic_id,
+                'financial_category_id' => $this->financialCategories->idForCode($sale->clinic_id, FinancialCategory::CODE_SALES),
                 'type' => 'income',
                 'description' => 'Venda '.$sale->code,
                 'amount' => $sale->total,

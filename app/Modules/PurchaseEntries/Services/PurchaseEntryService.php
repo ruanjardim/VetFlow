@@ -2,11 +2,13 @@
 
 namespace App\Modules\PurchaseEntries\Services;
 
+use App\Modules\Financial\Models\FinancialCategory;
+use App\Modules\Financial\Models\FinancialTransaction;
+use App\Modules\Financial\Services\FinancialCategoryService;
 use App\Modules\Inventory\Models\InventoryMovement;
 use App\Modules\Inventory\Services\InventoryMovementService;
 use App\Modules\Products\Models\Product;
 use App\Modules\PurchaseEntries\Models\PurchaseEntry;
-use App\Modules\Financial\Models\FinancialTransaction;
 use Carbon\Carbon;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
@@ -16,6 +18,7 @@ class PurchaseEntryService
     public function __construct(
         private readonly InventoryMovementService $inventoryMovementService,
         private readonly ReplenishmentPurchaseDecisionService $replenishmentDecisions,
+        private readonly FinancialCategoryService $financialCategories,
     ) {}
 
     public function paginate(int $perPage = 15): LengthAwarePaginator
@@ -286,6 +289,7 @@ class PurchaseEntryService
     {
         if ($entry->status !== 'received' || (float) $entry->total <= 0) {
             $this->releasePayable($entry);
+
             return;
         }
 
@@ -308,6 +312,7 @@ class PurchaseEntryService
 
             FinancialTransaction::query()->create([
                 'clinic_id' => $entry->clinic_id,
+                'financial_category_id' => $this->financialCategories->idForCode($entry->clinic_id, FinancialCategory::CODE_INVENTORY_PURCHASES),
                 'supplier_id' => $entry->supplier_id,
                 'purchase_entry_id' => $entry->id,
                 'installment_number' => $installmentNumber,

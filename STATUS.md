@@ -36,6 +36,13 @@ The local working tree was clean before this documentation pass.
   customer credit (advance, change kept as credit, returns and cancellations
   as credit) used as a payment method, receipt of several open sales at once,
   credit given back, and a balance list and page (see `docs/modules/sales.md`).
+- Finance now has a clinic-scoped chart of income and expense categories. Each
+  clinic receives safe defaults; custom categories can be added, renamed,
+  ordered or deactivated without deleting history; and category/type/tenant
+  validation protects manual entries. Sales, purchases, grooming commissions,
+  refunds, card fees, cash expenses and assisted imports are classified
+  automatically, while the ledger can be filtered by category (see
+  `docs/modules/financial.md`).
 - Fiscal foundation: clinic-scoped, homologation-only NFC-e/NFS-e settings,
   manual and idempotent preparation from completed sales, immutable business
   snapshots, and attributed lifecycle events. Homologation transmission has a

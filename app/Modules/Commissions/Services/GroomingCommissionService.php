@@ -5,7 +5,9 @@ namespace App\Modules\Commissions\Services;
 use App\Models\User;
 use App\Modules\Commissions\Models\GroomingCommission;
 use App\Modules\Commissions\Models\GroomingCommissionSettlement;
+use App\Modules\Financial\Models\FinancialCategory;
 use App\Modules\Financial\Models\FinancialTransaction;
+use App\Modules\Financial\Services\FinancialCategoryService;
 use App\Modules\PetShopServices\Models\PetPackageUsage;
 use App\Modules\PetShopServices\Models\PetShopService;
 use App\Modules\Sales\Models\Sale;
@@ -30,6 +32,8 @@ use Illuminate\Validation\ValidationException;
  */
 class GroomingCommissionService
 {
+    public function __construct(private readonly FinancialCategoryService $financialCategories) {}
+
     public function syncForOrder(ServiceOrder|int $order): void
     {
         $order = $order instanceof ServiceOrder
@@ -343,6 +347,7 @@ class GroomingCommissionService
 
             $transaction = FinancialTransaction::query()->create([
                 'clinic_id' => $entries->first()->clinic_id,
+                'financial_category_id' => $this->financialCategories->idForCode($entries->first()->clinic_id, FinancialCategory::CODE_COMMISSIONS),
                 'type' => 'expense',
                 'description' => sprintf('Comissão banho e tosa — %s (%s a %s)', $user->name, $periodStart->format('d/m/Y'), $until->format('d/m/Y')),
                 'amount' => $total,
