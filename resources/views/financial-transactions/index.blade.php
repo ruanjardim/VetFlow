@@ -11,6 +11,7 @@
     <div class="actions">
       <a class="button secondary" href="{{ route('financial-categories.index') }}">Categorias</a>
       <a class="button secondary" href="{{ route('financial-transactions.cash-flow') }}">Fluxo de caixa</a>
+      <a class="button secondary" href="{{ route('financial-results.index') }}">Resultado gerencial</a>
       <a class="button" href="{{ route('financial-transactions.create') }}">Novo lancamento</a>
     </div>
   </header>

@@ -24,6 +24,8 @@ manual financial records, and dashboard/cash-flow summaries.
 - Mark transactions as paid.
 - Cancel transactions.
 - Produce cash-flow summary data.
+- Produce a monthly managerial result by category, with cash and operational
+  competence views and a formula-safe CSV export.
 - Import initial income and expense records through the assisted CSV workflow.
 
 ## Key Classes
@@ -37,6 +39,8 @@ manual financial records, and dashboard/cash-flow summaries.
 | `FinancialCategoryController` | Category listing, creation, and editing. |
 | `FinancialCategoryService` | Default categories and stable automatic classification. |
 | `FinancialCategory` | Clinic-scoped chart-of-accounts category. |
+| `FinancialManagerialResultController` | Monthly result screen and safe CSV export. |
+| `FinancialManagerialResultService` | Cash/competence aggregation by category using exact cents. |
 
 ## Tables
 
@@ -84,6 +88,22 @@ The service calculates:
 - amounts due in the next seven days;
 - upcoming and overdue transaction lists.
 
+## Monthly Managerial Result
+
+The protected `Resultado gerencial` screen compares income, expenses and the
+resulting balance for one month, grouped by financial category.
+
+- `Caixa` includes only paid transactions and uses `paid_at`.
+- `Competência operacional` includes non-cancelled transactions and uses the
+  due date. It is an operational forecast/read model and does not replace the
+  accounting competence defined by the clinic's accountant.
+- Transactions without the date required by the selected view are excluded
+  and counted visibly as pending classification work.
+- Category totals and shares use exact cents, remain clinic-scoped and include
+  a visible `Sem categoria` group for legacy records.
+- The CSV export uses the same filters, carries private/no-cache headers and
+  neutralizes spreadsheet-formula prefixes in textual fields.
+
 ## Tenant Rules
 
 Financial transactions are tenant-scoped through `clinic_id`. Supplier and
@@ -100,4 +120,6 @@ Relevant coverage is present in `tests/Feature/OperationalFlowTest.php` and
 `tests/Feature/PurchaseAndClinicalFlowTest.php`. The assisted import is covered
 by `tests/Feature/ImplementationFinancialCsvTest.php`. Category defaults,
 immutability, tenant isolation, type validation and filtering are covered by
-`tests/Feature/FinancialCategoriesTest.php`.
+`tests/Feature/FinancialCategoriesTest.php`. The monthly cash/competence
+result, category grouping, tenant isolation and safe CSV are covered by
+`tests/Feature/FinancialManagerialResultTest.php`.

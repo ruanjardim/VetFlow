@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-10-18
+
+- Added a clinic-scoped monthly managerial result in Finance, grouped by chart
+  of accounts category, with cash and operational-competence views.
+- Added a private, no-cache and formula-safe CSV export for the selected month
+  and basis.
+
 ## 2026-10-13
 
 - Fixed Hostinger Git deployments retaining routes, configuration, or compiled

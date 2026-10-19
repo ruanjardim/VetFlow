@@ -1,6 +1,7 @@
 <?php
 
 use App\Modules\Financial\Controllers\FinancialCategoryController;
+use App\Modules\Financial\Controllers\FinancialManagerialResultController;
 use App\Modules\Financial\Controllers\FinancialTransactionController;
 use Illuminate\Support\Facades\Route;
 
@@ -23,6 +24,12 @@ Route::put('financial-categories/{financialCategory}', [FinancialCategoryControl
 
 Route::get('financial-transactions/cash-flow', [FinancialTransactionController::class, 'cashFlow'])
     ->name('financial-transactions.cash-flow');
+
+Route::get('financial-results', [FinancialManagerialResultController::class, 'index'])
+    ->name('financial-results.index');
+
+Route::get('financial-results/export', [FinancialManagerialResultController::class, 'export'])
+    ->name('financial-results.export');
 
 Route::patch('financial-transactions/{financial_transaction}/pay', [FinancialTransactionController::class, 'pay'])
     ->name('financial-transactions.pay');
