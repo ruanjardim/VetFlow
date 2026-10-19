@@ -26,6 +26,8 @@ manual financial records, and dashboard/cash-flow summaries.
 - Produce cash-flow summary data.
 - Produce a monthly managerial result by category, with cash and operational
   competence views and a formula-safe CSV export.
+- Maintain monthly income and expense budgets by category and compare them with
+  cash or operational-competence actuals.
 - Import initial income and expense records through the assisted CSV workflow.
 
 ## Key Classes
@@ -41,11 +43,15 @@ manual financial records, and dashboard/cash-flow summaries.
 | `FinancialCategory` | Clinic-scoped chart-of-accounts category. |
 | `FinancialManagerialResultController` | Monthly result screen and safe CSV export. |
 | `FinancialManagerialResultService` | Cash/competence aggregation by category using exact cents. |
+| `FinancialBudgetController` | Monthly budget screen and update action. |
+| `FinancialBudgetService` | Clinic-scoped planned-versus-realized comparison and audited saves. |
+| `FinancialBudget` | One planned amount per clinic, category and monthly competence. |
 
 ## Tables
 
 - `financial_transactions`
 - `financial_categories`
+- `financial_budgets`
 - `purchase_entries`
 - `suppliers`
 - `sales`
@@ -104,6 +110,26 @@ resulting balance for one month, grouped by financial category.
 - The CSV export uses the same filters, carries private/no-cache headers and
   neutralizes spreadsheet-formula prefixes in textual fields.
 
+## Monthly Budget
+
+The protected `Orçamento mensal` screen stores one planned amount for each
+financial category, clinic and month, then compares that plan with the same
+realized views used by the managerial result.
+
+- Budget values are independent from transactions and never create, pay,
+  cancel or change a ledger entry.
+- `Caixa` actuals include only paid transactions by payment date.
+- `Competência operacional` actuals include non-cancelled transactions by due
+  date and remain an operational view rather than an accounting definition.
+- Income categories report whether the realized amount reached the planned
+  target. Expense categories report whether the realized amount stayed within
+  the planned limit.
+- Legacy movements without a category remain visible as non-editable,
+  unplanned rows so the comparison still reconciles with the managerial result.
+- Inactive categories remain visible to preserve and revise historical plans.
+- Submitted categories must belong to the selected clinic. Budget changes are
+  recorded in the audit trail without exposing unrelated clinic data.
+
 ## Tenant Rules
 
 Financial transactions are tenant-scoped through `clinic_id`. Supplier and
@@ -122,4 +148,6 @@ by `tests/Feature/ImplementationFinancialCsvTest.php`. Category defaults,
 immutability, tenant isolation, type validation and filtering are covered by
 `tests/Feature/FinancialCategoriesTest.php`. The monthly cash/competence
 result, category grouping, tenant isolation and safe CSV are covered by
-`tests/Feature/FinancialManagerialResultTest.php`.
+`tests/Feature/FinancialManagerialResultTest.php`. Monthly budget comparison,
+Brazilian currency normalization, audit behavior and tenant isolation are
+covered by `tests/Feature/FinancialBudgetsTest.php`.

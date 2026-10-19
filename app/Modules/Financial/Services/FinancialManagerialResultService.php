@@ -24,7 +24,7 @@ class FinancialManagerialResultService
      *   rows: Collection<int, array<string, int|string|float|null>>
      * }
      */
-    public function report(?string $competence = null, ?string $basis = null): array
+    public function report(?string $competence = null, ?string $basis = null, ?int $clinicId = null): array
     {
         $basis = array_key_exists((string) $basis, self::BASIS_LABELS) ? (string) $basis : 'cash';
         $reference = CarbonImmutable::createFromFormat(
@@ -35,6 +35,9 @@ class FinancialManagerialResultService
         $dateColumn = $basis === 'cash' ? 'paid_at' : 'due_date';
 
         $query = FinancialTransaction::query()
+            ->when($clinicId !== null, fn (Builder $query): Builder => $query
+                ->withoutGlobalScope('clinic_tenant')
+                ->where('clinic_id', $clinicId))
             ->with('category:id,clinic_id,type,name,sort_order')
             ->when(
                 $basis === 'cash',

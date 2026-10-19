@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-10-19
+
+- Added clinic-scoped monthly budgets by financial category, with Brazilian
+  currency entry, audited changes and planned-versus-realized comparison using
+  either cash or operational-competence actuals.
+
 ## 2026-10-18
 
 - Added a clinic-scoped monthly managerial result in Finance, grouped by chart

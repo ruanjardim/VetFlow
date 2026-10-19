@@ -1065,6 +1065,55 @@ button.danger {
   grid-template-columns: minmax(0, 1fr);
 }
 
+.budget-filter-grid {
+  grid-template-columns: repeat(3, minmax(180px, 1fr)) auto;
+}
+
+.grid.stats.budget-stats {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.budget-panel + .budget-panel {
+  margin-top: 18px;
+}
+
+.financial-budget-table {
+  min-width: 780px;
+}
+
+.budget-amount-input {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+  max-width: 180px;
+  min-width: 145px;
+}
+
+.budget-amount-input span {
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.budget-amount-input input {
+  min-width: 0;
+  text-align: right;
+}
+
+.budget-row-inactive {
+  background: #f8fafc;
+  color: #64748b;
+}
+
+.budget-save-actions {
+  justify-content: flex-end;
+  margin-top: 18px;
+}
+
+.text-danger {
+  color: #b91c1c;
+}
+
 .panel + .content-grid {
   margin-top: 18px;
 }

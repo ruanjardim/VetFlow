@@ -1,5 +1,6 @@
 <?php
 
+use App\Modules\Financial\Controllers\FinancialBudgetController;
 use App\Modules\Financial\Controllers\FinancialCategoryController;
 use App\Modules\Financial\Controllers\FinancialManagerialResultController;
 use App\Modules\Financial\Controllers\FinancialTransactionController;
@@ -30,6 +31,12 @@ Route::get('financial-results', [FinancialManagerialResultController::class, 'in
 
 Route::get('financial-results/export', [FinancialManagerialResultController::class, 'export'])
     ->name('financial-results.export');
+
+Route::get('financial-budgets', [FinancialBudgetController::class, 'index'])
+    ->name('financial-budgets.index');
+
+Route::put('financial-budgets', [FinancialBudgetController::class, 'update'])
+    ->name('financial-budgets.update');
 
 Route::patch('financial-transactions/{financial_transaction}/pay', [FinancialTransactionController::class, 'pay'])
     ->name('financial-transactions.pay');

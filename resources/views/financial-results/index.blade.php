@@ -9,6 +9,7 @@
       <p>Entradas, saídas e saldo por categoria, com leitura por caixa ou competência operacional.</p>
     </div>
     <div class="actions">
+      <a class="button secondary" href="{{ route('financial-budgets.index', $filters) }}">Orçamento mensal</a>
       <a class="button secondary" href="{{ route('financial-transactions.index') }}">Ver lançamentos</a>
       <a class="button" href="{{ route('financial-results.export', $filters) }}">Exportar CSV</a>
     </div>

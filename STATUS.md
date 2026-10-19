@@ -1,6 +1,6 @@
 # VetFlow Status
 
-Updated: 2026-10-18
+Updated: 2026-10-19
 
 ## Current State
 
@@ -48,6 +48,11 @@ The local working tree was clean before this documentation pass.
   explicitly operational competence view by due date, exposes records missing
   the required date and exports the same tenant-safe result to a formula-safe
   private CSV (see `docs/modules/financial.md`).
+- Finance now also has clinic-scoped monthly budgets by category. Managers set
+  expected income and expense values and compare them with cash or operational-
+  competence actuals, including execution percentages, variances, explicit
+  unclassified movement and audited budget changes (see
+  `docs/modules/financial.md`).
 - Fiscal foundation: clinic-scoped, homologation-only NFC-e/NFS-e settings,
   manual and idempotent preparation from completed sales, immutable business
   snapshots, and attributed lifecycle events. Homologation transmission has a

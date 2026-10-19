@@ -44,6 +44,11 @@ class FinancialCategory extends Model
         return $this->hasMany(FinancialTransaction::class);
     }
 
+    public function budgets(): HasMany
+    {
+        return $this->hasMany(FinancialBudget::class, 'financial_category_id');
+    }
+
     public function scopeActive(Builder $query): Builder
     {
         return $query->where('active', true);
