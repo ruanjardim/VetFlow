@@ -68,7 +68,7 @@
     </div>
   </section>
 
-  <section class="content-grid">
+  <section class="content-grid financial-result-grid">
     <div class="panel">
       <div class="panel-heading">
         <div>
