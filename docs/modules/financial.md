@@ -24,6 +24,8 @@ manual financial records, and dashboard/cash-flow summaries.
 - Mark transactions as paid.
 - Cancel transactions.
 - Produce cash-flow summary data.
+- Provide a clinic-scoped operational center for accounts payable and
+  receivable by due-date period, type and computed situation.
 - Produce a monthly managerial result by category, with cash and operational
   competence views and a formula-safe CSV export.
 - Maintain monthly income and expense budgets by category and compare them with
@@ -36,6 +38,8 @@ manual financial records, and dashboard/cash-flow summaries.
 | --- | --- |
 | `FinancialTransactionController` | Web CRUD and pay/cancel actions. |
 | `FinancialTransactionService` | Filtering, state changes, and cash-flow summary. |
+| `FinancialObligationController` | Due-date center and global-clinic selection. |
+| `FinancialObligationService` | Read-only accounts payable/receivable totals and filtered rows. |
 | `FinancialTransactionRepository` | Data access. |
 | `FinancialTransaction` | Ledger model. |
 | `FinancialCategoryController` | Category listing, creation, and editing. |
@@ -93,6 +97,34 @@ The service calculates:
 - overdue income and expenses;
 - amounts due in the next seven days;
 - upcoming and overdue transaction lists.
+
+## Accounts Payable And Receivable
+
+The protected `Contas a pagar e receber` screen is a read-only operational
+view over the existing financial ledger.
+
+- The default period runs from the first day of the month one year ago through
+  the end of the following month, keeping older arrears visible without an
+  unbounded initial query.
+- Filters cover establishment for global users, due-date period, income or
+  expense type, operational situation and overdue-age band.
+- Open, overdue, due-today and upcoming classifications are derived from the
+  stored status together with the due date, so an old `pending` row remains
+  visibly overdue without requiring a background mutation.
+- Summary cards always reconcile the selected period and type; the situation
+  filter only narrows the detailed rows.
+- Open overdue amounts are divided into five explicit bands: up to 5 days,
+  6-15, 16-30, 31-60 and more than 60 days. Each band links to the exact
+  transaction composition and displays the number of overdue days.
+- The filtered composition can be exported as a private, no-cache,
+  formula-safe UTF-8 CSV without exposing transactions from another clinic.
+- An operator can append a reviewed or follow-up-required decision with a
+  bounded note. The record stores a safe filter and summary snapshot with an
+  integrity hash; the visible history is append-only and clinic-scoped.
+- Active transactions without a due date are counted explicitly as pending
+  classification work instead of being silently assigned to a period.
+- Every query is constrained to one clinic, including the explicit clinic
+  selector used by global administrators.
 
 ## Monthly Managerial Result
 
@@ -167,3 +199,6 @@ result, category grouping, tenant isolation and safe CSV are covered by
 Brazilian currency normalization, copy safety, alerts, private CSV export,
 exact transaction composition, 12-month history, audit display and tenant
 isolation are covered by `tests/Feature/FinancialBudgetsTest.php`.
+The payable/receivable center, computed due-date states, aging composition,
+private CSV, append-only reviews, validation and global clinic selection are
+covered by `tests/Feature/FinancialObligationCenterTest.php`.

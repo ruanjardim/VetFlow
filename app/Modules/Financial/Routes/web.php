@@ -3,6 +3,7 @@
 use App\Modules\Financial\Controllers\FinancialBudgetController;
 use App\Modules\Financial\Controllers\FinancialCategoryController;
 use App\Modules\Financial\Controllers\FinancialManagerialResultController;
+use App\Modules\Financial\Controllers\FinancialObligationController;
 use App\Modules\Financial\Controllers\FinancialTransactionController;
 use Illuminate\Support\Facades\Route;
 
@@ -31,6 +32,13 @@ Route::get('financial-results', [FinancialManagerialResultController::class, 'in
 
 Route::get('financial-results/export', [FinancialManagerialResultController::class, 'export'])
     ->name('financial-results.export');
+
+Route::get('financial-obligations', [FinancialObligationController::class, 'index'])
+    ->name('financial-obligations.index');
+Route::get('financial-obligations/export', [FinancialObligationController::class, 'export'])
+    ->name('financial-obligations.export');
+Route::post('financial-obligations/reviews', [FinancialObligationController::class, 'storeReview'])
+    ->name('financial-obligations.reviews.store');
 
 Route::get('financial-budgets', [FinancialBudgetController::class, 'index'])
     ->name('financial-budgets.index');
