@@ -31,6 +31,7 @@ class AuditTrailService
         'cash.session.reviewed' => 'Caixa conferido e encerrado',
         'cash.session.reopened' => 'Caixa reaberto',
         'financial.budget.updated' => 'Orçamento financeiro atualizado',
+        'financial.budget.copied' => 'Orçamento financeiro copiado',
         'fiscal.dps-sequence.configured' => 'Sequência DPS configurada',
         'fiscal.nfce-sequence.configured' => 'Sequência NFC-e configurada',
         'fiscal.provider-credential.connected' => 'Conta Focus conectada',

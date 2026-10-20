@@ -9,6 +9,15 @@
       <p>Planeje entradas e saídas por categoria e acompanhe o previsto contra o realizado.</p>
     </div>
     <div class="actions">
+      <form method="POST" action="{{ route('financial-budgets.copy-previous') }}" class="inline">
+        @csrf
+        <input type="hidden" name="competence" value="{{ $filters['competence'] }}">
+        <input type="hidden" name="basis" value="{{ $filters['basis'] }}">
+        @if($requiresClinic)
+          <input type="hidden" name="clinic_id" value="{{ $selectedClinicId }}">
+        @endif
+        <button class="secondary" type="submit" data-confirm="Copiar os valores do mês anterior? Os valores já preenchidos em {{ $reference['label'] }} serão preservados.">Copiar mês anterior</button>
+      </form>
       <a class="button secondary" href="{{ route('financial-categories.index', $requiresClinic ? ['clinic_id' => $selectedClinicId] : []) }}">Categorias</a>
       <a class="button" href="{{ route('financial-results.index', ['competence' => $filters['competence'], 'basis' => $filters['basis']]) }}">Resultado gerencial</a>
     </div>
@@ -60,6 +69,31 @@
     <div class="alert warning">
       Há {{ $excluded_without_date }} lançamento(s) sem a data exigida pela visão escolhida; eles não entram no realizado.
     </div>
+  @endif
+
+  @if($expense_alerts->isNotEmpty())
+    <section class="panel budget-alert-panel" aria-labelledby="budget-alert-title">
+      <div class="panel-heading">
+        <div>
+          <h2 id="budget-alert-title">Alertas do orçamento</h2>
+          <p>{{ $stats['expense_alerts_count'] }} categoria(s) exigem atenção, com R$ {{ number_format($stats['expense_overrun_cents'] / 100, 2, ',', '.') }} acima do total planejado.</p>
+        </div>
+        <span class="badge danger">Atenção</span>
+      </div>
+      <div class="budget-alert-list">
+        @foreach($expense_alerts as $alert)
+          <a class="budget-alert-item" href="#budget-expenses">
+            <span>
+              <strong>{{ $alert['category_name'] }}</strong>
+              <small>{{ $alert['unplanned'] ? 'Despesa sem orçamento definido' : 'Limite mensal ultrapassado' }}</small>
+            </span>
+            <strong>R$ {{ number_format($alert['excess_cents'] / 100, 2, ',', '.') }} acima</strong>
+          </a>
+        @endforeach
+      </div>
+    </section>
+  @else
+    <div class="alert success"><strong>Orçamento sob controle:</strong> nenhuma despesa ultrapassou o limite planejado nesta visão.</div>
   @endif
 
   <section class="grid stats budget-stats">
@@ -114,7 +148,7 @@
     @endif
 
     @foreach(['income' => ['title' => 'Orçamento de entradas', 'description' => 'Metas de receita por categoria.', 'rows' => $income_rows], 'expense' => ['title' => 'Orçamento de saídas', 'description' => 'Limites de despesa por categoria.', 'rows' => $expense_rows]] as $group)
-      <section class="panel budget-panel">
+      <section class="panel budget-panel" @if($loop->last) id="budget-expenses" @endif>
         <div class="panel-heading">
           <div>
             <h2>{{ $group['title'] }}</h2>

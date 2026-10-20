@@ -38,6 +38,9 @@ Route::get('financial-budgets', [FinancialBudgetController::class, 'index'])
 Route::put('financial-budgets', [FinancialBudgetController::class, 'update'])
     ->name('financial-budgets.update');
 
+Route::post('financial-budgets/copy-previous', [FinancialBudgetController::class, 'copyPrevious'])
+    ->name('financial-budgets.copy-previous');
+
 Route::patch('financial-transactions/{financial_transaction}/pay', [FinancialTransactionController::class, 'pay'])
     ->name('financial-transactions.pay');
 

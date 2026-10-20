@@ -127,8 +127,13 @@ realized views used by the managerial result.
 - Legacy movements without a category remain visible as non-editable,
   unplanned rows so the comparison still reconciles with the managerial result.
 - Inactive categories remain visible to preserve and revise historical plans.
+- The previous month's positive values can be copied into empty categories of
+  the selected month. Existing destination values are always preserved.
+- An automatic alert summary identifies expense categories above their monthly
+  limit and movements that have no planned amount.
 - Submitted categories must belong to the selected clinic. Budget changes are
-  recorded in the audit trail without exposing unrelated clinic data.
+  recorded in the audit trail without exposing unrelated clinic data; copied
+  values keep the source and destination competencies in their audit metadata.
 
 ## Tenant Rules
 

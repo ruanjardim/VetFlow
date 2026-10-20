@@ -24,6 +24,7 @@ class FinancialBudgetService
      *   stats: array<string, int>,
      *   income_rows: Collection<int, array<string, mixed>>,
      *   expense_rows: Collection<int, array<string, mixed>>,
+     *   expense_alerts: Collection<int, array<string, mixed>>,
      *   excluded_without_date: int
      * }
      */
@@ -78,6 +79,17 @@ class FinancialBudgetService
         $actualExpense = (int) $expenseRows->sum('actual_cents');
         $plannedBalance = $plannedIncome - $plannedExpense;
         $actualBalance = $actualIncome - $actualExpense;
+        $expenseAlerts = $expenseRows
+            ->filter(fn (array $row): bool => $row['actual_cents'] > $row['planned_cents'])
+            ->map(fn (array $row): array => [
+                'category_id' => $row['category_id'],
+                'category_name' => $row['category_name'],
+                'planned_cents' => $row['planned_cents'],
+                'actual_cents' => $row['actual_cents'],
+                'excess_cents' => $row['actual_cents'] - $row['planned_cents'],
+                'unplanned' => $row['planned_cents'] === 0,
+            ])
+            ->values();
 
         return [
             'filters' => [
@@ -100,10 +112,87 @@ class FinancialBudgetService
                 'planned_balance_cents' => $plannedBalance,
                 'actual_balance_cents' => $actualBalance,
                 'balance_variance_cents' => $actualBalance - $plannedBalance,
+                'expense_alerts_count' => $expenseAlerts->count(),
+                'expense_overrun_cents' => (int) $expenseAlerts->sum('excess_cents'),
             ],
             'income_rows' => $incomeRows,
             'expense_rows' => $expenseRows,
+            'expense_alerts' => $expenseAlerts,
             'excluded_without_date' => $actual['stats']['excluded_without_date'],
+        ];
+    }
+
+    /** @return array{source_label: string, copied_count: int, preserved_count: int} */
+    public function copyPrevious(int $clinicId, string $competence): array
+    {
+        $target = CarbonImmutable::createFromFormat('Y-m-d', $competence.'-01')->startOfMonth();
+        $source = $target->subMonth();
+        $categories = $this->categories->forClinic($clinicId)->keyBy('id');
+        $sourceBudgets = FinancialBudget::query()
+            ->withoutGlobalScope('clinic_tenant')
+            ->where('clinic_id', $clinicId)
+            ->whereDate('competence', $source->toDateString())
+            ->whereIn('financial_category_id', $categories->keys())
+            ->get()
+            ->filter(fn (FinancialBudget $budget): bool => $this->cents($budget->amount) > 0);
+        $existingCategoryIds = FinancialBudget::query()
+            ->withoutGlobalScope('clinic_tenant')
+            ->where('clinic_id', $clinicId)
+            ->whereDate('competence', $target->toDateString())
+            ->whereIn('financial_category_id', $sourceBudgets->pluck('financial_category_id'))
+            ->pluck('financial_category_id')
+            ->map(fn ($id): int => (int) $id)
+            ->all();
+        $copiedCount = 0;
+
+        DB::transaction(function () use (
+            $clinicId,
+            $target,
+            $source,
+            $categories,
+            $sourceBudgets,
+            $existingCategoryIds,
+            &$copiedCount
+        ): void {
+            foreach ($sourceBudgets as $sourceBudget) {
+                if (in_array((int) $sourceBudget->financial_category_id, $existingCategoryIds, true)) {
+                    continue;
+                }
+
+                $category = $categories->get((int) $sourceBudget->financial_category_id);
+                if (! $category instanceof FinancialCategory) {
+                    continue;
+                }
+
+                $budget = FinancialBudget::query()->withoutGlobalScope('clinic_tenant')->create([
+                    'clinic_id' => $clinicId,
+                    'financial_category_id' => $category->id,
+                    'competence' => $target->toDateString(),
+                    'amount' => $this->money($this->cents($sourceBudget->amount)),
+                ]);
+                $copiedCount++;
+
+                $this->audit->record(
+                    'financial.budget.copied',
+                    $budget,
+                    [],
+                    ['amount' => $budget->amount],
+                    metadata: [
+                        'source_competence' => $source->format('Y-m'),
+                        'competence' => $target->format('Y-m'),
+                        'category_id' => $category->id,
+                        'category_type' => $category->type,
+                    ],
+                    clinicId: $clinicId,
+                    subjectLabel: $category->name.' • '.$target->format('m/Y')
+                );
+            }
+        });
+
+        return [
+            'source_label' => $source->locale('pt_BR')->translatedFormat('F/Y'),
+            'copied_count' => $copiedCount,
+            'preserved_count' => count($existingCategoryIds),
         ];
     }
 

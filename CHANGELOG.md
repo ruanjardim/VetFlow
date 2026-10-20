@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-10-20
+
+- Added safe previous-month budget copying that preserves existing destination
+  values, plus automatic alerts for expense overruns and unplanned spending.
+
 ## 2026-10-19
 
 - Added clinic-scoped monthly budgets by financial category, with Brazilian

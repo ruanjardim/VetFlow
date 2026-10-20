@@ -1,6 +1,6 @@
 # VetFlow Status
 
-Updated: 2026-10-19
+Updated: 2026-10-20
 
 ## Current State
 
@@ -51,7 +51,8 @@ The local working tree was clean before this documentation pass.
 - Finance now also has clinic-scoped monthly budgets by category. Managers set
   expected income and expense values and compare them with cash or operational-
   competence actuals, including execution percentages, variances, explicit
-  unclassified movement and audited budget changes (see
+  unclassified movement, automatic expense-overrun alerts, safe copying of the
+  previous month into empty categories and audited budget changes (see
   `docs/modules/financial.md`).
 - Fiscal foundation: clinic-scoped, homologation-only NFC-e/NFS-e settings,
   manual and idempotent preparation from completed sales, immutable business

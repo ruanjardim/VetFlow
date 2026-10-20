@@ -3,6 +3,7 @@
 namespace App\Modules\Financial\Controllers;
 
 use App\Modules\Clinics\Models\Clinic;
+use App\Modules\Financial\Requests\CopyPreviousFinancialBudgetRequest;
 use App\Modules\Financial\Requests\FinancialBudgetRequest;
 use App\Modules\Financial\Requests\SaveFinancialBudgetRequest;
 use App\Modules\Financial\Services\FinancialBudgetService;
@@ -49,6 +50,37 @@ class FinancialBudgetController
                 ...$this->routeClinic($clinicId),
             ])
             ->with('success', 'Orçamento mensal atualizado com sucesso.');
+    }
+
+    public function copyPrevious(CopyPreviousFinancialBudgetRequest $request): RedirectResponse
+    {
+        $data = $request->validated();
+        $clinicId = $this->selectedClinicId($data);
+        $result = $this->budgets->copyPrevious($clinicId, $data['competence']);
+        $route = [
+            'competence' => $data['competence'],
+            'basis' => $data['basis'],
+            ...$this->routeClinic($clinicId),
+        ];
+
+        if ($result['copied_count'] === 0 && $result['preserved_count'] === 0) {
+            return redirect()
+                ->route('financial-budgets.index', $route)
+                ->with('warning', 'O mês anterior não possui valores de orçamento para copiar.');
+        }
+
+        $message = $result['copied_count'] === 1
+            ? '1 valor copiado de '.$result['source_label'].'.'
+            : $result['copied_count'].' valores copiados de '.$result['source_label'].'.';
+        if ($result['preserved_count'] > 0) {
+            $message .= $result['preserved_count'] === 1
+                ? ' 1 valor já preenchido foi preservado.'
+                : ' '.$result['preserved_count'].' valores já preenchidos foram preservados.';
+        }
+
+        return redirect()
+            ->route('financial-budgets.index', $route)
+            ->with($result['copied_count'] > 0 ? 'success' : 'warning', $message);
     }
 
     /** @param array<string, mixed> $filters */

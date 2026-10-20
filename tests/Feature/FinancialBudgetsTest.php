@@ -35,11 +35,13 @@ class FinancialBudgetsTest extends TestCase
         $categories->ensureDefaults($clinic->id);
         $sales = $this->category($clinic, FinancialCategory::CODE_SALES);
         $purchases = $this->category($clinic, FinancialCategory::CODE_INVENTORY_PURCHASES);
+        $otherExpenses = $this->category($clinic, FinancialCategory::CODE_OTHER_EXPENSES);
 
         $this->budget($clinic, $sales, 200);
         $this->budget($clinic, $purchases, 70);
         $this->transaction($clinic, $sales, 'income', 150, 'paid', '2026-10-05', '2026-10-05 09:00:00');
         $this->transaction($clinic, $purchases, 'expense', 80, 'paid', '2026-10-06', '2026-10-06 09:00:00');
+        $this->transaction($clinic, $otherExpenses, 'expense', 15, 'paid', '2026-10-07', '2026-10-07 09:00:00');
 
         [$otherClinic] = $this->context('Clínica Orçamento Externa', '00000000000992');
         $categories->ensureDefaults($otherClinic->id);
@@ -59,6 +61,10 @@ class FinancialBudgetsTest extends TestCase
             ->assertSee('R$ 80,00')
             ->assertSee('Abaixo do previsto')
             ->assertSee('Acima do previsto')
+            ->assertSee('Alertas do orçamento')
+            ->assertSee('R$ 10,00 acima')
+            ->assertSee('Despesa sem orçamento definido')
+            ->assertSee('R$ 15,00 acima')
             ->assertDontSee('R$ 999,00');
     }
 
@@ -152,6 +158,70 @@ class FinancialBudgetsTest extends TestCase
             ->assertDontSee('R$ 111,00');
     }
 
+    public function test_copy_previous_budget_preserves_existing_values_and_audits_only_copied_categories(): void
+    {
+        CarbonImmutable::setTestNow('2026-10-19 10:00:00');
+        [$clinic, $user] = $this->context('Clínica Copiar Orçamento', '00000000000997');
+        $categories = app(FinancialCategoryService::class);
+        $categories->ensureDefaults($clinic->id);
+        $sales = $this->category($clinic, FinancialCategory::CODE_SALES);
+        $purchases = $this->category($clinic, FinancialCategory::CODE_INVENTORY_PURCHASES);
+
+        $this->budget($clinic, $sales, 200, '2026-09-01');
+        $this->budget($clinic, $purchases, 70, '2026-09-01');
+        $this->budget($clinic, $sales, 999, '2026-10-01');
+
+        [$otherClinic] = $this->context('Clínica Copiar Orçamento Externa', '00000000000998');
+        $categories->ensureDefaults($otherClinic->id);
+        $foreignPurchases = $this->category($otherClinic, FinancialCategory::CODE_INVENTORY_PURCHASES);
+        $this->budget($otherClinic, $foreignPurchases, 777, '2026-09-01');
+
+        $this->actingAs($user)->post(route('financial-budgets.copy-previous'), [
+            'competence' => '2026-10',
+            'basis' => 'cash',
+        ])
+            ->assertRedirect(route('financial-budgets.index', [
+                'competence' => '2026-10',
+                'basis' => 'cash',
+            ]))
+            ->assertSessionHas('success', fn (string $message): bool => str_contains($message, '1 valor copiado'));
+
+        $this->assertSame('999.00', FinancialBudget::query()
+            ->where('financial_category_id', $sales->id)
+            ->whereDate('competence', '2026-10-01')
+            ->value('amount'));
+        $this->assertSame('70.00', FinancialBudget::query()
+            ->where('financial_category_id', $purchases->id)
+            ->whereDate('competence', '2026-10-01')
+            ->value('amount'));
+        $this->assertDatabaseMissing('financial_budgets', [
+            'clinic_id' => $clinic->id,
+            'financial_category_id' => $foreignPurchases->id,
+            'competence' => '2026-10-01',
+        ]);
+        $this->assertSame(1, AuditEvent::query()->where('event', 'financial.budget.copied')->count());
+        $this->assertSame('2026-09', AuditEvent::query()
+            ->where('event', 'financial.budget.copied')
+            ->firstOrFail()
+            ->metadata['source_competence']);
+    }
+
+    public function test_copy_previous_budget_warns_when_source_month_has_no_values(): void
+    {
+        CarbonImmutable::setTestNow('2026-10-19 10:00:00');
+        [, $user] = $this->context('Clínica Sem Orçamento Anterior', '00000000000999');
+
+        $this->actingAs($user)->post(route('financial-budgets.copy-previous'), [
+            'competence' => '2026-10',
+            'basis' => 'cash',
+        ])
+            ->assertRedirect(route('financial-budgets.index', [
+                'competence' => '2026-10',
+                'basis' => 'cash',
+            ]))
+            ->assertSessionHas('warning', 'O mês anterior não possui valores de orçamento para copiar.');
+    }
+
     /** @return array{Clinic, User} */
     private function context(string $name, string $cnpj): array
     {
@@ -194,12 +264,16 @@ class FinancialBudgetsTest extends TestCase
             ->firstOrFail();
     }
 
-    private function budget(Clinic $clinic, FinancialCategory $category, float $amount): FinancialBudget
-    {
+    private function budget(
+        Clinic $clinic,
+        FinancialCategory $category,
+        float $amount,
+        string $competence = '2026-10-01'
+    ): FinancialBudget {
         return FinancialBudget::query()->withoutGlobalScope('clinic_tenant')->create([
             'clinic_id' => $clinic->id,
             'financial_category_id' => $category->id,
-            'competence' => '2026-10-01',
+            'competence' => $competence,
             'amount' => $amount,
         ]);
     }
