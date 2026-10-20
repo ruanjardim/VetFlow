@@ -34,7 +34,7 @@ This index maps the current code modules and the documentation that should event
 | Reports | Reporting area | Pending implementation/doc review |
 | Sales | Sales, sale items, payments, returns, cash register support | Documented in [Sales](sales.md) |
 | Saas | Commercial plans, subscription entitlements, limits, overrides, and transactional client onboarding | Documented in [SaaS Foundation](saas.md) |
-| Commissions | Seller commission rules and period previews | Documented in [Commissions](commissions.md) |
+| Commissions | Seller commission rules, detailed previews, immutable settlements and linked payables | Documented in [Commissions](commissions.md) |
 | Schedules | Scheduling base | Covered in [Clinical Core](clinical-core.md) |
 | ServiceOrders | Bath and grooming bookings, agenda, operational board, and service orders | Documented in [PetShop Operations](petshop-operations.md) |
 | Suppliers | Supplier management | Documented in [Suppliers](suppliers.md) |

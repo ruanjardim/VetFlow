@@ -77,7 +77,7 @@ class FinancialObligationController
                     $transaction->type === 'income' ? 'A receber' : 'A pagar',
                     $this->csvSafe($transaction->description),
                     $this->csvSafe($transaction->category?->name ?? 'Sem categoria'),
-                    $this->csvSafe($transaction->supplier?->name ?: ($transaction->sale ? 'Venda '.$transaction->sale->code : '')),
+                    $this->csvSafe($this->originLabel($transaction)),
                     $this->statusLabel($transaction),
                     number_format((float) $transaction->amount, 2, ',', '.'),
                     (int) $transaction->installment_total > 1
@@ -171,5 +171,18 @@ class FinancialObligationController
         }
 
         return $transaction->due_date?->isToday() ? 'Vence hoje' : 'A vencer';
+    }
+
+    private function originLabel(mixed $transaction): string
+    {
+        if ($transaction->salesCommissionSettlement) {
+            return 'Comissão de vendas · '.($transaction->salesCommissionSettlement->seller?->name ?? '-');
+        }
+
+        if ($transaction->groomingCommissionSettlement) {
+            return 'Comissão Banho & Tosa · '.($transaction->groomingCommissionSettlement->user?->name ?? '-');
+        }
+
+        return $transaction->supplier?->name ?: ($transaction->sale ? 'Venda '.$transaction->sale->code : '');
     }
 }

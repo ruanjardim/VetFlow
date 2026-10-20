@@ -113,6 +113,7 @@
                 default => '-',
               };
             @endphp
+            @php($commissionSettlement = $transaction->salesCommissionSettlement ?: $transaction->groomingCommissionSettlement)
             <tr>
               <td>
                 {{ $transaction->description }}
@@ -121,6 +122,8 @@
                 @endif
                 @if($transaction->sale)
                   <div class="muted">Gerenciado pela venda {{ $transaction->sale->code }}.</div>
+                @elseif($commissionSettlement)
+                  <div class="muted">Gerenciado por fechamento de comissão.</div>
                 @endif
               </td>
               <td>{{ $typeLabel }}</td>
@@ -129,7 +132,11 @@
               <td>R$ {{ number_format((float) $transaction->amount, 2, ',', '.') }}</td>
               <td>{{ optional($transaction->due_date)->format('d/m/Y') }}</td>
               <td>
-                @if($transaction->purchaseEntry)
+                @if($transaction->salesCommissionSettlement)
+                  Comissão de vendas
+                @elseif($transaction->groomingCommissionSettlement)
+                  Comissão do Banho &amp; Tosa
+                @elseif($transaction->purchaseEntry)
                   <a href="{{ route('purchase-entries.edit', $transaction->purchaseEntry->id) }}">{{ $transaction->purchaseEntry->code }}</a>
                   <div class="muted">{{ $transaction->reference ?: $transaction->purchaseEntry->invoice_number }}</div>
                 @else
@@ -146,7 +153,7 @@
               <td>
                 @if($transaction->sale)
                   <a class="button secondary" href="{{ route('sales.edit', $transaction->sale->id) }}">Abrir venda</a>
-                @else
+                @elseif(! $commissionSettlement)
                   <a class="button secondary" href="{{ route('financial-transactions.edit', $transaction->id) }}">Editar</a>
                 @endif
                 @if(! $transaction->sale && $transaction->status !== 'paid' && $transaction->status !== 'cancelled')
@@ -155,13 +162,15 @@
                     @method('PATCH')
                     <button type="submit">Pagar</button>
                   </form>
-                  <form class="inline" action="{{ route('financial-transactions.cancel', $transaction->id) }}" method="POST">
-                    @csrf
-                    @method('PATCH')
-                    <button class="secondary" type="submit" data-confirm="Cancelar este lancamento?">Cancelar</button>
-                  </form>
+                  @if(! $commissionSettlement)
+                    <form class="inline" action="{{ route('financial-transactions.cancel', $transaction->id) }}" method="POST">
+                      @csrf
+                      @method('PATCH')
+                      <button class="secondary" type="submit" data-confirm="Cancelar este lancamento?">Cancelar</button>
+                    </form>
+                  @endif
                 @endif
-                @if(! $transaction->sale)
+                @if(! $transaction->sale && ! $commissionSettlement)
                   <form class="inline" action="{{ route('financial-transactions.destroy', $transaction->id) }}" method="POST">
                     @csrf
                     @method('DELETE')

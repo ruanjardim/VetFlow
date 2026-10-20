@@ -81,7 +81,7 @@ class FinancialObligationService
                 $today,
             )
         )
-            ->with(['category', 'supplier', 'purchaseEntry', 'sale'])
+            ->with(['category', 'supplier', 'purchaseEntry', 'sale', 'salesCommissionSettlement.seller', 'groomingCommissionSettlement.user'])
             ->paginate(30)
             ->withQueryString();
 
@@ -126,7 +126,7 @@ class FinancialObligationService
                     $today,
                 )
             )
-                ->with(['category', 'supplier', 'sale'])
+                ->with(['category', 'supplier', 'sale', 'salesCommissionSettlement.seller', 'groomingCommissionSettlement.user'])
                 ->get(),
         ];
     }

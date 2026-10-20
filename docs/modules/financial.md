@@ -16,6 +16,8 @@ manual financial records, and dashboard/cash-flow summaries.
   expenses.
 - Automatically classify sales, purchase entries, commissions, refunds, card
   fees, cash expenses, and assisted financial imports.
+- Receive immutable seller-commission settlements as protected payables whose
+  payment can be recorded without altering the source closure.
 - Link payables to suppliers and purchase entries.
 - Link sale income to completed sales through `sales.financial_transaction_id`.
 - Keep sale-generated income read-only in Finance; receipts, cancellations, and
@@ -56,6 +58,8 @@ manual financial records, and dashboard/cash-flow summaries.
 - `financial_transactions`
 - `financial_categories`
 - `financial_budgets`
+- `sales_commission_settlements`
+- `sales_commission_settlement_items`
 - `purchase_entries`
 - `suppliers`
 - `sales`
@@ -70,6 +74,10 @@ manual financial records, and dashboard/cash-flow summaries.
 - Purchase entries can create multiple installment rows for the same purchase.
 - Sale returns can create expense transactions for refunds without cancelling
   the original sale income.
+- A sales-commission settlement creates one pending expense categorized as
+  `Commissions`. Its amount, cancellation and deletion are protected because
+  the financial row is the payment side of an immutable source closure; the
+  normal `Pay` action remains available.
 - Each clinic receives a small default chart of categories lazily on first
   financial use. Stable internal codes classify system-generated transactions;
   display names remain editable.
@@ -202,3 +210,5 @@ isolation are covered by `tests/Feature/FinancialBudgetsTest.php`.
 The payable/receivable center, computed due-date states, aging composition,
 private CSV, append-only reviews, validation and global clinic selection are
 covered by `tests/Feature/FinancialObligationCenterTest.php`.
+Seller-commission payable creation, origin display and mutation protection are
+covered by `tests/Feature/SalesCommissionSettlementTest.php`.

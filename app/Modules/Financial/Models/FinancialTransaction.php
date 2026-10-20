@@ -4,6 +4,8 @@ namespace App\Modules\Financial\Models;
 
 use App\Models\Concerns\BelongsToClinicTenant;
 use App\Modules\Clinics\Models\Clinic;
+use App\Modules\Commissions\Models\GroomingCommissionSettlement;
+use App\Modules\Commissions\Models\SalesCommissionSettlement;
 use App\Modules\PurchaseEntries\Models\PurchaseEntry;
 use App\Modules\Sales\Models\Sale;
 use App\Modules\Suppliers\Models\Supplier;
@@ -57,5 +59,15 @@ class FinancialTransaction extends Model
     public function sale(): HasOne
     {
         return $this->hasOne(Sale::class, 'financial_transaction_id');
+    }
+
+    public function salesCommissionSettlement(): HasOne
+    {
+        return $this->hasOne(SalesCommissionSettlement::class, 'financial_transaction_id');
+    }
+
+    public function groomingCommissionSettlement(): HasOne
+    {
+        return $this->hasOne(GroomingCommissionSettlement::class, 'financial_transaction_id');
     }
 }

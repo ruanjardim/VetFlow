@@ -3,10 +3,13 @@
 namespace App\Modules\Commissions\Controllers;
 
 use App\Core\Base\BaseCrudController;
+use App\Models\User;
 use App\Modules\Clinics\Models\Clinic;
 use App\Modules\Commissions\Requests\StoreCommissionRuleRequest;
+use App\Modules\Commissions\Requests\StoreSalesCommissionSettlementRequest;
 use App\Modules\Commissions\Requests\UpdateCommissionRuleRequest;
 use App\Modules\Commissions\Services\CommissionService;
+use Illuminate\Http\RedirectResponse;
 
 class CommissionController extends BaseCrudController
 {
@@ -23,7 +26,31 @@ class CommissionController extends BaseCrudController
         return view('commissions.index', [
             'rules' => $this->service->paginate(),
             'preview' => $this->service->preview(request()->query('from'), request()->query('to')),
+            'settlements' => $this->service->recentSettlements(),
         ]);
+    }
+
+    public function settle(StoreSalesCommissionSettlementRequest $request): RedirectResponse
+    {
+        $data = $request->validated();
+        $actor = $request->user();
+        abort_unless($actor instanceof User, 403);
+        $settlement = $this->service->settle(
+            $actor,
+            (int) $data['seller_user_id'],
+            $data['from'],
+            $data['to'],
+            $data['due_date'],
+            $data['notes'] ?? null,
+        );
+
+        return redirect()
+            ->route('commissions.index', ['from' => $data['from'], 'to' => $data['to']])
+            ->with('success', sprintf(
+                'Fechamento de R$ %s criado para %s. A conta a pagar já está no Financeiro.',
+                number_format((float) $settlement->total, 2, ',', '.'),
+                $settlement->seller?->name ?? 'o vendedor',
+            ));
     }
 
     public function create()

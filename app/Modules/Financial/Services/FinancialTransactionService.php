@@ -25,7 +25,7 @@ class FinancialTransactionService extends BaseService
     public function paginate(int $perPage = 15, array $filters = []): LengthAwarePaginator
     {
         return FinancialTransaction::query()
-            ->with(['supplier', 'purchaseEntry', 'sale', 'category'])
+            ->with(['supplier', 'purchaseEntry', 'sale', 'category', 'salesCommissionSettlement', 'groomingCommissionSettlement'])
             ->when($filters['purchase_entry_id'] ?? null, fn ($query, $purchaseEntryId) => $query->where('purchase_entry_id', $purchaseEntryId))
             ->when($filters['supplier_id'] ?? null, fn ($query, $supplierId) => $query->where('supplier_id', $supplierId))
             ->when($filters['status'] ?? null, fn ($query, $status) => $query->where('status', $status))
@@ -40,7 +40,7 @@ class FinancialTransactionService extends BaseService
     public function findOrFail(int $id): Model
     {
         return FinancialTransaction::query()
-            ->with(['supplier', 'purchaseEntry', 'sale', 'category'])
+            ->with(['supplier', 'purchaseEntry', 'sale', 'category', 'salesCommissionSettlement', 'groomingCommissionSettlement'])
             ->findOrFail($id);
     }
 
@@ -55,8 +55,10 @@ class FinancialTransactionService extends BaseService
 
     public function update(int $id, array $data): Model
     {
-        $transaction = FinancialTransaction::query()->with('sale')->findOrFail($id);
-        $this->ensureNotManagedBySale($transaction);
+        $transaction = FinancialTransaction::query()
+            ->with(['sale', 'salesCommissionSettlement', 'groomingCommissionSettlement'])
+            ->findOrFail($id);
+        $this->ensureEditable($transaction);
 
         if (
             (array_key_exists('financial_category_id', $data) && empty($data['financial_category_id']))
@@ -70,8 +72,10 @@ class FinancialTransactionService extends BaseService
 
     public function delete(int $id): bool
     {
-        $transaction = FinancialTransaction::query()->with('sale')->findOrFail($id);
-        $this->ensureNotManagedBySale($transaction);
+        $transaction = FinancialTransaction::query()
+            ->with(['sale', 'salesCommissionSettlement', 'groomingCommissionSettlement'])
+            ->findOrFail($id);
+        $this->ensureEditable($transaction);
 
         return parent::delete($transaction->id);
     }
@@ -91,8 +95,10 @@ class FinancialTransactionService extends BaseService
 
     public function cancel(int $id): FinancialTransaction
     {
-        $transaction = FinancialTransaction::query()->with('sale')->findOrFail($id);
-        $this->ensureNotManagedBySale($transaction);
+        $transaction = FinancialTransaction::query()
+            ->with(['sale', 'salesCommissionSettlement', 'groomingCommissionSettlement'])
+            ->findOrFail($id);
+        $this->ensureEditable($transaction);
 
         $transaction->update([
             'status' => 'cancelled',
@@ -207,6 +213,19 @@ class FinancialTransactionService extends BaseService
 
         throw ValidationException::withMessages([
             'transaction' => 'Este recebimento pertence a uma venda. Registre recebimentos, devolucoes ou cancelamentos pelo PDV.',
+        ]);
+    }
+
+    private function ensureEditable(FinancialTransaction $transaction): void
+    {
+        $this->ensureNotManagedBySale($transaction);
+
+        if (! $transaction->salesCommissionSettlement && ! $transaction->groomingCommissionSettlement) {
+            return;
+        }
+
+        throw ValidationException::withMessages([
+            'transaction' => 'Esta conta a pagar pertence a um fechamento de comissões. Faça a baixa no Financeiro, sem alterar ou cancelar o valor de origem.',
         ]);
     }
 

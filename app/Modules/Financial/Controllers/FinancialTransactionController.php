@@ -61,6 +61,12 @@ class FinancialTransactionController extends BaseCrudController
                 ->with('error', 'Este recebimento pertence a uma venda. Use o PDV para receber, devolver ou cancelar.');
         }
 
+        if ($transaction->salesCommissionSettlement || $transaction->groomingCommissionSettlement) {
+            return redirect()
+                ->route('financial-transactions.index')
+                ->with('error', 'Esta conta pertence a um fechamento de comissões. O valor e a origem são preservados; use somente a baixa de pagamento.');
+        }
+
         return view("{$this->viewPath}.edit", [
             'item' => $transaction,
             'suppliers' => $this->suppliers(),

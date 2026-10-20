@@ -10,6 +10,9 @@ Route::get('commissions/grooming', [GroomingCommissionController::class, 'index'
 Route::post('commissions/grooming/settlements', [GroomingCommissionController::class, 'settle'])
     ->name('grooming-commissions.settle');
 
+Route::post('commissions/settlements', [CommissionController::class, 'settle'])
+    ->name('commissions.settle');
+
 Route::resource('commissions', CommissionController::class)
     ->except(['show', 'destroy'])
     ->names('commissions');

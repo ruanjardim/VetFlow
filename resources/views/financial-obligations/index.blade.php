@@ -200,12 +200,24 @@
               </td>
               <td>{{ $transaction->type === 'income' ? 'A receber' : 'A pagar' }}</td>
               <td>{{ $transaction->category?->name ?: 'Sem categoria' }}</td>
-              <td>{{ $transaction->supplier?->name ?: ($transaction->sale ? 'Venda '.$transaction->sale->code : '-') }}</td>
+              <td>
+                @if($transaction->salesCommissionSettlement)
+                  Comissão de vendas · {{ $transaction->salesCommissionSettlement->seller?->name ?? '-' }}
+                @elseif($transaction->groomingCommissionSettlement)
+                  Comissão Banho &amp; Tosa · {{ $transaction->groomingCommissionSettlement->user?->name ?? '-' }}
+                @else
+                  {{ $transaction->supplier?->name ?: ($transaction->sale ? 'Venda '.$transaction->sale->code : '-') }}
+                @endif
+              </td>
               <td><span class="badge {{ $isOverdue ? 'danger' : ($transaction->status === 'paid' ? 'success' : '') }}">{{ $statusLabel }}</span></td>
               <td><strong>R$ {{ number_format((float) $transaction->amount, 2, ',', '.') }}</strong></td>
               <td>
                 @if($transaction->sale)
                   <a class="button secondary" href="{{ route('sales.edit', $transaction->sale->id) }}">Abrir venda</a>
+                @elseif($transaction->salesCommissionSettlement)
+                  <a class="button secondary" href="{{ route('commissions.index', ['from' => $transaction->salesCommissionSettlement->period_start->toDateString(), 'to' => $transaction->salesCommissionSettlement->period_end->toDateString()]) }}">Abrir comissão</a>
+                @elseif($transaction->groomingCommissionSettlement)
+                  <a class="button secondary" href="{{ route('grooming-commissions.index', ['from' => $transaction->groomingCommissionSettlement->period_start->toDateString(), 'to' => $transaction->groomingCommissionSettlement->period_end->toDateString()]) }}">Abrir comissão</a>
                 @else
                   <a class="button secondary" href="{{ route('financial-transactions.edit', $transaction->id) }}">Abrir lançamento</a>
                 @endif
