@@ -52,8 +52,9 @@ The local working tree was clean before this documentation pass.
   expected income and expense values and compare them with cash or operational-
   competence actuals, including execution percentages, variances, explicit
   unclassified movement, automatic expense-overrun alerts, safe copying of the
-  previous month into empty categories and audited budget changes (see
-  `docs/modules/financial.md`).
+  previous month into empty categories, a private formula-safe CSV, exact
+  drilldown into composing ledger entries, a rolling 12-month comparison and a
+  visible tenant-safe audit history (see `docs/modules/financial.md`).
 - Fiscal foundation: clinic-scoped, homologation-only NFC-e/NFS-e settings,
   manual and idempotent preparation from completed sales, immutable business
   snapshots, and attributed lifecycle events. Homologation transmission has a

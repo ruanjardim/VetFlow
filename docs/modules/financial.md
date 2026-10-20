@@ -43,8 +43,8 @@ manual financial records, and dashboard/cash-flow summaries.
 | `FinancialCategory` | Clinic-scoped chart-of-accounts category. |
 | `FinancialManagerialResultController` | Monthly result screen and safe CSV export. |
 | `FinancialManagerialResultService` | Cash/competence aggregation by category using exact cents. |
-| `FinancialBudgetController` | Monthly budget screen and update action. |
-| `FinancialBudgetService` | Clinic-scoped planned-versus-realized comparison and audited saves. |
+| `FinancialBudgetController` | Monthly budget screen, safe CSV export, actual-composition detail and update/copy actions. |
+| `FinancialBudgetService` | Clinic-scoped comparison, 12-month history, transaction drilldown and audit history. |
 | `FinancialBudget` | One planned amount per clinic, category and monthly competence. |
 
 ## Tables
@@ -131,6 +131,16 @@ realized views used by the managerial result.
   the selected month. Existing destination values are always preserved.
 - An automatic alert summary identifies expense categories above their monthly
   limit and movements that have no planned amount.
+- The complete comparison can be exported as a private, no-cache and
+  formula-safe UTF-8 CSV using exactly the selected clinic, month and basis.
+- Every realized value links to the exact clinic-scoped ledger entries that
+  compose it. The detail preserves the selected month, basis and category,
+  including the explicit legacy `Sem categoria` group.
+- A rolling 12-month table compares planned and realized income, expenses and
+  balance without changing the selected month's editable budget.
+- The screen exposes the latest budget updates and copies for the selected
+  competence, including responsible user, time, changed value and source month
+  when applicable. The audit list never crosses clinic boundaries.
 - Submitted categories must belong to the selected clinic. Budget changes are
   recorded in the audit trail without exposing unrelated clinic data; copied
   values keep the source and destination competencies in their audit metadata.
@@ -154,5 +164,6 @@ immutability, tenant isolation, type validation and filtering are covered by
 `tests/Feature/FinancialCategoriesTest.php`. The monthly cash/competence
 result, category grouping, tenant isolation and safe CSV are covered by
 `tests/Feature/FinancialManagerialResultTest.php`. Monthly budget comparison,
-Brazilian currency normalization, audit behavior and tenant isolation are
-covered by `tests/Feature/FinancialBudgetsTest.php`.
+Brazilian currency normalization, copy safety, alerts, private CSV export,
+exact transaction composition, 12-month history, audit display and tenant
+isolation are covered by `tests/Feature/FinancialBudgetsTest.php`.

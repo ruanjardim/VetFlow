@@ -12,6 +12,18 @@ This document defines the working process for technical changes in VetFlow.
 6. Run the relevant validation commands.
 7. Summarize what changed, what was validated, and what remains risky.
 
+## Five-Task Delivery Cycle
+
+Normal product evolution is organized into cost-aware cycles of five approved
+tasks. Each task receives its own focused local validation, while the repository
+push, remote CI execution and Hostinger production deployment are consolidated
+after task five. This reduces repeated deployment and CI consumption without
+weakening the validation performed during implementation.
+
+An urgent correction or explicitly requested hotfix may be released outside the
+cycle. In that case, record the exception in the delivery summary and start the
+next five-task cycle from zero.
+
 ## Before Editing
 
 Run:

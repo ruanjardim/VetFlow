@@ -9,6 +9,7 @@
       <p>Planeje entradas e saídas por categoria e acompanhe o previsto contra o realizado.</p>
     </div>
     <div class="actions">
+      <a class="button secondary" href="{{ route('financial-budgets.export', ['competence' => $filters['competence'], 'basis' => $filters['basis'], ...($requiresClinic ? ['clinic_id' => $selectedClinicId] : [])]) }}">Exportar CSV</a>
       <form method="POST" action="{{ route('financial-budgets.copy-previous') }}" class="inline">
         @csrf
         <input type="hidden" name="competence" value="{{ $filters['competence'] }}">
@@ -82,7 +83,7 @@
       </div>
       <div class="budget-alert-list">
         @foreach($expense_alerts as $alert)
-          <a class="budget-alert-item" href="#budget-expenses">
+          <a class="budget-alert-item" href="{{ route('financial-budgets.transactions', ['competence' => $filters['competence'], 'basis' => $filters['basis'], 'type' => 'expense', ...($alert['category_id'] ? ['financial_category_id' => $alert['category_id']] : []), ...($requiresClinic ? ['clinic_id' => $selectedClinicId] : [])]) }}">
             <span>
               <strong>{{ $alert['category_name'] }}</strong>
               <small>{{ $alert['unplanned'] ? 'Despesa sem orçamento definido' : 'Limite mensal ultrapassado' }}</small>
@@ -165,6 +166,7 @@
                 <th>Diferença</th>
                 <th>Execução</th>
                 <th>Situação</th>
+                <th>Composição</th>
               </tr>
             </thead>
             <tbody>
@@ -201,6 +203,15 @@
                   </td>
                   <td>{{ $row['execution_percent'] === null ? '—' : number_format($row['execution_percent'], 2, ',', '.').'%' }}</td>
                   <td><span class="badge {{ $row['status_class'] }}">{{ $row['status_label'] }}</span></td>
+                  <td>
+                    @if($row['transactions_count'] > 0)
+                      <a href="{{ route('financial-budgets.transactions', ['competence' => $filters['competence'], 'basis' => $filters['basis'], 'type' => $row['type'], ...($row['category_id'] ? ['financial_category_id' => $row['category_id']] : []), ...($requiresClinic ? ['clinic_id' => $selectedClinicId] : [])]) }}">
+                        Ver {{ $row['transactions_count'] }} {{ $row['transactions_count'] === 1 ? 'lançamento' : 'lançamentos' }}
+                      </a>
+                    @else
+                      <span class="muted">Sem lançamentos</span>
+                    @endif
+                  </td>
                 </tr>
               @endforeach
             </tbody>
@@ -213,4 +224,95 @@
       <button type="submit">Salvar orçamento de {{ $reference['label'] }}</button>
     </div>
   </form>
+
+  <section class="panel budget-history-panel">
+    <div class="panel-heading">
+      <div>
+        <h2>Histórico de 12 meses</h2>
+        <p>Evolução mensal do orçamento e do realizado na visão {{ strtolower($basisLabels[$filters['basis']]) }}.</p>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table class="financial-budget-history-table">
+        <thead>
+          <tr>
+            <th>Competência</th>
+            <th>Entradas previstas</th>
+            <th>Entradas realizadas</th>
+            <th>Saídas previstas</th>
+            <th>Saídas realizadas</th>
+            <th>Saldo previsto</th>
+            <th>Saldo realizado</th>
+            <th>Diferença do saldo</th>
+          </tr>
+        </thead>
+        <tbody>
+          @foreach($history as $month)
+            <tr class="{{ $month['selected'] ? 'budget-history-current' : '' }}">
+              <td>
+                <a href="{{ route('financial-budgets.index', ['competence' => $month['competence'], 'basis' => $filters['basis'], ...($requiresClinic ? ['clinic_id' => $selectedClinicId] : [])]) }}">
+                  <strong>{{ $month['label'] }}</strong>
+                </a>
+                @if($month['selected']) <span class="badge success">Atual</span> @endif
+              </td>
+              <td>R$ {{ number_format($month['planned_income_cents'] / 100, 2, ',', '.') }}</td>
+              <td>R$ {{ number_format($month['actual_income_cents'] / 100, 2, ',', '.') }}</td>
+              <td>R$ {{ number_format($month['planned_expense_cents'] / 100, 2, ',', '.') }}</td>
+              <td>R$ {{ number_format($month['actual_expense_cents'] / 100, 2, ',', '.') }}</td>
+              <td>R$ {{ number_format($month['planned_balance_cents'] / 100, 2, ',', '.') }}</td>
+              <td>R$ {{ number_format($month['actual_balance_cents'] / 100, 2, ',', '.') }}</td>
+              <td class="{{ $month['balance_variance_cents'] < 0 ? 'text-danger' : '' }}">
+                {{ $month['balance_variance_cents'] >= 0 ? '+' : '-' }} R$ {{ number_format(abs($month['balance_variance_cents']) / 100, 2, ',', '.') }}
+              </td>
+            </tr>
+          @endforeach
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="panel budget-audit-panel">
+    <div class="panel-heading">
+      <div>
+        <h2>Alterações do orçamento</h2>
+        <p>Últimas atualizações registradas para {{ $reference['label'] }}.</p>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table class="financial-budget-audit-table">
+        <thead>
+          <tr>
+            <th>Data</th>
+            <th>Ação</th>
+            <th>Categoria</th>
+            <th>Responsável</th>
+            <th>Alteração</th>
+          </tr>
+        </thead>
+        <tbody>
+          @forelse($audit_history as $event)
+            <tr>
+              <td>{{ $event['occurred_at']?->format('d/m/Y H:i') }}</td>
+              <td>
+                {{ $event['label'] }}
+                @if($event['source_competence'])
+                  <div class="muted">Origem: {{ \Carbon\CarbonImmutable::createFromFormat('Y-m-d', $event['source_competence'].'-01')->format('m/Y') }}</div>
+                @endif
+              </td>
+              <td>{{ $event['subject_label'] }}</td>
+              <td>{{ $event['actor_name'] }}</td>
+              <td>
+                @if($event['before_cents'] !== null)
+                  R$ {{ number_format($event['before_cents'] / 100, 2, ',', '.') }} →
+                @endif
+                {{ $event['after_cents'] === null ? '—' : 'R$ '.number_format($event['after_cents'] / 100, 2, ',', '.') }}
+              </td>
+            </tr>
+          @empty
+            <tr><td colspan="5" class="muted">Nenhuma alteração registrada para esta competência.</td></tr>
+          @endforelse
+        </tbody>
+      </table>
+    </div>
+  </section>
 @endsection

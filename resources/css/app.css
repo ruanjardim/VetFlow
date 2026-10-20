@@ -1117,7 +1117,36 @@ button.danger {
 }
 
 .financial-budget-table {
-  min-width: 780px;
+  min-width: 940px;
+}
+
+.budget-history-panel,
+.budget-audit-panel {
+  margin-top: 18px;
+}
+
+.financial-budget-history-table {
+  min-width: 1120px;
+}
+
+.financial-budget-audit-table {
+  min-width: 820px;
+}
+
+.budget-history-current {
+  background: #ecfdf5;
+}
+
+.grid.stats.budget-detail-stats {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.budget-detail-stats .stat strong {
+  overflow-wrap: anywhere;
+}
+
+.financial-budget-detail-table {
+  min-width: 820px;
 }
 
 .budget-amount-input {

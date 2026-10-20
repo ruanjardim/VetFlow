@@ -35,6 +35,12 @@ Route::get('financial-results/export', [FinancialManagerialResultController::cla
 Route::get('financial-budgets', [FinancialBudgetController::class, 'index'])
     ->name('financial-budgets.index');
 
+Route::get('financial-budgets/export', [FinancialBudgetController::class, 'export'])
+    ->name('financial-budgets.export');
+
+Route::get('financial-budgets/transactions', [FinancialBudgetController::class, 'transactions'])
+    ->name('financial-budgets.transactions');
+
 Route::put('financial-budgets', [FinancialBudgetController::class, 'update'])
     ->name('financial-budgets.update');
 

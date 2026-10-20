@@ -4,6 +4,13 @@
 
 - Added safe previous-month budget copying that preserves existing destination
   values, plus automatic alerts for expense overruns and unplanned spending.
+- Completed the monthly-budget review workflow with a private formula-safe CSV,
+  exact drilldown into the transactions behind each realized value, a rolling
+  12-month planned-versus-realized history and tenant-safe on-screen audit
+  history.
+- Documented the cost-aware five-task delivery cycle: local validation remains
+  continuous, while GitHub/CI and Hostinger publication are consolidated after
+  the fifth approved task unless an urgent release is explicitly requested.
 
 ## 2026-10-19
 

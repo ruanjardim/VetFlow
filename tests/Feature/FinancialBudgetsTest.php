@@ -222,6 +222,138 @@ class FinancialBudgetsTest extends TestCase
             ->assertSessionHas('warning', 'O mês anterior não possui valores de orçamento para copiar.');
     }
 
+    public function test_budget_csv_is_private_formula_safe_and_tenant_scoped(): void
+    {
+        CarbonImmutable::setTestNow('2026-10-20 10:00:00');
+        [$clinic, $user] = $this->context('Clínica Exportar Orçamento', '00000000001001');
+        $category = app(FinancialCategoryService::class)->create($clinic->id, [
+            'type' => 'expense',
+            'name' => '=Despesa perigosa',
+            'active' => true,
+            'sort_order' => 5,
+        ]);
+        $this->budget($clinic, $category, 123.45);
+        $this->transaction($clinic, $category, 'expense', 150.75, 'paid', '2026-10-10', '2026-10-10 12:00:00');
+
+        [$otherClinic] = $this->context('Clínica Exportar Externa', '00000000001002');
+        $foreignCategory = app(FinancialCategoryService::class)->create($otherClinic->id, [
+            'type' => 'expense',
+            'name' => 'Despesa externa',
+            'active' => true,
+            'sort_order' => 5,
+        ]);
+        $this->budget($otherClinic, $foreignCategory, 999);
+        $this->transaction($otherClinic, $foreignCategory, 'expense', 999, 'paid', '2026-10-10', '2026-10-10 12:00:00');
+
+        $response = $this->actingAs($user)->get(route('financial-budgets.export', [
+            'competence' => '2026-10',
+            'basis' => 'cash',
+        ]))
+            ->assertOk()
+            ->assertHeader('content-type', 'text/csv; charset=UTF-8')
+            ->assertHeader('x-content-type-options', 'nosniff')
+            ->assertHeader('x-robots-tag', 'noindex, nofollow');
+
+        $this->assertStringContainsString('no-store', (string) $response->headers->get('cache-control'));
+        $csv = $response->streamedContent();
+        $this->assertStringContainsString("'=Despesa perigosa", $csv);
+        $this->assertStringContainsString('123,45', $csv);
+        $this->assertStringContainsString('150,75', $csv);
+        $this->assertStringNotContainsString('Despesa externa', $csv);
+        $this->assertStringNotContainsString('999,00', $csv);
+    }
+
+    public function test_budget_transaction_composition_uses_the_exact_basis_month_category_and_tenant(): void
+    {
+        CarbonImmutable::setTestNow('2026-10-20 10:00:00');
+        [$clinic, $user] = $this->context('Clínica Composição Orçamento', '00000000001003');
+        $categories = app(FinancialCategoryService::class);
+        $categories->ensureDefaults($clinic->id);
+        $purchases = $this->category($clinic, FinancialCategory::CODE_INVENTORY_PURCHASES);
+        $otherExpenses = $this->category($clinic, FinancialCategory::CODE_OTHER_EXPENSES);
+        $this->transaction($clinic, $purchases, 'expense', 80, 'paid', '2026-10-06', '2026-10-06 09:00:00');
+        $this->transaction($clinic, $purchases, 'expense', 81, 'pending', '2026-10-07');
+        $this->transaction($clinic, $purchases, 'expense', 82, 'paid', '2026-09-30', '2026-09-30 09:00:00');
+        $this->transaction($clinic, $otherExpenses, 'expense', 83, 'paid', '2026-10-08', '2026-10-08 09:00:00');
+
+        [$otherClinic] = $this->context('Clínica Composição Externa', '00000000001004');
+        $categories->ensureDefaults($otherClinic->id);
+        $foreignPurchases = $this->category($otherClinic, FinancialCategory::CODE_INVENTORY_PURCHASES);
+        $this->transaction($otherClinic, $foreignPurchases, 'expense', 999, 'paid', '2026-10-06', '2026-10-06 09:00:00');
+
+        $this->actingAs($user)->get(route('financial-budgets.transactions', [
+            'competence' => '2026-10',
+            'basis' => 'cash',
+            'type' => 'expense',
+            'financial_category_id' => $purchases->id,
+        ]))
+            ->assertOk()
+            ->assertSee('Composição do realizado')
+            ->assertSee('R$ 80,00')
+            ->assertDontSee('R$ 81,00')
+            ->assertDontSee('R$ 82,00')
+            ->assertDontSee('R$ 83,00')
+            ->assertDontSee('R$ 999,00');
+
+        $this->get(route('financial-budgets.transactions', [
+            'competence' => '2026-10',
+            'basis' => 'competence',
+            'type' => 'expense',
+            'financial_category_id' => $purchases->id,
+        ]))
+            ->assertOk()
+            ->assertSee('R$ 80,00')
+            ->assertSee('R$ 81,00')
+            ->assertDontSee('R$ 82,00');
+
+        $this->get(route('financial-budgets.transactions', [
+            'competence' => '2026-10',
+            'basis' => 'cash',
+            'type' => 'expense',
+            'financial_category_id' => $foreignPurchases->id,
+        ]))->assertNotFound();
+    }
+
+    public function test_budget_screen_shows_twelve_month_history_and_scoped_audit_events(): void
+    {
+        CarbonImmutable::setTestNow('2026-10-20 10:00:00');
+        [$clinic, $user] = $this->context('Clínica Histórico Orçamento', '00000000001005');
+        $categories = app(FinancialCategoryService::class);
+        $categories->ensureDefaults($clinic->id);
+        $sales = $this->category($clinic, FinancialCategory::CODE_SALES);
+        $this->budget($clinic, $sales, 321.45, '2026-09-01');
+        $this->transaction($clinic, $sales, 'income', 300.25, 'paid', '2026-09-15', '2026-09-15 09:00:00');
+
+        $this->actingAs($user)->put(route('financial-budgets.update'), [
+            'competence' => '2026-10',
+            'basis' => 'cash',
+            'budgets' => [$sales->id => '500,00'],
+        ])->assertSessionHas('success');
+
+        [$otherClinic, $otherUser] = $this->context('Clínica Histórico Externa', '00000000001006');
+        $categories->ensureDefaults($otherClinic->id);
+        $foreignSales = $this->category($otherClinic, FinancialCategory::CODE_SALES);
+        $this->actingAs($otherUser)->put(route('financial-budgets.update'), [
+            'competence' => '2026-10',
+            'basis' => 'cash',
+            'budgets' => [$foreignSales->id => '999,00'],
+        ])->assertSessionHas('success');
+
+        $this->actingAs($user)->get(route('financial-budgets.index', [
+            'competence' => '2026-10',
+            'basis' => 'cash',
+        ]))
+            ->assertOk()
+            ->assertSee('Histórico de 12 meses')
+            ->assertSee('09/2026')
+            ->assertSee('R$ 321,45')
+            ->assertSee('R$ 300,25')
+            ->assertSee('Alterações do orçamento')
+            ->assertSee('Valor atualizado')
+            ->assertSee($user->name)
+            ->assertDontSee('R$ 999,00');
+    }
+
     /** @return array{Clinic, User} */
     private function context(string $name, string $cnpj): array
     {

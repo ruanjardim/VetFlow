@@ -41,3 +41,13 @@ php artisan route:list
 ```
 
 If a validation command cannot be run, explain why in the final response.
+
+## Cost-Aware Release Cycles
+
+- Unless the user requests an urgent release or a hotfix, group product evolution
+  into cycles of five approved tasks.
+- Validate each task locally as it is completed, but perform the consolidated
+  commit/push, remote CI run and Hostinger production deployment only after all
+  five tasks in the cycle are complete.
+- Keep the five-task boundary visible in progress updates. Do not publish a
+  partial cycle silently.
