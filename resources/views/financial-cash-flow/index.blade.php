@@ -19,6 +19,7 @@
       <p>Saldo acumulado diário e semanal com base nos lançamentos registrados no VetFlow.</p>
     </div>
     <div class="actions">
+      <a class="button secondary" href="{{ route('financial-bank-reconciliation.index', $requiresClinic ? ['clinic_id' => $selectedClinicId] : []) }}">Conciliação bancária</a>
       <a class="button secondary" href="{{ route('financial-obligations.index', $requiresClinic ? ['clinic_id' => $selectedClinicId] : []) }}">Contas a pagar e receber</a>
       <a class="button secondary" href="{{ route('financial-results.index') }}">Resultado gerencial</a>
       <a class="button secondary" href="{{ route('financial-transactions.index') }}">Lançamentos</a>

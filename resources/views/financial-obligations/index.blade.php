@@ -21,6 +21,7 @@
     <div class="actions">
       <a class="button secondary" href="{{ route('financial-obligations.export', $routeFilters) }}">Exportar CSV</a>
       <a class="button secondary" href="{{ route('financial-transactions.cash-flow') }}">Fluxo de caixa</a>
+      <a class="button secondary" href="{{ route('financial-bank-reconciliation.index', $requiresClinic ? ['clinic_id' => $selectedClinicId] : []) }}">Conciliação bancária</a>
       <a class="button secondary" href="{{ route('financial-transactions.index') }}">Ver lançamentos</a>
       <a class="button" href="{{ route('financial-transactions.create') }}">Novo lançamento</a>
     </div>

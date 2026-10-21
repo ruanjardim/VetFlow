@@ -1,6 +1,6 @@
 # VetFlow Status
 
-Updated: 2026-10-20
+Updated: 2026-10-21
 
 ## Current State
 
@@ -55,6 +55,13 @@ The local working tree was clean before this documentation pass.
   previous month into empty categories, a private formula-safe CSV, exact
   drilldown into composing ledger entries, a rolling 12-month comparison and a
   visible tenant-safe audit history (see `docs/modules/financial.md`).
+- Finance now has assisted bank reconciliation. Each clinic registers its own
+  financial accounts, imports bounded CSV or OFX statements with file- and
+  row-level duplicate protection, reviews exact-value/date-window suggestions,
+  and manually confirms or reverses a one-to-one match with an attributed
+  audit trail. The workflow never changes the source ledger automatically,
+  retains no uploaded statement file and exports only a private formula-safe
+  composition (see `docs/modules/financial.md`).
 - Fiscal foundation: clinic-scoped, homologation-only NFC-e/NFS-e settings,
   manual and idempotent preparation from completed sales, immutable business
   snapshots, and attributed lifecycle events. Homologation transmission has a

@@ -26,6 +26,8 @@ manual financial records, and dashboard/cash-flow summaries.
 - Mark transactions as paid.
 - Cancel transactions.
 - Produce daily and weekly cash-flow projections with explicit operational assumptions.
+- Reconcile imported bank statements with paid ledger entries through an
+  explicitly human-confirmed, auditable workflow.
 - Provide a clinic-scoped operational center for accounts payable and
   receivable by due-date period, type and computed situation.
 - Produce a monthly managerial result by category, with cash and operational
@@ -42,6 +44,9 @@ manual financial records, and dashboard/cash-flow summaries.
 | `FinancialTransactionService` | Ledger filtering, creation and protected state changes. |
 | `FinancialCashFlowController` | Projection filters, daily composition and safe CSV export. |
 | `FinancialCashFlowService` | Exact-cent opening balance, daily/weekly projection and scenario calculation. |
+| `FinancialBankReconciliationController` | Account management, statement intake, confirmation, reversal and safe CSV export. |
+| `FinancialBankReconciliationService` | Tenant-safe statement ledger, deterministic suggestions and append-only audit orchestration. |
+| `FinancialStatementParser` | Bounded CSV/OFX parsing and Brazilian/ISO date and amount normalization. |
 | `FinancialObligationController` | Due-date center and global-clinic selection. |
 | `FinancialObligationService` | Read-only accounts payable/receivable totals and filtered rows. |
 | `FinancialTransactionRepository` | Data access. |
@@ -60,6 +65,10 @@ manual financial records, and dashboard/cash-flow summaries.
 - `financial_transactions`
 - `financial_categories`
 - `financial_budgets`
+- `financial_accounts`
+- `financial_statement_imports`
+- `financial_statement_entries`
+- `financial_reconciliations`
 - `sales_commission_settlements`
 - `sales_commission_settlement_items`
 - `purchase_entries`
@@ -149,6 +158,40 @@ view over the existing financial ledger.
 - Every query is constrained to one clinic, including the explicit clinic
   selector used by global administrators.
 
+## Assisted Bank Reconciliation
+
+The protected `Conciliação bancária` screen closes the gap between the
+operational VetFlow ledger and an external bank statement without pretending
+that an imported file is already reconciled.
+
+- Each account belongs to one clinic and can be deactivated without deleting
+  its statement or reconciliation history. Only the final four account digits
+  are optionally stored; credentials and full account numbers are not needed.
+- CSV/TXT intake requires date, description and amount columns; an optional
+  stable identifier improves duplicate detection. OFX intake reads only
+  transaction date, amount, FITID and memo/name. Files are bounded to 5 MB and
+  5,000 rows and are not retained after parsing.
+- The file hash blocks accidental re-import of the same file. A per-account
+  fingerprint also ignores repeated statement rows across overlapping files.
+- Positive statement values are treated as income candidates and negative
+  values as expense candidates. Suggestions require a paid VetFlow entry with
+  the exact same type and value and a payment date within seven days.
+- A suggestion never creates, pays, edits or cancels a financial transaction.
+  An operator must confirm it, and both the statement row and the ledger row
+  can participate in only one active reconciliation.
+- A confirmed match can be reversed only with a bounded reason. Confirmation
+  and reversal produce attributed audit events; the original ledger remains
+  unchanged.
+- The dashboard exposes credits, debits, net movement, reconciled movement and
+  pending count for the filtered statement period. The net movement is
+  explicitly not presented as the bank account's opening or closing balance.
+- The selected composition can be exported as a private, no-cache,
+  formula-safe UTF-8 CSV. All account, import, statement, suggestion,
+  confirmation, reversal and export queries are constrained to one clinic.
+- The first supported match is one bank row to one paid VetFlow transaction.
+  Aggregated card settlements, bank fees netted from deposits and split
+  matching remain explicit pending work rather than receiving a false match.
+
 ## Monthly Managerial Result
 
 The protected `Resultado gerencial` screen compares income, expenses and the
@@ -230,3 +273,7 @@ covered by `tests/Feature/SalesCommissionSettlementTest.php`.
 Daily and weekly projection, overdue scenarios, exact composition, CSV safety,
 validation and tenant isolation are covered by
 `tests/Feature/FinancialCashFlowProjectionTest.php`.
+Financial-account lifecycle, CSV/OFX parsing, duplicate protection,
+deterministic suggestions, manual confirmation/reversal, immutable ledger
+behavior, private export and tenant isolation are covered by
+`tests/Feature/FinancialBankReconciliationTest.php`.

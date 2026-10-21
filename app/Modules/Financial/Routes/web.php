@@ -1,5 +1,6 @@
 <?php
 
+use App\Modules\Financial\Controllers\FinancialBankReconciliationController;
 use App\Modules\Financial\Controllers\FinancialBudgetController;
 use App\Modules\Financial\Controllers\FinancialCashFlowController;
 use App\Modules\Financial\Controllers\FinancialCategoryController;
@@ -7,6 +8,23 @@ use App\Modules\Financial\Controllers\FinancialManagerialResultController;
 use App\Modules\Financial\Controllers\FinancialObligationController;
 use App\Modules\Financial\Controllers\FinancialTransactionController;
 use Illuminate\Support\Facades\Route;
+
+Route::get('financial-bank-reconciliation', [FinancialBankReconciliationController::class, 'index'])
+    ->name('financial-bank-reconciliation.index');
+Route::get('financial-bank-reconciliation/export', [FinancialBankReconciliationController::class, 'export'])
+    ->name('financial-bank-reconciliation.export');
+Route::post('financial-bank-reconciliation/accounts', [FinancialBankReconciliationController::class, 'storeAccount'])
+    ->name('financial-bank-reconciliation.accounts.store');
+Route::put('financial-bank-reconciliation/accounts/{account}', [FinancialBankReconciliationController::class, 'updateAccount'])
+    ->whereNumber('account')
+    ->name('financial-bank-reconciliation.accounts.update');
+Route::post('financial-bank-reconciliation/imports', [FinancialBankReconciliationController::class, 'importStatement'])
+    ->name('financial-bank-reconciliation.imports.store');
+Route::post('financial-bank-reconciliation/reconciliations', [FinancialBankReconciliationController::class, 'reconcile'])
+    ->name('financial-bank-reconciliation.reconciliations.store');
+Route::patch('financial-bank-reconciliation/reconciliations/{reconciliation}/reverse', [FinancialBankReconciliationController::class, 'reverse'])
+    ->whereNumber('reconciliation')
+    ->name('financial-bank-reconciliation.reconciliations.reverse');
 
 Route::get('financial-categories', [FinancialCategoryController::class, 'index'])
     ->name('financial-categories.index');

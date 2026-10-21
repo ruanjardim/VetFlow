@@ -14,7 +14,7 @@ This index maps the current code modules and the documentation that should event
 | Clinics | Clinic administration and tenant foundation | Documented in [Clinics](clinics.md) |
 | Dashboard | Operational dashboard data and widgets | Documented in [Dashboard](dashboard.md) |
 | Finance | Finance-related area | Pending review; overlaps with Financial |
-| Financial | Ledger, cash flow, payable/receivable aging, managerial result and monthly budgets | Documented in [Financial](financial.md) |
+| Financial | Ledger, projected cash flow, payable/receivable aging, assisted bank reconciliation, managerial result and monthly budgets | Documented in [Financial](financial.md) |
 | Fiscal | NFC-e/NFS-e preparation, competence-based document center and safe export, daily reconciliation, assisted return review and dossiers, searchable period-closing history and dossiers, reviewed mixed-sale allocation, clinic-owned Focus connection, homologation gate, recovery and NFC-e range inutilization | Documented in [Fiscal](fiscal.md) |
 | Implementation | Assisted imports, data-quality review, versioned pilot planning, and evidence-bound readiness decisions | Documented in [Implementation](implementation.md) |
 | Inventory | Stock movement and lot/expiration control | Documented in [Inventory](inventory.md) |

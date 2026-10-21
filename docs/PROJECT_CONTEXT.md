@@ -56,6 +56,15 @@ Run setup with Composer, npm, migrations, and the Laravel server as described in
 
 ## Current Delivery Focus
 
+The financial area now distinguishes operational projection from bank
+evidence. Clinics can register their own financial accounts and import bounded
+CSV/OFX statements without retaining the source file. Deterministic suggestions
+only compare paid VetFlow entries with the same direction and exact value in a
+seven-day window; an operator must confirm every one-to-one match, and any
+reversal requires a recorded reason. Those actions are tenant-scoped and audited and never mutate
+the original ledger. Aggregated or split settlements remain pending instead of
+being falsely reconciled.
+
 The repository now includes public project documentation, CI, a visual
 walkthrough, assisted onboarding imports, resilient NF-e/product lookup,
 actionable dashboard priorities, clinic-scoped collaborator management, and

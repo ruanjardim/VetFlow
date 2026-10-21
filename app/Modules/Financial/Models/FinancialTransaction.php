@@ -11,6 +11,7 @@ use App\Modules\Sales\Models\Sale;
 use App\Modules\Suppliers\Models\Supplier;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
@@ -69,5 +70,10 @@ class FinancialTransaction extends Model
     public function groomingCommissionSettlement(): HasOne
     {
         return $this->hasOne(GroomingCommissionSettlement::class, 'financial_transaction_id');
+    }
+
+    public function bankReconciliations(): HasMany
+    {
+        return $this->hasMany(FinancialReconciliation::class);
     }
 }

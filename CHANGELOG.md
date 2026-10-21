@@ -2,6 +2,12 @@
 
 ## 2026-10-21
 
+- Added clinic-scoped assisted bank reconciliation with financial-account
+  registration, bounded CSV/OFX parsing, file and row duplicate protection,
+  deterministic same-type/exact-value suggestions, human confirmation and
+  reasoned reversal, attributed audit events, pending coverage indicators and
+  a private formula-safe CSV. Imported files are not retained and no ledger
+  entry is mutated by the matching workflow.
 - Replaced the basic cash-flow cards with a clinic-scoped 15/30/60/90-day
   projection. The new view preserves an explicit operational opening balance,
   separates realized, scheduled, overdue and undated movements, highlights
