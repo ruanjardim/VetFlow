@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-10-21
+
+- Replaced the basic cash-flow cards with a clinic-scoped 15/30/60/90-day
+  projection. The new view preserves an explicit operational opening balance,
+  separates realized, scheduled, overdue and undated movements, highlights
+  negative-balance days, groups the same evidence weekly, exposes exact daily
+  composition and exports a private formula-safe CSV without mutating ledger
+  rows or pretending to be a bank reconciliation.
+
 ## 2026-10-20
 
 - Added safe previous-month budget copying that preserves existing destination

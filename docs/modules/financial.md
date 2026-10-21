@@ -25,7 +25,7 @@ manual financial records, and dashboard/cash-flow summaries.
   previews, stock, and financial status remain synchronized.
 - Mark transactions as paid.
 - Cancel transactions.
-- Produce cash-flow summary data.
+- Produce daily and weekly cash-flow projections with explicit operational assumptions.
 - Provide a clinic-scoped operational center for accounts payable and
   receivable by due-date period, type and computed situation.
 - Produce a monthly managerial result by category, with cash and operational
@@ -39,7 +39,9 @@ manual financial records, and dashboard/cash-flow summaries.
 | Class | Role |
 | --- | --- |
 | `FinancialTransactionController` | Web CRUD and pay/cancel actions. |
-| `FinancialTransactionService` | Filtering, state changes, and cash-flow summary. |
+| `FinancialTransactionService` | Ledger filtering, creation and protected state changes. |
+| `FinancialCashFlowController` | Projection filters, daily composition and safe CSV export. |
+| `FinancialCashFlowService` | Exact-cent opening balance, daily/weekly projection and scenario calculation. |
 | `FinancialObligationController` | Due-date center and global-clinic selection. |
 | `FinancialObligationService` | Read-only accounts payable/receivable totals and filtered rows. |
 | `FinancialTransactionRepository` | Data access. |
@@ -95,16 +97,29 @@ manual financial records, and dashboard/cash-flow summaries.
 - Imported rows are standalone single-installment transactions and are not
   linked to Purchase Entries.
 
-## Cash Flow Summary
+## Cash Flow Projection
 
-The service calculates:
+The protected cash-flow screen projects the ledger for 15, 30, 60 or 90 days.
 
-- paid income and expenses for the current month;
-- month balance;
-- pending income and expenses;
-- overdue income and expenses;
-- amounts due in the next seven days;
-- upcoming and overdue transaction lists.
+- The opening balance is the cumulative difference between paid income and
+  expenses recorded before the selected starting date. It is explicitly
+  labelled as a VetFlow operational balance, not a reconciled bank balance.
+- Paid movements inside the period use `paid_at`; open movements use their due
+  date. Cancelled movements never enter the projection.
+- Overdue open movements are always quantified. The operator can either assume
+  them on the first projected day or keep them visible as risk without changing
+  the accumulated scenario. This choice never pays or reschedules a row.
+- Active entries without a due date are excluded and shown as pending
+  classification work with separate income and expense totals.
+- Daily rows expose realized, scheduled and overdue amounts, net movement,
+  accumulated balance and the exact source composition. A weekly table groups
+  the same rows without changing or duplicating values.
+- The screen identifies the first negative day, the lowest projected balance
+  and the number of negative days in the selected horizon.
+- The complete projection and source composition can be exported as a private,
+  no-cache, formula-safe UTF-8 CSV.
+- Every query is constrained to one clinic, including the explicit clinic
+  selector used by global administrators.
 
 ## Accounts Payable And Receivable
 
@@ -212,3 +227,6 @@ private CSV, append-only reviews, validation and global clinic selection are
 covered by `tests/Feature/FinancialObligationCenterTest.php`.
 Seller-commission payable creation, origin display and mutation protection are
 covered by `tests/Feature/SalesCommissionSettlementTest.php`.
+Daily and weekly projection, overdue scenarios, exact composition, CSV safety,
+validation and tenant isolation are covered by
+`tests/Feature/FinancialCashFlowProjectionTest.php`.

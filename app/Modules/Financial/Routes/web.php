@@ -1,6 +1,7 @@
 <?php
 
 use App\Modules\Financial\Controllers\FinancialBudgetController;
+use App\Modules\Financial\Controllers\FinancialCashFlowController;
 use App\Modules\Financial\Controllers\FinancialCategoryController;
 use App\Modules\Financial\Controllers\FinancialManagerialResultController;
 use App\Modules\Financial\Controllers\FinancialObligationController;
@@ -24,8 +25,14 @@ Route::put('financial-categories/{financialCategory}', [FinancialCategoryControl
     ->whereNumber('financialCategory')
     ->name('financial-categories.update');
 
-Route::get('financial-transactions/cash-flow', [FinancialTransactionController::class, 'cashFlow'])
+Route::get('financial-transactions/cash-flow', [FinancialCashFlowController::class, 'index'])
     ->name('financial-transactions.cash-flow');
+
+Route::get('financial-transactions/cash-flow/export', [FinancialCashFlowController::class, 'export'])
+    ->name('financial-transactions.cash-flow.export');
+
+Route::get('financial-transactions/cash-flow/transactions', [FinancialCashFlowController::class, 'transactions'])
+    ->name('financial-transactions.cash-flow.transactions');
 
 Route::get('financial-results', [FinancialManagerialResultController::class, 'index'])
     ->name('financial-results.index');

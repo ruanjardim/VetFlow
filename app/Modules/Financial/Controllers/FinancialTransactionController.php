@@ -46,11 +46,6 @@ class FinancialTransactionController extends BaseCrudController
         ]);
     }
 
-    public function cashFlow()
-    {
-        return view("{$this->viewPath}.cash-flow", $this->service->cashFlowSummary());
-    }
-
     public function edit(int $id)
     {
         $transaction = $this->service->findOrFail($id);

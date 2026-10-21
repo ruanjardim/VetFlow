@@ -9,7 +9,6 @@ use App\Modules\Financial\Models\FinancialTransaction;
 use App\Support\Tenancy\TenantContext;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Collection;
 use Illuminate\Validation\ValidationException;
 
 class FinancialTransactionService extends BaseService
@@ -106,103 +105,6 @@ class FinancialTransactionService extends BaseService
         ]);
 
         return $transaction->refresh();
-    }
-
-    public function cashFlowSummary(): array
-    {
-        $monthStart = now()->startOfMonth();
-        $monthEnd = now()->endOfMonth();
-        $nextWeek = today()->addDays(7);
-
-        $incomeMonth = $this->paidTotal('income', $monthStart, $monthEnd);
-        $expenseMonth = $this->paidTotal('expense', $monthStart, $monthEnd);
-
-        return [
-            'stats' => [
-                'income_month' => $incomeMonth,
-                'expense_month' => $expenseMonth,
-                'balance_month' => $incomeMonth - $expenseMonth,
-                'income_pending' => $this->pendingTotal('income'),
-                'expense_pending' => $this->pendingTotal('expense'),
-                'income_overdue' => $this->overdueTotal('income'),
-                'expense_overdue' => $this->overdueTotal('expense'),
-                'income_next_7_days' => $this->dueBetweenTotal('income', today(), $nextWeek),
-                'expense_next_7_days' => $this->dueBetweenTotal('expense', today(), $nextWeek),
-            ],
-            'upcoming' => $this->upcomingTransactions(),
-            'overdue' => $this->overdueTransactions(),
-        ];
-    }
-
-    private function paidTotal(string $type, mixed $from, mixed $to): float
-    {
-        return (float) FinancialTransaction::query()
-            ->where('type', $type)
-            ->where('status', 'paid')
-            ->whereBetween('paid_at', [$from, $to])
-            ->sum('amount');
-    }
-
-    private function pendingTotal(string $type): float
-    {
-        return (float) FinancialTransaction::query()
-            ->where('type', $type)
-            ->where('status', 'pending')
-            ->sum('amount');
-    }
-
-    private function overdueTotal(string $type): float
-    {
-        return (float) FinancialTransaction::query()
-            ->where('type', $type)
-            ->where(function ($query) {
-                $query
-                    ->where('status', 'overdue')
-                    ->orWhere(function ($query) {
-                        $query
-                            ->where('status', 'pending')
-                            ->whereDate('due_date', '<', today());
-                    });
-            })
-            ->sum('amount');
-    }
-
-    private function dueBetweenTotal(string $type, mixed $from, mixed $to): float
-    {
-        return (float) FinancialTransaction::query()
-            ->where('type', $type)
-            ->where('status', 'pending')
-            ->whereBetween('due_date', [$from, $to])
-            ->sum('amount');
-    }
-
-    private function upcomingTransactions(): Collection
-    {
-        return FinancialTransaction::query()
-            ->with(['supplier', 'purchaseEntry', 'sale'])
-            ->where('status', 'pending')
-            ->whereBetween('due_date', [today(), today()->addDays(15)])
-            ->orderBy('due_date')
-            ->limit(12)
-            ->get();
-    }
-
-    private function overdueTransactions(): Collection
-    {
-        return FinancialTransaction::query()
-            ->with(['supplier', 'purchaseEntry', 'sale'])
-            ->where(function ($query) {
-                $query
-                    ->where('status', 'overdue')
-                    ->orWhere(function ($query) {
-                        $query
-                            ->where('status', 'pending')
-                            ->whereDate('due_date', '<', today());
-                    });
-            })
-            ->orderBy('due_date')
-            ->limit(12)
-            ->get();
     }
 
     private function ensureNotManagedBySale(FinancialTransaction $transaction): void
