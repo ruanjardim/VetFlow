@@ -233,6 +233,7 @@ class FinancialBankReconciliationService
             ->with([
                 'activeReconciliation.financialTransaction.category',
                 'activeReconciliation.reconciledBy',
+                'latestReconciliation.reversedBy',
                 'statementImport',
             ])
             ->orderByDesc('posted_at')
@@ -300,6 +301,12 @@ class FinancialBankReconciliationService
             }
 
             $distance = abs($entry->posted_at->diffInDays(CarbonImmutable::parse($transaction->paid_at)));
+            if ($distance > 7 && blank($data['note'] ?? null)) {
+                throw ValidationException::withMessages([
+                    'note' => 'Explique a conferência manual quando as datas estiverem separadas por mais de 7 dias.',
+                ]);
+            }
+
             $reconciliation = FinancialReconciliation::query()->withoutGlobalScope('clinic_tenant')->create([
                 'clinic_id' => $clinicId,
                 'financial_statement_entry_id' => $entry->id,
@@ -376,7 +383,11 @@ class FinancialBankReconciliationService
             'filters' => $filters,
             'account' => $account,
             'rows' => $this->applyStatus($this->entryQuery($filters), $filters['status'])
-                ->with(['activeReconciliation.financialTransaction.category', 'activeReconciliation.reconciledBy'])
+                ->with([
+                    'activeReconciliation.financialTransaction.category',
+                    'activeReconciliation.reconciledBy',
+                    'latestReconciliation.reversedBy',
+                ])
                 ->orderByDesc('posted_at')
                 ->orderByDesc('id')
                 ->get(),
@@ -459,6 +470,13 @@ class FinancialBankReconciliationService
         $credits = $rows->filter(fn (FinancialStatementEntry $entry): bool => $this->moneyCents($entry->amount) > 0);
         $debits = $rows->filter(fn (FinancialStatementEntry $entry): bool => $this->moneyCents($entry->amount) < 0);
         $reconciled = $rows->filter(fn (FinancialStatementEntry $entry): bool => $entry->activeReconciliation !== null);
+        $pending = $rows->filter(fn (FinancialStatementEntry $entry): bool => $entry->activeReconciliation === null);
+        $reconciledCents = $reconciled->sum(fn (FinancialStatementEntry $entry): int => abs($this->moneyCents($entry->amount)));
+        $totalMovementCents = $rows->sum(fn (FinancialStatementEntry $entry): int => abs($this->moneyCents($entry->amount)));
+        $today = CarbonImmutable::today();
+        $pendingAge = $pending->map(fn (FinancialStatementEntry $entry): int => $entry->posted_at->isFuture()
+            ? 0
+            : (int) $entry->posted_at->diffInDays($today));
 
         return [
             'entries_count' => $rows->count(),
@@ -466,9 +484,14 @@ class FinancialBankReconciliationService
             'debits_cents' => abs($debits->sum(fn (FinancialStatementEntry $entry): int => $this->moneyCents($entry->amount))),
             'net_cents' => $rows->sum(fn (FinancialStatementEntry $entry): int => $this->moneyCents($entry->amount)),
             'reconciled_count' => $reconciled->count(),
-            'pending_count' => $rows->count() - $reconciled->count(),
-            'reconciled_cents' => $reconciled->sum(fn (FinancialStatementEntry $entry): int => abs($this->moneyCents($entry->amount))),
-            'total_movement_cents' => $rows->sum(fn (FinancialStatementEntry $entry): int => abs($this->moneyCents($entry->amount))),
+            'pending_count' => $pending->count(),
+            'pending_recent_count' => $pendingAge->filter(fn (int $days): bool => $days <= 7)->count(),
+            'pending_attention_count' => $pendingAge->filter(fn (int $days): bool => $days >= 8 && $days <= 30)->count(),
+            'pending_critical_count' => $pendingAge->filter(fn (int $days): bool => $days > 30)->count(),
+            'reconciled_cents' => $reconciledCents,
+            'total_movement_cents' => $totalMovementCents,
+            'reconciled_count_basis_points' => $this->coverageBasisPoints($reconciled->count(), $rows->count()),
+            'reconciled_value_basis_points' => $this->coverageBasisPoints($reconciledCents, $totalMovementCents),
         ];
     }
 
@@ -482,9 +505,19 @@ class FinancialBankReconciliationService
             'net_cents' => 0,
             'reconciled_count' => 0,
             'pending_count' => 0,
+            'pending_recent_count' => 0,
+            'pending_attention_count' => 0,
+            'pending_critical_count' => 0,
             'reconciled_cents' => 0,
             'total_movement_cents' => 0,
+            'reconciled_count_basis_points' => 0,
+            'reconciled_value_basis_points' => 0,
         ];
+    }
+
+    private function coverageBasisPoints(int $covered, int $total): int
+    {
+        return $total > 0 ? (int) round(($covered / $total) * 10000) : 0;
     }
 
     /** @param array<string, mixed> $filters */

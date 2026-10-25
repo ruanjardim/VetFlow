@@ -138,10 +138,12 @@ class FinancialBankReconciliationController
             fputcsv($output, [
                 'Data no banco', 'Descrição do banco', 'Valor', 'Situação', 'Lançamento VetFlow',
                 'Categoria', 'Data de pagamento', 'Responsável pela conciliação', 'Conciliado em',
+                'Última ocorrência', 'Motivo do desfazimento', 'Desfeito por', 'Desfeito em',
             ], ',', '"', '');
 
             foreach ($export['rows'] as $entry) {
                 $match = $entry->activeReconciliation;
+                $latest = $entry->latestReconciliation;
                 $transaction = $match?->financialTransaction;
                 fputcsv($output, [
                     $entry->posted_at->format('d/m/Y'),
@@ -153,6 +155,10 @@ class FinancialBankReconciliationController
                     $transaction?->paid_at?->format('d/m/Y'),
                     $this->csvSafe($match?->reconciledBy?->name ?? ''),
                     $match?->reconciled_at?->format('d/m/Y H:i'),
+                    $latest?->status === 'reversed' ? 'Conciliação desfeita' : ($match ? 'Conciliação confirmada' : ''),
+                    $this->csvSafe($latest?->status === 'reversed' ? ($latest->reversal_reason ?? '') : ''),
+                    $this->csvSafe($latest?->status === 'reversed' ? ($latest->reversedBy?->name ?? '') : ''),
+                    $latest?->status === 'reversed' ? $latest->reversed_at?->format('d/m/Y H:i') : null,
                 ], ',', '"', '');
             }
 

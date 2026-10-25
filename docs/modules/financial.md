@@ -182,9 +182,20 @@ that an imported file is already reconciled.
 - A confirmed match can be reversed only with a bounded reason. Confirmation
   and reversal produce attributed audit events; the original ledger remains
   unchanged.
+- A same-type/exact-value match outside the seven-day suggestion window remains
+  possible only through the manual path and requires a bounded explanation.
+- When more than one exact candidate exists inside the suggestion window, the
+  interface labels the ambiguity and requires the operator to choose explicitly
+  instead of preselecting the first result.
 - The dashboard exposes credits, debits, net movement, reconciled movement and
-  pending count for the filtered statement period. The net movement is
-  explicitly not presented as the bank account's opening or closing balance.
+  pending count for the filtered statement period. It also shows reconciliation
+  coverage by row count and absolute value and divides pending rows into up to
+  7 days, 8-30 days and more than 30 days as an operational priority signal.
+  The net movement is explicitly not presented as the bank account's opening or
+  closing balance.
+- After a reversal, the bank row becomes pending again while the latest reason,
+  responsible user and timestamp remain visible in the interface and private
+  export. Earlier events remain in the append-only audit trail.
 - The selected composition can be exported as a private, no-cache,
   formula-safe UTF-8 CSV. All account, import, statement, suggestion,
   confirmation, reversal and export queries are constrained to one clinic.

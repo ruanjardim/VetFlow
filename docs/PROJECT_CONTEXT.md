@@ -62,8 +62,12 @@ CSV/OFX statements without retaining the source file. Deterministic suggestions
 only compare paid VetFlow entries with the same direction and exact value in a
 seven-day window; an operator must confirm every one-to-one match, and any
 reversal requires a recorded reason. Those actions are tenant-scoped and audited and never mutate
-the original ledger. Aggregated or split settlements remain pending instead of
-being falsely reconciled.
+the original ledger. Matches outside the suggestion window require a human
+explanation, ambiguous candidates are never preselected, and pending age plus
+count/value coverage remain visible without changing either source. A reversed
+match returns to pending while its latest attributed reason stays visible and
+exportable. Aggregated or split settlements remain pending instead of being
+falsely reconciled.
 
 The repository now includes public project documentation, CI, a visual
 walkthrough, assisted onboarding imports, resilient NF-e/product lookup,

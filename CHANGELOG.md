@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-10-25
+
+- Hardened assisted bank reconciliation with a required explanation for manual
+  matches outside the seven-day suggestion window, explicit ambiguity warnings,
+  pending-age bands, count/value coverage percentages and a visible/exportable
+  trail for the latest reversed match. The workflow remains human-confirmed and
+  never mutates the source financial ledger.
+
 ## 2026-10-21
 
 - Added clinic-scoped assisted bank reconciliation with financial-account

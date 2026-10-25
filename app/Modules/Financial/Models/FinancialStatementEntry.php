@@ -38,4 +38,9 @@ class FinancialStatementEntry extends Model
     {
         return $this->hasOne(FinancialReconciliation::class)->where('status', 'confirmed')->latestOfMany();
     }
+
+    public function latestReconciliation(): HasOne
+    {
+        return $this->hasOne(FinancialReconciliation::class)->latestOfMany();
+    }
 }

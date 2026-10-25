@@ -5,6 +5,7 @@
 @section('content')
   @php
     $money = fn (int $cents) => number_format($cents / 100, 2, ',', '.');
+    $percentage = fn (int $basisPoints) => number_format($basisPoints / 100, 1, ',', '.').'%';
     $routeFilters = array_filter([
       'clinic_id' => $requiresClinic ? $selectedClinicId : null,
       'account_id' => $filters['account_id'],
@@ -191,8 +192,8 @@
       <div class="stat"><span>Créditos no extrato</span><strong>R$ {{ $money($stats['credits_cents']) }}</strong></div>
       <div class="stat"><span>Débitos no extrato</span><strong>R$ {{ $money($stats['debits_cents']) }}</strong></div>
       <div class="stat"><span>Movimento líquido</span><strong>R$ {{ $money($stats['net_cents']) }}</strong><small>Não é saldo de abertura da conta.</small></div>
-      <div class="stat"><span>Conciliados</span><strong>{{ $stats['reconciled_count'] }}/{{ $stats['entries_count'] }}</strong><small>R$ {{ $money($stats['reconciled_cents']) }} de R$ {{ $money($stats['total_movement_cents']) }}</small></div>
-      <div class="stat{{ $stats['pending_count'] > 0 ? ' stat--alert' : '' }}"><span>Pendentes</span><strong>{{ $stats['pending_count'] }}</strong><small>Exigem conferência humana.</small></div>
+      <div class="stat"><span>Cobertura conciliada</span><strong>{{ $percentage($stats['reconciled_count_basis_points']) }}</strong><small>{{ $stats['reconciled_count'] }}/{{ $stats['entries_count'] }} lançamentos · {{ $percentage($stats['reconciled_value_basis_points']) }} do valor</small></div>
+      <div class="stat{{ $stats['pending_count'] > 0 ? ' stat--alert' : '' }}"><span>Pendentes</span><strong>{{ $stats['pending_count'] }}</strong><small>{{ $stats['pending_recent_count'] }} até 7 dias · {{ $stats['pending_attention_count'] }} de 8 a 30 · {{ $stats['pending_critical_count'] }} acima de 30</small></div>
     </section>
 
     <section class="panel">
@@ -206,6 +207,7 @@
             @forelse($entries as $entry)
               @php
                 $match = $entry->activeReconciliation;
+                $latest = $entry->latestReconciliation;
                 $suggestions = collect($entry->getAttribute('suggested_matches'));
               @endphp
               <tr>
@@ -219,6 +221,9 @@
                     <div class="muted">{{ $match->financialTransaction->category?->name ?: 'Sem categoria' }} · pago em {{ $match->financialTransaction->paid_at->format('d/m/Y') }}</div>
                     <div class="muted">Confirmado por {{ $match->reconciledBy?->name ?: 'Sistema' }} em {{ $match->reconciled_at->format('d/m/Y H:i') }}</div>
                   @elseif($suggestions->isNotEmpty())
+                    @if($suggestions->count() > 1)
+                      <div class="alert warning"><strong>{{ $suggestions->count() }} correspondências possíveis.</strong> Confira a origem antes de escolher; o VetFlow não seleciona automaticamente em caso de ambiguidade.</div>
+                    @endif
                     <form method="POST" action="{{ route('financial-bank-reconciliation.reconciliations.store') }}" class="stacked-form">
                       @csrf
                       @if($requiresClinic)<input type="hidden" name="clinic_id" value="{{ $selectedClinicId }}">@endif
@@ -227,6 +232,7 @@
                       <input type="hidden" name="from" value="{{ $filters['from'] }}"><input type="hidden" name="to" value="{{ $filters['to'] }}"><input type="hidden" name="status" value="{{ $filters['status'] }}">
                       <label>Possíveis correspondências
                         <select name="transaction_id" required>
+                          @if($suggestions->count() > 1)<option value="">Escolha após conferir</option>@endif
                           @foreach($suggestions as $suggestion)
                             <option value="{{ $suggestion->id }}">{{ $suggestion->paid_at->format('d/m/Y') }} · {{ $suggestion->description }} · R$ {{ number_format((float) $suggestion->amount, 2, ',', '.') }}</option>
                           @endforeach
@@ -247,6 +253,13 @@
                       <input name="note" maxlength="500" placeholder="Motivo ou referência da conferência manual">
                       <button type="submit">Confirmar pelo ID</button>
                     </form>
+                  @endif
+                  @if(!$match && $latest?->status === 'reversed')
+                    <div class="alert warning">
+                      <strong>Última conciliação desfeita.</strong>
+                      {{ $latest->reversal_reason }}
+                      <div class="muted">Por {{ $latest->reversedBy?->name ?: 'Sistema' }} em {{ $latest->reversed_at?->format('d/m/Y H:i') }}.</div>
+                    </div>
                   @endif
                 </td>
                 <td>

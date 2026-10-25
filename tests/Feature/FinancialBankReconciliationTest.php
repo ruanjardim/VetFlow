@@ -210,6 +210,127 @@ class FinancialBankReconciliationTest extends TestCase
         $this->assertStringNotContainsString('999,00', $csv);
     }
 
+    public function test_manual_match_outside_the_seven_day_window_requires_an_explanation(): void
+    {
+        CarbonImmutable::setTestNow('2026-10-21 10:00:00');
+        [$clinic, $user] = $this->context('Clínica Manual', '00000000001110');
+        $account = $this->account($clinic, 'Conta manual');
+        $transaction = $this->transaction($clinic, 'income', 'Receita antiga', 120, 'paid', '2026-09-30 09:00:00');
+        $this->importCsv($user, $account, "data;descricao;valor;id\n20/10/2026;Crédito bancário;120,00;MAN-1\n");
+        $entry = FinancialStatementEntry::query()->withoutGlobalScope('clinic_tenant')->firstOrFail();
+
+        $payload = [
+            'account_id' => $account->id,
+            'entry_id' => $entry->id,
+            'transaction_id' => $transaction->id,
+        ];
+
+        $this->post(route('financial-bank-reconciliation.reconciliations.store'), $payload)
+            ->assertSessionHasErrors('note');
+        $this->assertDatabaseCount('financial_reconciliations', 0);
+
+        $this->post(route('financial-bank-reconciliation.reconciliations.store'), $payload + [
+            'note' => 'Recebimento bancário confirmado no fechamento mensal.',
+        ])->assertRedirect()->assertSessionHasNoErrors();
+
+        $this->assertDatabaseHas('financial_reconciliations', [
+            'financial_statement_entry_id' => $entry->id,
+            'financial_transaction_id' => $transaction->id,
+            'match_kind' => 'manual',
+        ]);
+    }
+
+    public function test_ambiguous_suggestions_require_an_explicit_choice(): void
+    {
+        CarbonImmutable::setTestNow('2026-10-21 10:00:00');
+        [$clinic, $user] = $this->context('Clínica Ambiguidade', '00000000001111');
+        $account = $this->account($clinic, 'Conta ambígua');
+        $this->transaction($clinic, 'income', 'Receita candidata A', 150, 'paid', '2026-10-19 09:00:00');
+        $this->transaction($clinic, 'income', 'Receita candidata B', 150, 'paid', '2026-10-20 09:00:00');
+        $this->importCsv($user, $account, "data;descricao;valor;id\n20/10/2026;PIX agrupado;150,00;AMB-1\n");
+
+        $this->get(route('financial-bank-reconciliation.index', [
+            'account_id' => $account->id,
+            'from' => '2026-10-01',
+            'to' => '2026-10-31',
+        ]))
+            ->assertOk()
+            ->assertSee('2 correspondências possíveis')
+            ->assertSee('Escolha após conferir')
+            ->assertSee('Receita candidata A')
+            ->assertSee('Receita candidata B');
+    }
+
+    public function test_dashboard_exposes_coverage_and_pending_age_without_changing_entries(): void
+    {
+        CarbonImmutable::setTestNow('2026-10-21 10:00:00');
+        [$clinic, $user] = $this->context('Clínica Cobertura', '00000000001112');
+        $account = $this->account($clinic, 'Conta cobertura');
+        $matched = $this->transaction($clinic, 'income', 'Receita conciliada', 100, 'paid', '2026-10-20 09:00:00');
+        $this->importCsv($user, $account, "data;descricao;valor;id\n20/10/2026;Recente;100,00;COV-1\n10/10/2026;Atenção;50,00;COV-2\n01/09/2026;Crítica;-50,00;COV-3\n");
+        $entry = FinancialStatementEntry::query()->withoutGlobalScope('clinic_tenant')->where('external_id', 'COV-1')->firstOrFail();
+        $this->post(route('financial-bank-reconciliation.reconciliations.store'), [
+            'account_id' => $account->id,
+            'entry_id' => $entry->id,
+            'transaction_id' => $matched->id,
+        ])->assertRedirect();
+
+        $this->get(route('financial-bank-reconciliation.index', [
+            'account_id' => $account->id,
+            'from' => '2026-09-01',
+            'to' => '2026-10-31',
+        ]))
+            ->assertOk()
+            ->assertSee('33,3%')
+            ->assertSee('50,0% do valor')
+            ->assertSee('0 até 7 dias · 1 de 8 a 30 · 1 acima de 30');
+
+        $this->assertSame(3, FinancialStatementEntry::query()->withoutGlobalScope('clinic_tenant')->count());
+        $this->assertSame('paid', $matched->fresh()->status);
+    }
+
+    public function test_reversal_trail_is_visible_and_exported_after_the_entry_returns_to_pending(): void
+    {
+        CarbonImmutable::setTestNow('2026-10-21 10:00:00');
+        [$clinic, $user] = $this->context('Clínica Desfazimento', '00000000001113');
+        $account = $this->account($clinic, 'Conta desfazimento');
+        $transaction = $this->transaction($clinic, 'expense', 'Despesa conciliada', 80, 'paid', '2026-10-20 09:00:00');
+        $this->importCsv($user, $account, "data;descricao;valor;id\n20/10/2026;Débito bancário;-80,00;REV-1\n");
+        $entry = FinancialStatementEntry::query()->withoutGlobalScope('clinic_tenant')->firstOrFail();
+        $this->post(route('financial-bank-reconciliation.reconciliations.store'), [
+            'account_id' => $account->id,
+            'entry_id' => $entry->id,
+            'transaction_id' => $transaction->id,
+        ])->assertRedirect();
+        $match = FinancialReconciliation::query()->withoutGlobalScope('clinic_tenant')->firstOrFail();
+        $reason = 'Extrato vinculado à despesa incorreta.';
+        $this->patch(route('financial-bank-reconciliation.reconciliations.reverse', $match->id), [
+            'account_id' => $account->id,
+            'reason' => $reason,
+        ])->assertRedirect();
+
+        $this->get(route('financial-bank-reconciliation.index', [
+            'account_id' => $account->id,
+            'from' => '2026-10-01',
+            'to' => '2026-10-31',
+            'status' => 'pending',
+        ]))
+            ->assertOk()
+            ->assertSee('Última conciliação desfeita')
+            ->assertSee($reason)
+            ->assertSee($user->name);
+
+        $csv = $this->get(route('financial-bank-reconciliation.export', [
+            'account_id' => $account->id,
+            'from' => '2026-10-01',
+            'to' => '2026-10-31',
+            'status' => 'pending',
+        ]))->assertOk()->streamedContent();
+        $this->assertStringContainsString('Conciliação desfeita', $csv);
+        $this->assertStringContainsString($reason, $csv);
+        $this->assertStringContainsString($user->name, $csv);
+    }
+
     /** @return array{Clinic, User} */
     private function context(string $name, string $cnpj): array
     {

@@ -1,6 +1,6 @@
 # VetFlow Status
 
-Updated: 2026-10-21
+Updated: 2026-10-25
 
 ## Current State
 
@@ -59,9 +59,12 @@ The local working tree was clean before this documentation pass.
   financial accounts, imports bounded CSV or OFX statements with file- and
   row-level duplicate protection, reviews exact-value/date-window suggestions,
   and manually confirms or reverses a one-to-one match with an attributed
-  audit trail. The workflow never changes the source ledger automatically,
-  retains no uploaded statement file and exports only a private formula-safe
-  composition (see `docs/modules/financial.md`).
+  audit trail. Manual matches outside the seven-day window require an
+  explanation; ambiguous suggestions require an explicit choice; and the
+  dashboard now exposes pending-age bands plus count/value coverage. The latest
+  reversal stays visible on screen and in the private formula-safe export. The
+  workflow never changes the source ledger automatically and retains no uploaded
+  statement file (see `docs/modules/financial.md`).
 - Fiscal foundation: clinic-scoped, homologation-only NFC-e/NFS-e settings,
   manual and idempotent preparation from completed sales, immutable business
   snapshots, and attributed lifecycle events. Homologation transmission has a
