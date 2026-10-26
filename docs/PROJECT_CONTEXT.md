@@ -1,6 +1,6 @@
 # VetFlow Project Context
 
-Updated: 2026-09-28
+Updated: 2026-10-26
 
 ## Product
 
@@ -66,8 +66,12 @@ the original ledger. Matches outside the suggestion window require a human
 explanation, ambiguous candidates are never preselected, and pending age plus
 count/value coverage remain visible without changing either source. A reversed
 match returns to pending while its latest attributed reason stays visible and
-exportable. Aggregated or split settlements remain pending instead of being
-falsely reconciled.
+exportable. Operators can now confirm exact-cent groups from one bank row to
+several paid ledger rows or from several bank rows to one paid ledger row. A
+net bank credit can also reconcile existing income and expense rows, such as a
+gross receipt minus a separately recorded fee. Every grouped composition needs
+a human justification, reverses as one unit and leaves all source rows intact;
+coverage and CSV output count each bank row only once.
 
 The repository now includes public project documentation, CI, a visual
 walkthrough, assisted onboarding imports, resilient NF-e/product lookup,

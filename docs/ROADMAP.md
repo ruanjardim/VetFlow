@@ -175,6 +175,11 @@ The product should feel different from a generic CRUD system by connecting the c
 - Banho & Tosa supports clinic and professional schedules, daily breaks,
   holidays and temporary blocks, proportional commission reconciliation for
   partial returns, and a separate eight-item operational pilot checklist.
+- Assisted bank reconciliation supports explicitly justified exact-cent groups
+  for one bank row to several paid ledger rows, several bank rows to one paid
+  ledger row, and net credits composed from existing income and expense rows.
+  Groups reverse atomically, remain tenant-scoped and do not double-count bank
+  coverage or mutate the source ledger.
 
 ## Current Near-Term Priorities
 

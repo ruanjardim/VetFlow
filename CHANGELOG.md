@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-10-26
+
+- Expanded assisted bank reconciliation with human-confirmed exact-cent groups:
+  one bank row can reconcile several paid VetFlow rows, several bank rows can
+  reconcile one paid VetFlow row, and a net credit can combine existing income
+  and expense rows such as an already-recorded bank fee. Every group requires a
+  justification, is tenant/account scoped, reverses atomically, keeps the source
+  ledger unchanged, and appears without double-counting bank coverage in the
+  screen and private CSV.
+
 ## 2026-10-25
 
 - Hardened assisted bank reconciliation with a required explanation for manual

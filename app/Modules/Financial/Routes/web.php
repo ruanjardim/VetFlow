@@ -22,6 +22,8 @@ Route::post('financial-bank-reconciliation/imports', [FinancialBankReconciliatio
     ->name('financial-bank-reconciliation.imports.store');
 Route::post('financial-bank-reconciliation/reconciliations', [FinancialBankReconciliationController::class, 'reconcile'])
     ->name('financial-bank-reconciliation.reconciliations.store');
+Route::post('financial-bank-reconciliation/reconciliation-groups', [FinancialBankReconciliationController::class, 'reconcileGroup'])
+    ->name('financial-bank-reconciliation.reconciliation-groups.store');
 Route::patch('financial-bank-reconciliation/reconciliations/{reconciliation}/reverse', [FinancialBankReconciliationController::class, 'reverse'])
     ->whereNumber('reconciliation')
     ->name('financial-bank-reconciliation.reconciliations.reverse');
