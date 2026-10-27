@@ -128,17 +128,20 @@ class FinancialBankReconciliationTest extends TestCase
         $this->transaction($foreignClinic, 'income', 'Receita externa', 150, 'paid', '2026-10-20 09:00:00');
         $this->importCsv($user, $account, "data;descricao;valor;id\n20/10/2026;PIX recebido;150,00;SUG-1\n");
 
-        $this->get(route('financial-bank-reconciliation.index', [
+        $response = $this->get(route('financial-bank-reconciliation.index', [
             'account_id' => $account->id,
             'from' => '2026-10-01',
             'to' => '2026-10-31',
-        ]))
+        ]));
+        $response
             ->assertOk()
             ->assertSee('Receita compatível')
             ->assertDontSee('Receita longe demais')
             ->assertDontSee('Receita pendente')
-            ->assertDontSee('Despesa com mesmo valor')
             ->assertDontSee('Receita externa');
+        preg_match('/<select name="transaction_id" required>(.*?)<\/select>/s', $response->getContent(), $suggestionSelect);
+        $this->assertStringContainsString('Receita compatível', $suggestionSelect[1] ?? '');
+        $this->assertStringNotContainsString('Despesa com mesmo valor', $suggestionSelect[1] ?? '');
     }
 
     public function test_confirmation_and_reversal_are_manual_audited_and_do_not_mutate_the_ledger(): void
@@ -283,6 +286,7 @@ class FinancialBankReconciliationTest extends TestCase
             ->assertOk()
             ->assertSee('33,3%')
             ->assertSee('50,0% do valor')
+            ->assertSee('0 grupo(s), 0 item(ns) em composição')
             ->assertSee('0 até 7 dias · 1 de 8 a 30 · 1 acima de 30');
 
         $this->assertSame(3, FinancialStatementEntry::query()->withoutGlobalScope('clinic_tenant')->count());
@@ -329,6 +333,180 @@ class FinancialBankReconciliationTest extends TestCase
         $this->assertStringContainsString('Conciliação desfeita', $csv);
         $this->assertStringContainsString($reason, $csv);
         $this->assertStringContainsString($user->name, $csv);
+    }
+
+    public function test_one_statement_entry_can_be_confirmed_against_multiple_paid_transactions_with_an_exact_sum(): void
+    {
+        CarbonImmutable::setTestNow('2026-10-26 09:00:00');
+        [$clinic, $user] = $this->context('Clínica Grupo Um Muitos', '00000000001114');
+        $account = $this->account($clinic, 'Conta agrupada');
+        $first = $this->transaction($clinic, 'income', 'Receita agrupada A', 70, 'paid', '2026-10-25 09:00:00');
+        $second = $this->transaction($clinic, 'income', 'Receita agrupada B', 30, 'paid', '2026-10-25 10:00:00');
+        $this->importCsv($user, $account, "data;descricao;valor;id\n25/10/2026;Crédito bancário agrupado;100,00;GRP-1\n");
+        $entry = FinancialStatementEntry::query()->withoutGlobalScope('clinic_tenant')->firstOrFail();
+
+        $this->post(route('financial-bank-reconciliation.reconciliation-groups.store'), [
+            'account_id' => $account->id,
+            'group_kind' => 'one_to_many',
+            'entry_ids' => [$entry->id],
+            'transaction_ids' => [$first->id, $second->id],
+            'note' => 'Crédito bancário reúne dois recebimentos conferidos.',
+        ])->assertRedirect()->assertSessionHasNoErrors();
+
+        $matches = FinancialReconciliation::query()->withoutGlobalScope('clinic_tenant')->orderBy('id')->get();
+        $this->assertCount(2, $matches);
+        $this->assertNotNull($matches->first()->group_uuid);
+        $this->assertSame(1, $matches->pluck('group_uuid')->unique()->count());
+        $this->assertSame(['one_to_many'], $matches->pluck('group_kind')->unique()->values()->all());
+        $this->assertEqualsCanonicalizing([$first->id, $second->id], $matches->pluck('financial_transaction_id')->all());
+        $this->assertSame('paid', $first->fresh()->status);
+        $this->assertSame('paid', $second->fresh()->status);
+        $this->assertDatabaseHas('audit_events', [
+            'event' => 'financial.bank-reconciliation.group-confirmed',
+            'clinic_id' => $clinic->id,
+        ]);
+
+        $this->get(route('financial-bank-reconciliation.index', [
+            'account_id' => $account->id,
+            'from' => '2026-10-01',
+            'to' => '2026-10-31',
+        ]))
+            ->assertOk()
+            ->assertSee('1 extrato ↔ vários lançamentos')
+            ->assertSee('Receita agrupada A')
+            ->assertSee('Receita agrupada B');
+    }
+
+    public function test_multiple_statement_entries_can_be_confirmed_against_one_paid_transaction_with_an_exact_sum(): void
+    {
+        CarbonImmutable::setTestNow('2026-10-26 09:00:00');
+        [$clinic, $user] = $this->context('Clínica Grupo Muitos Um', '00000000001115');
+        $account = $this->account($clinic, 'Conta recebimentos fracionados');
+        $transaction = $this->transaction($clinic, 'income', 'Receita única VetFlow', 100, 'paid', '2026-10-25 09:00:00');
+        $this->importCsv($user, $account, "data;descricao;valor;id\n25/10/2026;Crédito parcial A;40,00;GRP-2A\n25/10/2026;Crédito parcial B;60,00;GRP-2B\n");
+        $entries = FinancialStatementEntry::query()->withoutGlobalScope('clinic_tenant')->orderBy('id')->get();
+
+        $this->post(route('financial-bank-reconciliation.reconciliation-groups.store'), [
+            'account_id' => $account->id,
+            'group_kind' => 'many_to_one',
+            'entry_ids' => $entries->pluck('id')->all(),
+            'transaction_ids' => [$transaction->id],
+            'note' => 'Receita única recebida em dois créditos bancários.',
+        ])->assertRedirect()->assertSessionHasNoErrors();
+
+        $matches = FinancialReconciliation::query()->withoutGlobalScope('clinic_tenant')->orderBy('id')->get();
+        $this->assertCount(2, $matches);
+        $this->assertSame(1, $matches->pluck('group_uuid')->unique()->count());
+        $this->assertSame(['many_to_one'], $matches->pluck('group_kind')->unique()->values()->all());
+        $this->assertEqualsCanonicalizing($entries->pluck('id')->all(), $matches->pluck('financial_statement_entry_id')->all());
+        $this->assertSame([$transaction->id], $matches->pluck('financial_transaction_id')->unique()->values()->all());
+    }
+
+    public function test_net_settlement_requires_existing_income_and_expense_rows_to_close_the_bank_value_exactly(): void
+    {
+        CarbonImmutable::setTestNow('2026-10-26 09:00:00');
+        [$clinic, $user] = $this->context('Clínica Liquidação Líquida', '00000000001116');
+        $account = $this->account($clinic, 'Conta liquidação líquida');
+        $income = $this->transaction($clinic, 'income', 'Recebimento bruto', 100, 'paid', '2026-10-25 09:00:00');
+        $wrongFee = $this->transaction($clinic, 'expense', 'Tarifa divergente', 2, 'paid', '2026-10-25 09:00:00');
+        $fee = $this->transaction($clinic, 'expense', 'Tarifa bancária registrada', 3, 'paid', '2026-10-25 09:00:00');
+        $this->importCsv($user, $account, "data;descricao;valor;id\n25/10/2026;Crédito líquido;97,00;NET-1\n");
+        $entry = FinancialStatementEntry::query()->withoutGlobalScope('clinic_tenant')->firstOrFail();
+        $payload = [
+            'account_id' => $account->id,
+            'group_kind' => 'net_settlement',
+            'entry_ids' => [$entry->id],
+            'note' => 'Crédito líquido após tarifa bancária já registrada.',
+        ];
+
+        $this->post(route('financial-bank-reconciliation.reconciliation-groups.store'), $payload + [
+            'transaction_ids' => [$income->id, $wrongFee->id],
+        ])->assertSessionHasErrors('transaction_ids');
+        $this->assertDatabaseCount('financial_reconciliations', 0);
+
+        $this->post(route('financial-bank-reconciliation.reconciliation-groups.store'), $payload + [
+            'transaction_ids' => [$income->id, $fee->id],
+        ])->assertRedirect()->assertSessionHasNoErrors();
+
+        $this->assertDatabaseCount('financial_reconciliations', 2);
+        $this->assertDatabaseHas('financial_reconciliations', [
+            'financial_transaction_id' => $fee->id,
+            'group_kind' => 'net_settlement',
+            'status' => 'confirmed',
+        ]);
+        $this->assertSame('paid', $income->fresh()->status);
+        $this->assertSame('paid', $fee->fresh()->status);
+    }
+
+    public function test_reversing_one_group_member_reverses_the_complete_group_atomically(): void
+    {
+        CarbonImmutable::setTestNow('2026-10-26 09:00:00');
+        [$clinic, $user] = $this->context('Clínica Reversão de Grupo', '00000000001117');
+        $account = $this->account($clinic, 'Conta reversão agrupada');
+        $first = $this->transaction($clinic, 'expense', 'Despesa agrupada A', 40, 'paid', '2026-10-25 09:00:00');
+        $second = $this->transaction($clinic, 'expense', 'Despesa agrupada B', 60, 'paid', '2026-10-25 09:00:00');
+        $this->importCsv($user, $account, "data;descricao;valor;id\n25/10/2026;Débito agrupado;-100,00;REV-GRP\n");
+        $entry = FinancialStatementEntry::query()->withoutGlobalScope('clinic_tenant')->firstOrFail();
+        $this->post(route('financial-bank-reconciliation.reconciliation-groups.store'), [
+            'account_id' => $account->id,
+            'group_kind' => 'one_to_many',
+            'entry_ids' => [$entry->id],
+            'transaction_ids' => [$first->id, $second->id],
+            'note' => 'Débito único corresponde às duas despesas pagas.',
+        ])->assertRedirect();
+        $member = FinancialReconciliation::query()->withoutGlobalScope('clinic_tenant')->firstOrFail();
+        $reason = 'Composição agrupada selecionada incorretamente.';
+
+        $this->patch(route('financial-bank-reconciliation.reconciliations.reverse', $member->id), [
+            'account_id' => $account->id,
+            'reason' => $reason,
+        ])->assertRedirect()->assertSessionHasNoErrors();
+
+        $members = FinancialReconciliation::query()->withoutGlobalScope('clinic_tenant')->get();
+        $this->assertCount(2, $members);
+        $this->assertSame(['reversed'], $members->pluck('status')->unique()->values()->all());
+        $this->assertSame([$reason], $members->pluck('reversal_reason')->unique()->values()->all());
+        $this->assertSame([$user->id], $members->pluck('reversed_by_user_id')->unique()->values()->all());
+        $this->assertSame('paid', $first->fresh()->status);
+        $this->assertSame('paid', $second->fresh()->status);
+    }
+
+    public function test_grouped_coverage_and_csv_count_each_bank_entry_once_while_listing_every_linked_transaction(): void
+    {
+        CarbonImmutable::setTestNow('2026-10-26 09:00:00');
+        [$clinic, $user] = $this->context('Clínica Cobertura Agrupada', '00000000001118');
+        $account = $this->account($clinic, 'Conta cobertura agrupada');
+        $first = $this->transaction($clinic, 'income', 'Parcela interna A', 70, 'paid', '2026-10-25 09:00:00');
+        $second = $this->transaction($clinic, 'income', 'Parcela interna B', 30, 'paid', '2026-10-25 09:00:00');
+        $this->importCsv($user, $account, "data;descricao;valor;id\n25/10/2026;Crédito agrupado único;100,00;COV-G1\n25/10/2026;Crédito ainda pendente;100,00;COV-G2\n");
+        $entry = FinancialStatementEntry::query()->withoutGlobalScope('clinic_tenant')->where('external_id', 'COV-G1')->firstOrFail();
+        $this->post(route('financial-bank-reconciliation.reconciliation-groups.store'), [
+            'account_id' => $account->id,
+            'group_kind' => 'one_to_many',
+            'entry_ids' => [$entry->id],
+            'transaction_ids' => [$first->id, $second->id],
+            'note' => 'Cobertura do extrato deve contar o crédito somente uma vez.',
+        ])->assertRedirect();
+
+        $this->get(route('financial-bank-reconciliation.index', [
+            'account_id' => $account->id,
+            'from' => '2026-10-01',
+            'to' => '2026-10-31',
+        ]))
+            ->assertOk()
+            ->assertSee('50,0%')
+            ->assertSee('1 grupo(s), 1 item(ns) em composição')
+            ->assertSee('1 extrato ↔ vários lançamentos');
+
+        $csv = $this->get(route('financial-bank-reconciliation.export', [
+            'account_id' => $account->id,
+            'from' => '2026-10-01',
+            'to' => '2026-10-31',
+        ]))->assertOk()->streamedContent();
+        $this->assertSame(1, substr_count($csv, 'Crédito agrupado único'));
+        $this->assertStringContainsString('1 extrato ↔ vários lançamentos', $csv);
+        $this->assertStringContainsString('Parcela interna A', $csv);
+        $this->assertStringContainsString('Parcela interna B', $csv);
     }
 
     /** @return array{Clinic, User} */

@@ -7,6 +7,7 @@ use App\Modules\Clinics\Models\Clinic;
 use App\Modules\Financial\Requests\FinancialBankReconciliationRequest;
 use App\Modules\Financial\Requests\ReverseFinancialReconciliationRequest;
 use App\Modules\Financial\Requests\StoreFinancialAccountRequest;
+use App\Modules\Financial\Requests\StoreFinancialReconciliationGroupRequest;
 use App\Modules\Financial\Requests\StoreFinancialReconciliationRequest;
 use App\Modules\Financial\Requests\StoreFinancialStatementImportRequest;
 use App\Modules\Financial\Requests\UpdateFinancialAccountRequest;
@@ -42,6 +43,7 @@ class FinancialBankReconciliationController
             'requiresClinic' => $this->tenant->isGlobal(),
             'accountTypeLabels' => FinancialBankReconciliationService::ACCOUNT_TYPE_LABELS,
             'statusLabels' => FinancialBankReconciliationService::STATUS_LABELS,
+            'groupKindLabels' => FinancialBankReconciliationService::GROUP_KIND_LABELS,
         ]);
     }
 
@@ -98,6 +100,17 @@ class FinancialBankReconciliationController
             ->with('success', 'Correspondência confirmada. O lançamento financeiro original não foi alterado.');
     }
 
+    public function reconcileGroup(StoreFinancialReconciliationGroupRequest $request): RedirectResponse
+    {
+        $data = $request->validated();
+        $clinicId = $this->selectedClinicId($data);
+        $matches = $this->reconciliation->reconcileGroup($clinicId, $this->actor($request->user()), $data);
+
+        return redirect()
+            ->route('financial-bank-reconciliation.index', $this->redirectFilters($clinicId, $data))
+            ->with('success', "Grupo conciliado em {$matches->count()} vínculo(s). Nenhum lançamento financeiro original foi alterado.");
+    }
+
     public function reverse(
         ReverseFinancialReconciliationRequest $request,
         int $reconciliation,
@@ -136,23 +149,32 @@ class FinancialBankReconciliationController
             $output = fopen('php://output', 'wb');
             fwrite($output, "\xEF\xBB\xBF");
             fputcsv($output, [
-                'Data no banco', 'Descrição do banco', 'Valor', 'Situação', 'Lançamento VetFlow',
-                'Categoria', 'Data de pagamento', 'Responsável pela conciliação', 'Conciliado em',
+                'Data no banco', 'Descrição do banco', 'Valor', 'Situação', 'Tipo de correspondência',
+                'Grupo', 'Lançamentos VetFlow', 'Categorias', 'Datas de pagamento',
+                'Responsável pela conciliação', 'Conciliado em',
                 'Última ocorrência', 'Motivo do desfazimento', 'Desfeito por', 'Desfeito em',
             ], ',', '"', '');
 
             foreach ($export['rows'] as $entry) {
-                $match = $entry->activeReconciliation;
+                $matches = $entry->activeReconciliations;
+                $match = $matches->first();
                 $latest = $entry->latestReconciliation;
-                $transaction = $match?->financialTransaction;
+                $transactions = $matches
+                    ->map(fn ($item) => $item->financialTransaction)
+                    ->filter()
+                    ->unique('id')
+                    ->values();
+                $groupKind = $match?->group_kind ?? 'one_to_one';
                 fputcsv($output, [
                     $entry->posted_at->format('d/m/Y'),
                     $this->csvSafe($entry->description),
                     number_format((float) $entry->amount, 2, ',', '.'),
                     $match ? 'Conciliado' : 'Pendente',
-                    $this->csvSafe($transaction?->description ?? ''),
-                    $this->csvSafe($transaction?->category?->name ?? ''),
-                    $transaction?->paid_at?->format('d/m/Y'),
+                    $this->csvSafe(FinancialBankReconciliationService::GROUP_KIND_LABELS[$groupKind] ?? $groupKind),
+                    $this->csvSafe($match?->group_uuid ?? ''),
+                    $this->csvSafe($transactions->map(fn ($transaction) => "#{$transaction->id} {$transaction->description}")->implode(' | ')),
+                    $this->csvSafe($transactions->map(fn ($transaction) => $transaction->category?->name ?: 'Sem categoria')->unique()->implode(' | ')),
+                    $this->csvSafe($transactions->map(fn ($transaction) => $transaction->paid_at?->format('d/m/Y'))->filter()->unique()->implode(' | ')),
                     $this->csvSafe($match?->reconciledBy?->name ?? ''),
                     $match?->reconciled_at?->format('d/m/Y H:i'),
                     $latest?->status === 'reversed' ? 'Conciliação desfeita' : ($match ? 'Conciliação confirmada' : ''),

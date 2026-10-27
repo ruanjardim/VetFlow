@@ -15,6 +15,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 class FinancialBankReconciliationService
@@ -31,6 +32,13 @@ class FinancialBankReconciliationService
         'all' => 'Todos os lançamentos',
         'pending' => 'Pendentes',
         'reconciled' => 'Conciliados',
+    ];
+
+    public const GROUP_KIND_LABELS = [
+        'one_to_one' => '1 extrato ↔ 1 lançamento',
+        'one_to_many' => '1 extrato ↔ vários lançamentos',
+        'many_to_one' => 'Vários extratos ↔ 1 lançamento',
+        'net_settlement' => 'Liquidação líquida com tarifa',
     ];
 
     public function __construct(
@@ -203,7 +211,9 @@ class FinancialBankReconciliationService
      * @return array{
      *   filters: array{clinic_id: int, account_id: ?int, from: string, to: string, status: string},
      *   accounts: Collection<int, FinancialAccount>, selected_account: ?FinancialAccount,
-     *   entries: ?LengthAwarePaginator, stats: array<string, int>, imports: Collection<int, FinancialStatementImport>
+     *   entries: ?LengthAwarePaginator, stats: array<string, int>, imports: Collection<int, FinancialStatementImport>,
+     *   group_entry_options: Collection<int, FinancialStatementEntry>,
+     *   group_transaction_options: Collection<int, FinancialTransaction>
      * }
      */
     public function report(int $clinicId, ?int $accountId, ?string $from, ?string $to, ?string $status): array
@@ -223,16 +233,18 @@ class FinancialBankReconciliationService
                 'entries' => null,
                 'stats' => $this->emptyStats(),
                 'imports' => collect(),
+                'group_entry_options' => collect(),
+                'group_transaction_options' => collect(),
             ];
         }
 
         $base = $this->entryQuery($filters);
-        $allRows = (clone $base)->with('activeReconciliation')->get();
+        $allRows = (clone $base)->with('activeReconciliations')->get();
         $filtered = $this->applyStatus((clone $base), $filters['status']);
         $entries = $filtered
             ->with([
-                'activeReconciliation.financialTransaction.category',
-                'activeReconciliation.reconciledBy',
+                'activeReconciliations.financialTransaction.category',
+                'activeReconciliations.reconciledBy',
                 'latestReconciliation.reversedBy',
                 'statementImport',
             ])
@@ -256,6 +268,8 @@ class FinancialBankReconciliationService
                 ->latest('id')
                 ->limit(8)
                 ->get(),
+            'group_entry_options' => $this->groupEntryOptions($base),
+            'group_transaction_options' => $this->groupTransactionOptions($clinicId, $filters),
         ];
     }
 
@@ -339,6 +353,158 @@ class FinancialBankReconciliationService
         });
     }
 
+    /**
+     * @param  array<string, mixed>  $data
+     * @return Collection<int, FinancialReconciliation>
+     */
+    public function reconcileGroup(int $clinicId, User $actor, array $data): Collection
+    {
+        return DB::transaction(function () use ($clinicId, $actor, $data): Collection {
+            $entryIds = collect($data['entry_ids'])
+                ->map(fn (mixed $id): int => (int) $id)
+                ->unique()
+                ->sort()
+                ->values();
+            $transactionIds = collect($data['transaction_ids'])
+                ->map(fn (mixed $id): int => (int) $id)
+                ->unique()
+                ->sort()
+                ->values();
+            $groupKind = (string) $data['group_kind'];
+            $this->assertGroupShape($groupKind, $entryIds->count(), $transactionIds->count());
+
+            $entries = FinancialStatementEntry::query()
+                ->withoutGlobalScope('clinic_tenant')
+                ->where('clinic_id', $clinicId)
+                ->where('financial_account_id', (int) $data['account_id'])
+                ->whereIn('id', $entryIds)
+                ->orderBy('id')
+                ->lockForUpdate()
+                ->get();
+            if ($entries->count() !== $entryIds->count()) {
+                throw ValidationException::withMessages([
+                    'entry_ids' => 'Um ou mais lançamentos do extrato não pertencem à conta e ao estabelecimento selecionados.',
+                ]);
+            }
+
+            $transactions = FinancialTransaction::query()
+                ->withoutGlobalScope('clinic_tenant')
+                ->where('clinic_id', $clinicId)
+                ->whereIn('id', $transactionIds)
+                ->orderBy('id')
+                ->lockForUpdate()
+                ->get();
+            if ($transactions->count() !== $transactionIds->count()) {
+                throw ValidationException::withMessages([
+                    'transaction_ids' => 'Um ou mais lançamentos VetFlow não pertencem ao estabelecimento selecionado.',
+                ]);
+            }
+            if ($transactions->contains(fn (FinancialTransaction $transaction): bool => $transaction->status !== 'paid' || ! $transaction->paid_at)) {
+                throw ValidationException::withMessages([
+                    'transaction_ids' => 'Todos os lançamentos VetFlow do grupo devem estar pagos ou recebidos.',
+                ]);
+            }
+
+            $entryBusy = FinancialReconciliation::query()
+                ->withoutGlobalScope('clinic_tenant')
+                ->where('clinic_id', $clinicId)
+                ->whereIn('financial_statement_entry_id', $entryIds)
+                ->where('status', 'confirmed')
+                ->exists();
+            $transactionBusy = FinancialReconciliation::query()
+                ->withoutGlobalScope('clinic_tenant')
+                ->where('clinic_id', $clinicId)
+                ->whereIn('financial_transaction_id', $transactionIds)
+                ->where('status', 'confirmed')
+                ->exists();
+            if ($entryBusy || $transactionBusy) {
+                throw ValidationException::withMessages([
+                    'transaction_ids' => 'Um item selecionado já participa de outra conciliação ativa.',
+                ]);
+            }
+
+            $statementCents = $entries->sum(fn (FinancialStatementEntry $entry): int => $this->moneyCents($entry->amount));
+            $transactionCents = $transactions->sum(fn (FinancialTransaction $transaction): int => $this->transactionSignedCents($transaction));
+            $validComposition = match ($groupKind) {
+                'one_to_many' => $transactions->every(
+                    fn (FinancialTransaction $transaction): bool => $transaction->type === $this->entryType($entries->first())
+                ),
+                'many_to_one' => $entries->every(
+                    fn (FinancialStatementEntry $entry): bool => $this->entryType($entry) === $transactions->first()->type
+                ),
+                'net_settlement' => $transactions->pluck('type')->unique()->sort()->values()->all() === ['expense', 'income'],
+                default => false,
+            };
+            if (! $validComposition || $statementCents !== $transactionCents) {
+                throw ValidationException::withMessages([
+                    'transaction_ids' => 'A composição deve respeitar o formato escolhido e fechar exatamente o valor líquido do extrato.',
+                ]);
+            }
+
+            $dateDistances = $transactions->map(function (FinancialTransaction $transaction) use ($entries): int {
+                return (int) $entries->min(fn (FinancialStatementEntry $entry): int => (int) abs(
+                    $entry->posted_at->diffInDays(CarbonImmutable::parse($transaction->paid_at))
+                ));
+            });
+            $maxDateDistance = (int) $dateDistances->max();
+            $groupUuid = (string) Str::uuid();
+            $reconciledAt = now();
+            $note = trim((string) $data['note']);
+            $pairs = match ($groupKind) {
+                'many_to_one' => $entries->map(fn (FinancialStatementEntry $entry): array => [$entry, $transactions->first()]),
+                default => $transactions->map(fn (FinancialTransaction $transaction): array => [$entries->first(), $transaction]),
+            };
+
+            $reconciliations = $pairs->map(function (array $pair) use (
+                $clinicId,
+                $actor,
+                $groupUuid,
+                $groupKind,
+                $note,
+                $reconciledAt,
+            ): FinancialReconciliation {
+                [$entry, $transaction] = $pair;
+
+                return FinancialReconciliation::query()->withoutGlobalScope('clinic_tenant')->create([
+                    'clinic_id' => $clinicId,
+                    'group_uuid' => $groupUuid,
+                    'financial_statement_entry_id' => $entry->id,
+                    'financial_transaction_id' => $transaction->id,
+                    'reconciled_by_user_id' => $actor->id,
+                    'match_kind' => 'grouped',
+                    'group_kind' => $groupKind,
+                    'status' => 'confirmed',
+                    'note' => $note,
+                    'reconciled_at' => $reconciledAt,
+                ]);
+            })->values();
+
+            $first = $reconciliations->first();
+            $this->audit->record(
+                'financial.bank-reconciliation.group-confirmed',
+                $first,
+                [],
+                [],
+                $actor,
+                [
+                    'account_id' => (int) $data['account_id'],
+                    'group_uuid' => $groupUuid,
+                    'group_kind' => $groupKind,
+                    'statement_entry_ids' => $entryIds->all(),
+                    'financial_transaction_ids' => $transactionIds->all(),
+                    'statement_cents' => $statementCents,
+                    'transaction_cents' => $transactionCents,
+                    'max_date_distance_days' => $maxDateDistance,
+                    'member_count' => $reconciliations->count(),
+                ],
+                $clinicId,
+                'Grupo de conciliação '.substr($groupUuid, 0, 8),
+            );
+
+            return $reconciliations;
+        });
+    }
+
     public function reverse(int $clinicId, int $reconciliationId, User $actor, string $reason): FinancialReconciliation
     {
         return DB::transaction(function () use ($clinicId, $reconciliationId, $actor, $reason): FinancialReconciliation {
@@ -351,12 +517,29 @@ class FinancialBankReconciliationService
                 throw ValidationException::withMessages(['reason' => 'Esta conciliação já foi desfeita.']);
             }
 
-            $reconciliation->update([
+            $members = FinancialReconciliation::query()
+                ->withoutGlobalScope('clinic_tenant')
+                ->where('clinic_id', $clinicId)
+                ->when(
+                    filled($reconciliation->group_uuid),
+                    fn (Builder $query): Builder => $query->where('group_uuid', $reconciliation->group_uuid),
+                    fn (Builder $query): Builder => $query->whereKey($reconciliation->id),
+                )
+                ->lockForUpdate()
+                ->get();
+            if ($members->contains(fn (FinancialReconciliation $member): bool => $member->status !== 'confirmed')) {
+                throw ValidationException::withMessages(['reason' => 'Este grupo já foi desfeito ou está inconsistente.']);
+            }
+
+            $changes = [
                 'status' => 'reversed',
                 'reversed_by_user_id' => $actor->id,
                 'reversal_reason' => trim($reason),
                 'reversed_at' => now(),
-            ]);
+            ];
+            foreach ($members as $member) {
+                $member->update($changes);
+            }
 
             $this->audit->record(
                 'financial.bank-reconciliation.reversed',
@@ -364,12 +547,19 @@ class FinancialBankReconciliationService
                 ['status' => 'confirmed'],
                 ['status' => 'reversed'],
                 $actor,
-                ['reason' => trim($reason)],
+                [
+                    'reason' => trim($reason),
+                    'group_uuid' => $reconciliation->group_uuid,
+                    'group_kind' => $reconciliation->group_kind ?? 'one_to_one',
+                    'member_count' => $members->count(),
+                ],
                 $clinicId,
-                'Conciliação bancária #'.$reconciliation->id,
+                filled($reconciliation->group_uuid)
+                    ? 'Grupo de conciliação '.substr((string) $reconciliation->group_uuid, 0, 8)
+                    : 'Conciliação bancária #'.$reconciliation->id,
             );
 
-            return $reconciliation;
+            return $reconciliation->fresh();
         });
     }
 
@@ -384,8 +574,8 @@ class FinancialBankReconciliationService
             'account' => $account,
             'rows' => $this->applyStatus($this->entryQuery($filters), $filters['status'])
                 ->with([
-                    'activeReconciliation.financialTransaction.category',
-                    'activeReconciliation.reconciledBy',
+                    'activeReconciliations.financialTransaction.category',
+                    'activeReconciliations.reconciledBy',
                     'latestReconciliation.reversedBy',
                 ])
                 ->orderByDesc('posted_at')
@@ -469,10 +659,17 @@ class FinancialBankReconciliationService
     {
         $credits = $rows->filter(fn (FinancialStatementEntry $entry): bool => $this->moneyCents($entry->amount) > 0);
         $debits = $rows->filter(fn (FinancialStatementEntry $entry): bool => $this->moneyCents($entry->amount) < 0);
-        $reconciled = $rows->filter(fn (FinancialStatementEntry $entry): bool => $entry->activeReconciliation !== null);
-        $pending = $rows->filter(fn (FinancialStatementEntry $entry): bool => $entry->activeReconciliation === null);
+        $reconciled = $rows->filter(fn (FinancialStatementEntry $entry): bool => $entry->activeReconciliations->isNotEmpty());
+        $pending = $rows->filter(fn (FinancialStatementEntry $entry): bool => $entry->activeReconciliations->isEmpty());
         $reconciledCents = $reconciled->sum(fn (FinancialStatementEntry $entry): int => abs($this->moneyCents($entry->amount)));
         $totalMovementCents = $rows->sum(fn (FinancialStatementEntry $entry): int => abs($this->moneyCents($entry->amount)));
+        $activeGroups = $reconciled
+            ->flatMap(fn (FinancialStatementEntry $entry): Collection => $entry->activeReconciliations)
+            ->filter(fn (FinancialReconciliation $match): bool => filled($match->group_uuid))
+            ->unique('group_uuid');
+        $groupedEntryCount = $reconciled->filter(fn (FinancialStatementEntry $entry): bool => $entry->activeReconciliations
+            ->contains(fn (FinancialReconciliation $match): bool => ($match->group_kind ?? 'one_to_one') !== 'one_to_one'))
+            ->count();
         $today = CarbonImmutable::today();
         $pendingAge = $pending->map(fn (FinancialStatementEntry $entry): int => $entry->posted_at->isFuture()
             ? 0
@@ -484,6 +681,8 @@ class FinancialBankReconciliationService
             'debits_cents' => abs($debits->sum(fn (FinancialStatementEntry $entry): int => $this->moneyCents($entry->amount))),
             'net_cents' => $rows->sum(fn (FinancialStatementEntry $entry): int => $this->moneyCents($entry->amount)),
             'reconciled_count' => $reconciled->count(),
+            'reconciled_group_count' => $activeGroups->count(),
+            'grouped_entry_count' => $groupedEntryCount,
             'pending_count' => $pending->count(),
             'pending_recent_count' => $pendingAge->filter(fn (int $days): bool => $days <= 7)->count(),
             'pending_attention_count' => $pendingAge->filter(fn (int $days): bool => $days >= 8 && $days <= 30)->count(),
@@ -504,6 +703,8 @@ class FinancialBankReconciliationService
             'debits_cents' => 0,
             'net_cents' => 0,
             'reconciled_count' => 0,
+            'reconciled_group_count' => 0,
+            'grouped_entry_count' => 0,
             'pending_count' => 0,
             'pending_recent_count' => 0,
             'pending_attention_count' => 0,
@@ -520,11 +721,63 @@ class FinancialBankReconciliationService
         return $total > 0 ? (int) round(($covered / $total) * 10000) : 0;
     }
 
+    /** @return Collection<int, FinancialStatementEntry> */
+    private function groupEntryOptions(Builder $base): Collection
+    {
+        return (clone $base)
+            ->whereDoesntHave('reconciliations', fn (Builder $query): Builder => $query->where('status', 'confirmed'))
+            ->orderByDesc('posted_at')
+            ->orderByDesc('id')
+            ->limit(200)
+            ->get();
+    }
+
+    /** @param array<string, mixed> $filters @return Collection<int, FinancialTransaction> */
+    private function groupTransactionOptions(int $clinicId, array $filters): Collection
+    {
+        return FinancialTransaction::query()
+            ->withoutGlobalScope('clinic_tenant')
+            ->where('clinic_id', $clinicId)
+            ->where('status', 'paid')
+            ->whereNotNull('paid_at')
+            ->whereBetween('paid_at', [
+                CarbonImmutable::parse($filters['from'])->subDays(7)->startOfDay(),
+                CarbonImmutable::parse($filters['to'])->addDays(7)->endOfDay(),
+            ])
+            ->whereDoesntHave('bankReconciliations', fn (Builder $query): Builder => $query->where('status', 'confirmed'))
+            ->with('category')
+            ->orderByDesc('paid_at')
+            ->orderByDesc('id')
+            ->limit(250)
+            ->get();
+    }
+
+    private function assertGroupShape(string $groupKind, int $entryCount, int $transactionCount): void
+    {
+        $valid = match ($groupKind) {
+            'one_to_many' => $entryCount === 1 && $transactionCount >= 2,
+            'many_to_one' => $entryCount >= 2 && $transactionCount === 1,
+            'net_settlement' => $entryCount === 1 && $transactionCount >= 2,
+            default => false,
+        };
+
+        if (! $valid) {
+            throw ValidationException::withMessages([
+                'group_kind' => match ($groupKind) {
+                    'one_to_many' => 'Selecione exatamente um lançamento bancário e pelo menos dois lançamentos VetFlow.',
+                    'many_to_one' => 'Selecione pelo menos dois lançamentos bancários e exatamente um lançamento VetFlow.',
+                    'net_settlement' => 'Selecione exatamente um lançamento bancário e pelo menos dois lançamentos VetFlow.',
+                    default => 'Escolha um formato de conciliação em grupo válido.',
+                },
+            ]);
+        }
+    }
+
     /** @param array<string, mixed> $filters */
     private function attachSuggestions(int $clinicId, LengthAwarePaginator $entries, array $filters): void
     {
         $pending = $entries->getCollection()
-            ->filter(fn (FinancialStatementEntry $entry): bool => $entry->activeReconciliation === null);
+            ->filter(fn (FinancialStatementEntry $entry): bool => $entry->activeReconciliations->isEmpty());
         if ($pending->isEmpty()) {
             return;
         }
@@ -564,6 +817,13 @@ class FinancialBankReconciliationService
     private function entryType(FinancialStatementEntry $entry): string
     {
         return $this->moneyCents($entry->amount) > 0 ? 'income' : 'expense';
+    }
+
+    private function transactionSignedCents(FinancialTransaction $transaction): int
+    {
+        $cents = $this->moneyCents($transaction->amount);
+
+        return $transaction->type === 'income' ? $cents : -$cents;
     }
 
     private function moneyCents(mixed $amount): int

@@ -28,6 +28,9 @@ manual financial records, and dashboard/cash-flow summaries.
 - Produce daily and weekly cash-flow projections with explicit operational assumptions.
 - Reconcile imported bank statements with paid ledger entries through an
   explicitly human-confirmed, auditable workflow.
+- Reconcile exact-cent grouped compositions without changing source rows,
+  including one bank row to several ledger rows, several bank rows to one
+  ledger row, and a net credit composed from existing income and expenses.
 - Provide a clinic-scoped operational center for accounts payable and
   receivable by due-date period, type and computed situation.
 - Produce a monthly managerial result by category, with cash and operational
@@ -182,6 +185,20 @@ that an imported file is already reconciled.
 - A confirmed match can be reversed only with a bounded reason. Confirmation
   and reversal produce attributed audit events; the original ledger remains
   unchanged.
+- Advanced composition is always manual and requires an explanation. It accepts
+  at most 20 bank rows and 20 paid VetFlow rows, rejects any item already in an
+  active reconciliation, and compares signed integer cents instead of floating
+  totals.
+- `1 extrato ↔ vários lançamentos` requires one bank row and at least two paid
+  ledger rows of the same direction whose signed sum equals the bank value.
+  `Vários extratos ↔ 1 lançamento` applies the inverse rule. `Liquidação
+  líquida` requires exactly one bank row plus at least one existing income and
+  one existing expense, with the income-minus-expense total equal to the bank
+  value; it never creates a fee or another financial row implicitly.
+- Every grouped pair carries the same UUID and composition kind. Reversing any
+  member locks and reverses the complete group in one database transaction,
+  preserving one attributed reason while leaving statement and ledger rows
+  untouched.
 - A same-type/exact-value match outside the seven-day suggestion window remains
   possible only through the manual path and requires a bounded explanation.
 - When more than one exact candidate exists inside the suggestion window, the
@@ -197,11 +214,14 @@ that an imported file is already reconciled.
   responsible user and timestamp remain visible in the interface and private
   export. Earlier events remain in the append-only audit trail.
 - The selected composition can be exported as a private, no-cache,
-  formula-safe UTF-8 CSV. All account, import, statement, suggestion,
-  confirmation, reversal and export queries are constrained to one clinic.
-- The first supported match is one bank row to one paid VetFlow transaction.
-  Aggregated card settlements, bank fees netted from deposits and split
-  matching remain explicit pending work rather than receiving a false match.
+  formula-safe UTF-8 CSV. Group kind, UUID and every linked ledger row are
+  explicit in the export. Dashboard coverage remains bank-side: each statement
+  row and its absolute value are counted once even when it links to multiple
+  VetFlow rows. All account, import, statement, suggestion, confirmation,
+  reversal and export queries are constrained to one clinic.
+- Automatic suggestions remain deliberately limited to one bank row and one
+  same-type, exact-value paid VetFlow row inside seven days. Grouped and net
+  compositions are never suggested or confirmed automatically.
 
 ## Monthly Managerial Result
 
@@ -285,6 +305,7 @@ Daily and weekly projection, overdue scenarios, exact composition, CSV safety,
 validation and tenant isolation are covered by
 `tests/Feature/FinancialCashFlowProjectionTest.php`.
 Financial-account lifecycle, CSV/OFX parsing, duplicate protection,
-deterministic suggestions, manual confirmation/reversal, immutable ledger
-behavior, private export and tenant isolation are covered by
+deterministic suggestions, one-to-many and many-to-one exact groups, net
+settlement with existing fee rows, atomic group reversal, immutable ledger
+behavior, group-aware coverage/private export and tenant isolation are covered by
 `tests/Feature/FinancialBankReconciliationTest.php`.

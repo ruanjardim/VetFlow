@@ -1,6 +1,6 @@
 # VetFlow Status
 
-Updated: 2026-10-25
+Updated: 2026-10-26
 
 ## Current State
 
@@ -63,8 +63,12 @@ The local working tree was clean before this documentation pass.
   explanation; ambiguous suggestions require an explicit choice; and the
   dashboard now exposes pending-age bands plus count/value coverage. The latest
   reversal stays visible on screen and in the private formula-safe export. The
-  workflow never changes the source ledger automatically and retains no uploaded
-  statement file (see `docs/modules/financial.md`).
+  workflow now also accepts exact-cent, explicitly justified groups from one
+  bank row to several paid ledger rows, several bank rows to one paid ledger
+  row, and net settlement against existing income plus expense rows. Group
+  reversal is atomic, coverage counts each bank row once, the source ledger is
+  never changed automatically, and no uploaded statement file is retained (see
+  `docs/modules/financial.md`).
 - Fiscal foundation: clinic-scoped, homologation-only NFC-e/NFS-e settings,
   manual and idempotent preparation from completed sales, immutable business
   snapshots, and attributed lifecycle events. Homologation transmission has a

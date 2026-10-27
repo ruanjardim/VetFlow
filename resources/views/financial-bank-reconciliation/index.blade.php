@@ -13,6 +13,8 @@
       'to' => $filters['to'],
       'status' => $filters['status'],
     ], fn ($value) => $value !== null && $value !== '');
+    $selectedGroupEntries = collect(old('entry_ids', []))->map(fn ($id) => (string) $id);
+    $selectedGroupTransactions = collect(old('transaction_ids', []))->map(fn ($id) => (string) $id);
   @endphp
 
   <header class="topbar">
@@ -188,11 +190,67 @@
       </div>
     </section>
 
+    @if($group_entry_options->isNotEmpty() && $group_transaction_options->isNotEmpty())
+      <section class="panel panel-body">
+        <details @if(old('group_kind')) open @endif>
+          <summary><strong>Conciliação em grupo</strong> <span class="muted">— composição exata e confirmação humana</span></summary>
+          <div class="alert info" style="margin-top: 1rem;">
+            <strong>Sem baixa automática.</strong>
+            <span>Os lançamentos selecionados precisam estar pagos, livres de outra conciliação e fechar exatamente em centavos. A operação apenas registra o vínculo e a justificativa.</span>
+          </div>
+          <form method="POST" action="{{ route('financial-bank-reconciliation.reconciliation-groups.store') }}" class="stacked-form">
+            @csrf
+            @if($requiresClinic)<input type="hidden" name="clinic_id" value="{{ $selectedClinicId }}">@endif
+            <input type="hidden" name="account_id" value="{{ $selected_account->id }}">
+            <input type="hidden" name="from" value="{{ $filters['from'] }}"><input type="hidden" name="to" value="{{ $filters['to'] }}"><input type="hidden" name="status" value="{{ $filters['status'] }}">
+            <div>
+              <label for="reconciliation_group_kind">Formato da composição</label>
+              <select id="reconciliation_group_kind" name="group_kind" required>
+                <option value="one_to_many" @selected(old('group_kind') === 'one_to_many')>1 extrato ↔ vários lançamentos do mesmo tipo</option>
+                <option value="many_to_one" @selected(old('group_kind') === 'many_to_one')>Vários extratos do mesmo tipo ↔ 1 lançamento</option>
+                <option value="net_settlement" @selected(old('group_kind') === 'net_settlement')>1 extrato ↔ receitas menos despesas existentes</option>
+              </select>
+              <small class="muted">Liquidação líquida exige pelo menos uma receita e uma despesa, por exemplo uma tarifa já registrada.</small>
+            </div>
+            <div class="content-grid">
+              <div>
+                <label for="reconciliation_group_entries">Lançamentos do extrato</label>
+                <select id="reconciliation_group_entries" name="entry_ids[]" multiple size="8" required>
+                  @foreach($group_entry_options as $option)
+                    <option value="{{ $option->id }}" @selected($selectedGroupEntries->contains((string) $option->id))>
+                      #{{ $option->id }} · {{ $option->posted_at->format('d/m/Y') }} · {{ $option->description }} · R$ {{ number_format((float) $option->amount, 2, ',', '.') }}
+                    </option>
+                  @endforeach
+                </select>
+                <small class="muted">Use Ctrl ou Shift para selecionar mais de um item.</small>
+              </div>
+              <div>
+                <label for="reconciliation_group_transactions">Lançamentos VetFlow</label>
+                <select id="reconciliation_group_transactions" name="transaction_ids[]" multiple size="8" required>
+                  @foreach($group_transaction_options as $option)
+                    <option value="{{ $option->id }}" @selected($selectedGroupTransactions->contains((string) $option->id))>
+                      #{{ $option->id }} · {{ $option->paid_at->format('d/m/Y') }} · {{ $option->type === 'income' ? 'Receita' : 'Despesa' }} · {{ $option->description }} · R$ {{ number_format((float) $option->amount, 2, ',', '.') }}
+                    </option>
+                  @endforeach
+                </select>
+                <small class="muted">São mostrados somente itens pagos e ainda não conciliados no período ampliado em sete dias.</small>
+              </div>
+            </div>
+            <div>
+              <label for="reconciliation_group_note">Justificativa da composição</label>
+              <textarea id="reconciliation_group_note" name="note" minlength="10" maxlength="500" required placeholder="Explique a origem do agrupamento ou da tarifa líquida.">{{ old('note') }}</textarea>
+            </div>
+            <button type="submit">Confirmar grupo conciliado</button>
+          </form>
+        </details>
+      </section>
+    @endif
+
     <section class="grid stats">
       <div class="stat"><span>Créditos no extrato</span><strong>R$ {{ $money($stats['credits_cents']) }}</strong></div>
       <div class="stat"><span>Débitos no extrato</span><strong>R$ {{ $money($stats['debits_cents']) }}</strong></div>
       <div class="stat"><span>Movimento líquido</span><strong>R$ {{ $money($stats['net_cents']) }}</strong><small>Não é saldo de abertura da conta.</small></div>
-      <div class="stat"><span>Cobertura conciliada</span><strong>{{ $percentage($stats['reconciled_count_basis_points']) }}</strong><small>{{ $stats['reconciled_count'] }}/{{ $stats['entries_count'] }} lançamentos · {{ $percentage($stats['reconciled_value_basis_points']) }} do valor</small></div>
+      <div class="stat"><span>Cobertura conciliada</span><strong>{{ $percentage($stats['reconciled_count_basis_points']) }}</strong><small>{{ $stats['reconciled_count'] }}/{{ $stats['entries_count'] }} lançamentos · {{ $percentage($stats['reconciled_value_basis_points']) }} do valor · {{ $stats['reconciled_group_count'] }} grupo(s), {{ $stats['grouped_entry_count'] }} item(ns) em composição</small></div>
       <div class="stat{{ $stats['pending_count'] > 0 ? ' stat--alert' : '' }}"><span>Pendentes</span><strong>{{ $stats['pending_count'] }}</strong><small>{{ $stats['pending_recent_count'] }} até 7 dias · {{ $stats['pending_attention_count'] }} de 8 a 30 · {{ $stats['pending_critical_count'] }} acima de 30</small></div>
     </section>
 
@@ -206,9 +264,12 @@
           <tbody>
             @forelse($entries as $entry)
               @php
-                $match = $entry->activeReconciliation;
+                $matches = $entry->activeReconciliations;
+                $match = $matches->first();
                 $latest = $entry->latestReconciliation;
                 $suggestions = collect($entry->getAttribute('suggested_matches'));
+                $groupKind = $match?->group_kind ?? 'one_to_one';
+                $groupTransactions = $matches->map(fn ($item) => $item->financialTransaction)->filter()->unique('id')->values();
               @endphp
               <tr>
                 <td>{{ $entry->posted_at->format('d/m/Y') }}</td>
@@ -217,8 +278,14 @@
                 <td><span class="badge {{ $match ? 'success' : 'warning' }}">{{ $match ? 'Conciliado' : 'Pendente' }}</span></td>
                 <td>
                   @if($match)
-                    <strong>{{ $match->financialTransaction->description }}</strong>
-                    <div class="muted">{{ $match->financialTransaction->category?->name ?: 'Sem categoria' }} · pago em {{ $match->financialTransaction->paid_at->format('d/m/Y') }}</div>
+                    <span class="badge">{{ $groupKindLabels[$groupKind] ?? $groupKind }}</span>
+                    @if($match->group_uuid)<div class="muted">Grupo {{ substr($match->group_uuid, 0, 8) }}</div>@endif
+                    @foreach($groupTransactions as $groupTransaction)
+                      <div style="margin-top: .5rem;">
+                        <strong>#{{ $groupTransaction->id }} · {{ $groupTransaction->description }}</strong>
+                        <div class="muted">{{ $groupTransaction->type === 'income' ? 'Receita' : 'Despesa' }} · {{ $groupTransaction->category?->name ?: 'Sem categoria' }} · pago em {{ $groupTransaction->paid_at->format('d/m/Y') }} · R$ {{ number_format((float) $groupTransaction->amount, 2, ',', '.') }}</div>
+                      </div>
+                    @endforeach
                     <div class="muted">Confirmado por {{ $match->reconciledBy?->name ?: 'Sistema' }} em {{ $match->reconciled_at->format('d/m/Y H:i') }}</div>
                   @elseif($suggestions->isNotEmpty())
                     @if($suggestions->count() > 1)
@@ -271,7 +338,7 @@
                       <input type="hidden" name="account_id" value="{{ $selected_account->id }}">
                       <input type="hidden" name="from" value="{{ $filters['from'] }}"><input type="hidden" name="to" value="{{ $filters['to'] }}"><input type="hidden" name="status" value="{{ $filters['status'] }}">
                       <input name="reason" minlength="10" maxlength="500" placeholder="Motivo para desfazer" required>
-                      <button class="secondary" type="submit">Desfazer</button>
+                      <button class="secondary" type="submit">{{ $groupKind === 'one_to_one' ? 'Desfazer' : 'Desfazer grupo' }}</button>
                     </form>
                   @endif
                 </td>
