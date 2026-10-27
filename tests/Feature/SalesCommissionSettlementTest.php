@@ -165,8 +165,8 @@ class SalesCommissionSettlementTest extends TestCase
             ->assertRedirect(route('financial-transactions.index'));
         $this->assertSame('paid', $transaction->refresh()->status);
         $this->get(route('financial-obligations.index', [
-            'from' => today()->startOfMonth()->toDateString(),
-            'to' => today()->endOfMonth()->toDateString(),
+            'from' => $transaction->due_date->copy()->startOfMonth()->toDateString(),
+            'to' => $transaction->due_date->copy()->endOfMonth()->toDateString(),
             'type' => 'expense',
             'status' => 'paid',
         ]))->assertOk()->assertSee('Comissão de vendas')->assertSee($sellerB->name);
