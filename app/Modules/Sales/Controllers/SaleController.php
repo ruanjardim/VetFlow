@@ -376,8 +376,12 @@ class SaleController extends BaseCrudController
         return response()->json(['items' => $items]);
     }
 
-    public function lookupProduct(Request $request, string $gtin, ProductLookupService $lookupService): JsonResponse
-    {
+    public function lookupProduct(
+        Request $request,
+        string $gtin,
+        ProductLookupService $lookupService,
+        ProductLotService $lotService
+    ): JsonResponse {
         $normalized = Gtin::normalize($gtin);
         $variants = Gtin::variants($normalized);
 
@@ -410,13 +414,14 @@ class SaleController extends BaseCrudController
             ->first();
 
         if ($product) {
+            $sellableQuantity = $lotService->sellableQuantity($product);
             $warnings = [];
 
             if ((float) $product->sale_price <= 0) {
                 $warnings[] = 'Produto sem preco de venda cadastrado.';
             }
 
-            if ((float) $product->stock_quantity <= 0) {
+            if ($sellableQuantity <= 0) {
                 $warnings[] = 'Produto sem estoque disponivel.';
             }
 
@@ -439,7 +444,7 @@ class SaleController extends BaseCrudController
                     'unit_price' => (float) $product->sale_price,
                     'gtin' => $product->gtin ?: $normalized,
                     'barcode' => $product->barcode ?: $normalized,
-                    'stock_quantity' => (float) $product->stock_quantity,
+                    'stock_quantity' => $sellableQuantity,
                 ],
             ]);
         }

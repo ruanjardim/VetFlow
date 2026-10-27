@@ -1,5 +1,6 @@
 @extends('layouts.admin')
 @section('title', 'PDV - VetFlow')
+@section('body_class', 'pdv-counter-mode')
 @section('content')
 @php
   $checkoutOrder = $serviceOrderCheckout['order'] ?? null;
@@ -22,14 +23,31 @@
   $canToggleMode = ! $checkoutSource;
   $mode = $editingQuote ? 'quote' : ($canToggleMode ? old('pdv_mode', $startMode) : 'sale');
   $mode = in_array($mode, ['sale', 'quote'], true) ? $mode : 'sale';
+  $selectedClinic = $clinics->firstWhere('id', $selectedClinicId);
+  $selectedClinicName = $selectedClinic?->trade_name ?? $selectedClinic?->corporate_name ?? 'Selecione a clínica';
 @endphp
-<header class="topbar pdv-topbar">
-  <div><h1>PDV</h1><p>Venda rápida de produtos e serviços</p></div>
-  <div class="actions">
-    <a class="button secondary" href="{{ route('sales.index', ['status' => 'draft']) }}">Vendas suspensas</a>
-    <a class="button secondary" href="{{ route('sales.quotes.index') }}">Orçamentos</a>
-    <a class="button secondary" href="{{ route('sales.cash-sessions.index') }}">Caixa</a>
-    <a class="button secondary" href="{{ route('sales.create', ['mode' => 'advanced']) }}">Comanda / formulário avançado</a>
+<header class="pdv-counter-bar">
+  <div class="pdv-counter-brand">
+    <span class="pdv-counter-mark" aria-hidden="true">VF</span>
+    <div><strong>VetFlow</strong><span>Ponto de venda</span></div>
+  </div>
+  <div class="pdv-counter-context" aria-label="Contexto do ponto de venda">
+    <span><small>Operador</small><strong>{{ auth()->user()?->name }}</strong></span>
+    <span><small>Unidade</small><strong data-pdv-header-clinic>{{ $selectedClinicName }}</strong></span>
+    <span><small>Horário</small><strong data-pdv-clock>--:--</strong></span>
+  </div>
+  <div class="pdv-counter-actions">
+    <button type="button" class="button secondary" data-pdv-fullscreen aria-pressed="false">Tela cheia</button>
+    <details class="pdv-counter-more">
+      <summary class="button secondary">Mais opções</summary>
+      <nav aria-label="Atalhos administrativos do PDV">
+        <a href="{{ route('sales.index', ['status' => 'draft']) }}">Vendas suspensas</a>
+        <a href="{{ route('sales.quotes.index') }}">Orçamentos</a>
+        <a href="{{ route('sales.cash-sessions.index') }}">Caixa</a>
+        <a href="{{ route('sales.create', ['mode' => 'advanced']) }}">Comanda / formulário avançado</a>
+      </nav>
+    </details>
+    <a class="button pdv-counter-exit" href="{{ route('sales.index') }}">Sair do PDV</a>
   </div>
 </header>
 @include('shared.clinic-required-alert', ['clinics' => $clinics])
@@ -119,11 +137,18 @@
         </div>
       @endif
       <div class="pdv-search-panel">
-        <label for="pdv_search">Buscar ou ler código de barras <kbd>F2</kbd></label>
+        <div class="pdv-scanner-state is-ready" data-pdv-scanner-state role="status" aria-live="polite">
+          <span class="pdv-scanner-light" aria-hidden="true"></span>
+          <div><strong data-pdv-scanner-label>Leitura pronta</strong><small data-pdv-scanner-detail>Aponte o leitor para o código de barras ou pesquise pelo nome.</small></div>
+        </div>
+        <label for="pdv_search">Código de barras ou busca de produto <kbd>F2</kbd></label>
         <div class="pdv-search-row">
-          <input id="pdv_search" type="search" autocomplete="off" placeholder="Nome, SKU, EAN/GTIN ou código de barras" data-pdv-search autofocus>
+          <span class="pdv-search-icon" aria-hidden="true"></span>
+          <input id="pdv_search" type="search" autocomplete="off" enterkeyhint="search" spellcheck="false"
+            aria-describedby="pdv_search_hint" placeholder="Leia o código ou digite nome, SKU ou EAN/GTIN" data-pdv-search autofocus>
           <button type="button" class="secondary" data-pdv-search-button>Buscar</button>
         </div>
+        <small id="pdv_search_hint" class="pdv-search-hint">O leitor USB funciona como teclado e deve enviar Enter depois do código.</small>
         <div class="pdv-search-results" role="listbox" aria-label="Resultados da busca" data-pdv-results hidden></div>
         <p class="lookup-status" role="status" aria-live="polite" data-pdv-lookup-status></p>
         <a class="button secondary" target="_blank" rel="noopener" data-pdv-create-product hidden>Cadastrar produto</a>
@@ -167,11 +192,15 @@
         </div>
       </div>
       <div class="pdv-cart-heading">
-        <div><h2>Carrinho</h2><span data-pdv-item-count>0 itens</span></div>
+        <div><h2>Itens da venda</h2><span data-pdv-item-count>0 itens</span></div>
         <button type="button" class="secondary" data-pdv-add-custom>+ Item avulso</button>
       </div>
       <div class="pdv-cart" data-pdv-cart>
-        <p class="pdv-empty" data-pdv-empty>Leia um código ou busque um item para começar.</p>
+        <div class="pdv-empty" data-pdv-empty>
+          <span class="pdv-empty-barcode" aria-hidden="true"></span>
+          <strong>Caixa livre</strong>
+          <p>Leia o primeiro código de barras para iniciar a venda.</p>
+        </div>
       </div>
       <details class="pdv-notes" @if($initialNotes !== '') open @endif>
         <summary>Observações</summary>

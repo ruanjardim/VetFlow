@@ -37,6 +37,12 @@ document.addEventListener('DOMContentLoaded', () => {
   const summaryLabel = find('[data-pdv-summary-label]');
   const saveQuote = find('[data-pdv-save-quote]');
   const shortcuts = find('[data-pdv-method-shortcuts]');
+  const scannerState = find('[data-pdv-scanner-state]');
+  const scannerLabel = find('[data-pdv-scanner-label]');
+  const scannerDetail = find('[data-pdv-scanner-detail]');
+  const headerClinic = document.querySelector('[data-pdv-header-clinic]');
+  const clock = document.querySelector('[data-pdv-clock]');
+  const fullscreenButton = document.querySelector('[data-pdv-fullscreen]');
   let deliveryTypes = [];
   try { deliveryTypes = JSON.parse(form.dataset.deliveryTypes || '[]'); } catch { deliveryTypes = []; }
   let paymentMethods = [];
@@ -80,6 +86,45 @@ document.addEventListener('DOMContentLoaded', () => {
   let searchSerial = 0;
   let activeResults = [];
   let pendingQuickProductGtin = '';
+  let scannerResetTimer;
+  let scannerBuffer = '';
+  let scannerBufferTimer;
+
+  const scannerMessages = {
+    ready: ['Leitura pronta', 'Aponte o leitor para o código de barras ou pesquise pelo nome.'],
+    reading: ['Lendo código', 'Consultando produto e estoque desta unidade...'],
+    success: ['Produto adicionado', 'Pronto para ler o próximo código.'],
+    warning: ['Confira a leitura', 'O código precisa de atenção antes de continuar.'],
+    error: ['Leitura indisponível', 'Tente novamente ou pesquise o produto pelo nome.'],
+  };
+  const setScannerState = (state = 'ready', detail = '', autoReset = false) => {
+    if (!scannerState) return;
+    window.clearTimeout(scannerResetTimer);
+    scannerState.className = 'pdv-scanner-state is-' + state;
+    scannerLabel.textContent = scannerMessages[state]?.[0] || scannerMessages.ready[0];
+    scannerDetail.textContent = detail || scannerMessages[state]?.[1] || scannerMessages.ready[1];
+    if (autoReset) {
+      scannerResetTimer = window.setTimeout(() => setScannerState('ready'), 2600);
+    }
+  };
+  const feedbackTone = (success = true) => {
+    try {
+      const Audio = window.AudioContext || window.webkitAudioContext;
+      if (!Audio) return;
+      const context = new Audio();
+      const oscillator = context.createOscillator();
+      const gain = context.createGain();
+      oscillator.type = 'sine';
+      oscillator.frequency.value = success ? 880 : 240;
+      gain.gain.setValueAtTime(0.035, context.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.0001, context.currentTime + (success ? 0.08 : 0.14));
+      oscillator.connect(gain);
+      gain.connect(context.destination);
+      oscillator.start();
+      oscillator.stop(context.currentTime + (success ? 0.08 : 0.14));
+      oscillator.addEventListener('ended', () => context.close());
+    } catch { /* sound feedback is optional */ }
+  };
 
   const message = (node, value, kind = '') => {
     node.textContent = value;
@@ -157,6 +202,9 @@ document.addEventListener('DOMContentLoaded', () => {
       const qty = existing.querySelector('[data-pdv-quantity]');
       qty.value = String(Math.round((quantity(qty.value) + quantity(item.quantity || 1)) * 1000) / 1000);
       totals();
+      rows().forEach((entry) => entry.classList.remove('is-latest'));
+      existing.classList.add('is-latest');
+      existing.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
       return existing;
     }
     const index = nextItem++;
@@ -169,7 +217,7 @@ document.addEventListener('DOMContentLoaded', () => {
     row.dataset.serviceOrderItemId = serviceOrderItemId;
     if (item.stock_quantity !== undefined) row.dataset.stock = String(item.stock_quantity);
     row.innerHTML = `
-      <div class="pdv-row-top"><span data-pdv-kind></span><button type="button" class="secondary" data-pdv-remove aria-label="Remover item">Remover</button></div>
+      <div class="pdv-row-top"><div class="pdv-row-identity"><span data-pdv-kind></span><small data-pdv-code></small></div><button type="button" class="secondary" data-pdv-remove aria-label="Remover item">Remover</button></div>
       <input type="hidden" name="items[${index}][type]">
       <input type="hidden" name="items[${index}][product_id]">
       <input type="hidden" name="items[${index}][petshop_service_id]">
@@ -187,6 +235,7 @@ document.addEventListener('DOMContentLoaded', () => {
     row.querySelector('[name$="[petshop_service_id]"]').value = serviceId;
     row.querySelector('[name$="[service_order_item_id]"]').value = serviceOrderItemId;
     row.querySelector('[data-pdv-kind]').textContent = type === 'product' ? 'Produto' : type === 'service' ? 'Serviço' : 'Avulso';
+    row.querySelector('[data-pdv-code]').textContent = item.gtin || item.barcode || item.sku || '';
     row.querySelector('[data-pdv-description]').value = item.description || '';
     row.querySelector('[data-pdv-quantity]').value = String(item.quantity || 1);
     row.querySelector('[data-pdv-price]').value = moneyInput(parseMoney(item.unit_price));
@@ -205,6 +254,8 @@ document.addEventListener('DOMContentLoaded', () => {
     row.querySelectorAll('input').forEach((input) => input.addEventListener('input', totals));
     cart.appendChild(row);
     totals();
+    rows().forEach((entry) => entry.classList.toggle('is-latest', entry === row));
+    row.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
     return row;
   };
 
@@ -309,9 +360,19 @@ document.addEventListener('DOMContentLoaded', () => {
     shortcuts.replaceChildren(...methods.map((method) => {
       const button = document.createElement('button');
       button.type = 'button';
-      button.className = 'secondary';
+      button.className = 'pdv-method-card';
       button.dataset.pdvMethod = String(method.id);
-      button.textContent = method.name;
+      button.dataset.kind = method.kind;
+      const name = document.createElement('span');
+      name.textContent = method.name;
+      const hint = document.createElement('small');
+      hint.textContent = method.kind === 'cash' ? 'Dinheiro e troco'
+        : method.kind === 'pix' ? 'Confirmação manual'
+          : method.kind === 'debit_card' ? 'Débito na maquininha'
+            : method.kind === 'credit_card' ? 'Crédito e parcelas'
+              : method.kind === CREDIT ? 'Usar saldo disponível'
+                : 'Selecionar pagamento';
+      button.append(name, hint);
       return button;
     }));
     if (!methods.length) {
@@ -323,12 +384,19 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
   const clearResults = () => { results.replaceChildren(); results.hidden = true; activeResults = []; };
-  const addSearchItem = (item) => {
+  const addSearchItem = (item, scannerFeedback = {}) => {
+    const feedbackState = scannerFeedback.state || 'success';
     addRow(item);
     search.value = '';
     clearResults();
     createProduct.hidden = true;
     message(lookupStatus, (item.description || 'Item') + ' adicionado.', 'success');
+    setScannerState(
+      feedbackState,
+      scannerFeedback.detail || (item.description || 'Produto') + ' entrou no carrinho.',
+      scannerFeedback.autoReset ?? feedbackState === 'success',
+    );
+    feedbackTone(scannerFeedback.successTone ?? feedbackState === 'success');
     search.focus();
   };
   const openQuickProduct = (gtin, item = {}) => {
@@ -342,6 +410,8 @@ document.addEventListener('DOMContentLoaded', () => {
     message(quickProductStatus, 'Informe preço e quantidade disponível para controlar o estoque.');
     createProduct.href = form.dataset.productCreateUrl.replace('__GTIN__', encodeURIComponent(gtin));
     createProduct.hidden = false;
+    setScannerState('warning', 'Código ' + gtin + ' ainda não está cadastrado. Complete o cadastro rápido.');
+    feedbackTone(false);
     quickProductDialog.showModal();
     (quickProductName.value ? quickProductPrice : quickProductName).focus();
   };
@@ -428,10 +498,16 @@ document.addEventListener('DOMContentLoaded', () => {
   const lookupBarcode = async () => {
     const gtin = search.value.replace(/\D/g, '');
     if (gtin.length < 8) return quickSearch();
-    if (clinic && !clinic.value) { message(lookupStatus, 'Selecione uma clínica.', 'warning'); return; }
+    if (clinic && !clinic.value) {
+      message(lookupStatus, 'Selecione uma clínica.', 'warning');
+      setScannerState('warning', 'Selecione a unidade antes de ler produtos.');
+      feedbackTone(false);
+      return;
+    }
     const serial = ++searchSerial;
     clearResults();
     message(lookupStatus, 'Consultando código...');
+    setScannerState('reading', 'Código ' + gtin + ' recebido. Consultando o cadastro...');
     try {
       const url = withClinic(form.dataset.lookupUrl.replace('__GTIN__', encodeURIComponent(gtin)));
       const response = await fetch(url, { headers: { Accept: 'application/json' } });
@@ -440,6 +516,10 @@ document.addEventListener('DOMContentLoaded', () => {
       if (!response.ok || !data.found) {
         message(lookupStatus, data.message || 'Produto não encontrado.', 'warning');
         if (data.manual_allowed !== false) openQuickProduct(gtin, data.item || {});
+        else {
+          setScannerState('warning', data.message || 'Produto não encontrado nesta unidade.');
+          feedbackTone(false);
+        }
         return;
       }
       if (data.mode === 'catalog') {
@@ -447,11 +527,17 @@ document.addEventListener('DOMContentLoaded', () => {
         openQuickProduct(gtin, data.item || {});
         return;
       }
-      addSearchItem(data.item);
       const warnings = Array.isArray(data.warnings) ? data.warnings : [];
+      addSearchItem(data.item, warnings.length ? {
+        state: 'warning',
+        detail: warnings.join(' '),
+        autoReset: false,
+        successTone: false,
+      } : {});
       message(lookupStatus, [data.message, ...warnings].filter(Boolean).join(' '), warnings.length || data.mode === 'catalog' ? 'warning' : 'success');
     } catch {
       message(lookupStatus, 'Consulta indisponível. Faça o cadastro rápido para continuar.', 'warning');
+      setScannerState('error', 'Não foi possível consultar o código. O cadastro rápido continua disponível.');
       openQuickProduct(gtin);
     }
   };
@@ -604,8 +690,8 @@ document.addEventListener('DOMContentLoaded', () => {
   cashOpening?.addEventListener('keydown', (event) => {
     if (event.key === 'Enter') { event.preventDefault(); confirmCashOpen(); }
   });
-  find('[data-pdv-close-cash]')?.addEventListener('click', () => { afterCashOpen = null; cashDialog.close(); });
-  find('[data-pdv-close-payment]').addEventListener('click', () => dialog.close());
+  find('[data-pdv-close-cash]')?.addEventListener('click', () => { afterCashOpen = null; cashDialog.close(); search.focus(); });
+  find('[data-pdv-close-payment]').addEventListener('click', () => { dialog.close(); search.focus(); });
   find('[data-pdv-close-quick-product]').addEventListener('click', () => { quickProductDialog.close(); search.focus(); });
   find('[data-pdv-save-quick-product]').addEventListener('click', saveQuickProduct);
   quickProductDialog.addEventListener('keydown', (event) => {
@@ -707,6 +793,8 @@ document.addEventListener('DOMContentLoaded', () => {
     renderShortcuts();
     renderCash();
     paymentRows().forEach((row) => row.pdvRefreshMethods?.());
+    if (headerClinic) headerClinic.textContent = clinic.selectedOptions[0]?.textContent || 'Selecione a clínica';
+    search.focus();
   });
   syncCustomer();
   refreshCustomerBalance();
@@ -761,10 +849,63 @@ document.addEventListener('DOMContentLoaded', () => {
     search.focus();
   }));
   setMode(form.dataset.pdvMode);
+
+  const updateClock = () => {
+    if (clock) clock.textContent = new Intl.DateTimeFormat('pt-BR', { hour: '2-digit', minute: '2-digit' }).format(new Date());
+  };
+  updateClock();
+  window.setInterval(updateClock, 30000);
+
+  fullscreenButton?.addEventListener('click', async () => {
+    try {
+      if (document.fullscreenElement) await document.exitFullscreen();
+      else await document.documentElement.requestFullscreen();
+    } catch { /* fullscreen may be blocked by the browser or device */ }
+  });
+  document.addEventListener('fullscreenchange', () => {
+    if (!fullscreenButton) return;
+    const active = Boolean(document.fullscreenElement);
+    fullscreenButton.textContent = active ? 'Sair da tela cheia' : 'Tela cheia';
+    fullscreenButton.setAttribute('aria-pressed', active ? 'true' : 'false');
+  });
+
   document.addEventListener('keydown', (event) => {
+    const target = event.target;
+    const editing = target instanceof Element && target.matches('input,textarea,select,[contenteditable="true"]');
+    const modalOpen = dialog.open || cashDialog?.open || quickProductDialog?.open;
+    if (!editing && !modalOpen && /^\d$/.test(event.key)) {
+      window.clearTimeout(scannerBufferTimer);
+      scannerBuffer += event.key;
+      setScannerState('reading', 'Recebendo código do leitor...');
+      scannerBufferTimer = window.setTimeout(() => {
+        if (scannerBuffer.length >= 8) {
+          search.value = scannerBuffer;
+          scannerBuffer = '';
+          lookupBarcode();
+        } else {
+          scannerBuffer = '';
+          setScannerState('ready');
+        }
+      }, 120);
+      return;
+    }
+    if (!editing && !modalOpen && event.key === 'Enter' && scannerBuffer.length >= 8) {
+      event.preventDefault();
+      window.clearTimeout(scannerBufferTimer);
+      search.value = scannerBuffer;
+      scannerBuffer = '';
+      lookupBarcode();
+      return;
+    }
     if (!['F2', 'F4', 'F6', 'F8', 'F10'].includes(event.key)) return;
     event.preventDefault();
-    if (event.key === 'F2') { if (dialog.open) dialog.close(); search.focus(); }
+    if (event.key === 'F2') {
+      if (dialog.open) dialog.close();
+      if (cashDialog?.open) cashDialog.close();
+      if (quickProductDialog?.open) quickProductDialog.close();
+      search.focus();
+      search.select();
+    }
     if (event.key === 'F4') { customer.open = true; tutor.focus(); }
     if (event.key === 'F6') discount.focus();
     if (event.key === 'F8') openPayment();

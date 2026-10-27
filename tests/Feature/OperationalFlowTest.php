@@ -1250,6 +1250,39 @@ class OperationalFlowTest extends TestCase
             ->assertJsonPath('item.product_id', $productA->id);
     }
 
+    public function test_pdv_search_and_barcode_lookup_use_the_same_sellable_stock(): void
+    {
+        $clinic = $this->clinic('Clinica Estoque Vendavel', '00000000000407');
+        $product = $this->product($clinic, 'Racao com lote vencido', stock: 4, salePrice: 35);
+        $product->update(['sku' => 'RACAO-VENCIDA', 'barcode' => '7891000100103', 'gtin' => '7891000100103']);
+        InventoryMovement::query()->create([
+            'clinic_id' => $clinic->id,
+            'product_id' => $product->id,
+            'type' => 'entry',
+            'quantity' => 4,
+            'balance_before' => 0,
+            'balance_after' => 4,
+            'lot_number' => 'LOTE-VENCIDO-TESTE',
+            'expires_at' => today()->subDay(),
+            'occurred_at' => now(),
+            'source' => 'manual',
+            'reason' => 'Teste de estoque vendavel no PDV',
+        ]);
+        $user = $this->userForClinic($clinic, ['sales.manage']);
+
+        $this->actingAs($user)
+            ->getJson(route('sales.quick-search', ['q' => 'RACAO-VENCIDA']))
+            ->assertOk()
+            ->assertJsonPath('items.0.product_id', $product->id)
+            ->assertJsonPath('items.0.stock_quantity', 0);
+
+        $this->getJson(route('sales.product-lookup', ['gtin' => '7891000100103']))
+            ->assertOk()
+            ->assertJsonPath('item.product_id', $product->id)
+            ->assertJsonPath('item.stock_quantity', 0)
+            ->assertJsonPath('warnings.0', 'Produto sem estoque disponivel.');
+    }
+
     public function test_pdv_can_quickly_register_a_scanned_product_and_consume_its_stock(): void
     {
         $clinic = $this->clinic('Clinica Cadastro Rapido', '00000000000406');
