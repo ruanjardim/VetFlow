@@ -381,8 +381,7 @@ class SaleController extends BaseCrudController
         string $gtin,
         ProductLookupService $lookupService,
         ProductLotService $lotService
-    ): JsonResponse
-    {
+    ): JsonResponse {
         $normalized = Gtin::normalize($gtin);
         $variants = Gtin::variants($normalized);
 
