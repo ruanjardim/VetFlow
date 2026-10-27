@@ -91,6 +91,25 @@ financial income, returns, refunds, cancellations, and sale event history.
   name/SKU/barcode/GTIN search, optional customer and pet, keyboard shortcuts,
   and a multi-method receipt dialog. The previous full form remains available
   as the advanced/comanda path and continues to serve sale editing.
+- The counter route renders without the administrative sidebar or user bar. Its
+  own header keeps the operator, selected clinic, live local clock, fullscreen
+  action, explicit exit and a collapsed group of secondary sales links visible
+  without competing with barcode entry and checkout.
+- A common USB barcode reader is treated as a keyboard wedge. With search
+  focused, Enter submits an 8-14 digit EAN/GTIN immediately. When no editable
+  field or PDV modal is active, a rapid numeric sequence is also captured and
+  submitted after Enter or a short idle boundary. The scanner never intercepts
+  typing inside quantity, price, payment, customer or dialog fields.
+- Scanner feedback distinguishes ready, reading, successful, warning and error
+  states. Successful and attention outcomes request a short optional browser
+  tone, the latest cart row is highlighted, a repeated product increments its
+  existing quantity, and focus returns to barcode search for the next item.
+  Sound and fullscreen remain progressive enhancements: browser blocking does
+  not prevent the sale.
+- Active payment methods are rendered as counter-sized quick cards. Selecting
+  one fills the remaining balance and retains the existing card machine,
+  installment, NSU/reference, customer-credit, mixed-payment and cash-backed
+  change validations.
 - PDV completion requires full payment. Any change must be covered by cash
   received; suspended sales stay as editable drafts. Completion continues
   through the existing SaleService stock, financial, and audit flow.

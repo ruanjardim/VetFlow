@@ -13,7 +13,7 @@
     <script src="{{ route('assets.js', ['v' => filemtime(resource_path('js/app.js'))]) }}" defer></script>
   @endif
 </head>
-<body>
+<body class="@yield('body_class')">
   <div class="shell">
     <aside class="sidebar">
       <a class="brand" href="{{ route('dashboard') }}">

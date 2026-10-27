@@ -85,6 +85,12 @@ class CashSessionsTest extends TestCase
         $this->actingAs($this->operator)
             ->get(route('sales.create'))
             ->assertOk()
+            ->assertSee('class="pdv-counter-mode"', false)
+            ->assertSee('data-pdv-scanner-state', false)
+            ->assertSee('data-pdv-fullscreen', false)
+            ->assertSee('Leitura pronta')
+            ->assertSee('Caixa livre')
+            ->assertSee('Sair do PDV')
             ->assertSee('data-pdv-cash-dialog', false);
 
         $response = $this->postJson(route('sales.cash-sessions.store'), ['opening_amount' => '150,00']);

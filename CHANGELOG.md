@@ -1,5 +1,16 @@
 # Changelog
 
+## 2026-10-27
+
+- Reworked the new-sale screen into a dedicated counter mode that removes the
+  administrative shell, keeps operator, clinic, clock and cash context visible,
+  offers browser fullscreen and groups secondary navigation away from the
+  checkout path. Barcode input now has explicit ready/reading/success/warning
+  states, optional sound feedback, focus recovery, rapid numeric wedge capture,
+  repeated-product quantity increments and latest-item emphasis. Payment method
+  shortcuts use counter-sized cards while the existing stock, cash, financial,
+  customer-credit, quote and audit rules remain unchanged.
+
 ## 2026-10-26
 
 - Expanded assisted bank reconciliation with human-confirmed exact-cent groups:
