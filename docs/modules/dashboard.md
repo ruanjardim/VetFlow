@@ -22,6 +22,8 @@ area first.
   list for finance, stock, service orders, sales, and appointments.
 - Summarize product intelligence coverage, quality, and recommended actions.
 - Register dashboard widgets available to the view.
+- Present the most important signals in the Control Center V2 information
+  hierarchy instead of exposing every metric with the same visual weight.
 
 ## Key Classes
 
@@ -57,6 +59,15 @@ The dashboard does not own tables. It reads from operational modules, including:
 
 - The dashboard route is `/` and is named `dashboard`.
 - The controller delegates data building to `DashboardDataService`.
+- Control Center V2 is identified in the rendered view by
+  `data-dashboard-shell="control-center-v2"` and organizes the page into:
+  four primary KPIs, today's agenda, operational priorities, quick actions,
+  monthly financial pulse, recent records, alerts, and product intelligence.
+- The authenticated shell keeps the active clinic and operator context visible,
+  groups navigation by operational area, and becomes an accessible drawer on
+  narrow screens. The drawer supports a backdrop, close control, and Escape.
+- Dashboard lists eager-load the patient, tutor, species, and appointment
+  relations required by the view to avoid repeated per-row queries.
 - Financial stats distinguish paid income, pending income, overdue income,
   pending expenses, overdue expenses, and paid expenses for the current month.
 - "Prioridades de hoje" reuses the dashboard stats without extra queries,
@@ -69,8 +80,9 @@ The dashboard does not own tables. It reads from operational modules, including:
   summary link opens the correct module.
 - Product intelligence actions link users to product diagnostics, local product
   lists, global catalog filters, and pending suggestions.
-- `DashboardActivityService` currently returns static activity examples rather
-  than an audited activity log.
+- The dashboard intentionally does not render a simulated activity feed. A
+  future activity timeline must be backed by the audit/event domain before it
+  is added to the control center.
 
 ## Tenant Rules
 
@@ -91,4 +103,4 @@ Relevant access coverage is present in:
 - `tests/Feature/DashboardOperationalInsightsTest.php`
 
 Operational insight coverage verifies clinic isolation, ordering, zero-value
-suppression, and the low-stock eligibility rule.
+suppression, the low-stock eligibility rule, and the Control Center V2 shell.

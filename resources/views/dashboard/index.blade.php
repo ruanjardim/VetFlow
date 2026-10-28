@@ -1,177 +1,12 @@
 @extends('layouts.admin')
 
-@section('title', 'Dashboard - VetFlow')
+@section('title', 'Painel de controle - VetFlow')
 
 @section('content')
-  <header class="topbar">
-    <div>
-      <h1>Dashboard</h1>
-      <p>Operacao do dia, agenda e indicadores principais.</p>
-    </div>
-  </header>
-
-  <section class="grid stats">
-    <div class="stat">
-      <span>Pacientes</span>
-      <strong>{{ $stats['patients'] ?? 0 }}</strong>
-    </div>
-    <div class="stat">
-      <span>Responsáveis</span>
-      <strong>{{ $stats['tutors'] ?? 0 }}</strong>
-    </div>
-    <div class="stat">
-      <span>Consultas hoje</span>
-      <strong>{{ $stats['appointments_today'] ?? 0 }}</strong>
-    </div>
-    <div class="stat">
-      <span>Receita paga</span>
-      <strong>R$ {{ number_format($stats['financial'] ?? 0, 2, ',', '.') }}</strong>
-    </div>
-    <div class="stat">
-      <span>Produtos</span>
-      <strong>{{ $stats['products'] ?? 0 }}</strong>
-    </div>
-    <div class="stat">
-      <span>Estoque baixo</span>
-      <strong>{{ $stats['low_stock'] ?? 0 }}</strong>
-    </div>
-    <div class="stat">
-      <span>Servicos PetShop</span>
-      <strong>{{ $stats['petshop_services_active'] ?? 0 }}</strong>
-    </div>
-    <div class="stat">
-      <span>Comandas abertas</span>
-      <strong>{{ $stats['service_orders_open'] ?? 0 }}</strong>
-    </div>
-    <div class="stat">
-      <span>Vendas hoje</span>
-      <strong>R$ {{ number_format($stats['sales_today'] ?? 0, 2, ',', '.') }}</strong>
-    </div>
-    <div class="stat">
-      <span>Rascunhos PDV</span>
-      <strong>{{ $stats['sales_drafts'] ?? 0 }}</strong>
-    </div>
-  </section>
-
-  <section class="panel">
-    <div class="panel-heading">
-      <div>
-        <h2>Prioridades de hoje</h2>
-        <p>Acoes operacionais ordenadas por impacto para orientar o trabalho da equipe.</p>
-      </div>
-    </div>
-    <div class="panel-body">
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>Area</th>
-              <th>O que fazer</th>
-              <th>Indicador</th>
-              <th>Acao</th>
-            </tr>
-          </thead>
-          <tbody>
-            @forelse($operationalPriorities ?? [] as $priority)
-              @php($priorityBadge = $priority['level'] === 'danger' ? 'danger' : ($priority['level'] === 'warning' ? 'warning' : 'muted-badge'))
-              <tr data-dashboard-priority="{{ $priority['key'] }}">
-                <td>{{ $priority['area'] }}</td>
-                <td>
-                  <a href="{{ $priority['url'] }}">
-                    <strong>{{ $priority['title'] }}</strong>
-                    <div class="muted">{{ $priority['description'] }}</div>
-                  </a>
-                </td>
-                <td>
-                  <a class="badge {{ $priorityBadge }}" href="{{ $priority['url'] }}">
-                    @if($priority['value_type'] === 'currency')
-                      R$ {{ number_format($priority['value'], 2, ',', '.') }}
-                    @else
-                      {{ number_format($priority['value'], 0, ',', '.') }}
-                    @endif
-                  </a>
-                </td>
-                <td><a class="button secondary" href="{{ $priority['url'] }}">{{ $priority['action'] }}</a></td>
-              </tr>
-            @empty
-              <tr>
-                <td colspan="4" class="muted">Operacao em dia. Nenhuma prioridade pendente nos indicadores acompanhados.</td>
-              </tr>
-            @endforelse
-          </tbody>
-        </table>
-      </div>
-    </div>
-  </section>
-
+  @php($hour = (int) now()->format('H'))
+  @php($greeting = $hour < 12 ? 'Bom dia' : ($hour < 18 ? 'Boa tarde' : 'Boa noite'))
+  @php($firstName = str((string) auth()->user()?->name)->before(' '))
   @php($alertStats = $alertSummary['stats'] ?? [])
-
-  <section class="panel">
-    <div class="panel-heading">
-      <div>
-        <h2>Central de alertas</h2>
-        <p>Resumo do que precisa de acao no estoque, cadastro e financeiro.</p>
-      </div>
-    </div>
-    <div class="panel-body">
-      <div class="grid stats inventory-lot-stats">
-        <div class="stat">
-          <span>Total</span>
-          <strong>{{ $alertStats['total'] ?? 0 }}</strong>
-        </div>
-        <div class="stat">
-          <span>Criticos</span>
-          <strong>{{ $alertStats['critical'] ?? 0 }}</strong>
-        </div>
-        <div class="stat">
-          <span>Atencao</span>
-          <strong>{{ $alertStats['attention'] ?? 0 }}</strong>
-        </div>
-        <a class="stat stat-link" href="{{ route('inventory-movements.alerts') }}">
-          <span>Estoque e cadastro</span>
-          <strong>{{ $alertStats['inventory'] ?? 0 }}</strong>
-        </a>
-        <a class="stat stat-link" href="{{ route('financial-transactions.cash-flow') }}">
-          <span>Financeiro</span>
-          <strong>{{ $alertStats['financial'] ?? 0 }}</strong>
-        </a>
-      </div>
-
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>Alerta</th>
-              <th>Quantidade</th>
-              <th>Acao</th>
-            </tr>
-          </thead>
-          <tbody>
-            @forelse($alerts ?? [] as $alert)
-              <tr>
-                <td>
-                  <a href="{{ $alert['url'] ?? route('inventory-movements.alerts') }}">
-                    <strong>{{ $alert['title'] }}</strong>
-                    <div class="muted">{{ $alert['description'] }}</div>
-                  </a>
-                </td>
-                <td>
-                  @php($badgeClass = $alert['level'] === 'danger' ? 'danger' : ($alert['level'] === 'warning' ? 'warning' : 'muted-badge'))
-                  <a class="badge {{ $badgeClass }}" href="{{ $alert['url'] ?? route('inventory-movements.alerts') }}">{{ $alert['count'] }}</a>
-                </td>
-                <td><a class="button secondary" href="{{ $alert['url'] ?? route('inventory-movements.alerts') }}">Abrir</a></td>
-              </tr>
-            @empty
-              <tr>
-                <td colspan="3" class="muted">Nenhum alerta de estoque, cadastro ou financeiro no momento.</td>
-              </tr>
-            @endforelse
-          </tbody>
-        </table>
-      </div>
-    </div>
-  </section>
-
   @php($intelligence = $productIntelligence ?? [])
   @php($intelligenceStats = $intelligence['stats'] ?? [])
   @php($intelligenceHealth = $intelligence['health'] ?? ['label' => 'Sem dados', 'level' => 'muted-badge', 'description' => ''])
@@ -181,288 +16,181 @@
     'warning' => 'warning',
     default => 'muted-badge',
   })
+  @php($scheduleItems = ($todayAppointments ?? collect())->isNotEmpty() ? $todayAppointments : ($nextAppointments ?? collect()))
+  @php($showingToday = ($todayAppointments ?? collect())->isNotEmpty())
 
-  <section class="panel nested-panel">
-    <div class="panel-heading">
-      <div>
-        <h2>VetFlow Intelligence</h2>
-        <p>Indicadores do Catalogo Global, sugestoes e qualidade dos produtos aprendidos.</p>
+  <div class="dashboard-v2" data-dashboard-shell="control-center-v2">
+    <header class="dashboard-hero">
+      <div class="dashboard-hero-copy">
+        <span class="dashboard-eyebrow"><span></span> Centro de comando</span>
+        <h1>{{ $greeting }}, {{ $firstName }}.</h1>
+        <p>O que precisa da sua atenção hoje, sem perder tempo procurando em relatórios.</p>
+        <span class="dashboard-date">Hoje, {{ now()->format('d/m/Y') }}</span>
       </div>
-      <div class="actions">
-        <span class="badge {{ $healthBadge }}">{{ $intelligenceHealth['label'] }}</span>
-        <a class="button secondary" href="{{ $intelligence['routes']['products_diagnostics'] ?? route('products.diagnostics') }}">Diagnostico produtos</a>
-        <a class="button secondary" href="{{ route('global-products.index') }}">Ver catalogo</a>
+      <div class="dashboard-hero-actions">
+        @can('appointments.manage')
+          <a class="button secondary" href="{{ route('appointments.create') }}"><x-ui-icon name="calendar" :size="18" /> Agendar consulta</a>
+        @endcan
+        @can('sales.manage')
+          <a class="button" href="{{ route('sales.create') }}"><x-ui-icon name="sales" :size="18" /> Nova venda</a>
+        @endcan
       </div>
-    </div>
-    <div class="panel-body">
-      <div class="intelligence-health">
-        <strong>{{ $intelligenceHealth['description'] }}</strong>
-        <span>Cobertura local-global: {{ number_format((float) ($intelligenceStats['coverage_percent'] ?? 0), 1, ',', '.') }}%</span>
-      </div>
+    </header>
 
-      <div class="grid stats inventory-lot-stats">
-        <a class="stat stat-link" href="{{ $intelligence['routes']['catalog'] ?? route('global-products.index') }}">
-          <span>Catalogo global</span>
-          <strong>{{ $intelligenceStats['total'] ?? 0 }}</strong>
-        </a>
-        <a class="stat stat-link" href="{{ $intelligence['routes']['conflicts'] ?? route('global-products.index') }}">
-          <span>Conflitos</span>
-          <strong>{{ $intelligenceStats['conflict'] ?? 0 }}</strong>
-        </a>
-        <a class="stat stat-link" href="{{ $intelligence['routes']['suggestions'] ?? route('global-products.suggestions') }}">
-          <span>Sugestoes</span>
-          <strong>{{ $intelligenceStats['suggestions_pending'] ?? 0 }}</strong>
-        </a>
-        <a class="stat stat-link" href="{{ $intelligence['routes']['missing_image'] ?? route('global-products.index') }}">
-          <span>Sem imagem</span>
-          <strong>{{ $intelligenceStats['missing_image'] ?? 0 }}</strong>
-        </a>
-      </div>
+    <section class="dashboard-kpi-grid" aria-label="Indicadores de hoje">
+      <a class="dashboard-kpi dashboard-kpi-blue" href="{{ route('schedules.index') }}">
+        <span class="dashboard-kpi-icon"><x-ui-icon name="calendar" /></span>
+        <span class="dashboard-kpi-copy"><small>Consultas hoje</small><strong>{{ $stats['appointments_today'] ?? 0 }}</strong><span>{{ $stats['appointments_week'] ?? 0 }} na semana</span></span>
+        <x-ui-icon class="dashboard-kpi-arrow" name="arrow" :size="18" />
+      </a>
+      <a class="dashboard-kpi dashboard-kpi-violet" href="{{ route('service-orders.board') }}">
+        <span class="dashboard-kpi-icon"><x-ui-icon name="grooming" /></span>
+        <span class="dashboard-kpi-copy"><small>Comandas abertas</small><strong>{{ $stats['service_orders_open'] ?? 0 }}</strong><span>{{ $stats['service_orders_waiting_pickup'] ?? 0 }} aguardando retirada</span></span>
+        <x-ui-icon class="dashboard-kpi-arrow" name="arrow" :size="18" />
+      </a>
+      <a class="dashboard-kpi dashboard-kpi-emerald" href="{{ route('sales.index') }}">
+        <span class="dashboard-kpi-icon"><x-ui-icon name="money" /></span>
+        <span class="dashboard-kpi-copy"><small>Vendas hoje</small><strong>R$ {{ number_format($stats['sales_today'] ?? 0, 2, ',', '.') }}</strong><span>R$ {{ number_format($stats['sales_month'] ?? 0, 2, ',', '.') }} no mês</span></span>
+        <x-ui-icon class="dashboard-kpi-arrow" name="arrow" :size="18" />
+      </a>
+      <a class="dashboard-kpi dashboard-kpi-amber" href="{{ route('financial-transactions.cash-flow') }}">
+        <span class="dashboard-kpi-icon"><x-ui-icon name="finance" /></span>
+        <span class="dashboard-kpi-copy"><small>Contas vencidas</small><strong>R$ {{ number_format(($stats['expenses_overdue'] ?? 0) + ($stats['financial_overdue'] ?? 0), 2, ',', '.') }}</strong><span>Receber e pagar em atraso</span></span>
+        <x-ui-icon class="dashboard-kpi-arrow" name="arrow" :size="18" />
+      </a>
+    </section>
 
-      <div class="grid stats inventory-lot-stats">
-        <a class="stat stat-link" href="{{ $intelligence['routes']['stale'] ?? route('global-products.index') }}">
-          <span>Consulta antiga</span>
-          <strong>{{ $intelligenceStats['stale'] ?? 0 }}</strong>
-        </a>
-        <a class="stat stat-link" href="{{ $intelligence['routes']['low_quality'] ?? route('global-products.index') }}">
-          <span>Qualidade baixa</span>
-          <strong>{{ $intelligenceStats['low_quality'] ?? 0 }}</strong>
-        </a>
-        <div class="stat">
-          <span>Qualidade media</span>
-          <strong>{{ number_format((float) ($intelligenceStats['average_quality'] ?? 0), 1, ',', '.') }}%</strong>
-        </div>
-        <div class="stat">
-          <span>Produtos locais vinculados</span>
-          <strong>{{ $intelligenceStats['linked_local_products'] ?? 0 }}/{{ $intelligenceStats['local_products'] ?? 0 }}</strong>
-        </div>
-      </div>
-
-      <div class="grid stats inventory-lot-stats">
-        <a class="stat stat-link" href="{{ $intelligence['routes']['products_unlinked'] ?? route('products.index', ['intelligence' => 'unlinked']) }}">
-          <span>Locais sem global</span>
-          <strong>{{ $intelligenceStats['unlinked_local_with_gtin'] ?? 0 }}</strong>
-        </a>
-        <a class="stat stat-link" href="{{ $intelligence['routes']['products_invalid_gtin'] ?? route('products.index', ['intelligence' => 'invalid_gtin']) }}">
-          <span>EAN invalido</span>
-          <strong>{{ $intelligenceStats['local_invalid_gtin'] ?? 0 }}</strong>
-        </a>
-        <a class="stat stat-link" href="{{ $intelligence['routes']['products_without_price'] ?? route('products.index', ['intelligence' => 'without_price']) }}">
-          <span>Sem preco local</span>
-          <strong>{{ $intelligenceStats['local_without_price'] ?? 0 }}</strong>
-        </a>
-        <a class="stat stat-link" href="{{ $intelligence['routes']['products_low_stock'] ?? route('products.index', ['intelligence' => 'low_stock']) }}">
-          <span>Estoque local baixo</span>
-          <strong>{{ $intelligenceStats['local_low_stock'] ?? 0 }}</strong>
-        </a>
-      </div>
-
-      <div class="content-grid intelligence-grid">
-        <div class="intelligence-section">
-          <div class="intelligence-section-heading">
-            <div>
-              <h2>Acoes recomendadas</h2>
-              <p>Prioridades para melhorar automacao e confiabilidade.</p>
+    <section class="dashboard-command-grid">
+      <article class="dashboard-card dashboard-schedule-card">
+        <header class="dashboard-card-heading">
+          <div><span class="dashboard-card-kicker">Agenda</span><h2>{{ $showingToday ? 'Atendimentos de hoje' : 'Próximos atendimentos' }}</h2></div>
+          <a href="{{ route('schedules.index') }}">Ver agenda <x-ui-icon name="arrow" :size="16" /></a>
+        </header>
+        <div class="dashboard-card-body dashboard-list">
+          @forelse($scheduleItems as $appointment)
+            <a class="dashboard-list-item" href="{{ route('appointments.edit', $appointment) }}">
+              <span class="dashboard-time">{{ optional($appointment->scheduled_at)->format('H:i') }}</span>
+              <span class="dashboard-list-main"><strong>{{ $appointment->patient?->name ?: $appointment->title }}</strong><small>{{ $appointment->tutor?->name ?: 'Responsável não informado' }}</small></span>
+              <span class="badge muted-badge">{{ $appointment->status }}</span>
+            </a>
+          @empty
+            <div class="dashboard-empty-state">
+              <span><x-ui-icon name="calendar" :size="24" /></span>
+              <strong>Agenda livre por enquanto</strong>
+              <p>Nenhum atendimento encontrado para o período.</p>
+              @can('appointments.manage')<a class="button secondary" href="{{ route('appointments.create') }}">Agendar consulta</a>@endcan
             </div>
-          </div>
-          <div class="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>Acao</th>
-                  <th>Qtd</th>
-                  <th>Atalho</th>
-                </tr>
-              </thead>
-              <tbody>
-                @forelse($intelligence['actions'] ?? [] as $action)
-                  @php($badge = $action['level'] === 'danger' ? 'danger' : ($action['level'] === 'warning' ? 'warning' : 'muted-badge'))
-                  <tr>
-                    <td>
-                      <a href="{{ $action['url'] }}">
-                        <strong>{{ $action['title'] }}</strong>
-                        <div class="muted">{{ $action['description'] }}</div>
-                      </a>
-                    </td>
-                    <td><a class="badge {{ $badge }}" href="{{ $action['url'] }}">{{ $action['count'] }}</a></td>
-                    <td><a class="button secondary" href="{{ $action['url'] }}">Abrir</a></td>
-                  </tr>
-                @empty
-                  <tr>
-                    <td colspan="3" class="muted">Nenhuma acao critica do Intelligence no momento.</td>
-                  </tr>
-                @endforelse
-              </tbody>
-            </table>
-          </div>
+          @endforelse
         </div>
+      </article>
 
-        <div class="intelligence-section">
-          <div class="intelligence-section-heading">
-            <div>
-              <h2>Aprendizados recentes</h2>
-              <p>Ultimos produtos globais atualizados.</p>
-            </div>
-          </div>
-          <div class="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>Produto</th>
-                  <th>Qualidade</th>
-                </tr>
-              </thead>
-              <tbody>
-                @forelse($intelligence['recent'] ?? [] as $product)
-                  <tr>
-                    <td>
-                      <a href="{{ $product['url'] }}">
-                        <strong>{{ $product['name'] }}</strong>
-                        <div class="muted">{{ $product['gtin'] }} {{ $product['brand'] ? '- '.$product['brand'] : '' }}</div>
-                      </a>
-                    </td>
-                    <td>{{ $product['quality'] }}%</td>
-                  </tr>
-                @empty
-                  <tr>
-                    <td colspan="2" class="muted">Nenhum aprendizado global ainda.</td>
-                  </tr>
-                @endforelse
-              </tbody>
-            </table>
-          </div>
+      <article class="dashboard-card dashboard-priority-card">
+        <header class="dashboard-card-heading">
+          <div><span class="dashboard-card-kicker">Foco do dia</span><h2>Prioridades operacionais</h2></div>
+          <span class="dashboard-count-badge">{{ count($operationalPriorities ?? []) }}</span>
+        </header>
+        <div class="dashboard-card-body dashboard-priority-list">
+          @forelse($operationalPriorities ?? [] as $priority)
+            @php($priorityTone = $priority['level'] === 'danger' ? 'danger' : ($priority['level'] === 'warning' ? 'warning' : 'info'))
+            <a class="dashboard-priority dashboard-priority-{{ $priorityTone }}" href="{{ $priority['url'] }}" data-dashboard-priority="{{ $priority['key'] }}">
+              <span class="dashboard-priority-marker"><x-ui-icon name="warning" :size="18" /></span>
+              <span class="dashboard-list-main"><small>{{ $priority['area'] }}</small><strong>{{ $priority['title'] }}</strong><span>{{ $priority['description'] }}</span></span>
+              <span class="dashboard-priority-value">
+                @if($priority['value_type'] === 'currency') R$ {{ number_format($priority['value'], 2, ',', '.') }} @else {{ number_format($priority['value'], 0, ',', '.') }} @endif
+              </span>
+            </a>
+          @empty
+            <div class="dashboard-empty-state dashboard-empty-success"><span><x-ui-icon name="sparkles" :size="24" /></span><strong>Operação em dia</strong><p>Nenhuma prioridade crítica nos indicadores acompanhados.</p></div>
+          @endforelse
         </div>
-      </div>
+      </article>
 
-      <div class="content-grid intelligence-grid">
-        <div class="intelligence-section">
-          <div class="intelligence-section-heading">
-            <div>
-              <h2>Fontes mais usadas</h2>
-              <p>Origens que mais alimentaram o catalogo.</p>
-            </div>
+      <aside class="dashboard-side-stack">
+        <article class="dashboard-card dashboard-quick-card">
+          <header class="dashboard-card-heading"><div><span class="dashboard-card-kicker">Atalhos</span><h2>Começar agora</h2></div></header>
+          <div class="dashboard-card-body dashboard-quick-grid">
+            @can('tutors.manage')<a href="{{ route('tutores.create') }}"><span><x-ui-icon name="users" /></span><strong>Novo responsável</strong><small>Cadastro rápido</small></a>@endcan
+            @can('patients.manage')<a href="{{ route('patients.create') }}"><span><x-ui-icon name="paw" /></span><strong>Novo paciente</strong><small>Ficha clínica</small></a>@endcan
+            @can('appointments.manage')<a href="{{ route('appointments.create') }}"><span><x-ui-icon name="calendar" /></span><strong>Nova consulta</strong><small>Agendar horário</small></a>@endcan
+            @can('service-orders.manage')<a href="{{ route('service-orders.create') }}"><span><x-ui-icon name="grooming" /></span><strong>Nova comanda</strong><small>Banho e tosa</small></a>@endcan
+            @can('sales.manage')<a href="{{ route('sales.create') }}"><span><x-ui-icon name="sales" /></span><strong>Abrir PDV</strong><small>Venda no balcão</small></a>@endcan
+            @can('products.manage')<a href="{{ route('products.create') }}"><span><x-ui-icon name="inventory" /></span><strong>Novo produto</strong><small>Catálogo e estoque</small></a>@endcan
           </div>
-          <div class="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>Fonte</th>
-                  <th>Itens</th>
-                  <th>Confianca media</th>
-                </tr>
-              </thead>
-              <tbody>
-                @forelse($intelligence['sources'] ?? [] as $source)
-                  <tr>
-                    <td>{{ $source['name'] }}</td>
-                    <td>{{ $source['total'] }}</td>
-                    <td>{{ number_format((float) $source['average_confidence'], 1, ',', '.') }}%</td>
-                  </tr>
-                @empty
-                  <tr>
-                    <td colspan="3" class="muted">Nenhuma fonte registrada ainda.</td>
-                  </tr>
-                @endforelse
-              </tbody>
-            </table>
-          </div>
-        </div>
+        </article>
 
-        <div class="intelligence-section">
-          <div class="intelligence-section-heading">
-            <div>
-              <h2>Categorias globais</h2>
-              <p>Principais grupos aprendidos.</p>
-            </div>
+        <article class="dashboard-card dashboard-finance-card">
+          <header class="dashboard-card-heading">
+            <div><span class="dashboard-card-kicker">Financeiro</span><h2>Pulso do mês</h2></div>
+            <a href="{{ route('financial-transactions.cash-flow') }}">Detalhar <x-ui-icon name="arrow" :size="16" /></a>
+          </header>
+          <div class="dashboard-card-body">
+            <div class="dashboard-finance-balance"><small>Resultado realizado</small><strong class="{{ (($stats['financial_month'] ?? 0) - ($stats['expenses_month'] ?? 0)) < 0 ? 'is-negative' : '' }}">R$ {{ number_format(($stats['financial_month'] ?? 0) - ($stats['expenses_month'] ?? 0), 2, ',', '.') }}</strong></div>
+            <dl class="dashboard-finance-grid">
+              <div><dt>Receita</dt><dd>R$ {{ number_format($stats['financial_month'] ?? 0, 2, ',', '.') }}</dd></div>
+              <div><dt>Despesas</dt><dd>R$ {{ number_format($stats['expenses_month'] ?? 0, 2, ',', '.') }}</dd></div>
+              <div><dt>A receber</dt><dd>R$ {{ number_format($stats['financial_pending'] ?? 0, 2, ',', '.') }}</dd></div>
+              <div><dt>A pagar</dt><dd>R$ {{ number_format($stats['expenses_pending'] ?? 0, 2, ',', '.') }}</dd></div>
+            </dl>
           </div>
-          <div class="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>Categoria</th>
-                  <th>Itens</th>
-                </tr>
-              </thead>
-              <tbody>
-                @forelse($intelligence['categories'] ?? [] as $category)
-                  <tr>
-                    <td><a href="{{ $category['url'] }}">{{ $category['category'] }}</a></td>
-                    <td>{{ $category['total'] }}</td>
-                  </tr>
-                @empty
-                  <tr>
-                    <td colspan="2" class="muted">Nenhuma categoria global ainda.</td>
-                  </tr>
-                @endforelse
-              </tbody>
-            </table>
+        </article>
+      </aside>
+    </section>
+
+    <section class="dashboard-secondary-grid">
+      <article class="dashboard-card">
+        <header class="dashboard-card-heading"><div><span class="dashboard-card-kicker">Relacionamento</span><h2>Pacientes recentes</h2></div><a href="{{ route('patients.index') }}">Ver pacientes <x-ui-icon name="arrow" :size="16" /></a></header>
+        <div class="dashboard-card-body dashboard-entity-list">
+          @forelse($latestPatients ?? [] as $patient)
+            <a href="{{ route('patients.show', $patient) }}"><span class="dashboard-entity-avatar"><x-ui-icon name="paw" :size="18" /></span><span><strong>{{ $patient->name }}</strong><small>{{ $patient->animalSpecies?->name ?: 'Espécie não informada' }} · {{ $patient->tutor?->name ?: 'Sem responsável' }}</small></span><time>{{ optional($patient->created_at)->format('d/m') }}</time></a>
+          @empty
+            <div class="dashboard-inline-empty">Nenhum paciente cadastrado ainda.</div>
+          @endforelse
+        </div>
+      </article>
+
+      <article class="dashboard-card">
+        <header class="dashboard-card-heading"><div><span class="dashboard-card-kicker">Clientes</span><h2>Responsáveis recentes</h2></div><a href="{{ route('tutores.index') }}">Ver responsáveis <x-ui-icon name="arrow" :size="16" /></a></header>
+        <div class="dashboard-card-body dashboard-entity-list">
+          @forelse($latestTutors ?? [] as $tutor)
+            <a href="{{ route('tutores.edit', $tutor) }}"><span class="dashboard-entity-avatar dashboard-entity-avatar-blue"><x-ui-icon name="users" :size="18" /></span><span><strong>{{ $tutor->name }}</strong><small>{{ $tutor->patients_count }} {{ $tutor->patients_count === 1 ? 'paciente vinculado' : 'pacientes vinculados' }}</small></span><time>{{ optional($tutor->created_at)->format('d/m') }}</time></a>
+          @empty
+            <div class="dashboard-inline-empty">Nenhum responsável cadastrado ainda.</div>
+          @endforelse
+        </div>
+      </article>
+    </section>
+
+    <section class="dashboard-secondary-grid">
+      <article class="dashboard-card">
+        <header class="dashboard-card-heading"><div><span class="dashboard-card-kicker">Monitoramento</span><h2>Central de alertas</h2></div><span class="badge {{ ($alertStats['critical'] ?? 0) > 0 ? 'danger' : 'success' }}">{{ $alertStats['total'] ?? 0 }} alertas</span></header>
+        <div class="dashboard-card-body dashboard-alert-list">
+          @forelse($alerts ?? [] as $alert)
+            @php($alertTone = $alert['level'] === 'danger' ? 'danger' : ($alert['level'] === 'warning' ? 'warning' : 'info'))
+            <a class="dashboard-alert dashboard-alert-{{ $alertTone }}" href="{{ $alert['url'] ?? route('inventory-movements.alerts') }}"><span><x-ui-icon name="warning" :size="18" /></span><span class="dashboard-list-main"><strong>{{ $alert['title'] }}</strong><small>{{ $alert['description'] }}</small></span><b>{{ $alert['count'] }}</b></a>
+          @empty
+            <div class="dashboard-inline-empty">Nenhum alerta de estoque, cadastro ou financeiro.</div>
+          @endforelse
+        </div>
+      </article>
+
+      <article class="dashboard-card dashboard-intelligence-card">
+        <header class="dashboard-card-heading"><div><span class="dashboard-card-kicker">VetFlow Intelligence</span><h2>Qualidade do catálogo</h2></div><span class="badge {{ $healthBadge }}">{{ $intelligenceHealth['label'] }}</span></header>
+        <div class="dashboard-card-body">
+          <p class="dashboard-intelligence-description">{{ $intelligenceHealth['description'] }}</p>
+          <div class="dashboard-intelligence-metrics">
+            <div><small>Cobertura</small><strong>{{ number_format((float) ($intelligenceStats['coverage_percent'] ?? 0), 1, ',', '.') }}%</strong></div>
+            <div><small>Sugestões</small><strong>{{ $intelligenceStats['suggestions_pending'] ?? 0 }}</strong></div>
+            <div><small>Sem imagem</small><strong>{{ $intelligenceStats['missing_image'] ?? 0 }}</strong></div>
+            <div><small>EAN inválido</small><strong>{{ $intelligenceStats['local_invalid_gtin'] ?? 0 }}</strong></div>
           </div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <section class="content-grid">
-    <div class="panel">
-      <div class="panel-body">
-        <h2>Proximas consultas</h2>
-        <div class="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>Titulo</th>
-                <th>Data</th>
-                <th>Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              @forelse($nextAppointments ?? [] as $appointment)
-                <tr>
-                  <td>{{ $appointment->title }}</td>
-                  <td>{{ optional($appointment->scheduled_at)->format('d/m/Y H:i') }}</td>
-                  <td>{{ $appointment->status }}</td>
-                </tr>
-              @empty
-                <tr>
-                  <td colspan="3" class="muted">Nenhuma consulta futura cadastrada.</td>
-                </tr>
-              @endforelse
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-
-    <div class="grid">
-      <div class="panel">
-        <div class="panel-body">
-          <h2>Financeiro</h2>
-          <p>A receber: R$ {{ number_format($stats['financial_pending'] ?? 0, 2, ',', '.') }}</p>
-          <p>Recebimento vencido: R$ {{ number_format($stats['financial_overdue'] ?? 0, 2, ',', '.') }}</p>
-          <p>Receita mes: R$ {{ number_format($stats['financial_month'] ?? 0, 2, ',', '.') }}</p>
-          <p>A pagar: R$ {{ number_format($stats['expenses_pending'] ?? 0, 2, ',', '.') }}</p>
-          <p>Pagamento vencido: R$ {{ number_format($stats['expenses_overdue'] ?? 0, 2, ',', '.') }}</p>
-          <p>Despesas mes: R$ {{ number_format($stats['expenses_month'] ?? 0, 2, ',', '.') }}</p>
-          <p>Estoque: R$ {{ number_format($stats['stock_value'] ?? 0, 2, ',', '.') }}</p>
-          <p>Comandas hoje: R$ {{ number_format($stats['service_orders_day_total'] ?? 0, 2, ',', '.') }}</p>
-          <p>Vendas mes: R$ {{ number_format($stats['sales_month'] ?? 0, 2, ',', '.') }}</p>
-          <p>PDV pendente: R$ {{ number_format($stats['sales_pending_payment'] ?? 0, 2, ',', '.') }}</p>
-        </div>
-      </div>
-
-      <div class="panel">
-        <div class="panel-body">
-          <h2>Atalhos</h2>
-          <div class="actions">
-            <a class="button" href="{{ route('appointments.create') }}">Nova consulta</a>
-            <a class="button secondary" href="{{ route('tutores.create') }}">Novo responsável</a>
-            <a class="button secondary" href="{{ route('products.create') }}">Novo produto</a>
-            <a class="button secondary" href="{{ route('petshop-services.create') }}">Novo servico</a>
-            <a class="button secondary" href="{{ route('service-orders.create') }}">Nova comanda</a>
-            <a class="button secondary" href="{{ route('sales.create') }}">Nova venda</a>
+          <div class="dashboard-intelligence-actions">
+            @foreach(array_slice($intelligence['actions'] ?? [], 0, 3) as $action)
+              <a href="{{ $action['url'] }}"><span>{{ $action['title'] }}</span><strong>{{ $action['count'] }}</strong></a>
+            @endforeach
           </div>
+          <a class="button secondary dashboard-intelligence-button" href="{{ $intelligence['routes']['products_diagnostics'] ?? route('products.diagnostics') }}">Abrir diagnóstico de produtos</a>
         </div>
-      </div>
-    </div>
-  </section>
+      </article>
+    </section>
+  </div>
 @endsection

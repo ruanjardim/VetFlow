@@ -47,7 +47,9 @@ class DashboardAppointmentService
 
     public function next(int $limit = 5)
     {
-        return Appointment::where('scheduled_at', '>=', now())
+        return Appointment::query()
+            ->with(['patient', 'tutor'])
+            ->where('scheduled_at', '>=', now())
             ->orderBy('scheduled_at')
             ->limit($limit)
             ->get();
@@ -55,7 +57,9 @@ class DashboardAppointmentService
 
     public function todayList(int $limit = 5)
     {
-        return Appointment::whereDate('scheduled_at', today())
+        return Appointment::query()
+            ->with(['patient', 'tutor'])
+            ->whereDate('scheduled_at', today())
             ->orderBy('scheduled_at')
             ->limit($limit)
             ->get();

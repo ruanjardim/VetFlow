@@ -13,7 +13,9 @@ class DashboardPatientService
 
     public function latest(int $limit = 5)
     {
-        return Patient::orderByDesc('created_at')
+        return Patient::query()
+            ->with(['tutor', 'animalSpecies'])
+            ->orderByDesc('created_at')
             ->limit($limit)
             ->get();
     }

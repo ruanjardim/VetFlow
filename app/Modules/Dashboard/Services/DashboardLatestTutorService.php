@@ -10,6 +10,7 @@ class DashboardLatestTutorService
     public function getLatest(int $limit = 5): Collection
     {
         return Tutor::query()
+            ->withCount('patients')
             ->latest()
             ->limit($limit)
             ->get();
