@@ -63,9 +63,11 @@ The dashboard does not own tables. It reads from operational modules, including:
   `data-dashboard-shell="control-center-v2"` and organizes the page into:
   four primary KPIs, today's agenda, operational priorities, quick actions,
   monthly financial pulse, recent records, alerts, and product intelligence.
-- The visual language uses solid application surfaces and a semantic premium
-  palette: blue for primary actions, ruby for risk, amber for attention,
-  emerald for positive outcomes, and violet for service context. Decorative
+- The visual language uses solid application surfaces and a welcoming clinical
+  palette: sage teal is the product signature, powder blue represents agenda
+  and information, lilac represents service context, coral highlights calls
+  for attention, and butter yellow is reserved for emphasis. Ruby remains
+  exclusive to errors, overdue values, and operational risk. Decorative
   gradients are intentionally excluded from the authenticated application.
 - Operational rows, KPI cards, financial summaries, and product-intelligence
   metrics link to their corresponding workflow. Static text is reserved for
