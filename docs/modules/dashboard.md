@@ -63,6 +63,13 @@ The dashboard does not own tables. It reads from operational modules, including:
   `data-dashboard-shell="control-center-v2"` and organizes the page into:
   four primary KPIs, today's agenda, operational priorities, quick actions,
   monthly financial pulse, recent records, alerts, and product intelligence.
+- The visual language uses solid application surfaces and a semantic premium
+  palette: blue for primary actions, ruby for risk, amber for attention,
+  emerald for positive outcomes, and violet for service context. Decorative
+  gradients are intentionally excluded from the authenticated application.
+- Operational rows, KPI cards, financial summaries, and product-intelligence
+  metrics link to their corresponding workflow. Static text is reserved for
+  labels and states that do not have a legitimate destination.
 - The authenticated shell keeps the active clinic and operator context visible,
   groups navigation by operational area, and becomes an accessible drawer on
   narrow screens. The drawer supports a backdrop, close control, and Escape.

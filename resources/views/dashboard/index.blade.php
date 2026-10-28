@@ -53,7 +53,7 @@
         <span class="dashboard-kpi-copy"><small>Vendas hoje</small><strong>R$ {{ number_format($stats['sales_today'] ?? 0, 2, ',', '.') }}</strong><span>R$ {{ number_format($stats['sales_month'] ?? 0, 2, ',', '.') }} no mês</span></span>
         <x-ui-icon class="dashboard-kpi-arrow" name="arrow" :size="18" />
       </a>
-      <a class="dashboard-kpi dashboard-kpi-amber" href="{{ route('financial-transactions.cash-flow') }}">
+      <a class="dashboard-kpi dashboard-kpi-ruby" href="{{ route('financial-transactions.cash-flow') }}">
         <span class="dashboard-kpi-icon"><x-ui-icon name="finance" /></span>
         <span class="dashboard-kpi-copy"><small>Contas vencidas</small><strong>R$ {{ number_format(($stats['expenses_overdue'] ?? 0) + ($stats['financial_overdue'] ?? 0), 2, ',', '.') }}</strong><span>Receber e pagar em atraso</span></span>
         <x-ui-icon class="dashboard-kpi-arrow" name="arrow" :size="18" />
@@ -124,13 +124,16 @@
             <a href="{{ route('financial-transactions.cash-flow') }}">Detalhar <x-ui-icon name="arrow" :size="16" /></a>
           </header>
           <div class="dashboard-card-body">
-            <div class="dashboard-finance-balance"><small>Resultado realizado</small><strong class="{{ (($stats['financial_month'] ?? 0) - ($stats['expenses_month'] ?? 0)) < 0 ? 'is-negative' : '' }}">R$ {{ number_format(($stats['financial_month'] ?? 0) - ($stats['expenses_month'] ?? 0), 2, ',', '.') }}</strong></div>
-            <dl class="dashboard-finance-grid">
-              <div><dt>Receita</dt><dd>R$ {{ number_format($stats['financial_month'] ?? 0, 2, ',', '.') }}</dd></div>
-              <div><dt>Despesas</dt><dd>R$ {{ number_format($stats['expenses_month'] ?? 0, 2, ',', '.') }}</dd></div>
-              <div><dt>A receber</dt><dd>R$ {{ number_format($stats['financial_pending'] ?? 0, 2, ',', '.') }}</dd></div>
-              <div><dt>A pagar</dt><dd>R$ {{ number_format($stats['expenses_pending'] ?? 0, 2, ',', '.') }}</dd></div>
-            </dl>
+            <a class="dashboard-finance-balance" href="{{ route('financial-transactions.cash-flow') }}" data-dashboard-metric-link="financial-result" aria-label="Abrir fluxo de caixa e ver o resultado realizado">
+              <span><small>Resultado realizado</small><strong class="{{ (($stats['financial_month'] ?? 0) - ($stats['expenses_month'] ?? 0)) < 0 ? 'is-negative' : '' }}">R$ {{ number_format(($stats['financial_month'] ?? 0) - ($stats['expenses_month'] ?? 0), 2, ',', '.') }}</strong></span>
+              <x-ui-icon name="arrow" :size="16" />
+            </a>
+            <div class="dashboard-finance-grid">
+              <a href="{{ route('financial-transactions.index', ['type' => 'income']) }}" data-dashboard-metric-link="income"><span>Receita</span><strong>R$ {{ number_format($stats['financial_month'] ?? 0, 2, ',', '.') }}</strong><x-ui-icon name="arrow" :size="14" /></a>
+              <a href="{{ route('financial-transactions.index', ['type' => 'expense']) }}" data-dashboard-metric-link="expenses"><span>Despesas</span><strong>R$ {{ number_format($stats['expenses_month'] ?? 0, 2, ',', '.') }}</strong><x-ui-icon name="arrow" :size="14" /></a>
+              <a href="{{ route('financial-obligations.index', ['type' => 'income']) }}" data-dashboard-metric-link="receivable"><span>A receber</span><strong>R$ {{ number_format($stats['financial_pending'] ?? 0, 2, ',', '.') }}</strong><x-ui-icon name="arrow" :size="14" /></a>
+              <a href="{{ route('financial-obligations.index', ['type' => 'expense']) }}" data-dashboard-metric-link="payable"><span>A pagar</span><strong>R$ {{ number_format($stats['expenses_pending'] ?? 0, 2, ',', '.') }}</strong><x-ui-icon name="arrow" :size="14" /></a>
+            </div>
           </div>
         </article>
       </aside>
@@ -178,10 +181,10 @@
         <div class="dashboard-card-body">
           <p class="dashboard-intelligence-description">{{ $intelligenceHealth['description'] }}</p>
           <div class="dashboard-intelligence-metrics">
-            <div><small>Cobertura</small><strong>{{ number_format((float) ($intelligenceStats['coverage_percent'] ?? 0), 1, ',', '.') }}%</strong></div>
-            <div><small>Sugestões</small><strong>{{ $intelligenceStats['suggestions_pending'] ?? 0 }}</strong></div>
-            <div><small>Sem imagem</small><strong>{{ $intelligenceStats['missing_image'] ?? 0 }}</strong></div>
-            <div><small>EAN inválido</small><strong>{{ $intelligenceStats['local_invalid_gtin'] ?? 0 }}</strong></div>
+            <a href="{{ $intelligence['routes']['catalog'] ?? route('global-products.index') }}" data-dashboard-metric-link="catalog-coverage"><span><small>Cobertura</small><strong>{{ number_format((float) ($intelligenceStats['coverage_percent'] ?? 0), 1, ',', '.') }}%</strong></span><x-ui-icon name="arrow" :size="14" /></a>
+            <a href="{{ $intelligence['routes']['suggestions'] ?? route('global-products.suggestions') }}" data-dashboard-metric-link="catalog-suggestions"><span><small>Sugestões</small><strong>{{ $intelligenceStats['suggestions_pending'] ?? 0 }}</strong></span><x-ui-icon name="arrow" :size="14" /></a>
+            <a href="{{ $intelligence['routes']['missing_image'] ?? route('global-products.index') }}" data-dashboard-metric-link="catalog-images"><span><small>Sem imagem</small><strong>{{ $intelligenceStats['missing_image'] ?? 0 }}</strong></span><x-ui-icon name="arrow" :size="14" /></a>
+            <a href="{{ $intelligence['routes']['products_invalid_gtin'] ?? route('products.index', ['intelligence' => 'invalid_gtin']) }}" data-dashboard-metric-link="catalog-invalid-ean"><span><small>EAN inválido</small><strong>{{ $intelligenceStats['local_invalid_gtin'] ?? 0 }}</strong></span><x-ui-icon name="arrow" :size="14" /></a>
           </div>
           <div class="dashboard-intelligence-actions">
             @foreach(array_slice($intelligence['actions'] ?? [], 0, 3) as $action)
