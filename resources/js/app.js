@@ -4,6 +4,36 @@ import { initPatientSizeHint, initServiceOrderForm } from './service-orders.js';
 document.addEventListener('DOMContentLoaded', () => {
   initServiceOrderForm();
   initPatientSizeHint();
+
+  const sidebarToggle = document.querySelector('[data-sidebar-toggle]');
+  const sidebarCloseButtons = document.querySelectorAll('[data-sidebar-close]');
+  const primaryNavigation = document.querySelector('#primary-navigation');
+  const closeSidebar = () => {
+    document.body.classList.remove('sidebar-open');
+    sidebarToggle?.setAttribute('aria-expanded', 'false');
+  };
+
+  sidebarToggle?.addEventListener('click', () => {
+    const opening = !document.body.classList.contains('sidebar-open');
+
+    document.body.classList.toggle('sidebar-open', opening);
+    sidebarToggle.setAttribute('aria-expanded', String(opening));
+  });
+  sidebarCloseButtons.forEach((button) => button.addEventListener('click', closeSidebar));
+  primaryNavigation?.querySelectorAll('a').forEach((link) => {
+    link.addEventListener('click', () => {
+      if (window.matchMedia('(max-width: 980px)').matches) {
+        closeSidebar();
+      }
+    });
+  });
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && document.body.classList.contains('sidebar-open')) {
+      closeSidebar();
+      sidebarToggle?.focus();
+    }
+  });
+
   const onlyDigits = (value) => String(value || '').replace(/\D+/g, '');
   const formatDocument = (value, type) => {
     const maxDigits = type === 'cpf' ? 11 : 14;

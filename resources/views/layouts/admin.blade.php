@@ -14,26 +14,47 @@
   @endif
 </head>
 <body class="@yield('body_class')">
+  @php($currentClinic = auth()->user()?->clinic)
+  @php($currentClinicName = $currentClinic?->trade_name ?: ($currentClinic?->corporate_name ?: 'Administração global'))
   <div class="shell">
-    <aside class="sidebar">
-      <a class="brand" href="{{ route('dashboard') }}">
-        <span class="brand-heading">
-          <strong>VetFlow</strong>
-          @if($brandIconKey)
-            <x-brand-animal-icon :icon="$brandIconKey" />
-          @endif
+    <aside class="sidebar" id="primary-navigation" aria-label="Navegação principal">
+      <div class="sidebar-header">
+        <a class="brand" href="{{ route('dashboard') }}">
+          <span class="brand-mark">
+            @if($brandIconKey)
+              <x-brand-animal-icon :icon="$brandIconKey" />
+            @else
+              <x-ui-icon name="paw" :size="24" />
+            @endif
+          </span>
+          <span>
+            <span class="brand-heading"><strong>VetFlow</strong></span>
+            <span class="brand-subtitle">Gestão veterinária</span>
+          </span>
+        </a>
+        <button class="sidebar-close" type="button" data-sidebar-close aria-label="Fechar menu">
+          <x-ui-icon name="close" />
+        </button>
+      </div>
+
+      <div class="sidebar-context">
+        <span class="sidebar-context-icon"><x-ui-icon name="building" :size="18" /></span>
+        <span>
+          <small>Unidade ativa</small>
+          <strong>{{ $currentClinicName }}</strong>
         </span>
-        <span class="brand-subtitle">ERP veterinario</span>
-      </a>
+      </div>
 
       <nav class="nav">
         @can('dashboard.view')
-          <a class="{{ request()->routeIs('dashboard') ? 'is-active' : '' }}" href="{{ route('dashboard') }}">Dashboard</a>
+          <a class="nav-link {{ request()->routeIs('dashboard') ? 'is-active' : '' }}" href="{{ route('dashboard') }}" @if(request()->routeIs('dashboard')) aria-current="page" @endif>
+            <span class="nav-item-label"><x-ui-icon name="dashboard" /><span>Painel de controle</span></span>
+          </a>
         @endcan
 
         @canany(['tutors.manage', 'patients.manage', 'medical-records.manage', 'vaccinations.manage', 'hospitalizations.manage', 'prescriptions.manage'])
           <details class="nav-group" @if(request()->routeIs('tutores.*', 'patients.*', 'medical-records.*', 'vaccinations.*', 'hospitalizations.*', 'prescriptions.*')) open @endif>
-            <summary><span>Atendimento clínico</span><span class="nav-chevron">⌄</span></summary>
+            <summary><span class="nav-item-label"><x-ui-icon name="clinical" /><span>Atendimento clínico</span></span><span class="nav-chevron"><x-ui-icon name="chevron" :size="17" /></span></summary>
             <div class="nav-submenu">
               @can('tutors.manage')<a class="{{ request()->routeIs('tutores.*') ? 'is-active' : '' }}" href="{{ route('tutores.index') }}">Responsáveis</a>@endcan
               @can('patients.manage')<a class="{{ request()->routeIs('patients.*') ? 'is-active' : '' }}" href="{{ route('patients.index') }}">Pacientes</a>@endcan
@@ -47,7 +68,7 @@
 
         @canany(['schedules.manage', 'appointments.manage'])
           <details class="nav-group" @if(request()->routeIs('schedules.*', 'appointments.*')) open @endif>
-            <summary><span>Agenda</span><span class="nav-chevron">⌄</span></summary>
+            <summary><span class="nav-item-label"><x-ui-icon name="calendar" /><span>Agenda</span></span><span class="nav-chevron"><x-ui-icon name="chevron" :size="17" /></span></summary>
             <div class="nav-submenu">
               @can('schedules.manage')<a class="{{ request()->routeIs('schedules.*') ? 'is-active' : '' }}" href="{{ route('schedules.index') }}">Agenda visual</a>@endcan
               @can('appointments.manage')
@@ -60,7 +81,7 @@
 
         @canany(['petshop-services.manage', 'service-orders.manage'])
           <details class="nav-group" @if(request()->routeIs('petshop-services.*', 'service-orders.*', 'pet-packages.*', 'petshop-packages.*', 'grooming-commissions.*')) open @endif>
-            <summary><span>Banho e tosa</span><span class="nav-chevron">⌄</span></summary>
+            <summary><span class="nav-item-label"><x-ui-icon name="grooming" /><span>Banho e tosa</span></span><span class="nav-chevron"><x-ui-icon name="chevron" :size="17" /></span></summary>
             <div class="nav-submenu">
               @can('service-orders.manage')
                 <a class="{{ request()->routeIs('service-orders.agenda') ? 'is-active' : '' }}" href="{{ route('service-orders.agenda') }}">Agenda banho e tosa</a>
@@ -79,7 +100,7 @@
 
         @canany(['sales.manage', 'payment-methods.manage', 'fiscal.manage'])
           <details class="nav-group" @if(request()->routeIs('sales.*', 'fiscal.*')) open @endif>
-            <summary><span>Vendas</span><span class="nav-chevron">⌄</span></summary>
+            <summary><span class="nav-item-label"><x-ui-icon name="sales" /><span>Vendas</span></span><span class="nav-chevron"><x-ui-icon name="chevron" :size="17" /></span></summary>
             <div class="nav-submenu">
               @can('sales.manage')
                 <a class="{{ request()->routeIs('sales.create') ? 'is-active' : '' }}" href="{{ route('sales.create') }}">Ponto de venda</a>
@@ -102,7 +123,7 @@
 
         @canany(['products.manage', 'global-products.manage', 'inventory.manage', 'purchase-entries.manage', 'suppliers.manage'])
           <details class="nav-group" @if(request()->routeIs('products.*', 'global-products.*', 'inventory-movements.*', 'inventory-counts.*', 'purchase-entries.*', 'suppliers.*')) open @endif>
-            <summary><span>Estoque e compras</span><span class="nav-chevron">⌄</span></summary>
+            <summary><span class="nav-item-label"><x-ui-icon name="inventory" /><span>Estoque e compras</span></span><span class="nav-chevron"><x-ui-icon name="chevron" :size="17" /></span></summary>
             <div class="nav-submenu">
               @can('products.manage')
                 <a class="{{ request()->routeIs('products.index', 'products.create', 'products.edit', 'products.diagnostics') ? 'is-active' : '' }}" href="{{ route('products.index') }}">Produtos</a>
@@ -126,7 +147,7 @@
 
         @canany(['financial.manage', 'commissions.manage'])
           <details class="nav-group" @if(request()->routeIs('financial-transactions.*', 'financial-categories.*', 'financial-results.*', 'financial-budgets.*', 'financial-obligations.*', 'financial-bank-reconciliation.*', 'commissions.*')) open @endif>
-            <summary><span>Financeiro</span><span class="nav-chevron">⌄</span></summary>
+            <summary><span class="nav-item-label"><x-ui-icon name="finance" /><span>Financeiro</span></span><span class="nav-chevron"><x-ui-icon name="chevron" :size="17" /></span></summary>
             <div class="nav-submenu">
               @can('financial.manage')
                 <a class="{{ request()->routeIs('financial-transactions.index', 'financial-transactions.create', 'financial-transactions.edit') ? 'is-active' : '' }}" href="{{ route('financial-transactions.index') }}">Contas e lançamentos</a>
@@ -144,7 +165,7 @@
 
         @canany(['patients.manage', 'medical-records.manage', 'vaccinations.manage'])
           <details class="nav-group" @if(request()->routeIs('patient-catalog.*', 'pathology-catalog.*', 'exam-catalog.*', 'vaccine-catalog.*')) open @endif>
-            <summary><span>Cadastros</span><span class="nav-chevron">⌄</span></summary>
+            <summary><span class="nav-item-label"><x-ui-icon name="catalog" /><span>Cadastros</span></span><span class="nav-chevron"><x-ui-icon name="chevron" :size="17" /></span></summary>
             <div class="nav-submenu">
               @can('patients.manage')
                 <a class="{{ request()->routeIs('patient-catalog.species') ? 'is-active' : '' }}" href="{{ route('patient-catalog.species') }}">Espécies</a>
@@ -165,7 +186,7 @@
 
         @canany(['clinics.manage', 'clinic-branding.manage', 'printers.manage', 'users.manage', 'implementation.manage', 'audit.manage', 'operations.readiness', 'saas.manage'])
           <details class="nav-group" @if(request()->routeIs('clinics.*', 'clinic-branding.*', 'printers.*', 'access-users.*', 'implementation.*', 'audit-events.*', 'operations.*', 'saas.*')) open @endif>
-            <summary><span>Administração</span><span class="nav-chevron">⌄</span></summary>
+            <summary><span class="nav-item-label"><x-ui-icon name="settings" /><span>Administração</span></span><span class="nav-chevron"><x-ui-icon name="chevron" :size="17" /></span></summary>
             <div class="nav-submenu">
               @if(auth()->user()?->clinic_id === null)
                 @can('saas.manage')<a class="{{ request()->routeIs('saas.*') ? 'is-active' : '' }}" href="{{ route('saas.dashboard') }}">Gestão SaaS</a>@endcan
@@ -185,20 +206,56 @@
           </details>
         @endcanany
       </nav>
+
+      <footer class="sidebar-footer">
+        <span class="sidebar-status-dot"></span>
+        <span><strong>Sistema operacional</strong><small>Ambiente seguro e sincronizado</small></span>
+      </footer>
     </aside>
 
+    <button class="sidebar-backdrop" type="button" data-sidebar-close aria-label="Fechar navegação"></button>
+
     <main class="main">
-      <header class="user-bar">
-        <div>
-          <strong>{{ auth()->user()?->name }}</strong>
-          <span>{{ auth()->user()?->email }}</span>
+      <header class="user-bar workspace-bar">
+        <div class="workspace-bar-start">
+          <button class="sidebar-toggle" type="button" data-sidebar-toggle aria-controls="primary-navigation" aria-expanded="false" aria-label="Abrir menu">
+            <x-ui-icon name="menu" />
+          </button>
+          <div class="workspace-context">
+            <small>Espaço de trabalho</small>
+            <strong>{{ $currentClinicName }}</strong>
+          </div>
         </div>
-        <form method="POST" action="{{ route('logout') }}">
-          @csrf
-          <button class="button secondary" type="submit">Sair</button>
-        </form>
+
+        <div class="workspace-actions">
+          @can('appointments.manage')
+            <a class="workspace-action" href="{{ route('appointments.create') }}"><x-ui-icon name="calendar" :size="18" /><span>Nova consulta</span></a>
+          @endcan
+          @can('sales.manage')
+            <a class="workspace-action workspace-action-primary" href="{{ route('sales.create') }}"><x-ui-icon name="sales" :size="18" /><span>Abrir PDV</span></a>
+          @endcan
+
+          <details class="user-menu">
+            <summary aria-label="Abrir menu do usuário">
+              <span class="user-avatar">{{ mb_strtoupper(mb_substr((string) auth()->user()?->name, 0, 1)) }}</span>
+              <span class="user-menu-copy"><strong>{{ auth()->user()?->name }}</strong><small>{{ auth()->user()?->position ?: 'Equipe VetFlow' }}</small></span>
+              <x-ui-icon name="chevron" :size="16" />
+            </summary>
+            <div class="user-menu-popover">
+              <div class="user-menu-identity">
+                <strong>{{ auth()->user()?->name }}</strong>
+                <span>{{ auth()->user()?->email }}</span>
+              </div>
+              <form method="POST" action="{{ route('logout') }}">
+                @csrf
+                <button class="user-menu-logout" type="submit"><x-ui-icon name="logout" :size="18" />Sair do VetFlow</button>
+              </form>
+            </div>
+          </details>
+        </div>
       </header>
 
+      <div class="workspace-content">
       @if(session('success'))
         <div class="alert success">{{ session('success') }}</div>
       @endif
@@ -220,6 +277,7 @@
       @endif
 
       @yield('content')
+      </div>
     </main>
   </div>
 </body>

@@ -22,6 +22,7 @@ This directory contains the working documentation for VetFlow.
 - [Runtime operations probe](deployment/runtime-operations-probe.md)
 - [Fiscal homologation activation](deployment/fiscal-homologation.md)
 - [Roadmap](ROADMAP.md)
+- [Product experience roadmap](product-experience-roadmap.md)
 
 ## Database Notes
 
