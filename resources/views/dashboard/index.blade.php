@@ -32,7 +32,7 @@
           <a class="button secondary" href="{{ route('appointments.create') }}"><x-ui-icon name="calendar" :size="18" /> Agendar consulta</a>
         @endcan
         @can('sales.manage')
-          <a class="button" href="{{ route('sales.create') }}"><x-ui-icon name="sales" :size="18" /> Nova venda</a>
+          <a class="button" href="{{ route('sales.create') }}" target="_blank" rel="noopener" aria-label="Abrir nova venda no PDV em outra aba"><x-ui-icon name="sales" :size="18" /> Nova venda</a>
         @endcan
       </div>
     </header>
@@ -113,7 +113,7 @@
             @can('patients.manage')<a href="{{ route('patients.create') }}"><span><x-ui-icon name="paw" /></span><strong>Novo paciente</strong><small>Ficha clínica</small></a>@endcan
             @can('appointments.manage')<a href="{{ route('appointments.create') }}"><span><x-ui-icon name="calendar" /></span><strong>Nova consulta</strong><small>Agendar horário</small></a>@endcan
             @can('service-orders.manage')<a href="{{ route('service-orders.create') }}"><span><x-ui-icon name="grooming" /></span><strong>Nova comanda</strong><small>Banho e tosa</small></a>@endcan
-            @can('sales.manage')<a href="{{ route('sales.create') }}"><span><x-ui-icon name="sales" /></span><strong>Abrir PDV</strong><small>Venda no balcão</small></a>@endcan
+            @can('sales.manage')<a href="{{ route('sales.create') }}" target="_blank" rel="noopener" aria-label="Abrir PDV em nova aba"><span><x-ui-icon name="sales" /></span><strong>Abrir PDV</strong><small>Venda no balcão · nova aba</small></a>@endcan
             @can('products.manage')<a href="{{ route('products.create') }}"><span><x-ui-icon name="inventory" /></span><strong>Novo produto</strong><small>Catálogo e estoque</small></a>@endcan
           </div>
         </article>

@@ -20,7 +20,10 @@ The local working tree was clean before this documentation pass.
   barcode wedges can enter EAN/GTIN into the focused search or through rapid
   numeric capture when no editable field/modal is active; every lookup exposes
   a visual state, optional tone, latest-item highlight and automatic readiness
-  for the next scan (see `docs/modules/sales.md`).
+  for the next scan. PDV entry points open a dedicated tab, and a four-minute
+  heartbeat keeps an active counter session alive while visible connectivity
+  states prevent submission after a network or authentication loss without
+  discarding the on-screen cart (see `docs/modules/sales.md`).
 - Banho e tosa operation: 24-hour internal booking with clinic/professional
   blocks, cross-midnight conflicts, configurable grid interval, recurrence and
   check-in; operational board; size-based prices; packages; PDV checkout; and

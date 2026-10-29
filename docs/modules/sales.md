@@ -95,6 +95,22 @@ financial income, returns, refunds, cancellations, and sale event history.
   own header keeps the operator, selected clinic, live local clock, fullscreen
   action, explicit exit and a collapsed group of secondary sales links visible
   without competing with barcode entry and checkout.
+- Dashboard, workspace-header and navigation entry points open the counter PDV
+  in a dedicated browser tab, preserving the administrative screen. The PDV
+  close action closes that tab when the browser allows it and otherwise returns
+  to sales history.
+- While the PDV remains open, a lightweight authenticated heartbeat refreshes
+  the server session every four minutes. The header exposes online, offline,
+  unavailable and expired-session states. If connectivity or authentication is
+  lost, the cart remains in the current page, server submissions are blocked,
+  and the operator can authenticate in another tab before continuing.
+- This protection is not an offline sales database. A UPS can keep the
+  computer, router and optical terminal powered, but a completed sale still
+  requires connectivity to the hosted application so stock, cash, finance and
+  audit effects remain one atomic transaction. A future offline mode needs a
+  local encrypted queue, idempotency keys, catalog snapshots and explicit
+  stock/payment conflict reconciliation before automatic synchronization is
+  safe.
 - A common USB barcode reader is treated as a keyboard wedge. With search
   focused, Enter submits an 8-14 digit EAN/GTIN immediately. When no editable
   field or PDV modal is active, a rapid numeric sequence is also captured and

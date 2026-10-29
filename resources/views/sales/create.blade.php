@@ -35,6 +35,7 @@
     <span><small>Operador</small><strong>{{ auth()->user()?->name }}</strong></span>
     <span><small>Unidade</small><strong data-pdv-header-clinic>{{ $selectedClinicName }}</strong></span>
     <span><small>Horário</small><strong data-pdv-clock>--:--</strong></span>
+    <span class="pdv-connection is-checking" data-pdv-connection-state role="status" aria-live="polite"><small>Conexão</small><strong><i aria-hidden="true"></i><b data-pdv-connection-label>Verificando</b></strong></span>
   </div>
   <div class="pdv-counter-actions">
     <button type="button" class="button secondary" data-pdv-fullscreen aria-pressed="false">Tela cheia</button>
@@ -47,7 +48,7 @@
         <a href="{{ route('sales.create', ['mode' => 'advanced']) }}">Comanda / formulário avançado</a>
       </nav>
     </details>
-    <a class="button pdv-counter-exit" href="{{ route('sales.index') }}">Sair do PDV</a>
+    <button class="button pdv-counter-exit" type="button" data-pdv-close data-pdv-exit-url="{{ route('sales.index') }}">Sair do PDV</button>
   </div>
 </header>
 @include('shared.clinic-required-alert', ['clinics' => $clinics])
@@ -98,6 +99,8 @@
   data-cash-open-url="{{ route('sales.cash-sessions.store') }}"
   data-customer-balance-url="{{ route('sales.customer-balances.summary', ['tutor' => '__TUTOR__']) }}"
   data-cash-index-url="{{ route('sales.cash-sessions.index') }}"
+  data-session-heartbeat-url="{{ route('sales.pdv.session') }}"
+  data-session-login-url="{{ route('login') }}"
   data-user-clinic-id="{{ auth()->user()?->clinic_id }}"
   data-initial-scan="{{ request('scan', '') }}">
   @csrf
@@ -117,6 +120,10 @@
   @endif
   <input type="hidden" name="pdv_checkout" value="1">
   <input type="hidden" name="status" value="draft" data-pdv-status>
+  <div class="pdv-connectivity-alert" role="alert" data-pdv-connectivity-alert hidden>
+    <span data-pdv-connectivity-message></span>
+    <a href="{{ route('login') }}" target="_blank" rel="noopener" data-pdv-reauthenticate hidden>Reabrir sessão em outra aba</a>
+  </div>
   <div class="pdv-shell">
     <section class="pdv-main" aria-label="Itens da venda">
       @if($canToggleMode)

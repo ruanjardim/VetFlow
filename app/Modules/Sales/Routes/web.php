@@ -2,9 +2,14 @@
 
 use App\Modules\Sales\Controllers\CashSessionController;
 use App\Modules\Sales\Controllers\CustomerBalanceController;
+use App\Modules\Sales\Controllers\PdvSessionController;
 use App\Modules\Sales\Controllers\SaleController;
 use App\Modules\Sales\Controllers\SaleQuoteController;
 use Illuminate\Support\Facades\Route;
+
+Route::get('sales/pdv/session', [PdvSessionController::class, 'heartbeat'])
+    ->middleware('throttle:30,1')
+    ->name('sales.pdv.session');
 
 Route::get('sales/customer-balances', [CustomerBalanceController::class, 'index'])
     ->name('sales.customer-balances.index');

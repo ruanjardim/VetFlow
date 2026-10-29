@@ -103,7 +103,7 @@
             <summary><span class="nav-item-label"><x-ui-icon name="sales" /><span>Vendas</span></span><span class="nav-chevron"><x-ui-icon name="chevron" :size="17" /></span></summary>
             <div class="nav-submenu">
               @can('sales.manage')
-                <a class="{{ request()->routeIs('sales.create') ? 'is-active' : '' }}" href="{{ route('sales.create') }}">Ponto de venda</a>
+                <a class="{{ request()->routeIs('sales.create') ? 'is-active' : '' }}" href="{{ route('sales.create') }}" target="_blank" rel="noopener" aria-label="Abrir ponto de venda em nova aba">Ponto de venda <span aria-hidden="true">↗</span></a>
                 <a class="{{ request()->routeIs('sales.cash-sessions.*') ? 'is-active' : '' }}" href="{{ route('sales.cash-sessions.index') }}">Caixa</a>
                 <a class="{{ request()->routeIs('sales.quotes.*') ? 'is-active' : '' }}" href="{{ route('sales.quotes.index') }}">Orçamentos</a>
                 <a class="{{ request()->routeIs('sales.customer-balances.*') ? 'is-active' : '' }}" href="{{ route('sales.customer-balances.index') }}">Saldo de clientes</a>
@@ -232,7 +232,7 @@
             <a class="workspace-action" href="{{ route('appointments.create') }}"><x-ui-icon name="calendar" :size="18" /><span>Nova consulta</span></a>
           @endcan
           @can('sales.manage')
-            <a class="workspace-action workspace-action-primary" href="{{ route('sales.create') }}"><x-ui-icon name="sales" :size="18" /><span>Abrir PDV</span></a>
+            <a class="workspace-action workspace-action-primary" href="{{ route('sales.create') }}" target="_blank" rel="noopener" aria-label="Abrir PDV em nova aba"><x-ui-icon name="sales" :size="18" /><span>Abrir PDV</span></a>
           @endcan
 
           <details class="user-menu">

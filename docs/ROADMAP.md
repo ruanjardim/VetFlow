@@ -193,6 +193,11 @@ The product should feel different from a generic CRUD system by connecting the c
    the incident and production runbooks.
 5. Validate replenishment suggestions with pilot data and tune the history
    window or quantity rule only when real evidence supports the change.
+6. Design and pilot an offline-first PDV contingency before promising sales
+   during an ISP or hosting outage. Require encrypted local storage,
+   idempotent synchronization, immutable price/catalog snapshots, explicit
+   payment and stock conflict rules, and an operator-visible reconciliation
+   queue; a UPS by itself is not an offline database.
 
 ## Product Milestones
 
