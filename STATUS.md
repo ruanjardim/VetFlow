@@ -346,6 +346,9 @@ The local working tree was clean before this documentation pass.
   the runtime prefers it over a stale environment value, CI verifies it against
   the checked-out commit, and the production gate rejects a missing or malformed
   SHA.
+- Production Composer activation clears caches from the previous release,
+  rebuilds the current route table, and only then writes the release marker, so
+  a new commit cannot be reported while old routes are still being served.
 - Guided onboarding coverage in the Implementation assistant, calculated from
   the latest successful import of each supported block without duplicating
   imported data or crossing clinic boundaries.

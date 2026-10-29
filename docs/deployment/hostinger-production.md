@@ -148,8 +148,10 @@ application directory, run the provider-neutral release sequence:
 
 The Composer `post-autoload-dump` hook first removes cached routes,
 configuration, events, and compiled Blade views left by the previous release.
-This makes Hostinger's automatic Git deployment safe even when it only runs
-`composer install`; package and service discovery manifests are preserved.
+It then rebuilds the route cache when Laravel resolves `APP_ENV=production`
+and only afterward writes the release identity. This prevents a successful Git
+pull from exposing the new commit while PHP still serves a route table from the
+previous release. Package and service discovery manifests are preserved.
 
 ```bash
 composer install --no-dev --optimize-autoloader
