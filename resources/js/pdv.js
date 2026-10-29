@@ -43,6 +43,12 @@ document.addEventListener('DOMContentLoaded', () => {
   const headerClinic = document.querySelector('[data-pdv-header-clinic]');
   const clock = document.querySelector('[data-pdv-clock]');
   const fullscreenButton = document.querySelector('[data-pdv-fullscreen]');
+  const closeButton = document.querySelector('[data-pdv-close]');
+  const connectionState = document.querySelector('[data-pdv-connection-state]');
+  const connectionLabel = document.querySelector('[data-pdv-connection-label]');
+  const connectivityAlert = find('[data-pdv-connectivity-alert]');
+  const connectivityMessage = find('[data-pdv-connectivity-message]');
+  const reauthenticateLink = find('[data-pdv-reauthenticate]');
   let deliveryTypes = [];
   try { deliveryTypes = JSON.parse(form.dataset.deliveryTypes || '[]'); } catch { deliveryTypes = []; }
   let paymentMethods = [];
@@ -89,6 +95,70 @@ document.addEventListener('DOMContentLoaded', () => {
   let scannerResetTimer;
   let scannerBuffer = '';
   let scannerBufferTimer;
+  let pdvConnection = 'checking';
+  let lastHeartbeatAt = 0;
+  let heartbeatTimer;
+
+  const connectionCopy = {
+    checking: ['Verificando', 'Conferindo a conexão segura com o VetFlow.'],
+    online: ['Online', 'PDV conectado e sessão protegida.'],
+    offline: ['Sem conexão', 'Sem conexão com o VetFlow. O carrinho continua nesta tela; aguarde a internet voltar antes de finalizar.'],
+    expired: ['Sessão encerrada', 'Sua sessão encerrou. O carrinho continua nesta tela. Reabra a sessão em outra aba e volte ao PDV.'],
+    unavailable: ['Servidor indisponível', 'O VetFlow não respondeu. O carrinho continua nesta tela; não finalize até a conexão ser restabelecida.'],
+  };
+  const setConnectionState = (state, detail = '') => {
+    pdvConnection = state;
+    const copy = connectionCopy[state] || connectionCopy.unavailable;
+    if (connectionState) connectionState.className = 'pdv-connection is-' + state;
+    if (connectionLabel) connectionLabel.textContent = copy[0];
+    if (connectivityMessage) connectivityMessage.textContent = detail || copy[1];
+    if (connectivityAlert) connectivityAlert.hidden = state === 'online' || state === 'checking';
+    if (reauthenticateLink) reauthenticateLink.hidden = state !== 'expired';
+    find('[data-pdv-finish]')?.toggleAttribute('disabled', state !== 'online');
+  };
+  const isLoginResponse = (response) => response.status === 401
+    || response.status === 419
+    || (response.redirected && new URL(response.url, window.location.origin).pathname === new URL(form.dataset.sessionLoginUrl, window.location.origin).pathname);
+  const pdvFetch = async (url, options = {}) => {
+    try {
+      const response = await fetch(url, options);
+      if (isLoginResponse(response)) {
+        setConnectionState('expired');
+        throw new Error('Sua sessão encerrou. Reabra a sessão em outra aba; o carrinho foi mantido nesta tela.');
+      }
+      if (response.status >= 500) setConnectionState('unavailable');
+      else setConnectionState('online');
+      return response;
+    } catch (error) {
+      if (pdvConnection !== 'expired' && pdvConnection !== 'unavailable') setConnectionState('offline');
+      throw error;
+    }
+  };
+  const heartbeat = async (force = false) => {
+    const now = Date.now();
+    if (!force && now - lastHeartbeatAt < 30000) return pdvConnection === 'online';
+    lastHeartbeatAt = now;
+    if (!navigator.onLine) {
+      setConnectionState('offline');
+      return false;
+    }
+    try {
+      const response = await fetch(form.dataset.sessionHeartbeatUrl, {
+        headers: { Accept: 'application/json' },
+        credentials: 'same-origin',
+        cache: 'no-store',
+      });
+      if (isLoginResponse(response)) {
+        setConnectionState('expired');
+        return false;
+      }
+      setConnectionState(response.ok ? 'online' : 'unavailable');
+      return response.ok;
+    } catch {
+      setConnectionState('offline');
+      return false;
+    }
+  };
 
   const scannerMessages = {
     ready: ['Leitura pronta', 'Aponte o leitor para o código de barras ou pesquise pelo nome.'],
@@ -433,7 +503,7 @@ document.addEventListener('DOMContentLoaded', () => {
     button.disabled = true;
     message(quickProductStatus, 'Salvando produto...');
     try {
-      const response = await fetch(form.dataset.quickProductUrl, {
+      const response = await pdvFetch(form.dataset.quickProductUrl, {
         method: 'POST',
         headers: {
           Accept: 'application/json',
@@ -470,7 +540,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const url = new URL(form.dataset.searchUrl, window.location.origin);
       url.searchParams.set('q', term);
       if (clinic) url.searchParams.set('clinic_id', clinic.value);
-      const response = await fetch(url, { headers: { Accept: 'application/json' } });
+      const response = await pdvFetch(url, { headers: { Accept: 'application/json' } });
       const data = await response.json();
       if (serial !== searchSerial || term !== search.value.trim()) return;
       if (!response.ok) throw new Error(data.message || 'Busca indisponível.');
@@ -510,7 +580,7 @@ document.addEventListener('DOMContentLoaded', () => {
     setScannerState('reading', 'Código ' + gtin + ' recebido. Consultando o cadastro...');
     try {
       const url = withClinic(form.dataset.lookupUrl.replace('__GTIN__', encodeURIComponent(gtin)));
-      const response = await fetch(url, { headers: { Accept: 'application/json' } });
+      const response = await pdvFetch(url, { headers: { Accept: 'application/json' } });
       const data = await response.json();
       if (serial !== searchSerial || search.value.replace(/\D/g, '') !== gtin) return;
       if (!response.ok || !data.found) {
@@ -572,7 +642,7 @@ document.addEventListener('DOMContentLoaded', () => {
     cashConfirm.disabled = true;
     message(cashStatus, 'Abrindo caixa...');
     try {
-      const response = await fetch(form.dataset.cashOpenUrl, {
+      const response = await pdvFetch(form.dataset.cashOpenUrl, {
         method: 'POST',
         headers: {
           Accept: 'application/json',
@@ -616,8 +686,12 @@ document.addEventListener('DOMContentLoaded', () => {
     dialog.showModal();
     paymentRows()[0]?.querySelector('[data-pdv-payment-method]')?.focus();
   };
-  const finish = () => {
+  const finish = async () => {
     if (isQuoteMode()) return;
+    if (!(await heartbeat(true))) {
+      message(paymentStatus, connectionCopy[pdvConnection]?.[1] || connectionCopy.unavailable[1], 'warning');
+      return;
+    }
     if (!currentCash()) { openCashDialog(openPayment); return; }
     const { total, paid, balance, change } = totals();
     if (total <= 0 || rows().length === 0) { message(paymentStatus, 'Inclua itens com valor.', 'warning'); return; }
@@ -724,7 +798,13 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     if (!form.reportValidity()) event.preventDefault();
   });
-  form.addEventListener('submit', () => {
+  form.addEventListener('submit', (event) => {
+    if (pdvConnection !== 'online') {
+      event.preventDefault();
+      message(checkoutStatus, connectionCopy[pdvConnection]?.[1] || connectionCopy.unavailable[1], 'warning');
+      heartbeat(true);
+      return;
+    }
     if (status.value === 'draft') {
       paymentRows().forEach((row) => {
         if (!row.querySelector('[data-pdv-payment-method]').value || parseMoney(row.querySelector('[data-pdv-payment-amount]').value) <= 0) row.remove();
@@ -762,7 +842,7 @@ document.addEventListener('DOMContentLoaded', () => {
     paymentRows().forEach((row) => row.pdvRefreshMethods?.());
     if (!tutor.value || !form.dataset.customerBalanceUrl) return;
     try {
-      const response = await fetch(form.dataset.customerBalanceUrl.replace('__TUTOR__', encodeURIComponent(tutor.value)), { headers: { Accept: 'application/json' } });
+      const response = await pdvFetch(form.dataset.customerBalanceUrl.replace('__TUTOR__', encodeURIComponent(tutor.value)), { headers: { Accept: 'application/json' } });
       if (!response.ok || serial !== balanceSerial) return;
       const data = await response.json();
       customerCredit = Number(data.credit) || 0;
@@ -855,6 +935,21 @@ document.addEventListener('DOMContentLoaded', () => {
   };
   updateClock();
   window.setInterval(updateClock, 30000);
+  setConnectionState('checking');
+  heartbeat(true);
+  heartbeatTimer = window.setInterval(() => heartbeat(), 4 * 60 * 1000);
+  window.addEventListener('online', () => heartbeat(true));
+  window.addEventListener('offline', () => setConnectionState('offline'));
+  window.addEventListener('focus', () => heartbeat());
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') heartbeat();
+  });
+  window.addEventListener('beforeunload', () => window.clearInterval(heartbeatTimer));
+
+  closeButton?.addEventListener('click', () => {
+    window.close();
+    window.setTimeout(() => window.location.assign(closeButton.dataset.pdvExitUrl), 150);
+  });
 
   fullscreenButton?.addEventListener('click', async () => {
     try {
