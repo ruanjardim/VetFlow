@@ -39,7 +39,8 @@
     "post-autoload-dump": [
       "Illuminate\\Foundation\\ComposerScripts::postAutoloadDump",
       "@php artisan package:discover --ansi",
-      "@php scripts/clear-deployment-caches.php"
+      "@php scripts/clear-deployment-caches.php",
+      "@php scripts/write-release-identity.php"
     ],
     "post-update-cmd": [
       "@php artisan vendor:publish --tag=laravel-assets --ansi --force"

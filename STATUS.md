@@ -1,6 +1,6 @@
 # VetFlow Status
 
-Updated: 2026-10-27
+Updated: 2026-10-29
 
 ## Current State
 
@@ -339,7 +339,10 @@ The local working tree was clean before this documentation pass.
   release-readiness gate.
 - A public, no-cache release identity endpoint that exposes only the deployed
   Git SHA and lets operators prove that health checks target the intended
-  commit; the production release gate rejects a missing or malformed SHA.
+  commit; Composer now writes a Git-derived marker on every repository deploy,
+  the runtime prefers it over a stale environment value, CI verifies it against
+  the checked-out commit, and the production gate rejects a missing or malformed
+  SHA.
 - Guided onboarding coverage in the Implementation assistant, calculated from
   the latest successful import of each supported block without duplicating
   imported data or crossing clinic boundaries.

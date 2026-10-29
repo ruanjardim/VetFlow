@@ -34,6 +34,12 @@ jobs:
       - name: Install PHP dependencies
         run: composer install --prefer-dist --no-interaction --no-progress
 
+      - name: Verify generated release identity
+        run: php scripts/verify-release-identity.php "$GITHUB_SHA"
+
+      - name: Audit PHP dependencies
+        run: composer audit --locked --no-interaction
+
       - name: Check formatting of changed PHP files
         if: github.event_name == 'pull_request' || github.ref == 'refs/heads/0-hostinger-production'
         shell: bash
@@ -51,6 +57,9 @@ jobs:
 
       - name: Install Node dependencies
         run: npm ci
+
+      - name: Audit production Node dependencies
+        run: npm audit --omit=dev --audit-level=high
 
       - name: Prepare environment
         run: cp .env.example .env

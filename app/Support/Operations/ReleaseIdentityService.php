@@ -6,7 +6,25 @@ final class ReleaseIdentityService
 {
     public function sha(): ?string
     {
-        $sha = strtolower(trim((string) config('operations.release.sha')));
+        return $this->markerSha() ?? $this->normalize(config('operations.release.sha'));
+    }
+
+    private function markerSha(): ?string
+    {
+        $path = config('operations.release.marker_path');
+
+        if (! is_string($path) || trim($path) === '' || ! is_file($path)) {
+            return null;
+        }
+
+        $contents = @file_get_contents($path);
+
+        return $contents === false ? null : $this->normalize($contents);
+    }
+
+    private function normalize(mixed $value): ?string
+    {
+        $sha = strtolower(trim((string) $value));
 
         return preg_match('/^[a-f0-9]{40}$/', $sha) === 1 ? $sha : null;
     }

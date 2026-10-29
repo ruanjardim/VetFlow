@@ -32,7 +32,7 @@ class OperationsGuidanceService
                 completed: $this->passed($gates, 'identity'),
                 guidance: $this->passed($gates, 'identity')
                     ? 'O commit publicado foi reconhecido pelo ambiente.'
-                    : 'Configure VETFLOW_RELEASE_SHA ou RENDER_GIT_COMMIT no provedor e publique novamente.',
+                    : 'Confirme o marcador automático da release ou configure VETFLOW_RELEASE_SHA/RENDER_GIT_COMMIT e publique novamente.',
                 responsibility: 'Infraestrutura',
                 anchor: 'release-identity',
                 actionLabel: 'Revisar identidade',

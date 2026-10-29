@@ -25,9 +25,13 @@ hPanel and record:
 - whether automatic deployment is enabled;
 - the available rollback mechanism.
 
-Merge the intended release first. Deploy only an immutable full commit SHA, and
-set the same 40-character value in `VETFLOW_RELEASE_SHA`. After deployment,
-compare that value with both hPanel's deployment history and `/ops/release`.
+Merge the intended release first and deploy only an immutable full commit SHA.
+Hostinger runs Composer after the Git pull; the `post-autoload-dump` hook writes
+that checkout's commit to `bootstrap/cache/vetflow-release.sha`. The runtime
+prefers this marker over a potentially stale `VETFLOW_RELEASE_SHA`. After the
+deployment, compare `/ops/release` with both hPanel's deployment history and the
+intended Git commit. Keep `VETFLOW_RELEASE_SHA` only as the fallback for a
+deployment that does not include Git metadata.
 
 The application directory must be the directory that contains `artisan`.
 Confirm it in hPanel or SSH; do not infer it from the public URL. Keep the web
