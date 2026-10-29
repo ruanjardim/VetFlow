@@ -3,6 +3,8 @@
 return [
     'release' => [
         'sha' => env('VETFLOW_RELEASE_SHA', env('RENDER_GIT_COMMIT')),
+        'marker_path' => env('VETFLOW_RELEASE_MARKER_PATH')
+            ?: base_path('bootstrap/cache/vetflow-release.sha'),
     ],
 
     'backup' => [

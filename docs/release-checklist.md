@@ -9,8 +9,10 @@ provider-specific runbook.
 ## 1. Release Scope
 
 - Confirm the target commit and pull request.
-- Configure `VETFLOW_RELEASE_SHA` with the full 40-character commit SHA, unless
-  the hosting platform provides `RENDER_GIT_COMMIT` automatically.
+- Confirm that Composer generated `bootstrap/cache/vetflow-release.sha` with
+  the full 40-character commit SHA. Use `VETFLOW_RELEASE_SHA` only as the
+  fallback for archive deployments without Git metadata; Render can use
+  `RENDER_GIT_COMMIT` automatically.
 - Confirm CI is green for Laravel tests and the frontend build.
 - Review migrations, seeders, environment changes, storage paths, and queue
   changes included in the release.
