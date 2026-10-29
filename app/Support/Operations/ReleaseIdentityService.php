@@ -13,7 +13,11 @@ final class ReleaseIdentityService
     {
         $path = config('operations.release.marker_path');
 
-        if (! is_string($path) || trim($path) === '' || ! is_file($path)) {
+        if (! is_string($path) || trim($path) === '') {
+            $path = base_path('bootstrap/cache/vetflow-release.sha');
+        }
+
+        if (! is_file($path)) {
             return null;
         }
 
