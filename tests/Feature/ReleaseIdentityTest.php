@@ -6,6 +6,32 @@ use Tests\TestCase;
 
 class ReleaseIdentityTest extends TestCase
 {
+    public function test_default_marker_path_survives_a_legacy_cached_configuration(): void
+    {
+        $marker = base_path('bootstrap/cache/vetflow-release.sha');
+        $previousContents = is_file($marker) ? file_get_contents($marker) : false;
+        $sha = str_repeat('d', 40);
+
+        file_put_contents($marker, $sha.PHP_EOL);
+
+        try {
+            config([
+                'operations.release.marker_path' => null,
+                'operations.release.sha' => str_repeat('a', 40),
+            ]);
+
+            $this->get('/ops/release')
+                ->assertOk()
+                ->assertJsonPath('release.sha', $sha);
+        } finally {
+            if ($previousContents === false) {
+                @unlink($marker);
+            } else {
+                file_put_contents($marker, $previousContents);
+            }
+        }
+    }
+
     public function test_release_marker_takes_precedence_over_a_stale_environment_value(): void
     {
         $marker = tempnam(storage_path('framework/testing'), 'release-identity-');
