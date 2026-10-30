@@ -16,6 +16,12 @@ Route::post('fiscal/focus-credential', [FiscalController::class, 'connectFocusCr
 Route::delete('fiscal/focus-credential', [FiscalController::class, 'disconnectFocusCredential'])
     ->middleware('throttle:3,1')
     ->name('fiscal.focus-credential.disconnect');
+Route::post('fiscal/production/activate', [FiscalController::class, 'activateProduction'])
+    ->middleware('throttle:6,1')
+    ->name('fiscal.production.activate');
+Route::delete('fiscal/production', [FiscalController::class, 'deactivateProduction'])
+    ->middleware('throttle:6,1')
+    ->name('fiscal.production.deactivate');
 Route::post('fiscal/homologation/reviews', [FiscalController::class, 'storeHomologationReview'])
     ->middleware('throttle:5,1')
     ->name('fiscal.homologation-reviews.store');

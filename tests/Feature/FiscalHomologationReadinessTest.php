@@ -12,6 +12,7 @@ use App\Modules\Fiscal\Models\FiscalDocument;
 use App\Modules\Fiscal\Models\FiscalDocumentEvent;
 use App\Modules\Fiscal\Models\FiscalHomologationReview;
 use App\Modules\Fiscal\Models\FiscalNfceSequence;
+use App\Modules\Fiscal\Models\FiscalProductionActivation;
 use App\Modules\Fiscal\Models\FiscalProfile;
 use App\Modules\Fiscal\Models\ProductFiscalProfile;
 use App\Modules\Fiscal\Services\FiscalHomologationReadinessService;
@@ -20,7 +21,9 @@ use App\Modules\Fiscal\Support\FiscalProviderCatalog;
 use App\Modules\Products\Models\Product;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
+use LogicException;
 use Tests\TestCase;
 
 class FiscalHomologationReadinessTest extends TestCase
@@ -134,6 +137,122 @@ class FiscalHomologationReadinessTest extends TestCase
         $this->get(route('fiscal.index'))
             ->assertOk()
             ->assertSee('desatualizada');
+    }
+
+    public function test_approved_clinic_connects_an_isolated_token_and_activates_and_deactivates_production(): void
+    {
+        [$clinic, $user] = $this->context();
+        $profile = $this->readyNfceProfile($clinic);
+        $this->readyProduct($clinic);
+        $this->readyNfceSequence($clinic);
+        $this->recordNfceEvidence($clinic, $user);
+        $this->enableRuntime();
+        config()->set('fiscal.production.enabled', true);
+        config()->set('fiscal.focus_nfe.production_url', 'https://api.focusnfe.test');
+
+        $this->actingAs($user)->post(route('fiscal.homologation-reviews.store'), [
+            'decision' => FiscalHomologationReadinessService::APPROVED,
+            'reviewer_name' => 'CRC Produção',
+            'notes' => 'Evidências revisadas para o piloto controlado.',
+            'current_password' => 'password',
+            'confirm_review' => '1',
+        ])->assertSessionDoesntHaveErrors();
+
+        $productionToken = 'production-'.str_repeat('p', 24);
+        $this->post(route('fiscal.focus-credential.connect'), [
+            'environment' => 'production',
+            'focus_token' => $productionToken,
+            'focus_token_confirmation' => $productionToken,
+            'current_password' => 'password',
+            'accept_focus_responsibility' => '1',
+        ])->assertSessionDoesntHaveErrors();
+
+        $this->assertDatabaseHas('fiscal_provider_credentials', [
+            'clinic_id' => $clinic->id,
+            'environment' => 'production',
+            'token_last_four' => 'pppp',
+        ]);
+        $this->assertSame('homologation', $profile->fresh()->environment);
+
+        $this->post(route('fiscal.production.activate'), [
+            'reviewer_name' => 'CRC Produção',
+            'notes' => 'Série e CSC de produção conferidos.',
+            'nfce_series' => 1,
+            'nfce_next_number' => 500,
+            'nfce_csc_id' => '000002',
+            'nfce_csc_reference' => 'focus://csc/production',
+            'nfce_sefaz_credentialed' => '1',
+            'current_password' => 'password',
+            'confirm_production' => '1',
+        ])->assertSessionDoesntHaveErrors();
+
+        $profile = $profile->fresh();
+        $activation = FiscalProductionActivation::query()->firstOrFail();
+        $this->assertSame('production', $profile->environment);
+        $this->assertSame($activation->ulid, data_get($profile->metadata, 'production.activation_ulid'));
+        $this->assertSame('000002', data_get($profile->metadata, 'focus_nfce.csc_id'));
+        $this->assertDatabaseHas('fiscal_nfce_sequences', [
+            'clinic_id' => $clinic->id,
+            'environment' => 'production',
+            'series' => 1,
+            'next_number' => 500,
+        ]);
+        $this->assertDatabaseHas('audit_events', [
+            'clinic_id' => $clinic->id,
+            'event' => 'fiscal.production.activated',
+        ]);
+        $this->get(route('fiscal.index'))
+            ->assertOk()
+            ->assertSee('Produção ativa')
+            ->assertSee('Documentos com validade fiscal');
+
+        $productionDocument = new FiscalDocument([
+            'clinic_id' => $clinic->id,
+            'ulid' => (string) Str::ulid(),
+            'profile_version' => $profile->configuration_version,
+            'environment' => 'production',
+            'provider' => FiscalProviderCatalog::FOCUS_NFE,
+            'type' => 'nfce',
+            'provider_reference' => 'vf-production-test',
+            'issuer_snapshot' => [
+                'document' => $clinic->cnpj,
+                'provider_credential_reference' => data_get($profile->metadata, 'provider_credential_reference'),
+                'address' => ['state' => 'RJ'],
+                'production_activation' => [
+                    'ulid' => $activation->ulid,
+                    'evidence_fingerprint' => $activation->evidence_fingerprint,
+                ],
+            ],
+        ]);
+        Http::fake(['https://api.focusnfe.test/v2/nfce/*' => Http::response([
+            'status' => 'autorizado',
+            'ref' => 'vf-production-test',
+            'cnpj_emitente' => $clinic->cnpj,
+        ])]);
+        app(FiscalProvider::class)->status($productionDocument);
+        Http::assertSent(fn ($request): bool => str_starts_with($request->url(), 'https://api.focusnfe.test/v2/nfce/'));
+
+        $this->delete(route('fiscal.production.deactivate'), [
+            'reason' => 'Encerramento controlado do teste de produção.',
+            'current_password' => 'password',
+            'confirm_deactivation' => '1',
+        ])->assertRedirect(route('fiscal.index'))
+            ->assertSessionDoesntHaveErrors();
+
+        $this->assertSame('homologation', $profile->fresh()->environment);
+        $this->assertNotNull($activation->fresh()->revoked_at);
+        $this->assertDatabaseHas('audit_events', [
+            'clinic_id' => $clinic->id,
+            'event' => 'fiscal.production.deactivated',
+        ]);
+
+        try {
+            app(FiscalProvider::class)->status($productionDocument);
+            $this->fail('Uma ativação revogada não pode continuar transmitindo em produção.');
+        } catch (LogicException $exception) {
+            $this->assertStringContainsString('ambiente autorizados', $exception->getMessage());
+        }
+        Http::assertSentCount(1);
     }
 
     /** @return array{Clinic, User} */

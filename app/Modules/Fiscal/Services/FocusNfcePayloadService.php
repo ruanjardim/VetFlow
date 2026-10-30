@@ -39,7 +39,10 @@ class FocusNfcePayloadService
         'cabal' => '09',
     ];
 
-    public function __construct(private readonly FiscalNfceSequenceService $sequences) {}
+    public function __construct(
+        private readonly FiscalNfceSequenceService $sequences,
+        private readonly FiscalEnvironmentGuard $environment,
+    ) {}
 
     public function generate(FiscalDocument $document, User $actor): FiscalDocument
     {
@@ -93,12 +96,10 @@ class FocusNfcePayloadService
 
     private function assertSupported(FiscalDocument $document): void
     {
-        if ($document->environment !== 'homologation'
-            || $document->provider !== FiscalProviderCatalog::FOCUS_NFE
-            || $document->type !== FiscalDocumentType::NFCE
-            || strtoupper((string) data_get($document->issuer_snapshot, 'address.state')) !== 'RJ') {
+        if (! $this->environment->allowsDocument($document)
+            || $document->type !== FiscalDocumentType::NFCE) {
             throw ValidationException::withMessages([
-                'payload' => 'A geração atual aceita somente NFC-e modelo 65 da Focus para emitente do RJ em homologação.',
+                'payload' => 'A geração aceita somente NFC-e modelo 65 da Focus para emitente do RJ em ambiente fiscal autorizado.',
             ]);
         }
 
@@ -134,8 +135,8 @@ class FocusNfcePayloadService
         }
 
         $this->requireIntegerRange($missing, 'série da NFC-e', data_get($issuer, 'focus_nfce.series'), 0, 999);
-        $this->requireDigits($missing, 'identificador do CSC de homologação', data_get($issuer, 'focus_nfce.csc_id'), 6);
-        $this->requireValue($missing, 'referência externa do CSC de homologação', data_get($issuer, 'focus_nfce.csc_reference'));
+        $this->requireDigits($missing, 'identificador do CSC de '.$document->environment, data_get($issuer, 'focus_nfce.csc_id'), 6);
+        $this->requireValue($missing, 'referência externa do CSC de '.$document->environment, data_get($issuer, 'focus_nfce.csc_reference'));
         if (! data_get($issuer, 'focus_nfce.sefaz_credentialed', false)) {
             $missing[] = 'confirmação do credenciamento NFC-e na SEFAZ-RJ';
         }

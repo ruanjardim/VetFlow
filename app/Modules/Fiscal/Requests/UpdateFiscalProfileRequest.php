@@ -19,6 +19,9 @@ class UpdateFiscalProfileRequest extends FormRequest
         return [
             'clinic_id' => ['nullable', 'integer', 'exists:clinics,id'],
             'enabled' => ['required', 'boolean'],
+            // Production can only be reached through the separate, audited
+            // activation workflow. The ordinary settings form stays unable
+            // to cross the environment boundary.
             'environment' => ['required', Rule::in(['homologation'])],
             'nfce_enabled' => ['required', 'boolean'],
             'nfse_enabled' => ['required', 'boolean'],

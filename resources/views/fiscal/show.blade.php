@@ -8,6 +8,8 @@
     $issuer = $document->issuer_snapshot ?? [];
     $recipient = $document->recipient_snapshot ?? [];
     $totals = $document->totals_snapshot ?? [];
+    $isProduction = $document->environment === 'production';
+    $environmentLabel = $isProduction ? 'Produção' : 'Homologação';
     $statusLabels = [
       'draft' => 'Preparado',
       'queued' => 'Na fila',
@@ -44,7 +46,7 @@
 
   <header class="topbar">
     <div>
-      <h1>{{ $types[$document->type] ?? strtoupper($document->type) }} em homologação</h1>
+      <h1>{{ $types[$document->type] ?? strtoupper($document->type) }} em {{ strtolower($environmentLabel) }}</h1>
       <p>Preparação {{ $document->ulid }} · venda {{ $document->sale?->code ?? 'removida' }}</p>
     </div>
     <div class="actions">
@@ -55,17 +57,18 @@
 
   @if(!$submissionAvailable)
     <div class="alert warning">
-      <strong>Sem transmissão externa:</strong> os controles de implantação continuam desligados. Este documento de homologação não possui valor fiscal enquanto não houver autorização do provedor.
+      <strong>Sem transmissão externa:</strong> os controles de implantação ou a ativação deste ambiente estão desligados. Nenhum envio foi realizado.
     </div>
   @else
     <div class="alert info">
-      <strong>Homologação operacional:</strong> os envios desta tela utilizam a fila fiscal e nunca o ambiente de produção.
+      <strong>{{ $environmentLabel }} operacional:</strong>
+      @if($isProduction) qualquer autorização gerada por esta tela possui efeito fiscal real para a clínica. @else os documentos deste ambiente não possuem valor fiscal. @endif
     </div>
   @endif
 
   <section class="grid stats">
     <div class="stat"><span>Status</span><strong>{{ $statusLabels[$document->status] ?? ucfirst($document->status) }}</strong></div>
-    <div class="stat"><span>Ambiente</span><strong>Homologação</strong></div>
+    <div class="stat"><span>Ambiente</span><strong>{{ $environmentLabel }}</strong></div>
     <div class="stat"><span>Provedor planejado</span><strong>{{ $providerLabel }}</strong></div>
     <div class="stat"><span>Versão da configuração</span><strong>{{ $document->profile_version }}</strong></div>
     <div class="stat"><span>Total desta preparação</span><strong>{{ $money($totals['total'] ?? 0) }}</strong></div>
@@ -171,7 +174,7 @@
       @if($submissionAvailable && $document->status === 'draft' && is_array(data_get($document->request_payload, $payloadRoot.'.payload')))
         <form method="POST" action="{{ route('fiscal.documents.submit', $document->id) }}">
           @csrf
-          <button type="submit">Enviar para a fila de homologação</button>
+          <button type="submit" @class(['danger' => $isProduction])>Enviar para a fila de {{ strtolower($environmentLabel) }}</button>
         </form>
       @elseif($submissionAvailable && in_array($document->status, ['processing', 'authorized', 'cancellation_queued', 'cancellation_failed', 'cancelled', 'failed'], true))
         <form method="POST" action="{{ route('fiscal.documents.synchronize', $document->id) }}">
@@ -260,7 +263,7 @@
           <div class="alert warning">A geração validará emitente, tomador, sequência, totais, ISS e campos IBS/CBS. Se estiver tudo correto, reservará o próximo número da DPS, mas não enviará nada à Focus.</div>
           <form method="POST" action="{{ route('fiscal.documents.payload', $document->id) }}">
             @csrf
-            <button type="submit">Gerar payload de homologação</button>
+            <button type="submit">Gerar payload de {{ strtolower($environmentLabel) }}</button>
           </form>
         @endif
       </div>
@@ -271,7 +274,7 @@
     @php($nfcePayload = data_get($document->request_payload, 'focus_nfce'))
     <section class="panel">
       <div class="panel-heading">
-        <div><h2>Payload NFC-e Focus NFe</h2><p>Modelo 65 do RJ preparado localmente para o ciclo controlado de homologação.</p></div>
+        <div><h2>Payload NFC-e Focus NFe</h2><p>Modelo 65 do RJ preparado localmente para o ambiente de {{ strtolower($environmentLabel) }}.</p></div>
         <span class="badge {{ $nfcePayload ? 'success' : 'warning' }}">{{ $nfcePayload ? 'Gerado' : 'Pendente' }}</span>
       </div>
       <div class="panel-body">
@@ -284,7 +287,7 @@
             <div><span>Gerado em</span><strong>{{ data_get($nfcePayload, 'generated_at') }}</strong></div>
           </div>
           @if($submissionAvailable)
-            <div class="alert info"><strong>Pronto para a fila:</strong> o envio continuará restrito à homologação, renovará apenas o horário de emissão e usará a mesma referência idempotente.</div>
+            <div class="alert {{ $isProduction ? 'danger' : 'info' }}"><strong>Pronto para a fila de {{ strtolower($environmentLabel) }}:</strong> o envio renovará apenas o horário de emissão e usará a mesma referência idempotente.</div>
           @else
             <div class="alert warning"><strong>Transmissão bloqueada:</strong> o payload está pronto para revisão, mas os controles operacionais do servidor ou a conta Focus da clínica ainda não foram habilitados.</div>
           @endif
@@ -293,7 +296,7 @@
           <div class="alert warning">A geração validará emitente RJ, credenciamento, referência externa do CSC, certificado, sequência própria, modelo 65, produtos, IBS/CBS, totais e pagamentos. Se tudo fechar, reservará o próximo número sem chamar a Focus ou a SEFAZ.</div>
           <form method="POST" action="{{ route('fiscal.documents.payload', $document->id) }}">
             @csrf
-            <button type="submit">Gerar payload NFC-e de homologação</button>
+            <button type="submit">Gerar payload NFC-e de {{ strtolower($environmentLabel) }}</button>
           </form>
         @endif
       </div>

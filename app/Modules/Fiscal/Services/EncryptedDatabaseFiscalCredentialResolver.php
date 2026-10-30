@@ -13,7 +13,7 @@ class EncryptedDatabaseFiscalCredentialResolver implements FiscalCredentialResol
     public function isConfigured(): bool
     {
         try {
-            return FiscalProviderCredential::query()
+            return FiscalProviderCredential::withoutGlobalScopes()
                 ->whereNull('revoked_at')
                 ->whereNotNull('token')
                 ->exists();
@@ -47,7 +47,7 @@ class EncryptedDatabaseFiscalCredentialResolver implements FiscalCredentialResol
         }
 
         try {
-            $credential = FiscalProviderCredential::query()
+            $credential = FiscalProviderCredential::withoutGlobalScopes()
                 ->where('clinic_id', $document->clinic_id)
                 ->where('provider', $document->provider)
                 ->where('environment', $document->environment)

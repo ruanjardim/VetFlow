@@ -34,6 +34,7 @@ class FiscalNfceInutilizationService
         private readonly FiscalProvider $provider,
         private readonly FiscalCredentialResolver $credentials,
         private readonly AuditTrailService $audit,
+        private readonly FiscalEnvironmentGuard $environment,
     ) {}
 
     public function isAvailable(FiscalProfile $profile): bool
@@ -46,14 +47,15 @@ class FiscalNfceInutilizationService
             || ! $this->credentials->isConfigured()
             || ! $profile->enabled
             || ! $profile->nfce_enabled
-            || $profile->environment !== 'homologation'
+            || ! $this->environment->allowsProfile($profile)
             || $profile->provider !== FiscalProviderCatalog::FOCUS_NFE) {
             return false;
         }
 
         return $this->credentials->canResolve($this->credentialProbe(
             (int) $profile->clinic_id,
-            (string) data_get($profile->metadata, 'provider_credential_reference')
+            (string) data_get($profile->metadata, 'provider_credential_reference'),
+            (string) $profile->environment
         ));
     }
 
@@ -96,7 +98,7 @@ class FiscalNfceInutilizationService
             $sequence = FiscalNfceSequence::withoutGlobalScopes()
                 ->where('clinic_id', $clinic->id)
                 ->where('provider', FiscalProviderCatalog::FOCUS_NFE)
-                ->where('environment', 'homologation')
+                ->where('environment', $profile->environment)
                 ->where('series', $series)
                 ->lockForUpdate()
                 ->first();
@@ -110,7 +112,7 @@ class FiscalNfceInutilizationService
             $overlap = FiscalNfceInutilization::withoutGlobalScopes()
                 ->where('clinic_id', $clinic->id)
                 ->where('provider', FiscalProviderCatalog::FOCUS_NFE)
-                ->where('environment', 'homologation')
+                ->where('environment', $profile->environment)
                 ->where('series', $series)
                 ->whereIn('status', self::ACTIVE_STATUSES)
                 ->where('number_start', '<=', $end)
@@ -127,7 +129,7 @@ class FiscalNfceInutilizationService
             $usedNumber = FiscalDocument::withoutGlobalScopes()
                 ->where('clinic_id', $clinic->id)
                 ->where('provider', FiscalProviderCatalog::FOCUS_NFE)
-                ->where('environment', 'homologation')
+                ->where('environment', $profile->environment)
                 ->where('type', FiscalDocumentType::NFCE)
                 ->where('series', (string) $series)
                 ->whereNotNull('document_number')
@@ -151,7 +153,7 @@ class FiscalNfceInutilizationService
                 'clinic_id' => $clinic->id,
                 'requested_by_user_id' => $actor->id,
                 'provider' => $profile->provider,
-                'environment' => 'homologation',
+                'environment' => $profile->environment,
                 'status' => 'queued',
                 'issuer_document' => $issuerDocument,
                 'credential_reference' => $credentialReference,
@@ -296,7 +298,7 @@ class FiscalNfceInutilizationService
         if ((int) $profile->clinic_id !== (int) $clinic->id
             || ! $profile->enabled
             || ! $profile->nfce_enabled
-            || $profile->environment !== 'homologation'
+            || ! $this->environment->allowsProfile($profile)
             || $profile->provider !== FiscalProviderCatalog::FOCUS_NFE
             || strtoupper((string) $clinic->state) !== 'RJ'
             || strlen($this->digits($clinic->cnpj)) !== 14
@@ -313,14 +315,18 @@ class FiscalNfceInutilizationService
     {
         if (! $this->isAvailable($profile)) {
             throw ValidationException::withMessages([
-                'number_start' => 'A inutilização externa permanece bloqueada. Habilite o adaptador, a credencial e a fila de homologação no servidor.',
+                'number_start' => 'A inutilização externa permanece bloqueada. Habilite o adaptador, a credencial, o ambiente e a fila fiscal no servidor.',
             ]);
         }
     }
 
     private function assertRuntimeAvailable(FiscalNfceInutilization $inutilization): void
     {
-        $probe = $this->credentialProbe((int) $inutilization->clinic_id, (string) $inutilization->credential_reference);
+        $probe = $this->credentialProbe(
+            (int) $inutilization->clinic_id,
+            (string) $inutilization->credential_reference,
+            (string) $inutilization->environment
+        );
 
         if (! config('fiscal.external_http_enabled', false)
             || ! config('fiscal.submission_enabled', false)
@@ -333,16 +339,22 @@ class FiscalNfceInutilizationService
         }
     }
 
-    private function credentialProbe(int $clinicId, string $reference): FiscalDocument
+    private function credentialProbe(int $clinicId, string $reference, string $environment): FiscalDocument
     {
         return new FiscalDocument([
             'clinic_id' => $clinicId,
             'provider' => FiscalProviderCatalog::FOCUS_NFE,
-            'environment' => 'homologation',
+            'environment' => $environment,
             'type' => FiscalDocumentType::NFCE,
             'issuer_snapshot' => [
                 'provider_credential_reference' => $reference,
                 'address' => ['state' => 'RJ'],
+                'production_activation' => $environment === FiscalEnvironmentGuard::PRODUCTION
+                    ? [
+                        'ulid' => $this->environment->activeProductionForClinic($clinicId)?->ulid,
+                        'evidence_fingerprint' => $this->environment->activeProductionForClinic($clinicId)?->evidence_fingerprint,
+                    ]
+                    : null,
             ],
         ]);
     }

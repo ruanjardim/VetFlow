@@ -2,6 +2,13 @@
 
 ## 2026-10-30
 
+- Added a fail-closed fiscal production gate for the reviewed Niterói/RJ NFS-e
+  and RJ NFC-e slices. Each clinic needs current approved homologation,
+  independent encrypted production credentials and numbering, the global
+  production switch, password confirmation and an immutable activation
+  fingerprint. Production profile editing is locked, every activation and
+  revocation is audited, emergency deactivation restores homologation, and a
+  revoked activation cannot transmit an already prepared production document.
 - Versioned the production route-cache filename by the exact release commit and
   made Composer publish the release identity before compiling routes. This
   prevents persistent PHP/OPcache processes from serving a previous release's

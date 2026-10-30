@@ -9,6 +9,13 @@ return [
     // must be enabled and a concrete provider must be bound before transmission.
     'submission_enabled' => env('VETFLOW_FISCAL_SUBMISSION_ENABLED', false),
 
+    // Production has an independent, fail-closed deployment gate. It never
+    // becomes available merely because homologation traffic is enabled or a
+    // clinic selects a provider in the interface.
+    'production' => [
+        'enabled' => env('VETFLOW_FISCAL_PRODUCTION_ENABLED', false),
+    ],
+
     // The adapter and credential driver are separate deployment gates. The
     // default pair cannot resolve credentials or instantiate an HTTP provider.
     'provider_adapter' => env('VETFLOW_FISCAL_PROVIDER_ADAPTER', 'disabled'),
@@ -44,6 +51,7 @@ return [
 
     'focus_nfe' => [
         'homologation_url' => env('FOCUS_NFE_HOMOLOGATION_URL', 'https://homologacao.focusnfe.com.br'),
+        'production_url' => env('FOCUS_NFE_PRODUCTION_URL', 'https://api.focusnfe.com.br'),
         'timeout_seconds' => env('FOCUS_NFE_TIMEOUT_SECONDS', 15),
         'connect_timeout_seconds' => env('FOCUS_NFE_CONNECT_TIMEOUT_SECONDS', 5),
         'webhook' => [

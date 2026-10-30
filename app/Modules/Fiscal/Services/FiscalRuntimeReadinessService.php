@@ -10,10 +10,15 @@ use App\Modules\Fiscal\Support\FiscalProviderCatalog;
 
 class FiscalRuntimeReadinessService
 {
+    private readonly FiscalEnvironmentGuard $environment;
+
     public function __construct(
         private readonly FiscalProvider $provider,
         private readonly FiscalCredentialResolver $credentials,
-    ) {}
+        ?FiscalEnvironmentGuard $environment = null,
+    ) {
+        $this->environment = $environment ?? new FiscalEnvironmentGuard;
+    }
 
     /** @return array{checks: array<int, array{key: string, label: string, ready: bool}>, ready_count: int, total_count: int, operational_ready: bool} */
     public function evaluate(FiscalProfile $profile): array
@@ -22,7 +27,7 @@ class FiscalRuntimeReadinessService
         $probe = new FiscalDocument([
             'clinic_id' => $profile->clinic_id,
             'provider' => $profile->provider,
-            'environment' => 'homologation',
+            'environment' => $profile->environment,
             'issuer_snapshot' => [
                 'provider_credential_reference' => $reference,
             ],
@@ -71,7 +76,7 @@ class FiscalRuntimeReadinessService
             ),
             $this->check(
                 'external_http',
-                'Tráfego fiscal de homologação liberado no servidor',
+                'Tráfego fiscal externo liberado no servidor',
                 (bool) config('fiscal.external_http_enabled', false)
             ),
             $this->check(
@@ -80,6 +85,14 @@ class FiscalRuntimeReadinessService
                 (bool) config('fiscal.submission_enabled', false)
             ),
         ];
+
+        if ($profile->environment === FiscalEnvironmentGuard::PRODUCTION) {
+            $checks[] = $this->check(
+                'production',
+                'Produção liberada no servidor e ativação vigente para a clínica',
+                $this->environment->allowsProfile($profile)
+            );
+        }
 
         $readyCount = collect($checks)->where('ready', true)->count();
 

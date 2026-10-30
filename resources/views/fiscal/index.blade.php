@@ -45,9 +45,13 @@
     O VetFlow apenas integra a conta conectada. O comprovante não fiscal e o funcionamento do caixa independem dessa conexão.
   </div>
 
-  @if($externalOperationsAvailable)
+  @if($profile->environment === 'production')
+    <div class="alert danger">
+      <strong>Produção fiscal ativa:</strong> novas preparações desta clínica podem gerar documentos com validade fiscal e cada transmissão continua exigindo ação explícita do operador.
+    </div>
+  @elseif($externalOperationsAvailable)
     <div class="alert info">
-      <strong>Homologação operacional:</strong> a fila externa está habilitada para o piloto revisado. Produção permanece indisponível e cada envio continua exigindo preparação e ação explícitas.
+      <strong>Homologação operacional:</strong> a fila externa está habilitada para o piloto revisado e cada envio continua exigindo preparação e ação explícitas.
     </div>
   @else
     <div class="alert warning">
@@ -81,7 +85,7 @@
     </div>
     <div class="stat">
       <span>Transmissão externa</span>
-      <strong>{{ $externalOperationsAvailable ? 'Homologação habilitada' : 'Bloqueada' }}</strong>
+      <strong>{{ $profile->environment === 'production' ? 'Produção ativa' : ($externalOperationsAvailable ? 'Homologação habilitada' : 'Bloqueada') }}</strong>
       <span class="muted">{{ $runtimeReadiness['ready_count'] }}/{{ $runtimeReadiness['total_count'] }} controles operacionais</span>
     </div>
     <div class="stat">
@@ -111,8 +115,8 @@
         <a class="button secondary" href="{{ route('fiscal.homologation-report.json', $requiresClinic ? ['clinic_id' => $selectedClinicId] : []) }}">Baixar JSON seguro</a>
       </div>
       <div class="alert warning">
-        <strong>Produção bloqueada:</strong> nenhuma decisão registrada nesta tela habilita emissão em produção.
-        A ativação futura exigirá uma implementação separada, credenciais de produção isoladas e nova autorização explícita.
+        <strong>Produção bloqueada por este gate:</strong> nenhuma decisão registrada nesta seção habilita emissão em produção.
+        A liberação exige o controle separado abaixo, credencial de produção isolada, senha e confirmação explícita.
       </div>
 
       <p>
@@ -234,6 +238,7 @@
           <summary>Substituir o token de homologação</summary>
           <form method="POST" action="{{ route('fiscal.focus-credential.connect') }}" class="form-grid">
             @csrf
+            <input type="hidden" name="environment" value="homologation">
             @if($requiresClinic)<input type="hidden" name="clinic_id" value="{{ $selectedClinicId }}">@endif
             <div class="field">
               <label for="focus_token">Novo token Focus</label>
@@ -260,6 +265,7 @@
           <form method="POST" action="{{ route('fiscal.focus-credential.disconnect') }}" class="form-grid">
             @csrf
             @method('DELETE')
+            <input type="hidden" name="environment" value="homologation">
             @if($requiresClinic)<input type="hidden" name="clinic_id" value="{{ $selectedClinicId }}">@endif
             <div class="field">
               <label for="focus_current_password_disconnect">Sua senha do VetFlow</label>
@@ -279,6 +285,7 @@
         </div>
         <form method="POST" action="{{ route('fiscal.focus-credential.connect') }}" class="form-grid">
           @csrf
+          <input type="hidden" name="environment" value="homologation">
           @if($requiresClinic)<input type="hidden" name="clinic_id" value="{{ $selectedClinicId }}">@endif
           <div class="field">
             <label for="focus_token">Token Focus de homologação</label>
@@ -298,6 +305,135 @@
             <span>Confirmo que esta conta Focus pertence à clínica e que sua assinatura e configuração fiscal são responsabilidade do estabelecimento.</span>
           </label>
           <div class="field full"><button type="submit">Conectar conta de homologação</button></div>
+        </form>
+      @endif
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-heading">
+      <div>
+        <h2>Liberação fiscal de produção</h2>
+        <p>Gate separado por clínica. Produção exige homologação aprovada, credencial própria e confirmação com senha.</p>
+      </div>
+      <span class="badge {{ $productionActivation ? 'danger' : ($productionRuntimeEnabled ? 'warning' : 'muted-badge') }}">
+        {{ $productionActivation ? 'Produção ativa' : ($productionRuntimeEnabled ? 'Aguardando ativação' : 'Bloqueada no servidor') }}
+      </span>
+    </div>
+    <div class="panel-body">
+      @if($productionActivation)
+        <div class="alert danger">
+          <strong>Documentos com validade fiscal:</strong> as novas preparações desta clínica utilizam o ambiente de produção da Focus.
+          Ativação {{ $productionActivation->ulid }} realizada em {{ optional($productionActivation->activated_at)->format('d/m/Y H:i') }} por {{ $productionActivation->activatedBy?->name ?? 'usuário autorizado' }}.
+        </div>
+        <details>
+          <summary>Desativar novas emissões em produção</summary>
+          <form method="POST" action="{{ route('fiscal.production.deactivate') }}" class="form-grid">
+            @csrf
+            @method('DELETE')
+            @if($requiresClinic)<input type="hidden" name="clinic_id" value="{{ $selectedClinicId }}">@endif
+            <div class="field full">
+              <label for="production_deactivation_reason">Motivo</label>
+              <textarea id="production_deactivation_reason" name="reason" minlength="15" maxlength="1000" required>{{ old('reason') }}</textarea>
+            </div>
+            <div class="field">
+              <label for="production_deactivation_password">Sua senha do VetFlow</label>
+              <input id="production_deactivation_password" name="current_password" type="password" autocomplete="current-password" required>
+            </div>
+            <label class="checkbox-field full">
+              <input type="checkbox" name="confirm_deactivation" value="1" required>
+              <span>Confirmo o bloqueio de novas preparações em produção. Documentos já autorizados permanecem válidos e auditáveis.</span>
+            </label>
+            <div class="field full"><button type="submit" class="danger">Desativar produção</button></div>
+          </form>
+        </details>
+      @elseif(!$productionRuntimeEnabled)
+        <div class="alert warning">
+          A chave independente <code>VETFLOW_FISCAL_PRODUCTION_ENABLED</code> continua desligada. Nenhuma credencial ou ação da interface pode emitir em produção enquanto esse controle estiver bloqueado.
+        </div>
+      @elseif(!$homologationReadiness['eligible_for_production_review'])
+        <div class="alert warning">Conclua o gate de homologação e registre uma aprovação humana atual antes de conectar a credencial de produção.</div>
+      @elseif(!$productionFocusCredential)
+        <div class="alert warning">Use exclusivamente o token de produção da conta Focus pertencente a esta clínica.</div>
+        <form method="POST" action="{{ route('fiscal.focus-credential.connect') }}" class="form-grid">
+          @csrf
+          <input type="hidden" name="environment" value="production">
+          @if($requiresClinic)<input type="hidden" name="clinic_id" value="{{ $selectedClinicId }}">@endif
+          <div class="field">
+            <label for="focus_production_token">Token Focus de produção</label>
+            <input id="focus_production_token" name="focus_token" type="password" minlength="16" maxlength="512" autocomplete="off" required>
+          </div>
+          <div class="field">
+            <label for="focus_production_token_confirmation">Confirme o token</label>
+            <input id="focus_production_token_confirmation" name="focus_token_confirmation" type="password" minlength="16" maxlength="512" autocomplete="off" required>
+          </div>
+          <div class="field">
+            <label for="focus_production_password">Sua senha do VetFlow</label>
+            <input id="focus_production_password" name="current_password" type="password" autocomplete="current-password" required>
+          </div>
+          <label class="checkbox-field full">
+            <input type="checkbox" name="accept_focus_responsibility" value="1" required>
+            <span>Confirmo que o token é de produção, pertence à clínica selecionada e pode gerar documentos com validade fiscal.</span>
+          </label>
+          <div class="field full"><button type="submit">Criptografar token de produção</button></div>
+        </form>
+      @else
+        <div class="alert info">
+          <strong>Credencial de produção conectada:</strong> final {{ $productionFocusCredential->token_last_four ? '••••'.$productionFocusCredential->token_last_four : 'protegido' }}.
+          A ativação abaixo é a última barreira antes de documentos com validade fiscal.
+        </div>
+        <form method="POST" action="{{ route('fiscal.production.activate') }}" class="form-grid">
+          @csrf
+          @if($requiresClinic)<input type="hidden" name="clinic_id" value="{{ $selectedClinicId }}">@endif
+          @if($profile->nfse_enabled)
+            <div class="field">
+              <label for="production_nfse_series">Série DPS de produção</label>
+              <input id="production_nfse_series" name="nfse_dps_series" type="number" min="1" max="49999" required>
+            </div>
+            <div class="field">
+              <label for="production_nfse_next">Próximo número DPS de produção</label>
+              <input id="production_nfse_next" name="nfse_dps_next_number" type="number" min="1" required>
+            </div>
+          @endif
+          @if($profile->nfce_enabled)
+            <div class="field">
+              <label for="production_nfce_series">Série NFC-e de produção</label>
+              <input id="production_nfce_series" name="nfce_series" type="number" min="0" max="999" required>
+            </div>
+            <div class="field">
+              <label for="production_nfce_next">Próximo número NFC-e de produção</label>
+              <input id="production_nfce_next" name="nfce_next_number" type="number" min="1" required>
+            </div>
+            <div class="field">
+              <label for="production_nfce_csc_id">Identificador público do CSC de produção</label>
+              <input id="production_nfce_csc_id" name="nfce_csc_id" inputmode="numeric" minlength="6" maxlength="6" required>
+            </div>
+            <div class="field">
+              <label for="production_nfce_csc_reference">Referência externa do CSC de produção</label>
+              <input id="production_nfce_csc_reference" name="nfce_csc_reference" maxlength="160" required>
+            </div>
+            <label class="checkbox-field full">
+              <input type="checkbox" name="nfce_sefaz_credentialed" value="1" required>
+              <span>Confirmei o credenciamento de produção deste CNPJ na SEFAZ-RJ.</span>
+            </label>
+          @endif
+          <div class="field">
+            <label for="production_reviewer_name">Responsável técnico/contábil</label>
+            <input id="production_reviewer_name" name="reviewer_name" maxlength="120" value="{{ old('reviewer_name', auth()->user()?->name) }}" required>
+          </div>
+          <div class="field full">
+            <label for="production_notes">Observação controlada</label>
+            <textarea id="production_notes" name="notes" maxlength="1000">{{ old('notes') }}</textarea>
+          </div>
+          <div class="field">
+            <label for="production_activation_password">Sua senha do VetFlow</label>
+            <input id="production_activation_password" name="current_password" type="password" autocomplete="current-password" required>
+          </div>
+          <label class="checkbox-field full">
+            <input type="checkbox" name="confirm_production" value="1" required>
+            <span>Entendo que as próximas transmissões produzirão documentos fiscais verdadeiros em nome da clínica.</span>
+          </label>
+          <div class="field full"><button type="submit" class="danger">Ativar emissão fiscal de produção</button></div>
         </form>
       @endif
     </div>
@@ -479,11 +615,16 @@
 
       @if($profile->provider && !$runtimeReadiness['operational_ready'])
         <div class="alert warning">
-          <strong>{{ $providerLabel }} selecionada para homologação:</strong> isso prepara a futura integração, mas não conecta o VetFlow ao provedor. O cliente HTTP, as credenciais reais e toda transmissão continuam desabilitados.
+          <strong>{{ $providerLabel }} selecionada para {{ $profile->environment === 'production' ? 'produção' : 'homologação' }}:</strong>
+          @if($profile->environment === 'production')
+            os controles operacionais do servidor ainda bloqueiam o tráfego externo.
+          @else
+            isso prepara a futura integração, mas não conecta o VetFlow ao provedor. O cliente HTTP, as credenciais reais e toda transmissão continuam desabilitados.
+          @endif
         </div>
       @elseif($profile->provider)
-        <div class="alert info">
-          <strong>{{ $providerLabel }} operacional em homologação:</strong> o token da clínica permanece protegido pelo resolvedor configurado e nunca é incluído em documentos, logs ou respostas da interface.
+        <div class="alert {{ $profile->environment === 'production' ? 'danger' : 'info' }}">
+          <strong>{{ $providerLabel }} operacional em {{ $profile->environment === 'production' ? 'produção' : 'homologação' }}:</strong> o token da clínica permanece protegido pelo resolvedor configurado e nunca é incluído em documentos, logs ou respostas da interface.
         </div>
       @endif
 
@@ -506,7 +647,7 @@
   <section class="panel">
     <div class="panel-heading">
       <div>
-        <h2>Ativação operacional da homologação</h2>
+        <h2>Ativação operacional do ambiente</h2>
         <p>Controles do servidor. Esta tela mostra apenas disponibilidade, nunca caminhos, referências resolvidas ou segredos.</p>
       </div>
       <span class="badge {{ $runtimeReadiness['operational_ready'] ? 'success' : 'warning' }}">
@@ -531,17 +672,23 @@
   <section class="panel">
     <div class="panel-heading">
       <div>
-        <h2>Configuração de homologação</h2>
+        <h2>Configuração {{ $profile->environment === 'production' ? 'de produção' : 'de homologação' }}</h2>
         <p>Os dados abaixo são versionados. O token Focus é administrado separadamente na conexão criptografada da clínica.</p>
       </div>
       <span class="badge {{ $profile->enabled ? 'success' : 'muted-badge' }}">{{ $profile->enabled ? 'Ativo para preparação' : 'Desativado' }}</span>
     </div>
     <div class="panel-body">
+      @if($profile->environment === 'production')
+        <div class="alert danger">
+          <strong>Configuração bloqueada durante a produção.</strong>
+          Desative formalmente a produção no controle acima antes de alterar cadastro fiscal, sequências, CSC ou certificado. Isso preserva a configuração aprovada e a trilha de auditoria.
+        </div>
+      @else
       <form method="POST" action="{{ route('fiscal.update') }}">
         @csrf
         @method('PUT')
         @if($requiresClinic)<input type="hidden" name="clinic_id" value="{{ $selectedClinicId }}">@endif
-        <input type="hidden" name="environment" value="homologation">
+        <input type="hidden" name="environment" value="{{ $profile->environment }}">
 
         <div class="form-grid">
           <div class="field">
@@ -716,6 +863,7 @@
           </div>
         </div>
       </form>
+      @endif
     </div>
   </section>
 
@@ -745,7 +893,7 @@
               <td><strong>{{ $types[$document->type] ?? strtoupper($document->type) }}</strong></td>
               <td>{{ $document->sale?->code ?? 'Venda removida' }}</td>
               <td><span class="badge">{{ $statusLabels[$document->status] ?? ucfirst($document->status) }}</span></td>
-              <td>Homologação</td>
+              <td>{{ $document->environment === 'production' ? 'Produção' : 'Homologação' }}</td>
               <td>{{ $document->creator?->name ?? 'Sistema' }}</td>
               <td>{{ optional($document->created_at)->format('d/m/Y H:i') }}</td>
               <td><a class="button secondary" href="{{ route('fiscal.documents.show', $document->id) }}">Revisar</a></td>

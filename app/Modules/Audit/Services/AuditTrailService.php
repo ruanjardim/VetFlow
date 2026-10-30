@@ -50,6 +50,8 @@ class AuditTrailService
         'fiscal.nfce-inutilization.rejected' => 'Inutilização de NFC-e rejeitada',
         'fiscal.nfce-inutilization.failed' => 'Inutilização de NFC-e sem confirmação',
         'fiscal.homologation-review.recorded' => 'Revisão da homologação fiscal registrada',
+        'fiscal.production.activated' => 'Produção fiscal ativada',
+        'fiscal.production.deactivated' => 'Produção fiscal desativada',
         'fiscal.period-closure.recorded' => 'Fechamento fiscal operacional registrado',
         'fiscal.return-review.recorded' => 'Revisão fiscal de devolução registrada',
     ];

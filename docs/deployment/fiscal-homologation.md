@@ -69,6 +69,7 @@ VETFLOW_FISCAL_PROVIDER_ADAPTER=focus_nfe
 VETFLOW_FISCAL_CREDENTIAL_DRIVER=encrypted_database
 VETFLOW_FISCAL_EXTERNAL_HTTP_ENABLED=false
 VETFLOW_FISCAL_SUBMISSION_ENABLED=false
+VETFLOW_FISCAL_PRODUCTION_ENABLED=false
 VETFLOW_FISCAL_QUEUE_CONNECTION=database
 VETFLOW_FISCAL_QUEUE=fiscal
 VETFLOW_FISCAL_PROCESSING_STALE_MINUTES=180
@@ -81,6 +82,7 @@ VETFLOW_NFCE_CANCELLATION_WINDOW_MINUTES=30
 FOCUS_NFE_WEBHOOK_ENABLED=false
 FOCUS_NFE_WEBHOOK_AUTHORIZATION_HEADER=X-VetFlow-Focus-Webhook
 FOCUS_NFE_WEBHOOK_AUTHORIZATION_TOKEN=<RANDOM_VALUE_WITH_AT_LEAST_32_CHARACTERS>
+FOCUS_NFE_PRODUCTION_URL=https://api.focusnfe.com.br
 ```
 
 Use `external_file` plus `VETFLOW_FISCAL_CREDENTIAL_FILE` only for an
@@ -150,8 +152,11 @@ bounded status reconciliation available.
     document identifiers.
 
 An **Apta para análise técnica** badge does not enable production, change
-credentials or alter the document environment. Production support is absent
-and must be implemented and authorized as a separate fail-closed project.
+credentials or alter the document environment. It only unlocks the separate,
+fail-closed procedure documented in
+[`fiscal-production.md`](fiscal-production.md). Production still requires its
+own token, server gate, sequences, CSC reference and password-confirmed clinic
+activation.
 
 ## Operational Alerts And Recovery
 

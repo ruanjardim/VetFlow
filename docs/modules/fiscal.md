@@ -5,8 +5,9 @@
 The Fiscal module introduces the tenant-safe foundation for outgoing Brazilian
 fiscal documents. It prepares and reviews NFC-e and NFS-e data and provides a
 local RJ NFC-e model 65 payload plus guarded Focus NFS-e and NFC-e
-homologation lifecycles. Every external control is disabled by default and
-production issuance remains unavailable.
+homologation and production lifecycles. Every external control is disabled by
+default. Production is available only for the reviewed Niterói/RJ NFS-e and
+RJ NFC-e slices after a separate, clinic-scoped, fail-closed activation.
 
 Focus follows a bring-your-own-account model: each clinic contracts and pays
 the provider directly. VetFlow only connects that tenant-owned account and the
@@ -74,8 +75,8 @@ fiscal document automatically.
 17. An authorized user records an append-only approval or follow-up after
     confirming the current password. The decision is bound to a secret-free
     fingerprint and becomes stale when profile or active-catalog evidence
-    changes. Approval only qualifies a future technical production review and
-    cannot activate production.
+    changes. Approval only qualifies a technical production review and cannot
+    activate production by itself.
 18. The clinic can print an actionable homologation dossier or download its
     no-cache JSON equivalent. Both use an explicit safe field list, include a
     report hash and omit credential/certificate references, fiscal payloads,
@@ -118,6 +119,12 @@ fiscal document automatically.
     The export allowlist includes only conference identifiers, dates, totals
     and responsible user; raw payloads, provider responses and credentials are
     never returned. Operational competence does not define tax competence.
+23. A clinic with a current approved homologation gate can connect a separate
+    Focus production token. A password-confirmed activation freezes the
+    approved evidence, issuer profile version and independent production
+    sequences. The server-wide production switch must also be enabled. While
+    active, profile editing is blocked; an audited emergency deactivation
+    revokes the activation and restores the frozen homologation profile.
 
 Repeating the same preparation for the same sale and document type returns the
 existing draft instead of duplicating it.
@@ -137,6 +144,10 @@ feature.
   homologation token after password confirmation.
 - `DELETE /fiscal/focus-credential`: erase and revoke the clinic credential,
   blocking its external fiscal operations.
+- `POST /fiscal/production/activate`: after password confirmation, activate the
+  separately credentialed production environment for one approved clinic.
+- `DELETE /fiscal/production`: revoke production for new preparations, retain
+  the immutable history and restore the frozen homologation configuration.
 - `POST /fiscal/homologation/reviews`: append a password-confirmed approval or
   follow-up bound to the current secret-free homologation evidence.
 - `GET /fiscal/homologation/report`: print the current actionable dossier.
@@ -205,6 +216,9 @@ permission. All profile, document, and event records are clinic-scoped.
   and allocation snapshot per sale, linked to every affected document.
 - `fiscal_homologation_reviews`: append-only human decisions with reviewer,
   safe evidence snapshot and fingerprint for current/stale detection.
+- `fiscal_production_activations`: immutable activation/revocation history,
+  approved homologation fingerprint, frozen profile snapshot and responsible
+  users for each clinic production window.
 - `fiscal_period_closures`: append-only operational period confirmations with
   reviewer, totals, safe evidence snapshot and fingerprint for stale detection.
 - `fiscal_return_reviews`: append-only follow-up/completion decisions with
@@ -287,7 +301,8 @@ checklist still does not enable traffic.
 
 The first NFC-e slice is deliberately narrower than the internal draft model:
 
-- issuer in RJ, model 65 and homologation only;
+- issuer in RJ and model 65, first proven in homologation and released to
+  production only through the separate clinic gate;
 - CNPJ, state registration, municipality/address, tax regime and a current
   externally referenced certificate;
 - explicit confirmation that the establishment is credentialed for NFC-e at
@@ -425,10 +440,14 @@ NFS-e also requires the authenticated webhook and a completed resend. The
 human review records the clinic/accountant conclusion, but the evidence still
 has to be produced with the clinic's real homologation account.
 
-Explicit production enablement, production credentials and a production
-lifecycle remain intentionally absent. They must be designed as a separate
-fail-closed change after the homologation gate is current and approved; editing
-the profile or recording a review can never cross that boundary.
+Production enablement is deliberately separate from homologation. The
+server-wide `VETFLOW_FISCAL_PRODUCTION_ENABLED` switch defaults to false, each
+clinic needs an isolated production credential and a current approved
+homologation fingerprint, and activation requires password confirmation plus
+production-only numbering. Editing the profile or recording a homologation
+review can never cross that boundary. The activation and emergency revocation
+procedure is documented in
+[`docs/deployment/fiscal-production.md`](../deployment/fiscal-production.md).
 
 ## Official References
 
@@ -498,7 +517,10 @@ service grouping rule, and the reviewed mixed-sale allocation workflow.
 `tests/Feature/FiscalHomologationReadinessTest.php` covers incomplete-gate
 follow-up, guided dossier rendering, safe JSON output, premature-approval
 blocking, complete NFC-e evidence, human approval without production
-enablement and automatic staleness after tax configuration changes.
+enablement, automatic staleness after tax configuration changes, isolated
+production credentials, password-confirmed activation, production endpoint
+selection, audited revocation, restoration of homologation and refusal to
+transmit a document after its production activation is revoked.
 
 `tests/Feature/FiscalReconciliationTest.php` covers all reconciliation states,
 closed-total validation, explicit return review, tenant isolation, status
