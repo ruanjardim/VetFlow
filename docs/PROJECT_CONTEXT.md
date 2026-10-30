@@ -1,6 +1,6 @@
 # VetFlow Project Context
 
-Updated: 2026-10-26
+Updated: 2026-10-30
 
 ## Product
 
@@ -55,6 +55,16 @@ DB_DATABASE=database/database.sqlite
 Run setup with Composer, npm, migrations, and the Laravel server as described in the root README.
 
 ## Current Delivery Focus
+
+The counter PDV now has a deliberately bounded offline-continuity path for an
+already loaded session. A non-PII clinic catalog and pending supported sales are
+encrypted locally; UUID idempotency and authoritative server reconciliation
+ensure inventory, open cash, finance and audit effects happen at most once.
+Conflicting stock or operational state remains visible in the local queue, and
+complex linked or deferred-payment flows remain online-only. This protects a
+counter kept alive by a UPS without pretending that independent offline devices
+share live inventory or that the hosted application can cold-start without a
+connection.
 
 The financial area now distinguishes operational projection from bank
 evidence. Clinics can register their own financial accounts and import bounded

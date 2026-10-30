@@ -30,6 +30,8 @@ class Sale extends Model
 
     protected $casts = [
         'sold_at' => 'datetime',
+        'offline_captured_at' => 'datetime',
+        'offline_synced_at' => 'datetime',
         'subtotal' => 'decimal:2',
         'discount_total' => 'decimal:2',
         'additions_total' => 'decimal:2',

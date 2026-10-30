@@ -101,16 +101,38 @@ financial income, returns, refunds, cancellations, and sale event history.
   to sales history.
 - While the PDV remains open, a lightweight authenticated heartbeat refreshes
   the server session every four minutes. The header exposes online, offline,
-  unavailable and expired-session states. If connectivity or authentication is
-  lost, the cart remains in the current page, server submissions are blocked,
-  and the operator can authenticate in another tab before continuing.
-- This protection is not an offline sales database. A UPS can keep the
-  computer, router and optical terminal powered, but a completed sale still
-  requires connectivity to the hosted application so stock, cash, finance and
-  audit effects remain one atomic transaction. A future offline mode needs a
-  local encrypted queue, idempotency keys, catalog snapshots and explicit
-  stock/payment conflict reconciliation before automatic synchronization is
-  safe.
+  unavailable and expired-session states. If authentication expires, the cart
+  stays visible and the operator can authenticate in another tab before
+  continuing.
+- When connectivity is lost after the PDV has been loaded, a completed regular
+  sale can be placed in an encrypted IndexedDB queue. The queue and its catalog
+  snapshot use a non-extractable browser AES-GCM key; the catalog is clinic-
+  scoped, deliberately excludes customer and patient records, must be complete,
+  and is accepted for at most 24 hours. A random device identifier and one UUID
+  per checkout make later synchronization idempotent. A server-encrypted
+  context binds the snapshot to its clinic and operator so a queue left on a
+  shared computer cannot be assumed by a different login.
+- Offline checkout requires a cash session that was already open in the latest
+  local snapshot. It does not open or close cash, and it excludes deferred or
+  externally linked workflows: pay-later sales, customer-credit use, change as
+  credit, packages, service orders and quote conversions. Regular product,
+  service and custom items with a fully received supported payment can be
+  queued. Local stock reservation reduces repeated sales on the same device but
+  remains advisory.
+- The browser retries queued records automatically after connectivity returns.
+  The server remains authoritative: tenant, payment, open cash and sellable
+  stock rules are revalidated inside the normal atomic sale transaction. A
+  successful synchronization applies inventory, cash/financial and audit
+  effects exactly once, saves the original capture time and device, and records
+  source `pdv_offline`. Validation or business conflicts stay visibly queued
+  for review/retry instead of being discarded.
+- The offline queue is continuity for an already loaded counter, not a complete
+  installable offline application. A UPS can keep the computer working through
+  a connection or external power outage and the persistent queue survives a
+  browser restart, but the hosted PDV route itself still needs connectivity to
+  be opened again before queued records can synchronize. Multiple offline
+  devices cannot guarantee live shared stock; conflicts are therefore resolved
+  only by the server on synchronization.
 - A common USB barcode reader is treated as a keyboard wedge. With search
   focused, Enter submits an 8-14 digit EAN/GTIN immediately. When no editable
   field or PDV modal is active, a rapid numeric sequence is also captured and
@@ -379,6 +401,8 @@ also mapped to `pdv`.
 
 Relevant coverage is present in:
 
+- `tests/Feature/PdvOfflineSalesTest.php`
+- `tests/Feature/PdvSessionResilienceTest.php`
 - `tests/Feature/OperationalFlowTest.php`
 - `tests/Feature/ProductAbcAnalysisTest.php`
 - `tests/Feature/SaleQuotesAndSaleTypeTest.php`

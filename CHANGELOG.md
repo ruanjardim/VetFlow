@@ -1,5 +1,16 @@
 # Changelog
 
+## 2026-10-30
+
+- Added continuity for an already loaded PDV during connectivity loss: a
+  bounded clinic catalog without customer PII and supported checkouts are kept
+  in AES-GCM-encrypted IndexedDB storage. Each queued sale has a device ID and
+  idempotency UUID plus a server-encrypted clinic/operator context, synchronizes
+  automatically through the normal atomic sale workflow, and retains explicit
+  stock, cash or payment conflicts for operator review instead of silently
+  losing or duplicating effects. Deferred customer-credit and linked
+  service/package/quote flows remain online-only.
+
 ## 2026-10-27
 
 - Reworked the new-sale screen into a dedicated counter mode that removes the

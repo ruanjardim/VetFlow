@@ -37,8 +37,12 @@ class PdvSessionResilienceTest extends TestCase
             ->get(route('sales.create'))
             ->assertOk()
             ->assertSee('data-session-heartbeat-url="'.route('sales.pdv.session').'"', false)
+            ->assertSee('data-offline-catalog-url="'.route('sales.pdv.offline-catalog').'"', false)
+            ->assertSee('data-offline-sync-url="'.route('sales.pdv.offline-sync').'"', false)
             ->assertSee('data-pdv-connection-state', false)
             ->assertSee('data-pdv-connectivity-alert', false)
+            ->assertSee('data-pdv-offline-queue', false)
+            ->assertSee('data-pdv-offline-dialog', false)
             ->assertSee('data-pdv-close', false)
             ->assertSee('Sair do PDV');
     }

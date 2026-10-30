@@ -33,8 +33,11 @@ use App\Modules\ServiceOrders\Models\ServiceOrder;
 use App\Modules\Tutors\Models\Tutor;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Crypt;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
 class SaleController extends BaseCrudController
@@ -113,6 +116,212 @@ class SaleController extends BaseCrudController
         }
 
         return redirect()->route('sales.index')->with('success', 'Registro criado com sucesso.');
+    }
+
+    /**
+     * Synchronizes one sale captured by the encrypted browser queue.
+     *
+     * The regular StoreSaleRequest and SaleService remain authoritative for
+     * stock, cash, finance, tenant and payment rules. The client UUID only
+     * makes retries idempotent; it never bypasses those rules for a new sale.
+     */
+    public function syncOffline(Request $request): JsonResponse
+    {
+        $identity = $request->validate([
+            'client_request_id' => ['required', 'uuid'],
+            'offline_device_id' => ['required', 'uuid'],
+            'offline_captured_at' => ['required', 'date', 'before_or_equal:'.now()->addMinutes(5)->toIso8601String()],
+            'offline_context_token' => ['required', 'string', 'max:4096'],
+            'clinic_id' => ['nullable', 'integer', 'exists:clinics,id'],
+        ]);
+
+        $clinicId = (int) (auth()->user()?->clinic_id ?? ($identity['clinic_id'] ?? 0));
+
+        if ($clinicId <= 0) {
+            throw ValidationException::withMessages([
+                'clinic_id' => 'Selecione a clínica da venda offline.',
+            ]);
+        }
+
+        $matchingSale = $this->offlineSaleFor(
+            (string) $identity['client_request_id'],
+            $clinicId,
+            (int) auth()->id()
+        );
+
+        if ($matchingSale) {
+            return $this->offlineSyncResponse($matchingSale, true);
+        }
+
+        $requestIdAlreadyUsed = Sale::withTrashed()
+            ->withoutGlobalScope('clinic_tenant')
+            ->where('client_request_id', $identity['client_request_id'])
+            ->exists();
+
+        if ($requestIdAlreadyUsed) {
+            return response()->json([
+                'status' => 'conflict',
+                'message' => 'Esta venda offline pertence a outro operador ou estabelecimento.',
+            ], 409);
+        }
+
+        $this->validateOfflineContext(
+            (string) $identity['offline_context_token'],
+            $clinicId,
+            (string) $identity['offline_captured_at']
+        );
+
+        if ($request->filled('service_order_id') || $request->filled('pet_package_id') || $request->filled('sale_quote_id')) {
+            throw ValidationException::withMessages([
+                'offline' => 'Comandas, pacotes e conversões de orçamento precisam ser finalizados online.',
+            ]);
+        }
+
+        if ($request->boolean('pay_later') || $request->boolean('change_as_credit')) {
+            throw ValidationException::withMessages([
+                'offline' => 'Fiado e troco em crédito precisam de conferência online do saldo do cliente.',
+            ]);
+        }
+
+        $payments = $request->input('payments', []);
+        if (collect(is_array($payments) ? $payments : [])->contains(
+            fn ($payment) => is_array($payment) && ($payment['method'] ?? null) === CustomerBalanceService::CREDIT_METHOD
+        )) {
+            throw ValidationException::withMessages([
+                'payments' => 'Crédito do cliente não pode ser consumido sem conexão.',
+            ]);
+        }
+
+        $request->merge([
+            'clinic_id' => $clinicId,
+            'seller_user_id' => auth()->id(),
+            'status' => 'completed',
+            'source' => 'pdv_offline',
+            'pdv_checkout' => true,
+            'sold_at' => $identity['offline_captured_at'],
+            'offline_synced_at' => now()->toIso8601String(),
+        ]);
+
+        $validated = $this->validateRequest($request, StoreSaleRequest::class);
+        $validated['clinic_id'] = $clinicId;
+        $validated['seller_user_id'] = (int) auth()->id();
+        $validated['status'] = 'completed';
+        $validated['source'] = 'pdv_offline';
+        $validated['sold_at'] = $identity['offline_captured_at'];
+        $validated['offline_synced_at'] = now();
+        $validated['payments'] = collect($validated['payments'] ?? [])
+            ->map(function (array $payment) use ($identity): array {
+                $payment['paid_at'] = $payment['paid_at'] ?? $identity['offline_captured_at'];
+
+                return $payment;
+            })
+            ->all();
+
+        $sale = $this->service->create($validated);
+
+        return $this->offlineSyncResponse($sale, false, 201);
+    }
+
+    /**
+     * Provides a bounded, non-PII snapshot used for barcode and name lookup
+     * after the already-open PDV loses connectivity.
+     */
+    public function offlineCatalog(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'clinic_id' => ['nullable', 'integer', 'exists:clinics,id'],
+        ]);
+        $userClinicId = auth()->user()?->clinic_id;
+        $clinicId = (int) ($userClinicId ?? ($validated['clinic_id'] ?? 0));
+
+        if ($clinicId <= 0) {
+            throw ValidationException::withMessages([
+                'clinic_id' => 'Selecione uma clínica para preparar o catálogo offline.',
+            ]);
+        }
+
+        if ($userClinicId !== null && (int) $userClinicId !== $clinicId) {
+            abort(403);
+        }
+
+        $clinic = Clinic::query()->where('active', true)->findOrFail($clinicId);
+        $limit = (int) config('sales.offline_catalog_limit', 5000);
+        $productCount = Product::query()->active()->where('clinic_id', $clinicId)->count();
+        $serviceCount = PetShopService::query()->active()->where('clinic_id', $clinicId)->count();
+        $complete = ($productCount + $serviceCount) <= $limit;
+        $productLimit = min($productCount, $limit);
+        $serviceLimit = max(0, $limit - $productLimit);
+
+        $products = Product::query()
+            ->active()
+            ->where('clinic_id', $clinicId)
+            ->orderBy('name')
+            ->limit($productLimit)
+            ->get()
+            ->map(fn (Product $product) => [
+                'type' => 'product',
+                'product_id' => $product->id,
+                'petshop_service_id' => null,
+                'description' => $product->name,
+                'sku' => $product->sku,
+                'barcode' => $product->barcode,
+                'gtin' => $product->gtin,
+                'unit_price' => (float) $product->sale_price,
+                'stock_quantity' => max(0, (float) $product->stock_quantity),
+                'minimum_stock' => (float) $product->minimum_stock,
+            ]);
+
+        $services = PetShopService::query()
+            ->active()
+            ->where('clinic_id', $clinicId)
+            ->orderBy('name')
+            ->limit($serviceLimit)
+            ->get()
+            ->map(fn (PetShopService $service) => [
+                'type' => 'service',
+                'product_id' => null,
+                'petshop_service_id' => $service->id,
+                'description' => $service->name,
+                'sku' => null,
+                'barcode' => null,
+                'gtin' => null,
+                'unit_price' => (float) $service->base_price,
+                'stock_quantity' => null,
+                'minimum_stock' => null,
+            ]);
+
+        $versionFacts = [
+            'clinic_id' => $clinicId,
+            'products' => $productCount,
+            'services' => $serviceCount,
+            'product_updated_at' => Product::query()->where('clinic_id', $clinicId)->max('updated_at'),
+            'service_updated_at' => PetShopService::query()->where('clinic_id', $clinicId)->max('updated_at'),
+        ];
+
+        $response = response()->json([
+            'schema' => 1,
+            'version' => hash('sha256', json_encode($versionFacts, JSON_THROW_ON_ERROR)),
+            'generated_at' => now()->toIso8601String(),
+            'offline_context_token' => $this->offlineContextToken($clinicId),
+            'clinic' => [
+                'id' => $clinic->id,
+                'name' => $clinic->trade_name ?? $clinic->corporate_name,
+            ],
+            'complete' => $complete,
+            'limit' => $limit,
+            'total_items' => $productCount + $serviceCount,
+            'items' => $products->concat($services)->values(),
+            'payment_methods' => app(PaymentMethodService::class)
+                ->activeForClinic($clinicId)
+                ->map->toPdvArray()
+                ->values(),
+            'cash_session' => app(CashSessionService::class)
+                ->currentFor(auth()->user(), $clinicId)?->toPdvArray(),
+        ]);
+
+        $response->headers->set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
+
+        return $response;
     }
 
     public function edit(int $id)
@@ -761,6 +970,73 @@ class SaleController extends BaseCrudController
                 ->limit(100)
                 ->get(),
         ]);
+    }
+
+    private function offlineSaleFor(string $requestId, int $clinicId, int $sellerUserId): ?Sale
+    {
+        return Sale::query()
+            ->where('client_request_id', $requestId)
+            ->where('clinic_id', $clinicId)
+            ->where('seller_user_id', $sellerUserId)
+            ->first();
+    }
+
+    private function offlineSyncResponse(Sale $sale, bool $duplicate, int $status = 200): JsonResponse
+    {
+        return response()->json([
+            'status' => 'synced',
+            'duplicate' => $duplicate,
+            'message' => $duplicate
+                ? 'Esta venda offline já estava sincronizada.'
+                : 'Venda offline sincronizada com estoque, caixa e financeiro.',
+            'sale' => [
+                'id' => $sale->id,
+                'code' => $sale->code,
+                'total' => (float) $sale->total,
+                'receipt_url' => route('sales.receipt', $sale->id),
+            ],
+        ], $status);
+    }
+
+    private function offlineContextToken(int $clinicId): string
+    {
+        $issuedAt = now();
+
+        return Crypt::encryptString(json_encode([
+            'user_id' => (int) auth()->id(),
+            'clinic_id' => $clinicId,
+            'issued_at' => $issuedAt->toIso8601String(),
+            'expires_at' => $issuedAt->copy()->addDay()->toIso8601String(),
+        ], JSON_THROW_ON_ERROR));
+    }
+
+    private function validateOfflineContext(string $token, int $clinicId, string $capturedAt): void
+    {
+        try {
+            $context = json_decode(Crypt::decryptString($token), true, 16, JSON_THROW_ON_ERROR);
+            if (! is_array($context)
+                || ! isset($context['user_id'], $context['clinic_id'], $context['issued_at'], $context['expires_at'])) {
+                throw new \UnexpectedValueException('Offline context is incomplete.');
+            }
+            $captured = Carbon::parse($capturedAt);
+            $issued = Carbon::parse((string) $context['issued_at']);
+            $expires = Carbon::parse((string) $context['expires_at']);
+        } catch (\Throwable) {
+            throw ValidationException::withMessages([
+                'offline_context_token' => 'A autorização local desta venda não é válida. Atualize o PDV conectado.',
+            ]);
+        }
+
+        $sameOperator = (int) ($context['user_id'] ?? 0) === (int) auth()->id();
+        $sameClinic = (int) ($context['clinic_id'] ?? 0) === $clinicId;
+        $captureInsideWindow = $captured->greaterThanOrEqualTo($issued->copy()->subMinutes(5))
+            && $captured->lessThanOrEqualTo($expires);
+
+        if (! $sameOperator || ! $sameClinic || ! $captureInsideWindow) {
+            throw ValidationException::withMessages([
+                'offline_context_token' => 'Esta venda offline foi capturada por outro operador, unidade ou catálogo vencido.',
+            ]);
+        }
     }
 
     private function normalizeDecimal(mixed $value): mixed

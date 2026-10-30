@@ -24,6 +24,8 @@ body.pdv-counter-mode{overflow:hidden;background:#eef2f6;color:#172033}
 .pdv-counter-actions{display:flex;align-items:center;gap:7px;min-width:max-content}
 .pdv-counter-actions .button{min-height:38px;padding:9px 12px;border-color:#475569;background:#1e293b;color:#f8fafc;font-size:12px}
 .pdv-counter-actions .button:hover,.pdv-counter-actions .button:focus-visible{border-color:#5eead4;background:#334155}
+.pdv-counter-actions .pdv-offline-queue{border-color:#d97706;background:#92400e;color:#fff7ed}
+.pdv-offline-queue b{display:grid;place-items:center;min-width:22px;height:22px;padding:0 6px;border-radius:999px;background:#fbbf24;color:#422006;font-size:11px}
 .pdv-counter-actions .pdv-counter-exit{border-color:#0f766e;background:#0f766e}
 .pdv-counter-more{position:relative}
 .pdv-counter-more summary{display:flex;align-items:center;cursor:pointer;list-style:none}
@@ -34,6 +36,21 @@ body.pdv-counter-mode{overflow:hidden;background:#eef2f6;color:#172033}
 .pdv-counter-more nav a:hover,.pdv-counter-more nav a:focus-visible{background:#ecfeff;color:#0f766e}
 .pdv-connectivity-alert{display:flex;align-items:center;justify-content:center;gap:12px;margin:12px 16px 0;padding:11px 14px;border:1px solid #f59e0b;border-radius:10px;background:#fffbeb;color:#78350f;font-size:13px;font-weight:700}
 .pdv-connectivity-alert a{flex:0 0 auto;border-bottom:1px solid currentColor;color:#9a3412}
+.pdv-offline-dialog{width:min(720px,calc(100vw - 32px));max-height:min(760px,calc(100vh - 32px));padding:0;border:1px solid #cbd5e1;border-radius:14px;background:#fff;color:#172033;box-shadow:0 24px 70px rgba(15,23,42,.35)}
+.pdv-offline-dialog::backdrop{background:rgba(15,23,42,.58)}
+.pdv-offline-dialog>header,.pdv-offline-dialog>footer{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:16px 18px;background:#f8fafc}
+.pdv-offline-dialog>header{border-bottom:1px solid #e2e8f0}
+.pdv-offline-dialog>footer{border-top:1px solid #e2e8f0}
+.pdv-offline-dialog h2{margin:2px 0 0;font-size:20px}
+.pdv-offline-dialog header small{color:#0f766e;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.08em}
+.pdv-offline-dialog>p{margin:0;padding:14px 18px;color:#475569;font-size:13px}
+.pdv-offline-dialog footer span{color:#64748b;font-size:11px}
+.pdv-offline-list{display:grid;gap:8px;max-height:440px;overflow:auto;padding:0 18px 18px}
+.pdv-offline-item{display:grid;gap:5px;padding:12px;border:1px solid #e2e8f0;border-radius:10px;background:#fff}
+.pdv-offline-item>div{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.pdv-offline-item strong{font-size:13px}.pdv-offline-item span,.pdv-offline-item small{color:#64748b;font-size:11px}
+.pdv-offline-item.is-conflict{border-color:#fda4af;background:#fff1f2}
+.pdv-offline-item.is-syncing{border-color:#93c5fd;background:#eff6ff}
 .pdv-shell{display:grid;grid-template-columns:minmax(0,1fr) minmax(330px,390px);gap:14px;align-items:start;padding:14px 16px 24px}
 .pdv-main{min-width:0;display:grid;gap:16px}
 .pdv-search-panel,.pdv-customer,.pdv-cart,.pdv-summary{border:1px solid #d5dee9;border-radius:12px;background:#fff;box-shadow:0 1px 3px rgba(15,23,42,.05)}
