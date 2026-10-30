@@ -2,6 +2,11 @@
 
 ## 2026-10-30
 
+- Kept the core online PDV renderable during a rolling deployment even when
+  the web process is temporarily serving an older named-route cache. Optional
+  offline endpoints now use stable same-origin paths and remain disabled until
+  the refreshed route table is available, instead of turning that condition
+  into a server error for every cashier.
 - Added continuity for an already loaded PDV during connectivity loss: a
   bounded clinic catalog without customer PII and supported checkouts are kept
   in AES-GCM-encrypted IndexedDB storage. Each queued sale has a device ID and

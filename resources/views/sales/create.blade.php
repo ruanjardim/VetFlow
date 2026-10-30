@@ -104,8 +104,10 @@
   data-cash-index-url="{{ route('sales.cash-sessions.index') }}"
   data-session-heartbeat-url="{{ route('sales.pdv.session') }}"
   data-session-login-url="{{ route('login') }}"
-  data-offline-catalog-url="{{ route('sales.pdv.offline-catalog') }}"
-  data-offline-sync-url="{{ route('sales.pdv.offline-sync') }}"
+  {{-- Offline continuity is optional. A stale route cache during a rolling deploy
+       must never prevent the core online PDV from rendering. --}}
+  data-offline-catalog-url="{{ url('/sales/pdv/offline-catalog') }}"
+  data-offline-sync-url="{{ url('/sales/pdv/offline-sync') }}"
   data-user-clinic-id="{{ auth()->user()?->clinic_id }}"
   data-initial-scan="{{ request('scan', '') }}">
   @csrf
