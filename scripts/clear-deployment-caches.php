@@ -14,6 +14,7 @@ $cacheFiles = [
     $root.'/bootstrap/cache/events.php',
     $root.'/bootstrap/cache/routes.php',
     $root.'/bootstrap/cache/routes-v7.php',
+    ...(glob($root.'/bootstrap/cache/routes-v7-*.php') ?: []),
 ];
 
 foreach ($cacheFiles as $cacheFile) {
