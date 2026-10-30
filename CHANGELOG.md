@@ -5,7 +5,8 @@
 - Versioned the production route-cache filename by the exact release commit and
   made Composer publish the release identity before compiling routes. This
   prevents persistent PHP/OPcache processes from serving a previous release's
-  route table after a Hostinger Git deployment.
+  route table after a Hostinger Git deployment, even when a legacy
+  `APP_ROUTES_CACHE` value remains in the hosting environment.
 - Kept the core online PDV renderable during a rolling deployment even when
   the web process is temporarily serving an older named-route cache. Optional
   offline endpoints now use stable same-origin paths and remain disabled until

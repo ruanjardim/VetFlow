@@ -57,4 +57,44 @@ class ReleaseRouteCachePathTest extends TestCase
 
         $this->assertNull(ReleaseRouteCachePath::resolve($this->temporaryDirectory));
     }
+
+    public function test_a_valid_release_marker_overrides_a_legacy_explicit_path(): void
+    {
+        $sha = str_repeat('b', 40);
+        $path = 'bootstrap/cache/routes-v7-'.$sha.'.php';
+        $previousEnvironment = getenv('APP_ROUTES_CACHE');
+        $previousEnv = $_ENV['APP_ROUTES_CACHE'] ?? null;
+        $previousServer = $_SERVER['APP_ROUTES_CACHE'] ?? null;
+
+        file_put_contents(
+            $this->temporaryDirectory.'/bootstrap/cache/vetflow-release.sha',
+            $sha.PHP_EOL
+        );
+        putenv('APP_ROUTES_CACHE=bootstrap/cache/routes-v7.php');
+        $_ENV['APP_ROUTES_CACHE'] = 'bootstrap/cache/routes-v7.php';
+        $_SERVER['APP_ROUTES_CACHE'] = 'bootstrap/cache/routes-v7.php';
+
+        try {
+            $this->assertSame($path, ReleaseRouteCachePath::configure($this->temporaryDirectory));
+            $this->assertSame($path, getenv('APP_ROUTES_CACHE'));
+            $this->assertSame($path, $_ENV['APP_ROUTES_CACHE']);
+            $this->assertSame($path, $_SERVER['APP_ROUTES_CACHE']);
+        } finally {
+            $previousEnvironment === false
+                ? putenv('APP_ROUTES_CACHE')
+                : putenv('APP_ROUTES_CACHE='.$previousEnvironment);
+
+            if ($previousEnv === null) {
+                unset($_ENV['APP_ROUTES_CACHE']);
+            } else {
+                $_ENV['APP_ROUTES_CACHE'] = $previousEnv;
+            }
+
+            if ($previousServer === null) {
+                unset($_SERVER['APP_ROUTES_CACHE']);
+            } else {
+                $_SERVER['APP_ROUTES_CACHE'] = $previousServer;
+            }
+        }
+    }
 }
