@@ -2,6 +2,7 @@
 
 use App\Modules\Sales\Controllers\CashSessionController;
 use App\Modules\Sales\Controllers\CustomerBalanceController;
+use App\Modules\Sales\Controllers\PdvScaleSettingController;
 use App\Modules\Sales\Controllers\PdvSessionController;
 use App\Modules\Sales\Controllers\SaleController;
 use App\Modules\Sales\Controllers\SaleQuoteController;
@@ -18,6 +19,12 @@ Route::get('sales/pdv/offline-catalog', [SaleController::class, 'offlineCatalog'
 Route::post('sales/pdv/offline-sync', [SaleController::class, 'syncOffline'])
     ->middleware('throttle:30,1')
     ->name('sales.pdv.offline-sync');
+
+Route::get('settings/pdv-scale', [PdvScaleSettingController::class, 'edit'])
+    ->name('sales.pdv-scale-settings.edit');
+
+Route::put('settings/pdv-scale', [PdvScaleSettingController::class, 'update'])
+    ->name('sales.pdv-scale-settings.update');
 
 Route::get('sales/customer-balances', [CustomerBalanceController::class, 'index'])
     ->name('sales.customer-balances.index');

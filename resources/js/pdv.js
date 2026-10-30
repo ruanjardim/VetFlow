@@ -1,4 +1,4 @@
-import { PdvOfflineStore, reserveOfflineStock, searchOfflineCatalog } from './pdv-offline.js';
+import { PdvOfflineStore, readOfflineScaleLabel, reserveOfflineStock, searchOfflineCatalog } from './pdv-offline.js';
 
 document.addEventListener('DOMContentLoaded', () => {
   const form = document.querySelector('[data-pdv-form]');
@@ -670,11 +670,20 @@ document.addEventListener('DOMContentLoaded', () => {
       } : {});
       message(lookupStatus, [data.message, ...warnings].filter(Boolean).join(' '), warnings.length || data.mode === 'catalog' ? 'warning' : 'success');
     } catch {
-      const localItem = searchOfflineCatalog(offlineCatalog, gtin, 1)[0];
+      const scaleReading = readOfflineScaleLabel(offlineCatalog, gtin);
+      if (scaleReading.recognized && !scaleReading.valid) {
+        message(lookupStatus, scaleReading.message, 'warning');
+        setScannerState('warning', scaleReading.message);
+        feedbackTone(false);
+        return;
+      }
+      const localItem = scaleReading.valid ? scaleReading.item : searchOfflineCatalog(offlineCatalog, gtin, 1)[0];
       if (localItem) {
         addSearchItem(localItem, {
           state: 'warning',
-          detail: 'Código encontrado no catálogo local; o estoque será conferido na sincronização.',
+          detail: localItem.scale_label
+            ? `Etiqueta lida offline: ${quantity(localItem.quantity).toLocaleString('pt-BR', { minimumFractionDigits: 3 })} kg. O estoque será conferido na sincronização.`
+            : 'Código encontrado no catálogo local; o estoque será conferido na sincronização.',
           autoReset: false,
         });
         return;

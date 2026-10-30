@@ -43,6 +43,72 @@ const normalizeSearch = (value) => String(value || '')
   .toLocaleLowerCase('pt-BR')
   .trim();
 
+const hasValidEan13Checksum = (digits) => {
+  if (!/^\d{13}$/.test(digits)) return false;
+  let sum = 0;
+  for (let index = 0; index < 12; index += 1) {
+    sum += Number(digits[index]) * (index % 2 === 0 ? 1 : 3);
+  }
+  return ((10 - (sum % 10)) % 10) === Number(digits[12]);
+};
+
+export const readOfflineScaleLabel = (catalog, label) => {
+  const digits = String(label || '').replace(/\D/g, '');
+  const setting = catalog?.scale;
+  const prefix = String(setting?.label_prefix || '');
+
+  if (!catalog?.complete || !setting?.enabled || digits.length !== 13 || !prefix || !digits.startsWith(prefix)) {
+    return { recognized: false };
+  }
+
+  if (!hasValidEan13Checksum(digits)) {
+    return {
+      recognized: true,
+      valid: false,
+      message: 'Etiqueta da balança com dígito verificador inválido. Pese novamente o produto.',
+    };
+  }
+
+  const productDigits = Number(setting.product_code_digits || 0);
+  const valueDigits = 12 - prefix.length - productDigits;
+  const scaleCode = digits.slice(prefix.length, prefix.length + productDigits);
+  const rawWeight = digits.slice(prefix.length + productDigits, prefix.length + productDigits + valueDigits);
+  const quantity = Number(rawWeight) / (10 ** Number(setting.weight_decimals || 0));
+
+  if (productDigits < 1 || valueDigits < 3 || valueDigits > 8 || !(quantity > 0)) {
+    return { recognized: true, valid: false, message: 'A etiqueta da balança não contém um peso válido.' };
+  }
+
+  const item = (catalog.items || []).find((candidate) => (
+    candidate.type === 'product'
+      && String(candidate.scale_code || '') === scaleCode
+  ));
+
+  if (!item) {
+    return {
+      recognized: true,
+      valid: false,
+      message: `Nenhum produto ativo usa o código de balança ${scaleCode} nesta clínica.`,
+    };
+  }
+
+  if (String(item.unit || '').trim().toLocaleLowerCase('pt-BR') !== 'kg') {
+    return { recognized: true, valid: false, message: 'O produto da etiqueta deve estar cadastrado com unidade kg.' };
+  }
+
+  return {
+    recognized: true,
+    valid: true,
+    item: {
+      ...item,
+      quantity: Math.round(quantity * 1000) / 1000,
+      scale_label: true,
+      scanned_label: digits,
+      offline_snapshot: true,
+    },
+  };
+};
+
 export class PdvOfflineStore {
   static supported() {
     return Boolean(window.indexedDB && window.crypto?.subtle && window.crypto?.randomUUID);
@@ -196,6 +262,9 @@ export class PdvOfflineStore {
 export const searchOfflineCatalog = (catalog, term, limit = 12) => {
   const query = normalizeSearch(term);
   if (!catalog?.complete || !query) return [];
+
+  const scale = readOfflineScaleLabel(catalog, query);
+  if (scale.recognized) return scale.valid ? [scale.item] : [];
 
   return (catalog.items || [])
     .map((item) => {

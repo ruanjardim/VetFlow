@@ -39,6 +39,8 @@ financial income, returns, refunds, cancellations, and sale event history.
 - Keep the customer balance: sales to be paid later (fiado), customer credit
   (advance, change kept as credit, returns as credit) used as a payment, the
   receipt of several open sales at once, and credit given back.
+- Decode clinic-configured EAN-13 variable-weight labels into fractional
+  kilogram quantities without bypassing stock or checkout rules.
 
 ## Key Classes
 
@@ -55,6 +57,8 @@ financial income, returns, refunds, cancellations, and sale event history.
 | `CashSessionService` | Session lifecycle, expected amounts per method, card fee expenses, and the automatic closing. |
 | `CustomerBalanceController` | Customer balance list and page: settle open sales, advances, and credit given back; balance JSON for the PDV. |
 | `CustomerBalanceService` | Debt from open sales, the credit ledger, deposits, refunds, and settlements. |
+| `PdvScaleSettingController` | Clinic administration for the variable-weight label layout. |
+| `PdvScaleLabelService` | Fail-closed EAN-13 checksum, product-code and kilogram decoding. |
 | `SaleProfitabilityService` | Return-adjusted gross profitability reporting. |
 | `ProductAbcAnalysisService` | Product revenue ranking, cumulative ABC bands, filters, and pagination. |
 | `SaleRepository` | Data access. |
@@ -76,6 +80,7 @@ financial income, returns, refunds, cancellations, and sale event history.
 - `cash_sessions`
 - `cash_session_movements`
 - `customer_credit_entries`
+- `pdv_scale_settings`
 - `sale_events`
 - `cash_register_closures`
 - `inventory_movements`
@@ -138,6 +143,24 @@ financial income, returns, refunds, cancellations, and sale event history.
   field or PDV modal is active, a rapid numeric sequence is also captured and
   submitted after Enter or a short idle boundary. The scanner never intercepts
   typing inside quantity, price, payment, customer or dialog fields.
+- A clinic can enable scale labels under **Vendas > Balança e etiquetas**. The
+  supported first commercial slice is a 13-digit label containing an exact
+  configurable prefix, a fixed-width local product code, a fixed-width weight
+  and the standard EAN-13 check digit. The remaining value width is calculated
+  from the 12 payload digits, and weight precision is explicitly configured
+  from zero to three decimal places.
+- A matched product must be active in the same clinic, have the exact
+  leading-zero-safe `scale_code`, and use unit `kg`; its sale price is the price
+  per kilogram. Invalid checksums, zero weights, unknown codes and non-kilogram
+  products fail closed and are never sent to external product lookup or quick
+  registration. Repeated labels add their decoded quantities with three-
+  decimal precision, while normal sellable-stock warnings remain visible.
+- The encrypted offline catalog contains only the non-sensitive scale layout
+  and local product codes. It repeats the same checksum, tenant, unit and weight
+  checks before queuing a sale, and the server revalidates the final fractional
+  stock movement on synchronization. This does not claim direct serial/USB
+  communication with a scale: model-specific protocols require a separately
+  selected and tested hardware bridge.
 - Scanner feedback distinguishes ready, reading, successful, warning and error
   states. Successful and attention outcomes request a short optional browser
   tone, the latest cart row is highlighted, a repeated product increments its

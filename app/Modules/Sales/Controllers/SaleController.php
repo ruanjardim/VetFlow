@@ -15,6 +15,7 @@ use App\Modules\Products\Services\ProductLookupService;
 use App\Modules\Products\Services\ProductService;
 use App\Modules\Products\Support\Gtin;
 use App\Modules\Sales\Models\PaymentMethod;
+use App\Modules\Sales\Models\PdvScaleSetting;
 use App\Modules\Sales\Models\Sale;
 use App\Modules\Sales\Models\SaleQuote;
 use App\Modules\Sales\Requests\ProductAbcAnalysisRequest;
@@ -24,6 +25,7 @@ use App\Modules\Sales\Requests\UpdateSaleRequest;
 use App\Modules\Sales\Services\CashSessionService;
 use App\Modules\Sales\Services\CustomerBalanceService;
 use App\Modules\Sales\Services\PaymentMethodService;
+use App\Modules\Sales\Services\PdvScaleLabelService;
 use App\Modules\Sales\Services\ProductAbcAnalysisService;
 use App\Modules\Sales\Services\SaleProfitabilityService;
 use App\Modules\Sales\Services\SaleQuoteService;
@@ -251,6 +253,10 @@ class SaleController extends BaseCrudController
         $complete = ($productCount + $serviceCount) <= $limit;
         $productLimit = min($productCount, $limit);
         $serviceLimit = max(0, $limit - $productLimit);
+        $scaleSetting = PdvScaleSetting::query()
+            ->where('clinic_id', $clinicId)
+            ->where('enabled', true)
+            ->first();
 
         $products = Product::query()
             ->active()
@@ -264,8 +270,10 @@ class SaleController extends BaseCrudController
                 'petshop_service_id' => null,
                 'description' => $product->name,
                 'sku' => $product->sku,
+                'scale_code' => $product->scale_code,
                 'barcode' => $product->barcode,
                 'gtin' => $product->gtin,
+                'unit' => $product->unit,
                 'unit_price' => (float) $product->sale_price,
                 'stock_quantity' => max(0, (float) $product->stock_quantity),
                 'minimum_stock' => (float) $product->minimum_stock,
@@ -283,8 +291,10 @@ class SaleController extends BaseCrudController
                 'petshop_service_id' => $service->id,
                 'description' => $service->name,
                 'sku' => null,
+                'scale_code' => null,
                 'barcode' => null,
                 'gtin' => null,
+                'unit' => null,
                 'unit_price' => (float) $service->base_price,
                 'stock_quantity' => null,
                 'minimum_stock' => null,
@@ -296,6 +306,7 @@ class SaleController extends BaseCrudController
             'services' => $serviceCount,
             'product_updated_at' => Product::query()->where('clinic_id', $clinicId)->max('updated_at'),
             'service_updated_at' => PetShopService::query()->where('clinic_id', $clinicId)->max('updated_at'),
+            'scale_updated_at' => $scaleSetting?->updated_at?->toIso8601String(),
         ];
 
         $response = response()->json([
@@ -311,6 +322,13 @@ class SaleController extends BaseCrudController
             'limit' => $limit,
             'total_items' => $productCount + $serviceCount,
             'items' => $products->concat($services)->values(),
+            'scale' => $scaleSetting ? [
+                'enabled' => true,
+                'label_prefix' => $scaleSetting->label_prefix,
+                'product_code_digits' => $scaleSetting->product_code_digits,
+                'weight_decimals' => $scaleSetting->weight_decimals,
+                'value_digits' => $scaleSetting->valueDigits(),
+            ] : ['enabled' => false],
             'payment_methods' => app(PaymentMethodService::class)
                 ->activeForClinic($clinicId)
                 ->map->toPdvArray()
@@ -550,6 +568,7 @@ class SaleController extends BaseCrudController
             ->where(function ($query) use ($pattern) {
                 $query->where('name', 'like', $pattern)
                     ->orWhere('sku', 'like', $pattern)
+                    ->orWhere('scale_code', 'like', $pattern)
                     ->orWhere('barcode', 'like', $pattern)
                     ->orWhere('gtin', 'like', $pattern);
             })
@@ -570,8 +589,10 @@ class SaleController extends BaseCrudController
             'product_id' => $product->id,
             'description' => $product->name,
             'sku' => $product->sku,
+            'scale_code' => $product->scale_code,
             'barcode' => $product->barcode,
             'gtin' => $product->gtin,
+            'unit' => $product->unit,
             'unit_price' => (float) $product->sale_price,
             'stock_quantity' => $lotService->sellableQuantity($product),
             'minimum_stock' => (float) $product->minimum_stock,
@@ -589,10 +610,39 @@ class SaleController extends BaseCrudController
         Request $request,
         string $gtin,
         ProductLookupService $lookupService,
-        ProductLotService $lotService
+        ProductLotService $lotService,
+        PdvScaleLabelService $scaleLabels
     ): JsonResponse {
         $normalized = Gtin::normalize($gtin);
-        $variants = Gtin::variants($normalized);
+        $clinicId = auth()->user()?->clinic_id ?? $request->integer('clinic_id');
+
+        if (! $clinicId) {
+            return response()->json([
+                'found' => false,
+                'message' => 'Selecione uma clínica antes de ler o código de barras.',
+            ], 422);
+        }
+
+        $scale = $scaleLabels->inspect((string) $normalized, (int) $clinicId);
+
+        if ($scale['recognized']) {
+            if (! ($scale['valid'] ?? false)) {
+                return response()->json([
+                    'found' => false,
+                    'manual_allowed' => false,
+                    'mode' => 'scale_label',
+                    'message' => $scale['message'] ?? 'Etiqueta da balança inválida.',
+                ], 422);
+            }
+
+            return $this->productLookupResponse(
+                $scale['product'],
+                $lotService,
+                (float) $scale['quantity'],
+                (string) $scale['scale_code'],
+                (string) $normalized
+            );
+        }
 
         if (! Gtin::looksValid($normalized)) {
             return response()->json([
@@ -602,14 +652,7 @@ class SaleController extends BaseCrudController
             ], 422);
         }
 
-        $clinicId = auth()->user()?->clinic_id ?? $request->integer('clinic_id');
-
-        if (! $clinicId) {
-            return response()->json([
-                'found' => false,
-                'message' => 'Selecione uma clínica antes de ler o código de barras.',
-            ], 422);
-        }
+        $variants = Gtin::variants($normalized);
 
         $product = Product::query()
             ->active()
@@ -623,39 +666,7 @@ class SaleController extends BaseCrudController
             ->first();
 
         if ($product) {
-            $sellableQuantity = $lotService->sellableQuantity($product);
-            $warnings = [];
-
-            if ((float) $product->sale_price <= 0) {
-                $warnings[] = 'Produto sem preco de venda cadastrado.';
-            }
-
-            if ($sellableQuantity <= 0) {
-                $warnings[] = 'Produto sem estoque disponivel.';
-            }
-
-            return response()->json([
-                'found' => true,
-                'mode' => 'product',
-                'manual_allowed' => false,
-                'source' => 'vetflow_product',
-                'message' => $warnings === []
-                    ? 'Produto adicionado a venda.'
-                    : 'Produto adicionado. Revise preco e estoque antes de finalizar.',
-                'warnings' => $warnings,
-                'product_edit_url' => route('products.edit', $product->id),
-                'item' => [
-                    'type' => 'product',
-                    'product_id' => $product->id,
-                    'petshop_service_id' => null,
-                    'description' => $product->name,
-                    'quantity' => 1,
-                    'unit_price' => (float) $product->sale_price,
-                    'gtin' => $product->gtin ?: $normalized,
-                    'barcode' => $product->barcode ?: $normalized,
-                    'stock_quantity' => $sellableQuantity,
-                ],
-            ]);
+            return $this->productLookupResponse($product, $lotService, 1, null, (string) $normalized);
         }
 
         $outcome = $lookupService->lookupOutcome($normalized);
@@ -782,6 +793,58 @@ class SaleController extends BaseCrudController
             'barcode' => $product->barcode,
             'stock_quantity' => $lotService->sellableQuantity($product),
         ];
+    }
+
+    private function productLookupResponse(
+        Product $product,
+        ProductLotService $lotService,
+        float $quantity,
+        ?string $scaleCode,
+        string $scannedCode
+    ): JsonResponse {
+        $sellableQuantity = $lotService->sellableQuantity($product);
+        $warnings = [];
+
+        if ((float) $product->sale_price <= 0) {
+            $warnings[] = 'Produto sem preco de venda cadastrado.';
+        }
+
+        if ($sellableQuantity <= 0) {
+            $warnings[] = 'Produto sem estoque disponivel.';
+        } elseif ($sellableQuantity < $quantity) {
+            $warnings[] = 'O peso lido e maior que o estoque disponivel.';
+        }
+
+        $scaleLabel = $scaleCode !== null;
+
+        return response()->json([
+            'found' => true,
+            'mode' => $scaleLabel ? 'scale_label' : 'product',
+            'manual_allowed' => false,
+            'source' => 'vetflow_product',
+            'message' => $warnings === []
+                ? ($scaleLabel
+                    ? 'Etiqueta da balança lida: '.number_format($quantity, 3, ',', '.').' kg adicionados.'
+                    : 'Produto adicionado a venda.')
+                : 'Produto adicionado. Revise preco e estoque antes de finalizar.',
+            'warnings' => $warnings,
+            'product_edit_url' => route('products.edit', $product->id),
+            'item' => [
+                'type' => 'product',
+                'product_id' => $product->id,
+                'petshop_service_id' => null,
+                'description' => $product->name,
+                'quantity' => round($quantity, 3),
+                'unit_price' => (float) $product->sale_price,
+                'gtin' => $product->gtin ?: ($scaleLabel ? null : $scannedCode),
+                'barcode' => $product->barcode ?: ($scaleLabel ? null : $scannedCode),
+                'scale_code' => $scaleCode,
+                'scale_label' => $scaleLabel,
+                'scanned_label' => $scaleLabel ? $scannedCode : null,
+                'unit' => $product->unit,
+                'stock_quantity' => $sellableQuantity,
+            ],
+        ]);
     }
 
     protected function storeRequest(): string
