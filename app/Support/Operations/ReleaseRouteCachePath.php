@@ -2,6 +2,8 @@
 
 namespace App\Support\Operations;
 
+use Illuminate\Support\Env;
+
 final class ReleaseRouteCachePath
 {
     public static function configure(string $basePath): ?string
@@ -17,6 +19,7 @@ final class ReleaseRouteCachePath
         putenv('APP_ROUTES_CACHE='.$path);
         $_ENV['APP_ROUTES_CACHE'] = $path;
         $_SERVER['APP_ROUTES_CACHE'] = $path;
+        Env::enablePutenv();
 
         return $path;
     }
