@@ -6,18 +6,14 @@ final class ReleaseRouteCachePath
 {
     public static function configure(string $basePath): ?string
     {
-        $configured = self::configuredPath();
-
-        if ($configured !== null) {
-            return $configured;
-        }
-
         $path = self::resolve($basePath);
 
         if ($path === null) {
-            return null;
+            return self::configuredPath();
         }
 
+        // A valid release marker is authoritative. In particular, replace a
+        // legacy APP_ROUTES_CACHE value left in the hosting environment.
         putenv('APP_ROUTES_CACHE='.$path);
         $_ENV['APP_ROUTES_CACHE'] = $path;
         $_SERVER['APP_ROUTES_CACHE'] = $path;
