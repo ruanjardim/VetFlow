@@ -126,6 +126,11 @@ Run the command without `--backup-confirmed` in local or testing environments.
 - Create a draft sale and confirm stock and financial side effects are absent.
 - Complete a small staging sale and verify stock, payment, and financial
   records.
+- When scale-label support changes, configure a fictitious clinic and kilogram
+  product, scan one manufacturer-generated EAN-13 weight label, verify the
+  decoded three-decimal quantity and stock exit, then repeat with an altered
+  check digit and confirm it is rejected. Do not learn the format from a real
+  production product during a smoke test.
 - Confirm the queue worker consumes a harmless test job or, for the KingHost
   staging bridge, that the authenticated cron receives `204` and removes the
   job from the `jobs` table without creating a `failed_jobs` record.

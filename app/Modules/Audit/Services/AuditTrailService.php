@@ -30,6 +30,7 @@ class AuditTrailService
         'cash.session.closed' => 'Caixa fechado',
         'cash.session.reviewed' => 'Caixa conferido e encerrado',
         'cash.session.reopened' => 'Caixa reaberto',
+        'pdv.scale-settings.updated' => 'Configuração da balança atualizada',
         'financial.budget.updated' => 'Orçamento financeiro atualizado',
         'financial.budget.copied' => 'Orçamento financeiro copiado',
         'financial.obligations.reviewed' => 'Contas a pagar e receber revisadas',

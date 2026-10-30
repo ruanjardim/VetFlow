@@ -28,6 +28,14 @@ The local working tree was clean before this documentation pass.
   synchronized idempotently when it returns. Server-side stock, cash, finance,
   tenant and audit rules remain authoritative, and conflicts remain queued for
   review (see `docs/modules/sales.md`).
+- Commercial scale labels are supported through the existing USB keyboard-
+  wedge flow. A clinic can configure a variable-weight EAN-13 layout (prefix,
+  product-code width and weight precision), and each kilogram product can keep
+  a leading-zero-safe scale code. The PDV validates the EAN checksum, decodes
+  the weight to three-decimal quantity and applies the normal stock/checkout
+  rules online or from the encrypted offline catalog. Direct USB/serial scale
+  communication remains model-specific and is not claimed as compatible
+  without a selected manufacturer protocol (see `docs/modules/sales.md`).
 - Banho e tosa operation: 24-hour internal booking with clinic/professional
   blocks, cross-midnight conflicts, configurable grid interval, recurrence and
   check-in; operational board; size-based prices; packages; PDV checkout; and

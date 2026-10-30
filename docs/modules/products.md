@@ -12,7 +12,7 @@ record, even when it is linked to a shared global product.
 
 - Create and update local products.
 - Store price, cost, stock, minimum stock, unit, category, brand, manufacturer,
-  image, GTIN/barcode, and lookup metadata.
+  image, GTIN/barcode, optional scale code, and lookup metadata.
 - Normalize GTIN/barcode values.
 - Enrich products from lookup providers and from the global product catalog.
 - Link local products to `global_products` when a valid GTIN is available.
@@ -52,6 +52,9 @@ record, even when it is linked to a shared global product.
   preserves the product clinic in the destination URL so cross-clinic
   operators do not continue in the wrong tenant context.
 - `gtin` and `barcode` are normalized together when possible.
+- `scale_code` preserves leading zeros and is unique among non-deleted products
+  inside one clinic. A product with a scale code must use unit `kg`; the normal
+  sale price is interpreted as the price per kilogram by the PDV label reader.
 - `stock_quantity` is changed by inventory movements, not directly by sales or
   purchases.
 - Product enrichment should not overwrite commercial decisions blindly. Price,
@@ -93,4 +96,5 @@ Relevant coverage is present in:
 - `tests/Feature/OperationalFlowTest.php`
 - `tests/Feature/PurchaseAndClinicalFlowTest.php`
 - `tests/Feature/ProductPricingRadarTest.php`
+- `tests/Feature/PdvScaleLabelsTest.php`
 - tenant and authorization tests for protected routes.

@@ -2,6 +2,13 @@
 
 ## 2026-10-30
 
+- Added clinic-scoped variable-weight EAN-13 labels to the PDV. Each clinic
+  explicitly configures its scale prefix, product-code width and kilogram
+  precision; products receive a tenant-unique scale code. Online and encrypted
+  offline catalogs validate the EAN checksum, reject unknown/zero/foreign
+  labels, add the decoded fractional kilograms to the cart and preserve the
+  existing three-decimal stock workflow. Direct serial scale protocols remain
+  intentionally out of scope until a manufacturer and model are selected.
 - Added a fail-closed fiscal production gate for the reviewed Niterói/RJ NFS-e
   and RJ NFC-e slices. Each clinic needs current approved homologation,
   independent encrypted production credentials and numbering, the global

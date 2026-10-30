@@ -111,6 +111,7 @@
                 <a class="{{ request()->routeIs('sales.cashier', 'sales.cashier.close') ? 'is-active' : '' }}" href="{{ route('sales.cashier') }}">Movimentos de caixa</a>
                 <a class="{{ request()->routeIs('sales.profitability') ? 'is-active' : '' }}" href="{{ route('sales.profitability') }}">Rentabilidade</a>
                 <a class="{{ request()->routeIs('sales.product-abc') ? 'is-active' : '' }}" href="{{ route('sales.product-abc') }}">Curva ABC</a>
+                <a class="{{ request()->routeIs('sales.pdv-scale-settings.*') ? 'is-active' : '' }}" href="{{ route('sales.pdv-scale-settings.edit') }}">Balança e etiquetas</a>
               @endcan
               @can('payment-methods.manage')
                 <a class="{{ request()->routeIs('sales.receivables') ? 'is-active' : '' }}" href="{{ route('sales.receivables') }}">Recebíveis de cartão</a>

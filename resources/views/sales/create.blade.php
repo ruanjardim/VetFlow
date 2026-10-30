@@ -48,6 +48,7 @@
         <a href="{{ route('sales.index', ['status' => 'draft']) }}">Vendas suspensas</a>
         <a href="{{ route('sales.quotes.index') }}">Orçamentos</a>
         <a href="{{ route('sales.cash-sessions.index') }}">Caixa</a>
+        <a href="{{ route('sales.pdv-scale-settings.edit') }}" target="_blank" rel="noopener">Balança e etiquetas ↗</a>
         <a href="{{ route('sales.create', ['mode' => 'advanced']) }}">Comanda / formulário avançado</a>
       </nav>
     </details>
@@ -177,7 +178,7 @@
             aria-describedby="pdv_search_hint" placeholder="Leia o código ou digite nome, SKU ou EAN/GTIN" data-pdv-search autofocus>
           <button type="button" class="secondary" data-pdv-search-button>Buscar</button>
         </div>
-        <small id="pdv_search_hint" class="pdv-search-hint">O leitor USB funciona como teclado e deve enviar Enter depois do código.</small>
+        <small id="pdv_search_hint" class="pdv-search-hint">O leitor USB funciona como teclado e deve enviar Enter. Etiquetas de peso configuradas entram com a quantidade em kg.</small>
         <div class="pdv-search-results" role="listbox" aria-label="Resultados da busca" data-pdv-results hidden></div>
         <p class="lookup-status" role="status" aria-live="polite" data-pdv-lookup-status></p>
         <a class="button secondary" target="_blank" rel="noopener" data-pdv-create-product hidden>Cadastrar produto</a>

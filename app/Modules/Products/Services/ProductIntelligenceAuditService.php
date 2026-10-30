@@ -7,7 +7,6 @@ use App\Modules\Products\Models\Product;
 use App\Modules\Products\Support\Gtin;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
-use Illuminate\Support\Collection;
 
 class ProductIntelligenceAuditService
 {
@@ -160,6 +159,7 @@ class ProductIntelligenceAuditService
                 $builder
                     ->where('name', 'like', "%{$search}%")
                     ->orWhere('sku', 'like', "%{$search}%")
+                    ->orWhere('scale_code', 'like', "%{$search}%")
                     ->orWhere('gtin', 'like', "%{$search}%")
                     ->orWhere('barcode', 'like', "%{$search}%")
                     ->orWhere('brand', 'like', "%{$search}%")
@@ -350,6 +350,7 @@ class ProductIntelligenceAuditService
 
         if ($ids === []) {
             $query->whereRaw('1 = 0');
+
             return;
         }
 

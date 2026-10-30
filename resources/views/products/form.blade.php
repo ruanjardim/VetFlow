@@ -55,6 +55,11 @@
     <input id="sku" name="sku" value="{{ old('sku', $product->sku ?? '') }}">
   </div>
   <div class="field">
+    <label for="scale_code">Código da balança</label>
+    <input id="scale_code" name="scale_code" inputmode="numeric" maxlength="12" value="{{ old('scale_code', $product->scale_code ?? '') }}">
+    <small>Use exatamente os dígitos impressos na etiqueta, incluindo zeros à esquerda. Requer unidade kg.</small>
+  </div>
+  <div class="field">
     <label for="weight">Peso / volume</label>
     <input id="weight" name="weight" value="{{ old('weight', $product->weight ?? '') }}">
   </div>
