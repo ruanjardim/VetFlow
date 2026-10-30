@@ -38,6 +38,9 @@
     <span class="pdv-connection is-checking" data-pdv-connection-state role="status" aria-live="polite"><small>Conexão</small><strong><i aria-hidden="true"></i><b data-pdv-connection-label>Verificando</b></strong></span>
   </div>
   <div class="pdv-counter-actions">
+    <button type="button" class="button pdv-offline-queue" data-pdv-offline-queue hidden>
+      Fila offline <b data-pdv-offline-count>0</b>
+    </button>
     <button type="button" class="button secondary" data-pdv-fullscreen aria-pressed="false">Tela cheia</button>
     <details class="pdv-counter-more">
       <summary class="button secondary">Mais opções</summary>
@@ -101,6 +104,8 @@
   data-cash-index-url="{{ route('sales.cash-sessions.index') }}"
   data-session-heartbeat-url="{{ route('sales.pdv.session') }}"
   data-session-login-url="{{ route('login') }}"
+  data-offline-catalog-url="{{ route('sales.pdv.offline-catalog') }}"
+  data-offline-sync-url="{{ route('sales.pdv.offline-sync') }}"
   data-user-clinic-id="{{ auth()->user()?->clinic_id }}"
   data-initial-scan="{{ request('scan', '') }}">
   @csrf
@@ -124,6 +129,21 @@
     <span data-pdv-connectivity-message></span>
     <a href="{{ route('login') }}" target="_blank" rel="noopener" data-pdv-reauthenticate hidden>Reabrir sessão em outra aba</a>
   </div>
+  <dialog class="pdv-offline-dialog" data-pdv-offline-dialog>
+    <header>
+      <div>
+        <small>Continuidade operacional</small>
+        <h2>Fila de vendas offline</h2>
+      </div>
+      <button type="button" class="secondary" data-pdv-offline-close>Fechar</button>
+    </header>
+    <p data-pdv-offline-summary>Nenhuma venda aguardando sincronização.</p>
+    <div class="pdv-offline-list" data-pdv-offline-list></div>
+    <footer>
+      <span>Os dados ficam criptografados neste navegador até a confirmação do servidor.</span>
+      <button type="button" data-pdv-offline-sync>Sincronizar agora</button>
+    </footer>
+  </dialog>
   <div class="pdv-shell">
     <section class="pdv-main" aria-label="Itens da venda">
       @if($canToggleMode)

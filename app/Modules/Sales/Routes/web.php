@@ -11,6 +11,14 @@ Route::get('sales/pdv/session', [PdvSessionController::class, 'heartbeat'])
     ->middleware('throttle:30,1')
     ->name('sales.pdv.session');
 
+Route::get('sales/pdv/offline-catalog', [SaleController::class, 'offlineCatalog'])
+    ->middleware('throttle:12,1')
+    ->name('sales.pdv.offline-catalog');
+
+Route::post('sales/pdv/offline-sync', [SaleController::class, 'syncOffline'])
+    ->middleware('throttle:30,1')
+    ->name('sales.pdv.offline-sync');
+
 Route::get('sales/customer-balances', [CustomerBalanceController::class, 'index'])
     ->name('sales.customer-balances.index');
 

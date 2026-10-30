@@ -1,6 +1,6 @@
 # VetFlow Status
 
-Updated: 2026-10-29
+Updated: 2026-10-30
 
 ## Current State
 
@@ -22,8 +22,12 @@ The local working tree was clean before this documentation pass.
   a visual state, optional tone, latest-item highlight and automatic readiness
   for the next scan. PDV entry points open a dedicated tab, and a four-minute
   heartbeat keeps an active counter session alive while visible connectivity
-  states prevent submission after a network or authentication loss without
-  discarding the on-screen cart (see `docs/modules/sales.md`).
+  states distinguish network and authentication loss. A complete, clinic-
+  scoped catalog snapshot and queued checkouts are encrypted in IndexedDB;
+  supported regular sales can continue after the connection drops and are
+  synchronized idempotently when it returns. Server-side stock, cash, finance,
+  tenant and audit rules remain authoritative, and conflicts remain queued for
+  review (see `docs/modules/sales.md`).
 - Banho e tosa operation: 24-hour internal booking with clinic/professional
   blocks, cross-midnight conflicts, configurable grid interval, recurrence and
   check-in; operational board; size-based prices; packages; PDV checkout; and

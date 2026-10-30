@@ -1,3 +1,5 @@
+import { PdvOfflineStore, reserveOfflineStock, searchOfflineCatalog } from './pdv-offline.js';
+
 document.addEventListener('DOMContentLoaded', () => {
   const form = document.querySelector('[data-pdv-form]');
   if (!form) return;
@@ -49,6 +51,12 @@ document.addEventListener('DOMContentLoaded', () => {
   const connectivityAlert = find('[data-pdv-connectivity-alert]');
   const connectivityMessage = find('[data-pdv-connectivity-message]');
   const reauthenticateLink = find('[data-pdv-reauthenticate]');
+  const offlineQueueButton = document.querySelector('[data-pdv-offline-queue]');
+  const offlineQueueCount = document.querySelector('[data-pdv-offline-count]');
+  const offlineDialog = find('[data-pdv-offline-dialog]');
+  const offlineSummary = find('[data-pdv-offline-summary]');
+  const offlineList = find('[data-pdv-offline-list]');
+  const offlineSyncButton = find('[data-pdv-offline-sync]');
   let deliveryTypes = [];
   try { deliveryTypes = JSON.parse(form.dataset.deliveryTypes || '[]'); } catch { deliveryTypes = []; }
   let paymentMethods = [];
@@ -98,13 +106,44 @@ document.addEventListener('DOMContentLoaded', () => {
   let pdvConnection = 'checking';
   let lastHeartbeatAt = 0;
   let heartbeatTimer;
+  let offlineStore = null;
+  let offlineCatalog = null;
+  let offlineInitializing = false;
+  let offlineSyncing = false;
+  let offlineStorageError = '';
 
   const connectionCopy = {
     checking: ['Verificando', 'Conferindo a conexão segura com o VetFlow.'],
     online: ['Online', 'PDV conectado e sessão protegida.'],
-    offline: ['Sem conexão', 'Sem conexão com o VetFlow. O carrinho continua nesta tela; aguarde a internet voltar antes de finalizar.'],
+    offline: ['Sem conexão', 'Sem conexão com o VetFlow. Se o catálogo local estiver pronto, a venda pode entrar na fila criptografada.'],
     expired: ['Sessão encerrada', 'Sua sessão encerrou. O carrinho continua nesta tela. Reabra a sessão em outra aba e volte ao PDV.'],
-    unavailable: ['Servidor indisponível', 'O VetFlow não respondeu. O carrinho continua nesta tela; não finalize até a conexão ser restabelecida.'],
+    unavailable: ['Servidor indisponível', 'O VetFlow não respondeu. Se o catálogo local estiver pronto, a venda pode entrar na fila criptografada.'],
+  };
+  const offlineCatalogFresh = () => {
+    const generatedAt = Date.parse(offlineCatalog?.generated_at || '');
+    return Boolean(
+      offlineCatalog?.complete
+      && typeof offlineCatalog?.offline_context_token === 'string'
+      && offlineCatalog.offline_context_token.length > 0
+      && Number.isFinite(generatedAt)
+      && Date.now() - generatedAt <= 24 * 60 * 60 * 1000
+    );
+  };
+  const offlineQueueAvailable = () => Boolean(
+    offlineStore
+    && offlineCatalogFresh()
+    && String(offlineCatalog?.clinic?.id || '') === String(clinic?.value || form.dataset.userClinicId || '')
+  );
+  const refreshFinishAvailability = () => {
+    const finishButton = find('[data-pdv-finish]');
+    if (!finishButton) return;
+    const offlineState = pdvConnection === 'offline' || pdvConnection === 'unavailable';
+    finishButton.disabled = pdvConnection === 'checking'
+      || pdvConnection === 'expired'
+      || (offlineState && !offlineQueueAvailable());
+    const label = offlineState && offlineQueueAvailable() ? 'Salvar na fila offline' : 'Finalizar venda';
+    const textNode = Array.from(finishButton.childNodes).find((node) => node.nodeType === Node.TEXT_NODE);
+    if (textNode) textNode.textContent = label + ' ';
   };
   const setConnectionState = (state, detail = '') => {
     pdvConnection = state;
@@ -114,7 +153,11 @@ document.addEventListener('DOMContentLoaded', () => {
     if (connectivityMessage) connectivityMessage.textContent = detail || copy[1];
     if (connectivityAlert) connectivityAlert.hidden = state === 'online' || state === 'checking';
     if (reauthenticateLink) reauthenticateLink.hidden = state !== 'expired';
-    find('[data-pdv-finish]')?.toggleAttribute('disabled', state !== 'online');
+    refreshFinishAvailability();
+    renderCash();
+    if (state === 'online' && offlineStore && !offlineSyncing) {
+      window.setTimeout(() => syncOfflineQueue(), 0);
+    }
   };
   const isLoginResponse = (response) => response.status === 401
     || response.status === 419
@@ -454,6 +497,38 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
   const clearResults = () => { results.replaceChildren(); results.hidden = true; activeResults = []; };
+  const renderSearchResults = (items, offline = false) => {
+    activeResults = items || [];
+    results.replaceChildren();
+    activeResults.forEach((item) => {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.setAttribute('role', 'option');
+      button.className = 'pdv-result';
+      const name = document.createElement('strong');
+      name.textContent = item.description;
+      const detail = document.createElement('span');
+      detail.textContent = [
+        offline ? 'Catálogo local' : (item.type === 'service' ? 'Serviço' : 'Produto'),
+        item.sku || item.gtin || item.barcode || '',
+        money(parseMoney(item.unit_price)),
+        item.type === 'product' ? (offline ? 'Estoque do último sincronismo: ' : 'Estoque: ') + item.stock_quantity : '',
+      ].filter(Boolean).join(' · ');
+      button.append(name, detail);
+      button.addEventListener('click', () => addSearchItem(item, offline ? {
+        state: 'warning',
+        detail: 'Item adicionado do catálogo local; o estoque será conferido na sincronização.',
+        autoReset: false,
+      } : {}));
+      results.appendChild(button);
+    });
+    results.hidden = activeResults.length === 0;
+    message(
+      lookupStatus,
+      activeResults.length ? (offline ? 'Resultado do catálogo local criptografado.' : '') : 'Nenhum item encontrado.',
+      activeResults.length ? (offline ? 'warning' : '') : 'warning'
+    );
+  };
   const addSearchItem = (item, scannerFeedback = {}) => {
     const feedbackState = scannerFeedback.state || 'success';
     addRow(item);
@@ -544,24 +619,13 @@ document.addEventListener('DOMContentLoaded', () => {
       const data = await response.json();
       if (serial !== searchSerial || term !== search.value.trim()) return;
       if (!response.ok) throw new Error(data.message || 'Busca indisponível.');
-      activeResults = data.items || [];
-      results.replaceChildren();
-      activeResults.forEach((item) => {
-        const button = document.createElement('button');
-        button.type = 'button';
-        button.setAttribute('role', 'option');
-        button.className = 'pdv-result';
-        const name = document.createElement('strong');
-        name.textContent = item.description;
-        const detail = document.createElement('span');
-        detail.textContent = [item.type === 'service' ? 'Serviço' : 'Produto', item.sku || item.gtin || item.barcode || '', money(parseMoney(item.unit_price)), item.type === 'product' ? 'Estoque: ' + item.stock_quantity : ''].filter(Boolean).join(' · ');
-        button.append(name, detail);
-        button.addEventListener('click', () => addSearchItem(item));
-        results.appendChild(button);
-      });
-      results.hidden = activeResults.length === 0;
-      message(lookupStatus, activeResults.length ? '' : 'Nenhum item encontrado.', activeResults.length ? '' : 'warning');
+      renderSearchResults(data.items || []);
     } catch (error) {
+      const localItems = searchOfflineCatalog(offlineCatalog, term);
+      if (localItems.length || offlineQueueAvailable()) {
+        renderSearchResults(localItems, true);
+        return;
+      }
       message(lookupStatus, error.message || 'Busca indisponível.', 'error');
     }
   };
@@ -606,9 +670,18 @@ document.addEventListener('DOMContentLoaded', () => {
       } : {});
       message(lookupStatus, [data.message, ...warnings].filter(Boolean).join(' '), warnings.length || data.mode === 'catalog' ? 'warning' : 'success');
     } catch {
-      message(lookupStatus, 'Consulta indisponível. Faça o cadastro rápido para continuar.', 'warning');
-      setScannerState('error', 'Não foi possível consultar o código. O cadastro rápido continua disponível.');
-      openQuickProduct(gtin);
+      const localItem = searchOfflineCatalog(offlineCatalog, gtin, 1)[0];
+      if (localItem) {
+        addSearchItem(localItem, {
+          state: 'warning',
+          detail: 'Código encontrado no catálogo local; o estoque será conferido na sincronização.',
+          autoReset: false,
+        });
+        return;
+      }
+      message(lookupStatus, 'Código ausente do catálogo local. Aguarde a conexão para cadastrar ou consultar.', 'warning');
+      setScannerState('error', 'Não foi possível encontrar este código no catálogo local.');
+      feedbackTone(false);
     }
   };
   // Receiving requires the operator's open cash session in the sale clinic.
@@ -624,7 +697,246 @@ document.addEventListener('DOMContentLoaded', () => {
     cashLink.hidden = !session;
     if (session) cashLink.href = session.url;
     cashOpenButton.hidden = Boolean(session) || needsClinic;
-    cashOpenButton.disabled = isQuoteMode();
+    cashOpenButton.disabled = isQuoteMode() || pdvConnection !== 'online';
+  };
+
+  const refreshOfflineQueue = async () => {
+    if (!offlineStore) return [];
+    const queue = await offlineStore.queuedSales();
+    const conflicts = queue.filter((sale) => sale.localState === 'conflict').length;
+    if (offlineQueueButton) offlineQueueButton.hidden = queue.length === 0;
+    if (offlineQueueCount) offlineQueueCount.textContent = String(queue.length);
+    if (offlineSummary) {
+      offlineSummary.textContent = queue.length === 0
+        ? 'Nenhuma venda aguardando sincronização.'
+        : `${queue.length} venda${queue.length === 1 ? '' : 's'} aguardando o servidor${conflicts ? ` · ${conflicts} precisa${conflicts === 1 ? '' : 'm'} de revisão` : ''}.`;
+    }
+    if (offlineList) {
+      offlineList.replaceChildren(...queue.map((sale) => {
+        const article = document.createElement('article');
+        article.className = 'pdv-offline-item is-' + (sale.localState || 'pending');
+        const top = document.createElement('div');
+        const title = document.createElement('strong');
+        title.textContent = sale.clinicName || 'Venda offline';
+        const amount = document.createElement('strong');
+        amount.textContent = money(Number(sale.total || 0));
+        top.append(title, amount);
+        const detail = document.createElement('span');
+        const captured = new Date(sale.capturedAt);
+        detail.textContent = `${sale.itemCount || 0} item${Number(sale.itemCount) === 1 ? '' : 's'} · ${Number.isNaN(captured.getTime()) ? sale.capturedAt : captured.toLocaleString('pt-BR')}`;
+        const state = document.createElement('small');
+        state.textContent = sale.localState === 'conflict'
+          ? `Revisão necessária: ${sale.localDetail || 'o servidor recusou a sincronização.'}`
+          : sale.localState === 'syncing' ? 'Sincronizando com o servidor...' : 'Protegida neste navegador e aguardando conexão.';
+        article.append(top, detail, state);
+        return article;
+      }));
+    }
+    if (offlineSyncButton) offlineSyncButton.disabled = offlineSyncing || queue.length === 0 || pdvConnection !== 'online';
+
+    return queue;
+  };
+
+  const loadOfflineCatalog = async () => {
+    const clinicId = cashClinicId();
+    offlineCatalog = offlineStore && clinicId ? await offlineStore.catalog(clinicId) : null;
+    refreshFinishAvailability();
+  };
+
+  const applyOfflineSnapshot = async (snapshot) => {
+    if (!offlineStore || !snapshot?.clinic?.id) return;
+    offlineCatalog = snapshot;
+    await offlineStore.saveCatalog(snapshot.clinic.id, snapshot);
+    paymentMethods = paymentMethods
+      .filter((method) => String(method.clinic_id || '') !== String(snapshot.clinic.id))
+      .concat(snapshot.payment_methods || []);
+    if (snapshot.cash_session) cashSessions[String(snapshot.clinic.id)] = snapshot.cash_session;
+    else delete cashSessions[String(snapshot.clinic.id)];
+    renderShortcuts();
+    renderCash();
+    refreshFinishAvailability();
+  };
+
+  const refreshOfflineCatalog = async () => {
+    const clinicId = cashClinicId();
+    if (!offlineStore || !clinicId || pdvConnection !== 'online') return false;
+    const url = new URL(form.dataset.offlineCatalogUrl, window.location.origin);
+    url.searchParams.set('clinic_id', clinicId);
+    const response = await fetch(url, {
+      headers: { Accept: 'application/json' },
+      credentials: 'same-origin',
+      cache: 'no-store',
+    });
+    if (isLoginResponse(response)) {
+      setConnectionState('expired');
+      return false;
+    }
+    if (!response.ok) return false;
+    const snapshot = await response.json();
+    await applyOfflineSnapshot(snapshot);
+    if (!snapshot.complete) {
+      message(checkoutStatus, `O catálogo tem ${snapshot.total_items} itens e excede o limite local de ${snapshot.limit}; venda offline não foi liberada.`, 'warning');
+    }
+
+    return snapshot.complete;
+  };
+
+  const offlineResponseMessage = (data, fallback) => {
+    const errors = data?.errors ? Object.values(data.errors).flat().filter(Boolean) : [];
+    return errors[0] || data?.message || fallback;
+  };
+
+  const syncOfflineQueue = async (force = false) => {
+    if (!offlineStore || offlineSyncing || pdvConnection !== 'online') return;
+    offlineSyncing = true;
+    let synchronized = 0;
+    try {
+      const queue = await refreshOfflineQueue();
+      for (const sale of queue) {
+        if (!force && sale.localState === 'conflict') continue;
+        await offlineStore.setSaleState(sale.id, 'syncing');
+        await refreshOfflineQueue();
+        const payload = new FormData();
+        sale.entries.forEach(([name, value]) => payload.append(name, value));
+        payload.set('client_request_id', sale.id);
+        payload.set('offline_device_id', offlineStore.deviceId);
+        payload.set('offline_captured_at', sale.capturedAt);
+        payload.set('offline_context_token', sale.contextToken);
+        payload.set('clinic_id', sale.clinicId);
+        try {
+          const response = await fetch(form.dataset.offlineSyncUrl, {
+            method: 'POST',
+            headers: {
+              Accept: 'application/json',
+              'X-CSRF-TOKEN': form.querySelector('[name="_token"]').value,
+            },
+            credentials: 'same-origin',
+            body: payload,
+          });
+          if (isLoginResponse(response)) {
+            await offlineStore.setSaleState(sale.id, 'pending', 'Sessão encerrada. Entre novamente para sincronizar.');
+            setConnectionState('expired');
+            break;
+          }
+          const data = await response.json().catch(() => ({}));
+          if (response.ok && data.status === 'synced') {
+            await offlineStore.removeSale(sale.id);
+            synchronized += 1;
+            continue;
+          }
+          const detail = offlineResponseMessage(data, 'O servidor recusou esta venda.');
+          if (response.status === 409 || response.status === 422) {
+            await offlineStore.setSaleState(sale.id, 'conflict', detail);
+            continue;
+          }
+          await offlineStore.setSaleState(sale.id, 'pending', detail);
+          if (response.status >= 500 || response.status === 429) break;
+        } catch {
+          await offlineStore.setSaleState(sale.id, 'pending', 'Conexão interrompida durante a sincronização.');
+          setConnectionState('offline');
+          break;
+        }
+      }
+      if (synchronized > 0) {
+        message(checkoutStatus, `${synchronized} venda${synchronized === 1 ? '' : 's'} offline sincronizada${synchronized === 1 ? '' : 's'} com sucesso.`, 'success');
+        await refreshOfflineCatalog();
+      }
+    } finally {
+      offlineSyncing = false;
+      await refreshOfflineQueue();
+      refreshFinishAvailability();
+    }
+  };
+
+  const resetAfterOfflineCapture = () => {
+    rows().forEach((row) => row.remove());
+    paymentRows().forEach((row) => row.remove());
+    discount.value = '0,00';
+    additions.value = '0,00';
+    if (deliveryFee) deliveryFee.value = '0,00';
+    if (deliveryAddress) deliveryAddress.value = '';
+    const notes = form.querySelector('[name="notes"]');
+    if (notes) notes.value = '';
+    if (payLater) payLater.checked = false;
+    if (changeAsCredit) changeAsCredit.checked = false;
+    tutor.value = '';
+    patient.value = '';
+    customerCredit = 0;
+    status.value = 'draft';
+    if (dialog.open) dialog.close();
+    syncCustomer();
+    syncCustomerOptions();
+    renderShortcuts();
+    totals();
+    search.focus();
+  };
+
+  const captureOfflineSale = async () => {
+    if (!offlineQueueAvailable()) {
+      const detail = offlineStorageError
+        || (!offlineCatalog?.complete ? 'O catálogo local ainda não está pronto.' : 'O catálogo local venceu; reconecte para atualizá-lo.');
+      message(paymentStatus, detail, 'warning');
+      return false;
+    }
+    if (!currentCash()) {
+      message(paymentStatus, 'A venda offline exige um caixa já aberto e confirmado pelo servidor.', 'warning');
+      return false;
+    }
+    if (form.querySelector('[name="service_order_id"], [name="pet_package_id"], [name="sale_quote_id"]')) {
+      message(paymentStatus, 'Comandas, pacotes e conversões de orçamento precisam ser concluídos online.', 'warning');
+      return false;
+    }
+    if (payLater?.checked || changeAsCredit?.checked || paymentRows().some((row) => rowKind(row) === CREDIT)) {
+      message(paymentStatus, 'Fiado, troco em crédito e uso do saldo do cliente precisam de conexão.', 'warning');
+      return false;
+    }
+
+    const capturedAt = new Date().toISOString();
+    const id = window.crypto.randomUUID();
+    const entries = Array.from(new FormData(form).entries())
+      .filter(([name, value]) => name !== '_token' && typeof value === 'string')
+      .map(([name, value]) => [name, value]);
+    const sale = {
+      id,
+      clinicId: cashClinicId(),
+      clinicName: clinic?.selectedOptions?.[0]?.textContent || headerClinic?.textContent || 'Unidade',
+      capturedAt,
+      contextToken: offlineCatalog.offline_context_token,
+      itemCount: rows().length,
+      total: totals().total,
+      entries,
+    };
+
+    await offlineStore.queueSale(sale);
+    reserveOfflineStock(offlineCatalog, entries);
+    await offlineStore.saveCatalog(sale.clinicId, offlineCatalog);
+    await refreshOfflineQueue();
+    resetAfterOfflineCapture();
+    message(checkoutStatus, 'Venda salva na fila criptografada. Ela será sincronizada automaticamente quando o VetFlow voltar.', 'success');
+
+    return true;
+  };
+
+  const initializeOfflineMode = async () => {
+    if (offlineInitializing || offlineStore) return;
+    offlineInitializing = true;
+    try {
+      offlineStore = await PdvOfflineStore.open();
+      offlineStorageError = '';
+      await loadOfflineCatalog();
+      await refreshOfflineQueue();
+      if (pdvConnection === 'online') {
+        await refreshOfflineCatalog();
+        await syncOfflineQueue();
+      }
+    } catch (error) {
+      offlineStore = null;
+      offlineStorageError = error?.message || 'O armazenamento offline não pôde ser iniciado.';
+      if (offlineQueueButton) offlineQueueButton.hidden = true;
+    } finally {
+      offlineInitializing = false;
+      refreshFinishAvailability();
+    }
   };
   const openCashDialog = (then = null) => {
     if (!cashClinicId()) { message(checkoutStatus, 'Selecione uma clínica.', 'warning'); return; }
@@ -688,11 +1000,11 @@ document.addEventListener('DOMContentLoaded', () => {
   };
   const finish = async () => {
     if (isQuoteMode()) return;
-    if (!(await heartbeat(true))) {
-      message(paymentStatus, connectionCopy[pdvConnection]?.[1] || connectionCopy.unavailable[1], 'warning');
+    if (!currentCash()) {
+      if (pdvConnection === 'online') openCashDialog(openPayment);
+      else message(paymentStatus, 'Sem conexão, só é possível continuar com um caixa que já estava aberto.', 'warning');
       return;
     }
-    if (!currentCash()) { openCashDialog(openPayment); return; }
     const { total, paid, balance, change } = totals();
     if (total <= 0 || rows().length === 0) { message(paymentStatus, 'Inclua itens com valor.', 'warning'); return; }
     if (payLater?.checked && tutor.value) {
@@ -723,8 +1035,22 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!form.reportValidity()) return;
     status.value = 'completed';
     normalizeRows();
-    find('[data-pdv-finish]').disabled = true;
-    form.requestSubmit();
+    if (await heartbeat(true)) {
+      find('[data-pdv-finish]').disabled = true;
+      form.requestSubmit();
+      return;
+    }
+    if (pdvConnection === 'offline' || pdvConnection === 'unavailable') {
+      try {
+        await captureOfflineSale();
+      } catch (error) {
+        message(paymentStatus, error?.message || 'Não foi possível proteger esta venda na fila local.', 'error');
+      } finally {
+        refreshFinishAvailability();
+      }
+      return;
+    }
+    message(paymentStatus, connectionCopy[pdvConnection]?.[1] || connectionCopy.unavailable[1], 'warning');
   };
   try { Object.values(JSON.parse(form.dataset.oldItems || '[]')).forEach(addRow); } catch { /* no old cart */ }
   renderShortcuts();
@@ -787,6 +1113,12 @@ document.addEventListener('DOMContentLoaded', () => {
     totals();
   });
   find('[data-pdv-finish]').addEventListener('click', finish);
+  offlineQueueButton?.addEventListener('click', async () => {
+    await refreshOfflineQueue();
+    offlineDialog?.showModal();
+  });
+  find('[data-pdv-offline-close]')?.addEventListener('click', () => offlineDialog?.close());
+  offlineSyncButton?.addEventListener('click', () => syncOfflineQueue(true));
   find('[data-pdv-suspend]')?.addEventListener('click', (event) => {
     if (!rows().length) { event.preventDefault(); message(checkoutStatus, 'Inclua um item para suspender a venda.', 'warning'); }
   });
@@ -866,7 +1198,7 @@ document.addEventListener('DOMContentLoaded', () => {
     } catch { /* balance is informative only */ }
   };
   tutor.addEventListener('change', () => { syncCustomer(); syncDelivery(true); refreshCustomerBalance(); });
-  clinic?.addEventListener('change', () => {
+  clinic?.addEventListener('change', async () => {
     ++searchSerial;
     clearResults();
     syncCustomer();
@@ -874,6 +1206,8 @@ document.addEventListener('DOMContentLoaded', () => {
     renderCash();
     paymentRows().forEach((row) => row.pdvRefreshMethods?.());
     if (headerClinic) headerClinic.textContent = clinic.selectedOptions[0]?.textContent || 'Selecione a clínica';
+    await loadOfflineCatalog();
+    if (pdvConnection === 'online') await refreshOfflineCatalog();
     search.focus();
   });
   syncCustomer();
@@ -936,9 +1270,19 @@ document.addEventListener('DOMContentLoaded', () => {
   updateClock();
   window.setInterval(updateClock, 30000);
   setConnectionState('checking');
-  heartbeat(true);
+  Promise.all([initializeOfflineMode(), heartbeat(true)]).then(async ([, online]) => {
+    if (online) {
+      await refreshOfflineCatalog();
+      await syncOfflineQueue();
+    }
+  });
   heartbeatTimer = window.setInterval(() => heartbeat(), 4 * 60 * 1000);
-  window.addEventListener('online', () => heartbeat(true));
+  window.addEventListener('online', async () => {
+    if (await heartbeat(true)) {
+      await refreshOfflineCatalog();
+      await syncOfflineQueue();
+    }
+  });
   window.addEventListener('offline', () => setConnectionState('offline'));
   window.addEventListener('focus', () => heartbeat());
   document.addEventListener('visibilitychange', () => {

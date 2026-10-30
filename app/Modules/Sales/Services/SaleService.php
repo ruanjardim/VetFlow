@@ -23,6 +23,7 @@ use App\Modules\Sales\Models\SalePayment;
 use App\Modules\Sales\Support\SaleType;
 use App\Modules\ServiceOrders\Models\ServiceOrder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -49,41 +50,72 @@ class SaleService extends BaseService
 
     public function create(array $data): Model
     {
-        return DB::transaction(function () use ($data) {
-            $items = $data['items'] ?? [];
-            $payments = $data['payments'] ?? [];
-            $changeAsCredit = (bool) ($data['change_as_credit'] ?? false);
-            unset($data['items'], $data['payments'], $data['pay_later'], $data['change_as_credit']);
+        if ($existing = $this->idempotentSale($data)) {
+            return $existing;
+        }
 
-            $serviceOrder = $this->serviceOrderWithItems($data['service_order_id'] ?? null);
-
-            if ($serviceOrder && ! $this->hasBillableItems($items)) {
-                $items = $this->itemsFromServiceOrder($serviceOrder);
-
-                if ((float) ($data['discount_total'] ?? 0) <= 0) {
-                    $data['discount_total'] = (float) $serviceOrder->discount_total;
+        try {
+            return DB::transaction(function () use ($data) {
+                if ($existing = $this->idempotentSale($data, true)) {
+                    return $existing;
                 }
+
+                $items = $data['items'] ?? [];
+                $payments = $data['payments'] ?? [];
+                $changeAsCredit = (bool) ($data['change_as_credit'] ?? false);
+                unset($data['items'], $data['payments'], $data['pay_later'], $data['change_as_credit']);
+
+                $serviceOrder = $this->serviceOrderWithItems($data['service_order_id'] ?? null);
+
+                if ($serviceOrder && ! $this->hasBillableItems($items)) {
+                    $items = $this->itemsFromServiceOrder($serviceOrder);
+
+                    if ((float) ($data['discount_total'] ?? 0) <= 0) {
+                        $data['discount_total'] = (float) $serviceOrder->discount_total;
+                    }
+                }
+
+                $data = SaleType::normalizeDelivery($data);
+                $data['code'] = $this->nextCode();
+                $data['sold_at'] = $data['sold_at'] ?? now();
+                $data['source'] = $data['source'] ?? 'pdv';
+                $data['seller_user_id'] = $data['seller_user_id'] ?? auth()->id();
+                $data['discount_total'] = (float) ($data['discount_total'] ?? 0);
+                $data['additions_total'] = (float) ($data['additions_total'] ?? 0);
+
+                /** @var Sale $sale */
+                $sale = $this->repository->create($data);
+
+                $this->syncItems($sale, $items);
+                $this->syncPayments($sale, $payments);
+                $this->recalculateTotals($sale);
+                $this->keepChangeAsCredit($sale->refresh(), $changeAsCredit);
+                $this->applyCompletionEffects($sale->refresh());
+
+                if ($sale->source === 'pdv_offline') {
+                    $this->recordSaleEvent(
+                        $sale->refresh(),
+                        'offline_synced',
+                        amount: (float) $sale->total,
+                        reason: 'Venda capturada sem conexão e sincronizada',
+                        metadata: [
+                            'client_request_id' => $sale->client_request_id,
+                            'offline_device_id' => $sale->offline_device_id,
+                            'offline_captured_at' => optional($sale->offline_captured_at)?->toIso8601String(),
+                            'offline_synced_at' => optional($sale->offline_synced_at)?->toIso8601String(),
+                        ]
+                    );
+                }
+
+                return $sale->refresh();
+            });
+        } catch (QueryException $exception) {
+            if ($existing = $this->idempotentSale($data)) {
+                return $existing;
             }
 
-            $data = SaleType::normalizeDelivery($data);
-            $data['code'] = $this->nextCode();
-            $data['sold_at'] = $data['sold_at'] ?? now();
-            $data['source'] = $data['source'] ?? 'pdv';
-            $data['seller_user_id'] = $data['seller_user_id'] ?? auth()->id();
-            $data['discount_total'] = (float) ($data['discount_total'] ?? 0);
-            $data['additions_total'] = (float) ($data['additions_total'] ?? 0);
-
-            /** @var Sale $sale */
-            $sale = $this->repository->create($data);
-
-            $this->syncItems($sale, $items);
-            $this->syncPayments($sale, $payments);
-            $this->recalculateTotals($sale);
-            $this->keepChangeAsCredit($sale->refresh(), $changeAsCredit);
-            $this->applyCompletionEffects($sale->refresh());
-
-            return $sale->refresh();
-        });
+            throw $exception;
+        }
     }
 
     public function update(int $id, array $data): Model
@@ -1464,6 +1496,28 @@ class SaleService extends BaseService
                 ? ($sale->sold_at ?? now())
                 : now(),
         ]);
+    }
+
+    private function idempotentSale(array $data, bool $lock = false): ?Sale
+    {
+        $requestId = trim((string) ($data['client_request_id'] ?? ''));
+        $clinicId = (int) ($data['clinic_id'] ?? auth()->user()?->clinic_id ?? 0);
+        $sellerUserId = (int) ($data['seller_user_id'] ?? auth()->id() ?? 0);
+
+        if ($requestId === '' || $clinicId <= 0 || $sellerUserId <= 0) {
+            return null;
+        }
+
+        $query = Sale::query()
+            ->where('client_request_id', $requestId)
+            ->where('clinic_id', $clinicId)
+            ->where('seller_user_id', $sellerUserId);
+
+        if ($lock) {
+            $query->lockForUpdate();
+        }
+
+        return $query->first();
     }
 
     private function nextCode(): string
