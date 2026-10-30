@@ -27,8 +27,11 @@ hPanel and record:
 
 Merge the intended release first and deploy only an immutable full commit SHA.
 Hostinger runs Composer after the Git pull; the `post-autoload-dump` hook writes
-that checkout's commit to `bootstrap/cache/vetflow-release.sha`. The runtime
-prefers this marker over a potentially stale `VETFLOW_RELEASE_SHA`. After the
+that checkout's commit to `bootstrap/cache/vetflow-release.sha` before it
+compiles a route-cache file named for the exact release. The versioned filename
+prevents persistent PHP/OPcache processes from reusing the previous release's
+route table. The runtime prefers this marker over a potentially stale
+`VETFLOW_RELEASE_SHA`. After the
 deployment, compare `/ops/release` with both hPanel's deployment history and the
 intended Git commit. Keep `VETFLOW_RELEASE_SHA` only as the fallback for a
 deployment that does not include Git metadata.
