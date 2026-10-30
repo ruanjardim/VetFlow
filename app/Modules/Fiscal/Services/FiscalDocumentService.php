@@ -13,7 +13,10 @@ use Illuminate\Validation\ValidationException;
 
 class FiscalDocumentService
 {
-    public function __construct(private readonly NfseMunicipalityRuleService $nfseMunicipalityRules) {}
+    public function __construct(
+        private readonly NfseMunicipalityRuleService $nfseMunicipalityRules,
+        private readonly FiscalEnvironmentGuard $environment,
+    ) {}
 
     public function prepareFromSale(Sale $sale, string $type, User $actor): FiscalDocument
     {
@@ -37,7 +40,7 @@ class FiscalDocumentService
             $sale->clinic_id,
             $sale->id,
             $type,
-            'homologation',
+            $profile->environment,
             'v2',
         ]));
 
@@ -49,7 +52,7 @@ class FiscalDocumentService
                     'sale_id' => $sale->id,
                     'created_by_user_id' => $actor->id,
                     'type' => $type,
-                    'environment' => 'homologation',
+                    'environment' => $profile->environment,
                     'provider' => $profile->provider,
                     'status' => 'draft',
                     'profile_version' => $profile->configuration_version,
@@ -99,8 +102,12 @@ class FiscalDocumentService
             throw ValidationException::withMessages(['fiscal' => 'Ative a preparação fiscal deste estabelecimento antes de continuar.']);
         }
 
-        if ($profile->environment !== 'homologation') {
-            throw ValidationException::withMessages(['fiscal' => 'Esta etapa aceita somente o ambiente de homologação.']);
+        if (! $this->environment->allowsProfile($profile)) {
+            throw ValidationException::withMessages([
+                'fiscal' => $profile->environment === FiscalEnvironmentGuard::PRODUCTION
+                    ? 'A ativação fiscal de produção não está vigente ou não corresponde à configuração atual.'
+                    : 'O ambiente fiscal configurado não é suportado.',
+            ]);
         }
 
         $enabled = $type === FiscalDocumentType::NFCE ? $profile->nfce_enabled : $profile->nfse_enabled;
@@ -149,6 +156,10 @@ class FiscalDocumentService
     /** @return array<string, mixed> */
     private function issuerSnapshot(Sale $sale, FiscalProfile $profile): array
     {
+        $productionActivation = $profile->environment === FiscalEnvironmentGuard::PRODUCTION
+            ? $this->environment->activeProductionForClinic((int) $profile->clinic_id)
+            : null;
+
         return [
             'corporate_name' => $sale->clinic?->corporate_name,
             'trade_name' => $sale->clinic?->trade_name,
@@ -163,6 +174,11 @@ class FiscalDocumentService
             'certificate_fingerprint' => $profile->certificate_fingerprint,
             'certificate_expires_at' => $profile->certificate_expires_at?->toDateString(),
             'provider_credential_reference' => data_get($profile->metadata, 'provider_credential_reference'),
+            'production_activation' => $productionActivation ? [
+                'ulid' => $productionActivation->ulid,
+                'evidence_fingerprint' => $productionActivation->evidence_fingerprint,
+                'activated_at' => $productionActivation->activated_at?->toIso8601String(),
+            ] : null,
             'focus_nfe' => [
                 'dps_series' => data_get($profile->metadata, 'focus_nfe.dps_series'),
                 'simple_national_option' => data_get($profile->metadata, 'focus_nfe.simple_national_option'),

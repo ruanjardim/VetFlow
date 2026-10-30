@@ -83,10 +83,11 @@ The local working tree was clean before this documentation pass.
   reversal is atomic, coverage counts each bank row once, the source ledger is
   never changed automatically, and no uploaded statement file is retained (see
   `docs/modules/financial.md`).
-- Fiscal foundation: clinic-scoped, homologation-only NFC-e/NFS-e settings,
-  manual and idempotent preparation from completed sales, immutable business
-  snapshots, and attributed lifecycle events. Homologation transmission has a
-  guarded opt-in path; production issuance remains unavailable (see
+- Fiscal foundation: clinic-scoped NFC-e/NFS-e settings, manual and idempotent
+  preparation from completed sales, immutable business snapshots and
+  attributed lifecycle events. Homologation has a guarded opt-in path;
+  production is implemented only for the reviewed Niterói/RJ NFS-e and RJ
+  NFC-e scopes and remains disabled server-wide by default (see
   `docs/modules/fiscal.md`).
 - The fiscal commercial model is now bring-your-own-Focus-account. Each clinic
   pays the provider directly and can connect, rotate or disconnect its own
@@ -108,7 +109,16 @@ The local working tree was clean before this documentation pass.
   password-confirmed, append-only and fingerprinted, becoming stale when the
   profile or catalog changes. A printable dossier and no-cache JSON export
   provide an actionable, allowlisted report for the clinic/accountant without
-  secret references or raw fiscal payloads. The result never enables production.
+  secret references or raw fiscal payloads. The result never enables production
+  by itself.
+- Fiscal production now has a separate fail-closed gate. It requires the global
+  production switch, a current approved homologation fingerprint, an isolated
+  encrypted production token, production-only sequences, confirmation of
+  SEFAZ-RJ/CSC data where applicable and the operator's current password. The
+  activation freezes its evidence and profile version, locks profile editing,
+  is fully audited and can be revoked to restore homologation without erasing
+  valid document history. A revoked activation cannot transmit a prepared
+  production document.
 - Daily fiscal reconciliation now compares each clinic's completed sales with
   its latest NFC-e/NFS-e preparations and classifies configuration, allocation,
   payload, submission, processing, authorization and human-review work. The
@@ -156,10 +166,10 @@ The local working tree was clean before this documentation pass.
   plus an opaque external reference, never the CSC value. A dedicated
   per-series sequence, product IBS/CBS status/classification, deterministic
   payment mapping and total/change reconciliation produce an idempotent local
-  Focus payload. The guarded homologation adapter can now submit, consult and
-  cancel it through the same idempotent queue while production remains
-  rejected; the short-lived emission time is refreshed at the attempt and the
-  NFS-e webhook remains outside the NFC-e flow.
+  Focus payload. The guarded adapter can submit, consult and cancel it through
+  the same idempotent queue in the document's approved environment; the
+  short-lived emission time is refreshed at the attempt and the NFS-e webhook
+  remains outside the NFC-e flow.
 - NFC-e numbering gaps now have a separate confirmed inutilization queue. It
   accepts only already-passed ranges with no prepared VetFlow document,
   rejects overlaps, validates the Focus response against issuer/model/series/
@@ -179,7 +189,8 @@ The local working tree was clean before this documentation pass.
   frozen justification, bounded retries, provider-confirmed final state and
   append-only events. The Fiscal center surfaces clinic-scoped alerts for
   exhausted transmission/status/cancellation work and configurable stale
-  processing or cancellation queues; production remains unavailable.
+  processing or cancellation queues in homologation or an explicitly activated
+  production window.
 - Fiscal contingency now supports manual reconciliation after authorization or
   an ambiguous cancellation, queued webhook resend with a cooldown, and
   protected XML/DANFSe downloads. Artifact paths stay server-side, redirects

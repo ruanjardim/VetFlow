@@ -12,8 +12,6 @@ use App\Modules\Fiscal\Jobs\SyncFiscalDocumentStatusJob;
 use App\Modules\Fiscal\Models\FiscalDocument;
 use App\Modules\Fiscal\Models\FiscalDocumentEvent;
 use App\Modules\Fiscal\Support\FiscalDocumentType;
-use App\Modules\Fiscal\Support\FiscalMunicipalityCatalog;
-use App\Modules\Fiscal\Support\FiscalProviderCatalog;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
@@ -40,6 +38,7 @@ class FiscalDocumentLifecycleService
     public function __construct(
         private readonly FiscalProvider $provider,
         private readonly FiscalCredentialResolver $credentials,
+        private readonly FiscalEnvironmentGuard $environment,
     ) {}
 
     public function isAvailable(?FiscalDocument $document = null): bool
@@ -722,21 +721,14 @@ class FiscalDocumentLifecycleService
     {
         if (! $this->isSupported($document)) {
             throw ValidationException::withMessages([
-                'fiscal' => 'O ciclo operacional aceita somente NFS-e de Niterói ou NFC-e modelo 65 do RJ pela Focus NFe em homologação.',
+                'fiscal' => 'O ciclo operacional aceita somente NFS-e de Niterói ou NFC-e modelo 65 do RJ pela Focus NFe em ambiente autorizado.',
             ]);
         }
     }
 
     private function isSupported(FiscalDocument $document): bool
     {
-        if ($document->environment !== 'homologation' || $document->provider !== FiscalProviderCatalog::FOCUS_NFE) {
-            return false;
-        }
-
-        return ($document->type === FiscalDocumentType::NFSE
-                && data_get($document->issuer_snapshot, 'municipality_code') === FiscalMunicipalityCatalog::NITEROI_IBGE_CODE)
-            || ($document->type === FiscalDocumentType::NFCE
-                && strtoupper((string) data_get($document->issuer_snapshot, 'address.state')) === 'RJ');
+        return $this->environment->allowsDocument($document);
     }
 
     private function payloadRoot(FiscalDocument $document): string

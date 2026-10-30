@@ -5,9 +5,11 @@ namespace App\Modules\Fiscal\Controllers;
 use App\Modules\Clinics\Models\Clinic;
 use App\Modules\Fiscal\Models\FiscalDocument;
 use App\Modules\Fiscal\Models\FiscalProfile;
+use App\Modules\Fiscal\Requests\ActivateFiscalProductionRequest;
 use App\Modules\Fiscal\Requests\ApproveFiscalSaleAllocationRequest;
 use App\Modules\Fiscal\Requests\CancelFiscalDocumentRequest;
 use App\Modules\Fiscal\Requests\ConnectFocusCredentialRequest;
+use App\Modules\Fiscal\Requests\DeactivateFiscalProductionRequest;
 use App\Modules\Fiscal\Requests\DisconnectFocusCredentialRequest;
 use App\Modules\Fiscal\Requests\InutilizeNfceRangeRequest;
 use App\Modules\Fiscal\Requests\PrepareFiscalDocumentRequest;
@@ -20,6 +22,7 @@ use App\Modules\Fiscal\Services\FiscalHomologationReadinessService;
 use App\Modules\Fiscal\Services\FiscalNfceInutilizationService;
 use App\Modules\Fiscal\Services\FiscalNfceSequenceService;
 use App\Modules\Fiscal\Services\FiscalOperationsAlertService;
+use App\Modules\Fiscal\Services\FiscalProductionActivationService;
 use App\Modules\Fiscal\Services\FiscalProfileService;
 use App\Modules\Fiscal\Services\FiscalProviderCredentialService;
 use App\Modules\Fiscal\Services\FiscalSaleAllocationService;
@@ -52,6 +55,7 @@ class FiscalController
         private readonly FiscalOperationsAlertService $operationsAlerts,
         private readonly FiscalHomologationReadinessService $homologationReadiness,
         private readonly FiscalProviderCredentialService $focusCredentials,
+        private readonly FiscalProductionActivationService $productionActivations,
         private readonly FiscalSaleAllocationService $saleAllocations,
         private readonly FocusNfePayloadService $focusPayloads,
         private readonly FocusNfcePayloadService $focusNfcePayloads,
@@ -92,6 +96,9 @@ class FiscalController
             'nfceInutilizations' => $this->nfceInutilizations->recentForClinic($clinicId),
             'nfceInutilizationAvailable' => $this->nfceInutilizations->isAvailable($profile),
             'focusCredential' => $this->focusCredentials->activeForClinic($clinicId),
+            'productionFocusCredential' => $this->focusCredentials->activeForClinic($clinicId, 'production'),
+            'productionActivation' => $this->productionActivations->activeForClinic($clinicId),
+            'productionRuntimeEnabled' => (bool) config('fiscal.production.enabled', false),
             'customerManagedFocusCredentials' => $this->focusCredentials->customerManagedMode(),
         ]);
     }
@@ -112,22 +119,58 @@ class FiscalController
         $this->focusCredentials->connect(
             $clinicId,
             $request->validated('focus_token'),
-            $request->user()
+            $request->user(),
+            $request->validated('environment')
         );
+
+        $environment = $request->validated('environment');
 
         return redirect()
             ->route('fiscal.index', $this->routeClinic($clinicId))
-            ->with('success', 'Conta Focus de homologação conectada. O token foi criptografado e não será exibido novamente.');
+            ->with('success', 'Conta Focus de '.$environment.' conectada. O token foi criptografado e não será exibido novamente.');
     }
 
     public function disconnectFocusCredential(DisconnectFocusCredentialRequest $request): RedirectResponse
     {
         $clinicId = $this->selectedClinicId($request);
-        $this->focusCredentials->disconnect($clinicId, $request->user());
+        $this->focusCredentials->disconnect(
+            $clinicId,
+            $request->user(),
+            $request->validated('environment')
+        );
 
         return redirect()
             ->route('fiscal.index', $this->routeClinic($clinicId))
             ->with('success', 'Conta Focus desconectada. Novas transmissões fiscais desta clínica estão bloqueadas.');
+    }
+
+    public function activateProduction(ActivateFiscalProductionRequest $request): RedirectResponse
+    {
+        $clinicId = $this->selectedClinicId($request);
+        $clinic = Clinic::query()->findOrFail($clinicId);
+        $profile = $this->profiles->forClinic($clinicId);
+        $this->productionActivations->activate($clinic, $profile, $request->user(), $request->validated());
+
+        return redirect()
+            ->route('fiscal.index', $this->routeClinic($clinicId))
+            ->with('success', 'Produção fiscal ativada para esta clínica. As próximas preparações usarão documentos com validade fiscal.');
+    }
+
+    public function deactivateProduction(DeactivateFiscalProductionRequest $request): RedirectResponse
+    {
+        $clinicId = $this->selectedClinicId($request);
+        $clinic = Clinic::query()->findOrFail($clinicId);
+        $profile = $this->profiles->forClinic($clinicId);
+        $this->productionActivations->deactivate(
+            $clinic,
+            $profile,
+            $request->user(),
+            $request->validated('reason')
+        );
+
+        return redirect()
+            ->route('fiscal.index', $this->routeClinic($clinicId))
+            ->with('success', 'Produção fiscal desativada. Novas preparações voltaram para homologação.');
     }
 
     public function storeHomologationReview(StoreFiscalHomologationReviewRequest $request): RedirectResponse
@@ -185,7 +228,7 @@ class FiscalController
 
         return redirect()
             ->route('fiscal.documents.show', $document->id)
-            ->with('success', 'Documento preparado em homologação. Nenhum envio externo foi realizado.');
+            ->with('success', 'Documento preparado em '.$document->environment.'. Nenhum envio externo foi realizado.');
     }
 
     public function show(int $document): View
@@ -238,7 +281,7 @@ class FiscalController
 
         return redirect()
             ->route('fiscal.documents.show', $document->id)
-            ->with('success', 'Documento colocado na fila fiscal de homologação. O processamento ocorrerá em segundo plano.');
+            ->with('success', 'Documento colocado na fila fiscal de '.$document->environment.'. O processamento ocorrerá em segundo plano.');
     }
 
     public function queueSynchronization(Request $request, int $document): RedirectResponse
@@ -278,7 +321,7 @@ class FiscalController
 
         return redirect()
             ->route('fiscal.index', $this->routeClinic($clinicId))
-            ->with('success', 'Inutilização colocada na fila fiscal de homologação. Aguarde a confirmação da SEFAZ.');
+            ->with('success', 'Inutilização colocada na fila fiscal de '.$profile->environment.'. Aguarde a confirmação da SEFAZ.');
     }
 
     public function queueWebhookResend(Request $request, int $document): RedirectResponse

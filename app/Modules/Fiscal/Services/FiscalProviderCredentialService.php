@@ -15,36 +15,50 @@ use Illuminate\Validation\ValidationException;
 
 class FiscalProviderCredentialService
 {
-    public function __construct(private readonly AuditTrailService $audit) {}
+    public function __construct(
+        private readonly AuditTrailService $audit,
+        private readonly FiscalHomologationReadinessService $homologationReadiness,
+        private readonly FiscalEnvironmentGuard $environment,
+    ) {}
 
     public function customerManagedMode(): bool
     {
         return config('fiscal.credentials.driver') === 'encrypted_database';
     }
 
-    public function activeForClinic(int $clinicId): ?FiscalProviderCredential
+    public function activeForClinic(int $clinicId, string $environment = FiscalEnvironmentGuard::HOMOLOGATION): ?FiscalProviderCredential
     {
         return FiscalProviderCredential::query()
             ->with('configuredBy')
             ->where('clinic_id', $clinicId)
             ->where('provider', FiscalProviderCatalog::FOCUS_NFE)
-            ->where('environment', 'homologation')
+            ->where('environment', $environment)
             ->whereNull('revoked_at')
             ->latest('id')
             ->first();
     }
 
-    public function connect(int $clinicId, #[\SensitiveParameter] string $token, User $actor): FiscalProviderCredential
-    {
+    public function connect(
+        int $clinicId,
+        #[\SensitiveParameter] string $token,
+        User $actor,
+        string $environment = FiscalEnvironmentGuard::HOMOLOGATION
+    ): FiscalProviderCredential {
         $this->assertCustomerManagedMode();
-        $this->assertToken($token);
+        $this->assertEnvironment($environment);
+        $this->assertToken($token, $environment);
 
-        return DB::transaction(function () use ($clinicId, $token, $actor): FiscalProviderCredential {
+        return DB::transaction(function () use ($clinicId, $token, $actor, $environment): FiscalProviderCredential {
             $clinic = Clinic::query()->whereKey($clinicId)->lockForUpdate()->firstOrFail();
             $profile = FiscalProfile::query()->where('clinic_id', $clinicId)->lockForUpdate()->first();
             $profileCreated = false;
 
             if (! $profile) {
+                if ($environment === FiscalEnvironmentGuard::PRODUCTION) {
+                    throw ValidationException::withMessages([
+                        'focus_token' => 'Crie e homologue o perfil fiscal antes de conectar uma credencial de produção.',
+                    ]);
+                }
                 $profile = FiscalProfile::query()->create([
                     'clinic_id' => $clinicId,
                     'enabled' => false,
@@ -58,10 +72,25 @@ class FiscalProviderCredentialService
                 $profileCreated = true;
             }
 
+            if ($environment === FiscalEnvironmentGuard::PRODUCTION) {
+                if (! $this->environment->productionRuntimeEnabled()) {
+                    throw ValidationException::withMessages([
+                        'focus_token' => 'A preparação de credenciais de produção está bloqueada neste servidor.',
+                    ]);
+                }
+
+                $evaluation = $this->homologationReadiness->evaluate($clinic, $profile);
+                if (! $evaluation['eligible_for_production_review']) {
+                    throw ValidationException::withMessages([
+                        'focus_token' => 'A credencial de produção só pode ser conectada depois da homologação aprovada e atual.',
+                    ]);
+                }
+            }
+
             $credential = FiscalProviderCredential::query()
                 ->where('clinic_id', $clinicId)
                 ->where('provider', FiscalProviderCatalog::FOCUS_NFE)
-                ->where('environment', 'homologation')
+                ->where('environment', $environment)
                 ->whereNull('revoked_at')
                 ->lockForUpdate()
                 ->latest('id')
@@ -74,8 +103,8 @@ class FiscalProviderCredentialService
                     'clinic_id' => $clinicId,
                     'ulid' => $ulid,
                     'provider' => FiscalProviderCatalog::FOCUS_NFE,
-                    'environment' => 'homologation',
-                    'reference' => 'focus-db://homologation/'.$ulid,
+                    'environment' => $environment,
+                    'reference' => 'focus-db://'.$environment.'/'.$ulid,
                 ]);
             }
 
@@ -87,18 +116,20 @@ class FiscalProviderCredentialService
                 'revoked_at' => null,
             ])->save();
 
-            $metadata = is_array($profile->metadata) ? $profile->metadata : [];
-            $referenceChanged = data_get($metadata, 'provider_credential_reference') !== $credential->reference
-                || $profile->provider !== FiscalProviderCatalog::FOCUS_NFE;
-            $metadata['provider_credential_reference'] = $credential->reference;
-            $profile->forceFill([
-                'provider' => FiscalProviderCatalog::FOCUS_NFE,
-                'environment' => 'homologation',
-                'metadata' => $metadata,
-                'configuration_version' => $referenceChanged && ! $profileCreated
-                    ? max(1, (int) $profile->configuration_version + 1)
-                    : max(1, (int) $profile->configuration_version),
-            ])->save();
+            if ($environment === FiscalEnvironmentGuard::HOMOLOGATION) {
+                $metadata = is_array($profile->metadata) ? $profile->metadata : [];
+                $referenceChanged = data_get($metadata, 'provider_credential_reference') !== $credential->reference
+                    || $profile->provider !== FiscalProviderCatalog::FOCUS_NFE;
+                $metadata['provider_credential_reference'] = $credential->reference;
+                $profile->forceFill([
+                    'provider' => FiscalProviderCatalog::FOCUS_NFE,
+                    'environment' => FiscalEnvironmentGuard::HOMOLOGATION,
+                    'metadata' => $metadata,
+                    'configuration_version' => $referenceChanged && ! $profileCreated
+                        ? max(1, (int) $profile->configuration_version + 1)
+                        : max(1, (int) $profile->configuration_version),
+                ])->save();
+            }
 
             $this->audit->record(
                 $event,
@@ -106,7 +137,7 @@ class FiscalProviderCredentialService
                 ['connected' => $event === 'fiscal.provider-credential.rotated'],
                 ['connected' => true],
                 $actor,
-                ['provider' => FiscalProviderCatalog::FOCUS_NFE, 'environment' => 'homologation'],
+                ['provider' => FiscalProviderCatalog::FOCUS_NFE, 'environment' => $environment],
                 $clinicId,
                 'Conta Focus NFe da clínica'
             );
@@ -115,17 +146,21 @@ class FiscalProviderCredentialService
         });
     }
 
-    public function disconnect(int $clinicId, User $actor): void
-    {
+    public function disconnect(
+        int $clinicId,
+        User $actor,
+        string $environment = FiscalEnvironmentGuard::HOMOLOGATION
+    ): void {
         $this->assertCustomerManagedMode();
+        $this->assertEnvironment($environment);
 
-        DB::transaction(function () use ($clinicId, $actor): void {
+        DB::transaction(function () use ($clinicId, $actor, $environment): void {
             Clinic::query()->whereKey($clinicId)->lockForUpdate()->firstOrFail();
             $profile = FiscalProfile::query()->where('clinic_id', $clinicId)->lockForUpdate()->first();
             $credential = FiscalProviderCredential::query()
                 ->where('clinic_id', $clinicId)
                 ->where('provider', FiscalProviderCatalog::FOCUS_NFE)
-                ->where('environment', 'homologation')
+                ->where('environment', $environment)
                 ->whereNull('revoked_at')
                 ->lockForUpdate()
                 ->latest('id')
@@ -146,7 +181,8 @@ class FiscalProviderCredentialService
 
             if ($profile) {
                 $metadata = is_array($profile->metadata) ? $profile->metadata : [];
-                if (data_get($metadata, 'provider_credential_reference') === $credential->reference) {
+                if ($profile->environment === $environment
+                    && data_get($metadata, 'provider_credential_reference') === $credential->reference) {
                     $metadata['provider_credential_reference'] = null;
                     $profile->forceFill([
                         'metadata' => $metadata,
@@ -161,7 +197,7 @@ class FiscalProviderCredentialService
                 ['connected' => true],
                 ['connected' => false],
                 $actor,
-                ['provider' => FiscalProviderCatalog::FOCUS_NFE, 'environment' => 'homologation'],
+                ['provider' => FiscalProviderCatalog::FOCUS_NFE, 'environment' => $environment],
                 $clinicId,
                 'Conta Focus NFe da clínica'
             );
@@ -177,14 +213,21 @@ class FiscalProviderCredentialService
         }
     }
 
-    private function assertToken(string $token): void
+    private function assertEnvironment(string $environment): void
+    {
+        if (! in_array($environment, [FiscalEnvironmentGuard::HOMOLOGATION, FiscalEnvironmentGuard::PRODUCTION], true)) {
+            throw ValidationException::withMessages(['environment' => 'Ambiente fiscal inválido.']);
+        }
+    }
+
+    private function assertToken(string $token, string $environment): void
     {
         if (strlen($token) < 16
             || strlen($token) > 512
             || trim($token) !== $token
             || preg_match('/[\x00-\x1F\x7F]/', $token)) {
             throw ValidationException::withMessages([
-                'focus_token' => 'Informe um token de homologação válido, sem espaços ou caracteres de controle.',
+                'focus_token' => "Informe um token de {$environment} válido, sem espaços ou caracteres de controle.",
             ]);
         }
     }

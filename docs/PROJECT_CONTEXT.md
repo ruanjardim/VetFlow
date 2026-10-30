@@ -251,8 +251,12 @@ leaking provider secrets. A clinic-scoped homologation gate now consolidates
 those controls with actual provider-event evidence and a password-confirmed,
 append-only human review. Its secret-free fingerprint becomes stale after
 profile or tax-catalog changes. A passing gate means only that the clinic is
-eligible for a separate production analysis; production issuance remains
-unavailable. The same safe read model produces a printable dossier and JSON
+eligible for the separate production gate. Production now exists only for the
+reviewed Niterói/RJ NFS-e and RJ NFC-e slices, remains disabled server-wide by
+default, requires a clinic-owned production credential, password-confirmed
+activation, independent numbering and the exact approved homologation
+fingerprint, and can be revoked without erasing history. The same safe read
+model produces a printable dossier and JSON
 download with the next action for every pending item, excluding secrets, raw
 payloads and internal evidence fingerprints.
 The same clinic scope now has a daily reconciliation of completed sales against

@@ -24,7 +24,7 @@ class FiscalNfceSequenceService
             return null;
         }
 
-        return $this->query((int) $profile->clinic_id, (int) $series)->first();
+        return $this->query((int) $profile->clinic_id, (int) $series, (string) $profile->environment)->first();
     }
 
     /** @param array<string, mixed> $data */
@@ -39,10 +39,10 @@ class FiscalNfceSequenceService
             return null;
         }
 
-        $sequence = $this->query((int) $profile->clinic_id, (int) $series)
+        $sequence = $this->query((int) $profile->clinic_id, (int) $series, (string) $profile->environment)
             ->lockForUpdate()
             ->first();
-        $lastUnavailable = $this->lastUnavailableNumber((int) $profile->clinic_id, (int) $series);
+        $lastUnavailable = $this->lastUnavailableNumber((int) $profile->clinic_id, (int) $series, (string) $profile->environment);
 
         if ($lastUnavailable !== null && (int) $nextNumber <= $lastUnavailable) {
             throw ValidationException::withMessages([
@@ -54,7 +54,7 @@ class FiscalNfceSequenceService
             $sequence = FiscalNfceSequence::query()->create([
                 'clinic_id' => $profile->clinic_id,
                 'provider' => FiscalProviderCatalog::FOCUS_NFE,
-                'environment' => 'homologation',
+                'environment' => $profile->environment,
                 'series' => (int) $series,
                 'next_number' => (int) $nextNumber,
             ]);
@@ -86,7 +86,7 @@ class FiscalNfceSequenceService
             return ['series' => (int) $document->series, 'number' => (int) $document->document_number];
         }
 
-        $sequence = $this->query((int) $document->clinic_id, $series)
+        $sequence = $this->query((int) $document->clinic_id, $series, (string) $document->environment)
             ->lockForUpdate()
             ->first();
 
@@ -105,7 +105,7 @@ class FiscalNfceSequenceService
         $numberUnavailable = FiscalNfceInutilization::withoutGlobalScopes()
             ->where('clinic_id', $document->clinic_id)
             ->where('provider', FiscalProviderCatalog::FOCUS_NFE)
-            ->where('environment', 'homologation')
+            ->where('environment', $document->environment)
             ->where('series', $series)
             ->whereIn('status', ['queued', 'processing', 'authorized'])
             ->where('number_start', '<=', $sequence->next_number)
@@ -132,21 +132,21 @@ class FiscalNfceSequenceService
         return ['series' => $series, 'number' => $number];
     }
 
-    private function query(int $clinicId, int $series)
+    private function query(int $clinicId, int $series, string $environment)
     {
         return FiscalNfceSequence::query()
             ->where('clinic_id', $clinicId)
             ->where('provider', FiscalProviderCatalog::FOCUS_NFE)
-            ->where('environment', 'homologation')
+            ->where('environment', $environment)
             ->where('series', $series);
     }
 
-    private function lastUnavailableNumber(int $clinicId, int $series): ?int
+    private function lastUnavailableNumber(int $clinicId, int $series, string $environment): ?int
     {
         $number = FiscalNfceInutilization::withoutGlobalScopes()
             ->where('clinic_id', $clinicId)
             ->where('provider', FiscalProviderCatalog::FOCUS_NFE)
-            ->where('environment', 'homologation')
+            ->where('environment', $environment)
             ->where('series', $series)
             ->whereIn('status', ['queued', 'processing', 'authorized'])
             ->max('number_end');

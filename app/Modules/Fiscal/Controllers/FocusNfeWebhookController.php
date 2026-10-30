@@ -47,7 +47,7 @@ class FocusNfeWebhookController
             ->where('provider_reference', $payload['ref'])
             ->where('provider', FiscalProviderCatalog::FOCUS_NFE)
             ->where('type', FiscalDocumentType::NFSE)
-            ->where('environment', 'homologation')
+            ->whereIn('environment', ['homologation', 'production'])
             ->first();
 
         if (! $document) {

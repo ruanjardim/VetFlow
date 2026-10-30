@@ -3,6 +3,7 @@
 namespace Tests\Unit;
 
 use App\Support\Operations\ReleaseRouteCachePath;
+use Illuminate\Support\Env;
 use PHPUnit\Framework\TestCase;
 
 class ReleaseRouteCachePathTest extends TestCase
@@ -73,12 +74,15 @@ class ReleaseRouteCachePathTest extends TestCase
         putenv('APP_ROUTES_CACHE=bootstrap/cache/routes-v7.php');
         $_ENV['APP_ROUTES_CACHE'] = 'bootstrap/cache/routes-v7.php';
         $_SERVER['APP_ROUTES_CACHE'] = 'bootstrap/cache/routes-v7.php';
+        Env::enablePutenv();
 
         try {
+            $this->assertSame('bootstrap/cache/routes-v7.php', Env::get('APP_ROUTES_CACHE'));
             $this->assertSame($path, ReleaseRouteCachePath::configure($this->temporaryDirectory));
             $this->assertSame($path, getenv('APP_ROUTES_CACHE'));
             $this->assertSame($path, $_ENV['APP_ROUTES_CACHE']);
             $this->assertSame($path, $_SERVER['APP_ROUTES_CACHE']);
+            $this->assertSame($path, Env::get('APP_ROUTES_CACHE'));
         } finally {
             $previousEnvironment === false
                 ? putenv('APP_ROUTES_CACHE')
@@ -95,6 +99,8 @@ class ReleaseRouteCachePathTest extends TestCase
             } else {
                 $_SERVER['APP_ROUTES_CACHE'] = $previousServer;
             }
+
+            Env::enablePutenv();
         }
     }
 }

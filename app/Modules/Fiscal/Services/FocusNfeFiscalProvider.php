@@ -7,7 +7,6 @@ use App\Modules\Fiscal\Contracts\FiscalProvider;
 use App\Modules\Fiscal\Models\FiscalDocument;
 use App\Modules\Fiscal\Models\FiscalNfceInutilization;
 use App\Modules\Fiscal\Support\FiscalDocumentType;
-use App\Modules\Fiscal\Support\FiscalMunicipalityCatalog;
 use App\Modules\Fiscal\Support\FiscalProviderCatalog;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\Response;
@@ -18,7 +17,14 @@ use LogicException;
 
 class FocusNfeFiscalProvider implements FiscalProvider
 {
-    public function __construct(private readonly FiscalCredentialResolver $credentials) {}
+    private readonly FiscalEnvironmentGuard $environment;
+
+    public function __construct(
+        private readonly FiscalCredentialResolver $credentials,
+        ?FiscalEnvironmentGuard $environment = null,
+    ) {
+        $this->environment = $environment ?? new FiscalEnvironmentGuard;
+    }
 
     public function submit(FiscalDocument $document): array
     {
@@ -157,7 +163,7 @@ class FocusNfeFiscalProvider implements FiscalProvider
             ->get($path);
 
         if (in_array($response->status(), [301, 302, 303, 307, 308], true)) {
-            $response = $this->downloadRedirect($response, $accept);
+            $response = $this->downloadRedirect($document, $response, $accept);
         }
 
         $maximumBytes = max(1024, (int) config('fiscal.recovery.artifact_max_bytes', 10485760));
@@ -189,21 +195,8 @@ class FocusNfeFiscalProvider implements FiscalProvider
             throw new LogicException('O tráfego HTTP fiscal externo está bloqueado pela configuração do VetFlow.');
         }
 
-        if ($document->environment !== 'homologation') {
-            throw new LogicException('O adaptador Focus NFe está liberado somente para homologação.');
-        }
-
-        if ($document->provider !== FiscalProviderCatalog::FOCUS_NFE) {
-            throw new LogicException('O documento não foi preparado para a Focus NFe.');
-        }
-
-        $supportedNfse = $document->type === FiscalDocumentType::NFSE
-            && data_get($document->issuer_snapshot, 'municipality_code') === FiscalMunicipalityCatalog::NITEROI_IBGE_CODE;
-        $supportedNfce = $document->type === FiscalDocumentType::NFCE
-            && strtoupper((string) data_get($document->issuer_snapshot, 'address.state')) === 'RJ';
-
-        if (! $supportedNfse && ! $supportedNfce) {
-            throw new LogicException('O adaptador Focus NFe aceita somente NFS-e Nacional de Niterói ou NFC-e modelo 65 do RJ em homologação.');
+        if (! $this->environment->allowsDocument($document)) {
+            throw new LogicException('O documento não pertence a um escopo fiscal e ambiente autorizados para a Focus NFe.');
         }
     }
 
@@ -261,9 +254,12 @@ class FocusNfeFiscalProvider implements FiscalProvider
             throw new LogicException('O tráfego HTTP fiscal externo está bloqueado pela configuração do VetFlow.');
         }
 
-        if ($inutilization->environment !== 'homologation'
-            || $inutilization->provider !== FiscalProviderCatalog::FOCUS_NFE) {
-            throw new LogicException('A inutilização de NFC-e está liberada somente para a Focus NFe em homologação.');
+        if (! in_array($inutilization->environment, [FiscalEnvironmentGuard::HOMOLOGATION, FiscalEnvironmentGuard::PRODUCTION], true)
+            || $inutilization->provider !== FiscalProviderCatalog::FOCUS_NFE
+            || ($inutilization->environment === FiscalEnvironmentGuard::PRODUCTION
+                && (! $this->environment->productionRuntimeEnabled()
+                    || ! $this->environment->activeProductionForClinic((int) $inutilization->clinic_id)))) {
+            throw new LogicException('A inutilização de NFC-e não pertence a um ambiente Focus autorizado.');
         }
 
         if (! preg_match('/^\d{14}$/', (string) $inutilization->issuer_document)
@@ -277,10 +273,10 @@ class FocusNfeFiscalProvider implements FiscalProvider
         $token = trim($this->credentials->tokenFor($document));
 
         if ($token === '') {
-            throw new LogicException('A credencial de homologação da Focus NFe não foi localizada.');
+            throw new LogicException('A credencial da Focus NFe não foi localizada para o ambiente do documento.');
         }
 
-        return Http::baseUrl((string) config('fiscal.focus_nfe.homologation_url'))
+        return Http::baseUrl($this->baseUrl($document->environment))
             ->withBasicAuth($token, '')
             ->timeout((int) config('fiscal.focus_nfe.timeout_seconds', 15))
             ->connectTimeout((int) config('fiscal.focus_nfe.connect_timeout_seconds', 5));
@@ -311,11 +307,11 @@ class FocusNfeFiscalProvider implements FiscalProvider
         return $path;
     }
 
-    private function downloadRedirect(Response $response, string $accept): Response
+    private function downloadRedirect(FiscalDocument $document, Response $response, string $accept): Response
     {
         $location = trim((string) $response->header('Location'));
         if (str_starts_with($location, '/')) {
-            $location = rtrim((string) config('fiscal.focus_nfe.homologation_url'), '/').$location;
+            $location = rtrim($this->baseUrl($document->environment), '/').$location;
         }
 
         $parts = parse_url($location);
@@ -323,7 +319,7 @@ class FocusNfeFiscalProvider implements FiscalProvider
             throw new LogicException('O redirecionamento do arquivo fiscal não pertence a um host autorizado.');
         }
 
-        $baseHost = Str::lower((string) parse_url((string) config('fiscal.focus_nfe.homologation_url'), PHP_URL_HOST));
+        $baseHost = Str::lower((string) parse_url($this->baseUrl($document->environment), PHP_URL_HOST));
         $allowedHosts = collect(config('fiscal.recovery.artifact_redirect_hosts', []))
             ->map(fn (mixed $host): string => Str::lower(trim((string) $host)))
             ->filter()
@@ -390,7 +386,7 @@ class FocusNfeFiscalProvider implements FiscalProvider
                 return (string) $value;
             }
         } catch (\Throwable) {
-            // A data inválida é substituída pela data corrente de homologação.
+            // A data inválida é substituída pela data corrente do ambiente.
         }
 
         return $now->toIso8601String();
@@ -399,6 +395,20 @@ class FocusNfeFiscalProvider implements FiscalProvider
     private function reference(FiscalDocument $document): string
     {
         return $document->provider_reference ?: 'vf-'.$document->ulid;
+    }
+
+    private function baseUrl(string $environment): string
+    {
+        $key = $environment === FiscalEnvironmentGuard::PRODUCTION
+            ? 'fiscal.focus_nfe.production_url'
+            : 'fiscal.focus_nfe.homologation_url';
+        $url = rtrim((string) config($key), '/');
+
+        if (! str_starts_with($url, 'https://')) {
+            throw new LogicException('A URL base fiscal deve usar HTTPS.');
+        }
+
+        return $url;
     }
 
     /** @param array<string, mixed> $response @return array<string, mixed> */

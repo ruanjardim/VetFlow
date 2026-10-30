@@ -6,7 +6,6 @@ use App\Models\User;
 use App\Modules\Fiscal\Models\FiscalDocument;
 use App\Modules\Fiscal\Models\FiscalDocumentEvent;
 use App\Modules\Fiscal\Support\FiscalDocumentType;
-use App\Modules\Fiscal\Support\FiscalMunicipalityCatalog;
 use App\Modules\Fiscal\Support\FiscalProviderCatalog;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -15,7 +14,10 @@ class FocusNfePayloadService
 {
     public const SCHEMA_VERSION = 'focus-nfsen-2026-10';
 
-    public function __construct(private readonly FiscalDpsSequenceService $dpsSequences) {}
+    public function __construct(
+        private readonly FiscalDpsSequenceService $dpsSequences,
+        private readonly FiscalEnvironmentGuard $environment,
+    ) {}
 
     public function generate(FiscalDocument $document, User $actor): FiscalDocument
     {
@@ -67,12 +69,10 @@ class FocusNfePayloadService
 
     private function assertSupported(FiscalDocument $document): void
     {
-        if ($document->environment !== 'homologation'
-            || $document->provider !== FiscalProviderCatalog::FOCUS_NFE
-            || $document->type !== FiscalDocumentType::NFSE
-            || data_get($document->issuer_snapshot, 'municipality_code') !== FiscalMunicipalityCatalog::NITEROI_IBGE_CODE) {
+        if (! $this->environment->allowsDocument($document)
+            || $document->type !== FiscalDocumentType::NFSE) {
             throw ValidationException::withMessages([
-                'payload' => 'A geração atual aceita somente NFS-e Nacional da Focus para o piloto de Niterói em homologação.',
+                'payload' => 'A geração aceita somente NFS-e Nacional da Focus para Niterói em ambiente fiscal autorizado.',
             ]);
         }
 

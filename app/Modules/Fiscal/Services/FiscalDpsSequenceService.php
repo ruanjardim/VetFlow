@@ -24,7 +24,7 @@ class FiscalDpsSequenceService
             return null;
         }
 
-        return $this->query((int) $profile->clinic_id, (string) $series)->first();
+        return $this->query((int) $profile->clinic_id, (string) $series, (string) $profile->environment)->first();
     }
 
     /** @param array<string, mixed> $data */
@@ -39,7 +39,7 @@ class FiscalDpsSequenceService
             return null;
         }
 
-        $sequence = $this->query((int) $profile->clinic_id, (string) $series)
+        $sequence = $this->query((int) $profile->clinic_id, (string) $series, (string) $profile->environment)
             ->lockForUpdate()
             ->first();
 
@@ -48,7 +48,7 @@ class FiscalDpsSequenceService
                 'clinic_id' => $profile->clinic_id,
                 'provider' => FiscalProviderCatalog::FOCUS_NFE,
                 'document_type' => FiscalDocumentType::NFSE,
-                'environment' => 'homologation',
+                'environment' => $profile->environment,
                 'series' => (string) $series,
                 'next_number' => (int) $nextNumber,
             ]);
@@ -80,7 +80,7 @@ class FiscalDpsSequenceService
             return ['series' => (string) $document->series, 'number' => (int) $document->document_number];
         }
 
-        $sequence = $this->query((int) $document->clinic_id, $series)
+        $sequence = $this->query((int) $document->clinic_id, $series, (string) $document->environment)
             ->lockForUpdate()
             ->first();
 
@@ -110,13 +110,13 @@ class FiscalDpsSequenceService
         return ['series' => $series, 'number' => $number];
     }
 
-    private function query(int $clinicId, string $series)
+    private function query(int $clinicId, string $series, string $environment)
     {
         return FiscalDpsSequence::query()
             ->where('clinic_id', $clinicId)
             ->where('provider', FiscalProviderCatalog::FOCUS_NFE)
             ->where('document_type', FiscalDocumentType::NFSE)
-            ->where('environment', 'homologation')
+            ->where('environment', $environment)
             ->where('series', $series);
     }
 

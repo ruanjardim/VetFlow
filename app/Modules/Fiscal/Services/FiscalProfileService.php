@@ -7,6 +7,7 @@ use App\Modules\Clinics\Models\Clinic;
 use App\Modules\Fiscal\Models\FiscalProfile;
 use App\Modules\Fiscal\Support\FiscalMunicipalityCatalog;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class FiscalProfileService
 {
@@ -38,6 +39,11 @@ class FiscalProfileService
     {
         return DB::transaction(function () use ($clinicId, $data): FiscalProfile {
             $profile = $this->forClinic($clinicId);
+            if ($profile->exists && $profile->environment === FiscalEnvironmentGuard::PRODUCTION) {
+                throw ValidationException::withMessages([
+                    'fiscal' => 'Desative formalmente a produção antes de alterar a configuração fiscal do estabelecimento.',
+                ]);
+            }
             $before = $profile->exists ? $this->snapshot($profile) : [];
             $sequenceData = $data;
             $data = $this->normalize($data, $profile);
@@ -90,7 +96,7 @@ class FiscalProfileService
 
         return [
             'enabled' => (bool) $data['enabled'],
-            'environment' => 'homologation',
+            'environment' => $profile->exists ? $profile->environment : FiscalEnvironmentGuard::HOMOLOGATION,
             'provider' => $this->blankToNull($data['provider'] ?? null),
             'nfce_enabled' => (bool) $data['nfce_enabled'],
             'nfse_enabled' => (bool) $data['nfse_enabled'],
