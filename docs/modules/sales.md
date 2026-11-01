@@ -343,6 +343,9 @@ financial income, returns, refunds, cancellations, and sale event history.
   name when it has none), dated at the closing.
 - A closed or reviewed session has a print-ready management report that uses
   the clinic's active default receipt printer and its 58/80 mm roll setting.
+  The 80 mm layout reserves 5 mm on each side, matching the safe printable
+  area calibrated on an Epson TM-T20X; the same inset is shared by printer
+  tests, completed-sale receipts, and cash-closing reports.
   It contains operator, opening/closing times, expected and counted amounts,
   differences, cash collected/left, closing explanation, and manager review.
   It is explicitly marked as a non-fiscal internal report.

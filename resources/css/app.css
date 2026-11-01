@@ -2902,7 +2902,7 @@ textarea {
 
   .printer-paper-80mm {
     max-width: none;
-    padding: 4mm;
+    padding: 5mm;
     width: 80mm;
   }
 
@@ -2989,7 +2989,7 @@ textarea {
   }
 
   .thermal-paper-80mm {
-    padding: 4mm;
+    padding: 5mm;
     width: 80mm;
   }
 
