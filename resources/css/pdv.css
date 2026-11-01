@@ -15,12 +15,16 @@ body.pdv-counter-mode{overflow:hidden;background:#eef2f6;color:#172033}
 .pdv-counter-context small{color:#94a3b8;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em}
 .pdv-counter-context strong{overflow:hidden;color:#f8fafc;font-size:13px;text-overflow:ellipsis;white-space:nowrap}
 .pdv-counter-context .pdv-connection{min-width:128px}
-.pdv-connection strong{align-items:center;display:flex;gap:7px}
-.pdv-connection strong i{width:8px;height:8px;flex:0 0 auto;border-radius:999px;background:#fbbf24;box-shadow:0 0 0 3px rgba(251,191,36,.16)}
-.pdv-connection strong b{overflow:hidden;font-size:12px;text-overflow:ellipsis}
+.pdv-counter-context .pdv-offline-readiness{min-width:118px}
+.pdv-connection strong,.pdv-offline-readiness strong{align-items:center;display:flex;gap:7px}
+.pdv-connection strong i,.pdv-offline-readiness strong i{width:8px;height:8px;flex:0 0 auto;border-radius:999px;background:#fbbf24;box-shadow:0 0 0 3px rgba(251,191,36,.16)}
+.pdv-connection strong b,.pdv-offline-readiness strong b{overflow:hidden;font-size:12px;text-overflow:ellipsis}
 .pdv-connection.is-online strong i{background:#34d399;box-shadow:0 0 0 3px rgba(52,211,153,.16)}
 .pdv-connection.is-offline strong i,.pdv-connection.is-unavailable strong i{background:#fb7185;box-shadow:0 0 0 3px rgba(251,113,133,.16)}
 .pdv-connection.is-expired strong i{background:#f97316;box-shadow:0 0 0 3px rgba(249,115,22,.18)}
+.pdv-offline-readiness.is-ready strong i{background:#34d399;box-shadow:0 0 0 3px rgba(52,211,153,.16)}
+.pdv-offline-readiness.is-warning strong i{background:#fbbf24;box-shadow:0 0 0 3px rgba(251,191,36,.16)}
+.pdv-offline-readiness.is-unavailable strong i{background:#fb7185;box-shadow:0 0 0 3px rgba(251,113,133,.16)}
 .pdv-counter-actions{display:flex;align-items:center;gap:7px;min-width:max-content}
 .pdv-counter-actions .button{min-height:38px;padding:9px 12px;border-color:#475569;background:#1e293b;color:#f8fafc;font-size:12px}
 .pdv-counter-actions .button:hover,.pdv-counter-actions .button:focus-visible{border-color:#5eead4;background:#334155}

@@ -25,9 +25,11 @@ The local working tree was clean before this documentation pass.
   states distinguish network and authentication loss. A complete, clinic-
   scoped catalog snapshot and queued checkouts are encrypted in IndexedDB;
   supported regular sales can continue after the connection drops and are
-  synchronized idempotently when it returns. Server-side stock, cash, finance,
-  tenant and audit rules remain authoritative, and conflicts remain queued for
-  review (see `docs/modules/sales.md`).
+  synchronized idempotently when it returns. A dedicated readiness indicator
+  confirms whether the encrypted catalog and cash context are prepared, and
+  offline searches bypass the unavailable server immediately. Server-side
+  stock, cash, finance, tenant and audit rules remain authoritative, and
+  conflicts remain queued for review (see `docs/modules/sales.md`).
 - Commercial scale labels are supported through the existing USB keyboard-
   wedge flow. A clinic can configure a variable-weight EAN-13 layout (prefix,
   product-code width and weight precision), and each kilogram product can keep
