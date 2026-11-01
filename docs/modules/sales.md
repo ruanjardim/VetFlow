@@ -117,6 +117,12 @@ financial income, returns, refunds, cancellations, and sale event history.
   per checkout make later synchronization idempotent. A server-encrypted
   context binds the snapshot to its clinic and operator so a queue left on a
   shared computer cannot be assumed by a different login.
+- The counter header exposes a separate offline-readiness state. Operators must
+  wait for **Offline: Pronto** before disconnecting; **Abra o caixa** means the
+  encrypted catalog is saved but checkout still needs an online-confirmed cash
+  session. Once the connection is known to be offline or unavailable, name,
+  SKU, barcode, and scale-label searches bypass the server and read the local
+  encrypted catalog immediately instead of waiting for a network timeout.
 - Offline checkout requires a cash session that was already open in the latest
   local snapshot. It does not open or close cash, and it excludes deferred or
   externally linked workflows: pay-later sales, customer-credit use, change as

@@ -43,6 +43,10 @@ const normalizeSearch = (value) => String(value || '')
   .toLocaleLowerCase('pt-BR')
   .trim();
 
+export const shouldUseOfflineCatalog = (connectionState) => (
+  connectionState === 'offline' || connectionState === 'unavailable'
+);
+
 const hasValidEan13Checksum = (digits) => {
   if (!/^\d{13}$/.test(digits)) return false;
   let sum = 0;

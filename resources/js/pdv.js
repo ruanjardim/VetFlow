@@ -1,4 +1,10 @@
-import { PdvOfflineStore, readOfflineScaleLabel, reserveOfflineStock, searchOfflineCatalog } from './pdv-offline.js';
+import {
+  PdvOfflineStore,
+  readOfflineScaleLabel,
+  reserveOfflineStock,
+  searchOfflineCatalog,
+  shouldUseOfflineCatalog,
+} from './pdv-offline.js';
 
 document.addEventListener('DOMContentLoaded', () => {
   const form = document.querySelector('[data-pdv-form]');
@@ -53,6 +59,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const reauthenticateLink = find('[data-pdv-reauthenticate]');
   const offlineQueueButton = document.querySelector('[data-pdv-offline-queue]');
   const offlineQueueCount = document.querySelector('[data-pdv-offline-count]');
+  const offlineReadiness = document.querySelector('[data-pdv-offline-readiness]');
+  const offlineReadinessLabel = document.querySelector('[data-pdv-offline-readiness-label]');
   const offlineDialog = find('[data-pdv-offline-dialog]');
   const offlineSummary = find('[data-pdv-offline-summary]');
   const offlineList = find('[data-pdv-offline-list]');
@@ -134,6 +142,39 @@ document.addEventListener('DOMContentLoaded', () => {
     && offlineCatalogFresh()
     && String(offlineCatalog?.clinic?.id || '') === String(clinic?.value || form.dataset.userClinicId || '')
   );
+  const offlineCatalogProblem = () => {
+    if (offlineStorageError) return offlineStorageError;
+    if (!offlineStore) return 'O armazenamento offline ainda não foi iniciado.';
+    if (!cashClinicId()) return 'Selecione a unidade enquanto estiver online.';
+    if (!offlineCatalog) return 'O catálogo local ainda não foi preparado. Reconecte e aguarde o indicador Offline ficar pronto.';
+    if (!offlineCatalog.complete) return `O catálogo tem ${offlineCatalog.total_items || 0} itens e excede o limite local de ${offlineCatalog.limit || 0}.`;
+    if (!offlineCatalogFresh()) return 'O catálogo local venceu. Reconecte para atualizá-lo.';
+    if (String(offlineCatalog?.clinic?.id || '') !== String(cashClinicId())) return 'O catálogo salvo pertence a outra unidade. Reconecte para atualizá-lo.';
+    return '';
+  };
+  const renderOfflineReadiness = () => {
+    if (!offlineReadiness || !offlineReadinessLabel) return;
+    let state = 'checking';
+    let label = 'Preparando';
+    const problem = offlineCatalogProblem();
+
+    if (problem) {
+      state = offlineStorageError || (offlineCatalog && !offlineCatalog.complete) ? 'unavailable' : 'warning';
+      label = offlineCatalog && !offlineCatalog.complete ? 'Catálogo grande' : 'Não preparado';
+      offlineReadiness.title = problem;
+    } else if (!currentCash()) {
+      state = 'warning';
+      label = 'Abra o caixa';
+      offlineReadiness.title = 'O catálogo está salvo, mas uma venda offline exige caixa aberto enquanto ainda há conexão.';
+    } else {
+      state = 'ready';
+      label = 'Pronto';
+      offlineReadiness.title = 'Catálogo criptografado e caixa aberto: o PDV pode continuar se a conexão cair.';
+    }
+
+    offlineReadiness.className = `pdv-offline-readiness is-${state}`;
+    offlineReadinessLabel.textContent = label;
+  };
   const refreshFinishAvailability = () => {
     const finishButton = find('[data-pdv-finish]');
     if (!finishButton) return;
@@ -144,6 +185,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const label = offlineState && offlineQueueAvailable() ? 'Salvar na fila offline' : 'Finalizar venda';
     const textNode = Array.from(finishButton.childNodes).find((node) => node.nodeType === Node.TEXT_NODE);
     if (textNode) textNode.textContent = label + ' ';
+    renderOfflineReadiness();
   };
   const setConnectionState = (state, detail = '') => {
     pdvConnection = state;
@@ -611,6 +653,15 @@ document.addEventListener('DOMContentLoaded', () => {
     const serial = ++searchSerial;
     if (term.length < 2) { clearResults(); return; }
     if (clinic && !clinic.value) { message(lookupStatus, 'Selecione uma clínica.', 'warning'); return; }
+    if (shouldUseOfflineCatalog(pdvConnection)) {
+      if (!offlineQueueAvailable()) {
+        clearResults();
+        message(lookupStatus, offlineCatalogProblem() || 'O catálogo local não está disponível.', 'warning');
+        return;
+      }
+      renderSearchResults(searchOfflineCatalog(offlineCatalog, term), true);
+      return;
+    }
     try {
       const url = new URL(form.dataset.searchUrl, window.location.origin);
       url.searchParams.set('q', term);
@@ -629,6 +680,36 @@ document.addEventListener('DOMContentLoaded', () => {
       message(lookupStatus, error.message || 'Busca indisponível.', 'error');
     }
   };
+  const lookupOfflineBarcode = (gtin) => {
+    if (!offlineQueueAvailable()) {
+      const detail = offlineCatalogProblem() || 'O catálogo local não está disponível.';
+      message(lookupStatus, detail, 'warning');
+      setScannerState('error', detail);
+      feedbackTone(false);
+      return;
+    }
+    const scaleReading = readOfflineScaleLabel(offlineCatalog, gtin);
+    if (scaleReading.recognized && !scaleReading.valid) {
+      message(lookupStatus, scaleReading.message, 'warning');
+      setScannerState('warning', scaleReading.message);
+      feedbackTone(false);
+      return;
+    }
+    const localItem = scaleReading.valid ? scaleReading.item : searchOfflineCatalog(offlineCatalog, gtin, 1)[0];
+    if (localItem) {
+      addSearchItem(localItem, {
+        state: 'warning',
+        detail: localItem.scale_label
+          ? `Etiqueta lida offline: ${quantity(localItem.quantity).toLocaleString('pt-BR', { minimumFractionDigits: 3 })} kg. O estoque será conferido na sincronização.`
+          : 'Código encontrado no catálogo local; o estoque será conferido na sincronização.',
+        autoReset: false,
+      });
+      return;
+    }
+    message(lookupStatus, 'Código ausente do catálogo local. Aguarde a conexão para cadastrar ou consultar.', 'warning');
+    setScannerState('error', 'Não foi possível encontrar este código no catálogo local.');
+    feedbackTone(false);
+  };
   const lookupBarcode = async () => {
     const gtin = search.value.replace(/\D/g, '');
     if (gtin.length < 8) return quickSearch();
@@ -640,6 +721,12 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     const serial = ++searchSerial;
     clearResults();
+    if (shouldUseOfflineCatalog(pdvConnection)) {
+      message(lookupStatus, 'Consultando o catálogo local criptografado...');
+      setScannerState('reading', 'Código ' + gtin + ' recebido. Consultando o catálogo local...');
+      lookupOfflineBarcode(gtin);
+      return;
+    }
     message(lookupStatus, 'Consultando código...');
     setScannerState('reading', 'Código ' + gtin + ' recebido. Consultando o cadastro...');
     try {
@@ -670,27 +757,7 @@ document.addEventListener('DOMContentLoaded', () => {
       } : {});
       message(lookupStatus, [data.message, ...warnings].filter(Boolean).join(' '), warnings.length || data.mode === 'catalog' ? 'warning' : 'success');
     } catch {
-      const scaleReading = readOfflineScaleLabel(offlineCatalog, gtin);
-      if (scaleReading.recognized && !scaleReading.valid) {
-        message(lookupStatus, scaleReading.message, 'warning');
-        setScannerState('warning', scaleReading.message);
-        feedbackTone(false);
-        return;
-      }
-      const localItem = scaleReading.valid ? scaleReading.item : searchOfflineCatalog(offlineCatalog, gtin, 1)[0];
-      if (localItem) {
-        addSearchItem(localItem, {
-          state: 'warning',
-          detail: localItem.scale_label
-            ? `Etiqueta lida offline: ${quantity(localItem.quantity).toLocaleString('pt-BR', { minimumFractionDigits: 3 })} kg. O estoque será conferido na sincronização.`
-            : 'Código encontrado no catálogo local; o estoque será conferido na sincronização.',
-          autoReset: false,
-        });
-        return;
-      }
-      message(lookupStatus, 'Código ausente do catálogo local. Aguarde a conexão para cadastrar ou consultar.', 'warning');
-      setScannerState('error', 'Não foi possível encontrar este código no catálogo local.');
-      feedbackTone(false);
+      lookupOfflineBarcode(gtin);
     }
   };
   // Receiving requires the operator's open cash session in the sale clinic.
@@ -707,6 +774,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (session) cashLink.href = session.url;
     cashOpenButton.hidden = Boolean(session) || needsClinic;
     cashOpenButton.disabled = isQuoteMode() || pdvConnection !== 'online';
+    renderOfflineReadiness();
   };
 
   const refreshOfflineQueue = async () => {
@@ -750,6 +818,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const clinicId = cashClinicId();
     offlineCatalog = offlineStore && clinicId ? await offlineStore.catalog(clinicId) : null;
     refreshFinishAvailability();
+    renderOfflineReadiness();
   };
 
   const applyOfflineSnapshot = async (snapshot) => {
@@ -764,6 +833,7 @@ document.addEventListener('DOMContentLoaded', () => {
     renderShortcuts();
     renderCash();
     refreshFinishAvailability();
+    renderOfflineReadiness();
   };
 
   const refreshOfflineCatalog = async () => {
@@ -945,6 +1015,7 @@ document.addEventListener('DOMContentLoaded', () => {
     } finally {
       offlineInitializing = false;
       refreshFinishAvailability();
+      renderOfflineReadiness();
     }
   };
   const openCashDialog = (then = null) => {
@@ -982,6 +1053,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
       cashSessions[clinicId] = data.session;
       renderCash();
+      await refreshOfflineCatalog().catch(() => false);
       cashDialog.close();
       message(checkoutStatus, data.message || 'Caixa aberto.', 'success');
       const next = afterCashOpen;

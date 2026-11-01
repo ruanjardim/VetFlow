@@ -36,6 +36,7 @@
     <span><small>Unidade</small><strong data-pdv-header-clinic>{{ $selectedClinicName }}</strong></span>
     <span><small>Horário</small><strong data-pdv-clock>--:--</strong></span>
     <span class="pdv-connection is-checking" data-pdv-connection-state role="status" aria-live="polite"><small>Conexão</small><strong><i aria-hidden="true"></i><b data-pdv-connection-label>Verificando</b></strong></span>
+    <span class="pdv-offline-readiness is-checking" data-pdv-offline-readiness role="status" aria-live="polite" title="Preparando o catálogo local criptografado."><small>Offline</small><strong><i aria-hidden="true"></i><b data-pdv-offline-readiness-label>Preparando</b></strong></span>
   </div>
   <div class="pdv-counter-actions">
     <button type="button" class="button pdv-offline-queue" data-pdv-offline-queue hidden>

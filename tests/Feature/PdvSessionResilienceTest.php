@@ -42,6 +42,8 @@ class PdvSessionResilienceTest extends TestCase
             ->assertSee('data-pdv-connection-state', false)
             ->assertSee('data-pdv-connectivity-alert', false)
             ->assertSee('data-pdv-offline-queue', false)
+            ->assertSee('data-pdv-offline-readiness', false)
+            ->assertSee('data-pdv-offline-readiness-label', false)
             ->assertSee('data-pdv-offline-dialog', false)
             ->assertSee('data-pdv-close', false)
             ->assertSee('Sair do PDV');
