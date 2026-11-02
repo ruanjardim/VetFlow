@@ -22,14 +22,17 @@ The local working tree was clean before this documentation pass.
   a visual state, optional tone, latest-item highlight and automatic readiness
   for the next scan. PDV entry points open a dedicated tab, and a four-minute
   heartbeat keeps an active counter session alive while visible connectivity
-  states distinguish network and authentication loss. A complete, clinic-
-  scoped catalog snapshot and queued checkouts are encrypted in IndexedDB;
-  supported regular sales can continue after the connection drops and are
-  synchronized idempotently when it returns. A dedicated readiness indicator
-  confirms whether the encrypted catalog and cash context are prepared, and
-  offline searches bypass the unavailable server immediately. Server-side
-  stock, cash, finance, tenant and audit rules remain authoritative, and
-  conflicts remain queued for review (see `docs/modules/sales.md`).
+  states distinguish network and authentication loss. A privacy-safe service-
+  worker shell lets the prepared `/sales/create` counter reopen after an offline
+  F5 without caching customer records or session credentials. The current cart,
+  complete clinic-scoped catalog and queued checkouts are encrypted in
+  IndexedDB; supported regular sales can continue consecutively after the
+  connection drops and synchronize idempotently when it returns. A dedicated
+  readiness indicator confirms whether the shell, encrypted catalog and cash
+  context are prepared, and offline searches bypass the unavailable server
+  immediately. Server-side stock, cash, finance, tenant and audit rules remain
+  authoritative, and conflicts remain queued for review (see
+  `docs/modules/sales.md`).
 - Commercial scale labels are supported through the existing USB keyboard-
   wedge flow. A clinic can configure a variable-weight EAN-13 layout (prefix,
   product-code width and weight precision), and each kilogram product can keep

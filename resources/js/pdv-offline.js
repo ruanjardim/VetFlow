@@ -4,6 +4,7 @@ const META_STORE = 'meta';
 const SECURE_STORE = 'secure_records';
 const KEY_ID = 'encryption-key';
 const DEVICE_ID = 'device-id';
+const CONTEXT_ID = 'runtime-context';
 const textEncoder = new TextEncoder();
 const textDecoder = new TextDecoder();
 
@@ -177,6 +178,40 @@ export class PdvOfflineStore {
 
   async catalog(clinicId) {
     return this.getSecure(`catalog:${clinicId}`);
+  }
+
+  async saveContext(context) {
+    return this.putSecure({
+      id: CONTEXT_ID,
+      kind: 'context',
+      clinicId: String(context?.clinic?.id || ''),
+      state: 'ready',
+      createdAt: new Date().toISOString(),
+    }, context);
+  }
+
+  async context() {
+    return this.getSecure(CONTEXT_ID);
+  }
+
+  async saveDraft(clinicId, draft) {
+    return this.putSecure({
+      id: `draft:${clinicId}`,
+      kind: 'draft',
+      clinicId: String(clinicId),
+      state: 'editing',
+      createdAt: draft.updatedAt || new Date().toISOString(),
+    }, draft);
+  }
+
+  async draft(clinicId) {
+    return this.getSecure(`draft:${clinicId}`);
+  }
+
+  async removeDraft(clinicId) {
+    const transaction = this.database.transaction(SECURE_STORE, 'readwrite');
+    transaction.objectStore(SECURE_STORE).delete(`draft:${clinicId}`);
+    await transactionDone(transaction);
   }
 
   async queueSale(sale) {

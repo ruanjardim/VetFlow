@@ -39,6 +39,9 @@ class PdvSessionResilienceTest extends TestCase
             ->assertSee('data-session-heartbeat-url="'.route('sales.pdv.session').'"', false)
             ->assertSee('data-offline-catalog-url="'.route('sales.pdv.offline-catalog').'"', false)
             ->assertSee('data-offline-sync-url="'.route('sales.pdv.offline-sync').'"', false)
+            ->assertSee('data-offline-shell-url="'.route('sales.pdv.offline-shell').'"', false)
+            ->assertSee('data-service-worker-url="'.asset('pdv-sw.js').'"', false)
+            ->assertSee('data-pdv-client-request-id', false)
             ->assertSee('data-pdv-connection-state', false)
             ->assertSee('data-pdv-connectivity-alert', false)
             ->assertSee('data-pdv-offline-queue', false)
@@ -59,10 +62,51 @@ class PdvSessionResilienceTest extends TestCase
         $response
             ->assertOk()
             ->assertJsonPath('status', 'ok')
+            ->assertJsonPath('operator_id', $user->id)
+            ->assertJsonStructure(['csrf_token'])
             ->assertJsonPath('session_lifetime_minutes', (int) config('session.lifetime'));
 
         $this->assertIsInt(session('pdv_last_heartbeat_at'));
         $this->assertStringContainsString('no-store', (string) $response->headers->get('Cache-Control'));
+    }
+
+    public function test_offline_shell_is_sanitized_and_contains_no_session_token_or_operator_name(): void
+    {
+        $user = User::factory()->create([
+            'active' => true,
+            'clinic_id' => null,
+            'name' => 'Operador Não Pode Vazar',
+        ]);
+        $this->grantPermissions($user, ['sales.manage']);
+        $sessionToken = 'csrf-nao-pode-ser-cacheado-123';
+        $oldInputSecret = 'observacao-de-cliente-nao-pode-ser-cacheada';
+
+        $response = $this->actingAs($user)
+            ->withSession([
+                '_token' => $sessionToken,
+                '_old_input' => [
+                    'notes' => $oldInputSecret,
+                    'payments' => [['reference' => $oldInputSecret]],
+                ],
+            ])
+            ->get(route('sales.pdv.offline-shell'));
+
+        $response
+            ->assertOk()
+            ->assertHeader('X-VetFlow-PDV-Shell', '1')
+            ->assertSee('data-pdv-offline-shell="1"', false)
+            ->assertSee('name="_token" value=""', false)
+            ->assertSee('data-pdv-header-operator', false)
+            ->assertDontSee('Operador Não Pode Vazar')
+            ->assertDontSee($sessionToken)
+            ->assertDontSee($oldInputSecret)
+            ->assertDontSee('primary-navigation');
+
+        $this->assertStringContainsString('no-store', (string) $response->headers->get('Cache-Control'));
+        $this->assertFileExists(public_path('pdv-sw.js'));
+        $worker = (string) file_get_contents(public_path('pdv-sw.js'));
+        $this->assertStringContainsString("const OFFLINE_SHELL_PATH = '/sales/pdv/offline-shell';", $worker);
+        $this->assertStringContainsString("url.pathname !== '/sales/create'", $worker);
     }
 
     public function test_guest_cannot_use_the_pdv_heartbeat(): void

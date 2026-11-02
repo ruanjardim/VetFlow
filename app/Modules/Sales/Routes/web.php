@@ -16,6 +16,10 @@ Route::get('sales/pdv/offline-catalog', [SaleController::class, 'offlineCatalog'
     ->middleware('throttle:12,1')
     ->name('sales.pdv.offline-catalog');
 
+Route::get('sales/pdv/offline-shell', [SaleController::class, 'offlineShell'])
+    ->middleware('throttle:12,1')
+    ->name('sales.pdv.offline-shell');
+
 Route::post('sales/pdv/offline-sync', [SaleController::class, 'syncOffline'])
     ->middleware('throttle:30,1')
     ->name('sales.pdv.offline-sync');

@@ -56,15 +56,16 @@ Run setup with Composer, npm, migrations, and the Laravel server as described in
 
 ## Current Delivery Focus
 
-The counter PDV now has a deliberately bounded offline-continuity path for an
-already loaded session. A non-PII clinic catalog and pending supported sales are
-encrypted locally; UUID idempotency and authoritative server reconciliation
-ensure inventory, open cash, finance and audit effects happen at most once.
-Conflicting stock or operational state remains visible in the local queue, and
-complex linked or deferred-payment flows remain online-only. This protects a
-counter kept alive by a UPS without pretending that independent offline devices
-share live inventory or that the hosted application can cold-start without a
-connection.
+The counter PDV now has a deliberately bounded offline-continuity path for a
+device prepared while authenticated. A privacy-safe application shell can
+reopen the regular counter route after an offline F5; the current cart, a
+non-PII clinic catalog and pending supported sales are encrypted locally. UUID
+idempotency and authoritative server reconciliation ensure inventory, open
+cash, finance and audit effects happen at most once. Conflicting stock or
+operational state remains visible in the local queue, and complex linked or
+deferred-payment flows remain online-only. This protects a counter kept alive
+by a UPS without pretending that an unprepared device can cold-start offline or
+that independent offline devices share live inventory.
 
 The financial area now distinguishes operational projection from bank
 evidence. Clinics can register their own financial accounts and import bounded

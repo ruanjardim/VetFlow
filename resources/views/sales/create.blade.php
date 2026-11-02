@@ -1,26 +1,27 @@
-@extends('layouts.admin')
+@extends(($offlineShell ?? false) ? 'layouts.pdv-offline' : 'layouts.admin')
 @section('title', 'PDV - VetFlow')
 @section('body_class', 'pdv-counter-mode')
 @section('content')
 @php
+  $offlineShellMode = (bool) ($offlineShell ?? false);
   $checkoutOrder = $serviceOrderCheckout['order'] ?? null;
   $checkoutPackage = $serviceOrderCheckout['package'] ?? null;
   $checkoutQuote = $serviceOrderCheckout['quote'] ?? null;
   $quoteSource = $checkoutQuote ?? $editingQuote;
   $checkoutSource = $checkoutOrder ?? $checkoutPackage ?? $quoteSource;
   $money = fn ($value) => number_format((float) $value, 2, ',', '.');
-  $selectedClinicId = (int) old('clinic_id', $checkoutSource?->clinic_id ?? auth()->user()?->clinic_id ?? ($clinics->count() === 1 ? $clinics->first()->id : 0));
-  $selectedTutorId = (int) old('tutor_id', $checkoutSource?->tutor_id ?? 0);
-  $selectedPatientId = (int) old('patient_id', $checkoutSource?->patient_id ?? 0);
-  $initialItems = old('items', $editingQuote ? app(\App\Modules\Sales\Services\SaleQuoteService::class)->cartItems($editingQuote) : ($serviceOrderCheckout['items'] ?? []));
-  $initialDiscount = old('discount_total', $checkoutOrder ? $money($checkoutOrder->discount_total) : ($quoteSource ? $money($quoteSource->discount_total) : '0,00'));
-  $initialAdditions = old('additions_total', $quoteSource ? $money($quoteSource->additions_total) : '0,00');
-  $initialSaleType = old('sale_type', $quoteSource?->sale_type ?? \App\Modules\Sales\Support\SaleType::DEFAULT);
-  $initialDeliveryFee = old('delivery_fee', $quoteSource ? $money($quoteSource->delivery_fee) : '0,00');
-  $initialDeliveryAddress = old('delivery_address', $quoteSource?->delivery_address ?? '');
-  $initialNotes = old('notes', $quoteSource?->notes ?? '');
-  $initialValidUntil = old('valid_until', $editingQuote?->valid_until?->toDateString() ?? $defaultQuoteValidUntil);
-  $canToggleMode = ! $checkoutSource;
+  $selectedClinicId = $offlineShellMode ? 0 : (int) old('clinic_id', $checkoutSource?->clinic_id ?? auth()->user()?->clinic_id ?? ($clinics->count() === 1 ? $clinics->first()->id : 0));
+  $selectedTutorId = $offlineShellMode ? 0 : (int) old('tutor_id', $checkoutSource?->tutor_id ?? 0);
+  $selectedPatientId = $offlineShellMode ? 0 : (int) old('patient_id', $checkoutSource?->patient_id ?? 0);
+  $initialItems = $offlineShellMode ? [] : old('items', $editingQuote ? app(\App\Modules\Sales\Services\SaleQuoteService::class)->cartItems($editingQuote) : ($serviceOrderCheckout['items'] ?? []));
+  $initialDiscount = $offlineShellMode ? '0,00' : old('discount_total', $checkoutOrder ? $money($checkoutOrder->discount_total) : ($quoteSource ? $money($quoteSource->discount_total) : '0,00'));
+  $initialAdditions = $offlineShellMode ? '0,00' : old('additions_total', $quoteSource ? $money($quoteSource->additions_total) : '0,00');
+  $initialSaleType = $offlineShellMode ? \App\Modules\Sales\Support\SaleType::DEFAULT : old('sale_type', $quoteSource?->sale_type ?? \App\Modules\Sales\Support\SaleType::DEFAULT);
+  $initialDeliveryFee = $offlineShellMode ? '0,00' : old('delivery_fee', $quoteSource ? $money($quoteSource->delivery_fee) : '0,00');
+  $initialDeliveryAddress = $offlineShellMode ? '' : old('delivery_address', $quoteSource?->delivery_address ?? '');
+  $initialNotes = $offlineShellMode ? '' : old('notes', $quoteSource?->notes ?? '');
+  $initialValidUntil = $offlineShellMode ? $defaultQuoteValidUntil : old('valid_until', $editingQuote?->valid_until?->toDateString() ?? $defaultQuoteValidUntil);
+  $canToggleMode = ! $checkoutSource && ! $offlineShellMode;
   $mode = $editingQuote ? 'quote' : ($canToggleMode ? old('pdv_mode', $startMode) : 'sale');
   $mode = in_array($mode, ['sale', 'quote'], true) ? $mode : 'sale';
   $selectedClinic = $clinics->firstWhere('id', $selectedClinicId);
@@ -32,7 +33,7 @@
     <div><strong>VetFlow</strong><span>Ponto de venda</span></div>
   </div>
   <div class="pdv-counter-context" aria-label="Contexto do ponto de venda">
-    <span><small>Operador</small><strong>{{ auth()->user()?->name }}</strong></span>
+    <span><small>Operador</small><strong data-pdv-header-operator>{{ $offlineShellMode ? 'Recuperando contexto local' : auth()->user()?->name }}</strong></span>
     <span><small>Unidade</small><strong data-pdv-header-clinic>{{ $selectedClinicName }}</strong></span>
     <span><small>Horário</small><strong data-pdv-clock>--:--</strong></span>
     <span class="pdv-connection is-checking" data-pdv-connection-state role="status" aria-live="polite"><small>Conexão</small><strong><i aria-hidden="true"></i><b data-pdv-connection-label>Verificando</b></strong></span>
@@ -43,7 +44,7 @@
       Fila offline <b data-pdv-offline-count>0</b>
     </button>
     <button type="button" class="button secondary" data-pdv-fullscreen aria-pressed="false">Tela cheia</button>
-    <details class="pdv-counter-more">
+    <details class="pdv-counter-more" @if($offlineShellMode) hidden @endif>
       <summary class="button secondary">Mais opções</summary>
       <nav aria-label="Atalhos administrativos do PDV">
         <a href="{{ route('sales.index', ['status' => 'draft']) }}">Vendas suspensas</a>
@@ -56,7 +57,14 @@
     <button class="button pdv-counter-exit" type="button" data-pdv-close data-pdv-exit-url="{{ route('sales.index') }}">Sair do PDV</button>
   </div>
 </header>
-@include('shared.clinic-required-alert', ['clinics' => $clinics])
+@unless($offlineShellMode)
+  @include('shared.clinic-required-alert', ['clinics' => $clinics])
+@endunless
+@if($offlineShellMode)
+  <div class="alert warning" role="status" data-pdv-offline-shell-alert>
+    PDV reaberto no modo de contingência. O catálogo, o carrinho e a fila serão recuperados do armazenamento criptografado deste dispositivo.
+  </div>
+@endif
 @if($checkoutOrder)
   <div class="alert success" role="status">
     Recebendo a comanda <strong>{{ $checkoutOrder->code }}</strong>
@@ -90,6 +98,7 @@
   <div class="alert error" role="alert">O orçamento informado não está aberto (convertido, cancelado, inexistente ou com venda em andamento).</div>
 @endif
 <form method="POST" action="{{ $editingQuote ? route('sales.quotes.update', $editingQuote->id) : route('sales.store') }}" data-pdv-form
+  data-pdv-offline-shell="{{ $offlineShellMode ? '1' : '0' }}"
   data-pdv-mode="{{ $mode }}"
   data-delivery-types="{{ json_encode($deliverySaleTypes) }}"
   data-search-url="{{ route('sales.quick-search') }}"
@@ -97,7 +106,7 @@
   data-quick-product-url="{{ route('sales.quick-products.store') }}"
   data-product-create-url="{{ route('products.create') }}?gtin=__GTIN__&from=sales"
   data-old-items="{{ json_encode($initialItems, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) }}"
-  data-old-payments="{{ json_encode(old('payments', []), JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) }}"
+  data-old-payments="{{ json_encode($offlineShellMode ? [] : old('payments', []), JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) }}"
   data-payment-methods="{{ json_encode($paymentMethods->map->toPdvArray()->values(), JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) }}"
   data-cash-sessions="{{ json_encode((object) $cashSessions, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) }}"
   data-cash-suggested="{{ json_encode((object) $suggestedOpenings, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) }}"
@@ -110,13 +119,20 @@
        must never prevent the core online PDV from rendering. --}}
   data-offline-catalog-url="{{ url('/sales/pdv/offline-catalog') }}"
   data-offline-sync-url="{{ url('/sales/pdv/offline-sync') }}"
-  data-user-clinic-id="{{ auth()->user()?->clinic_id }}"
+  data-offline-shell-url="{{ url('/sales/pdv/offline-shell') }}"
+  data-service-worker-url="{{ asset('pdv-sw.js') }}"
+  data-user-clinic-id="{{ $offlineShellMode ? '' : auth()->user()?->clinic_id }}"
   data-initial-scan="{{ request('scan', '') }}">
-  @csrf
+  @if($offlineShellMode)
+    <input type="hidden" name="_token" value="">
+  @else
+    @csrf
+  @endif
   @if($editingQuote)
     @method('PUT')
   @endif
   <input type="hidden" name="source" value="pdv">
+  <input type="hidden" name="client_request_id" value="{{ $offlineShellMode ? '' : old('client_request_id', '') }}" data-pdv-client-request-id>
   <input type="hidden" name="pdv_mode" value="{{ $mode }}" data-pdv-mode-input>
   @if($checkoutOrder)
     <input type="hidden" name="service_order_id" value="{{ $checkoutOrder->id }}">
@@ -156,7 +172,7 @@
           <button type="button" class="{{ $mode === 'quote' ? 'is-active' : '' }}" aria-pressed="{{ $mode === 'quote' ? 'true' : 'false' }}" data-pdv-mode-button="quote">Orçamento</button>
         </div>
       @endif
-      @if(auth()->user()?->clinic_id === null)
+      @if($offlineShellMode || auth()->user()?->clinic_id === null)
         <div class="field">
           <label for="pdv_clinic">Clínica</label>
           <select id="pdv_clinic" name="clinic_id" data-pdv-clinic required>
@@ -288,8 +304,8 @@
       <span>Troco <strong data-pdv-dialog-change>R$ 0,00</strong></span>
     </div>
     <div class="pdv-payment-options" data-pdv-customer-options>
-      <label><input type="checkbox" name="pay_later" value="1" data-pdv-pay-later @checked(old('pay_later'))> Receber o que falta depois (fiado)</label>
-      <label><input type="checkbox" name="change_as_credit" value="1" data-pdv-change-as-credit @checked(old('change_as_credit'))> Guardar o troco como crédito do cliente</label>
+      <label><input type="checkbox" name="pay_later" value="1" data-pdv-pay-later @checked(! $offlineShellMode && old('pay_later'))> Receber o que falta depois (fiado)</label>
+      <label><input type="checkbox" name="change_as_credit" value="1" data-pdv-change-as-credit @checked(! $offlineShellMode && old('change_as_credit'))> Guardar o troco como crédito do cliente</label>
       <small class="muted" data-pdv-customer-options-hint>Identifique o cliente (F4) para vender fiado ou guardar o troco como crédito.</small>
     </div>
     <p class="lookup-status" role="status" aria-live="polite" data-pdv-payment-status></p>
