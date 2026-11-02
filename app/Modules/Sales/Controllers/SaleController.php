@@ -35,6 +35,7 @@ use App\Modules\ServiceOrders\Models\ServiceOrder;
 use App\Modules\Tutors\Models\Tutor;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Crypt;
@@ -104,6 +105,39 @@ class SaleController extends BaseCrudController
                 ->addDays(max(1, (int) config('sales.quote_validity_days', SaleQuoteService::DEFAULT_VALIDITY_DAYS)))
                 ->toDateString(),
         ]));
+    }
+
+    /**
+     * Privacy-safe application shell cached by the PDV service worker.
+     * Runtime clinic, operator, catalog and draft data are restored only from
+     * the encrypted IndexedDB store on the device.
+     */
+    public function offlineShell(): Response
+    {
+        $defaultQuoteValidUntil = today()
+            ->addDays(max(1, (int) config('sales.quote_validity_days', SaleQuoteService::DEFAULT_VALIDITY_DAYS)))
+            ->toDateString();
+
+        return response()
+            ->view('sales.create', [
+                'offlineShell' => true,
+                'clinics' => collect(),
+                'tutors' => collect(),
+                'patients' => collect(),
+                'paymentMethods' => collect(),
+                'cashSessions' => [],
+                'suggestedOpenings' => [],
+                'serviceOrderCheckout' => null,
+                'editingQuote' => null,
+                'startMode' => 'sale',
+                'saleTypes' => SaleType::LABELS,
+                'deliverySaleTypes' => array_values(array_filter(SaleType::keys(), fn (string $type) => SaleType::hasDelivery($type))),
+                'defaultQuoteValidUntil' => $defaultQuoteValidUntil,
+            ])
+            ->withHeaders([
+                'X-VetFlow-PDV-Shell' => '1',
+                'Cache-Control' => 'private, no-store, no-cache, must-revalidate, max-age=0',
+            ]);
     }
 
     public function store(Request $request)
@@ -317,6 +351,10 @@ class SaleController extends BaseCrudController
             'clinic' => [
                 'id' => $clinic->id,
                 'name' => $clinic->trade_name ?? $clinic->corporate_name,
+            ],
+            'operator' => [
+                'id' => (int) auth()->id(),
+                'name' => (string) auth()->user()?->name,
             ],
             'complete' => $complete,
             'limit' => $limit,

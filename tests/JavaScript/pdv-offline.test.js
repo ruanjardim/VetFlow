@@ -1,7 +1,11 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { searchOfflineCatalog, shouldUseOfflineCatalog } from '../../resources/js/pdv-offline.js';
+import {
+  reserveOfflineStock,
+  searchOfflineCatalog,
+  shouldUseOfflineCatalog,
+} from '../../resources/js/pdv-offline.js';
 
 const catalog = {
   complete: true,
@@ -28,4 +32,21 @@ test('the encrypted snapshot search finds the homologation product by name or sk
   assert.equal(searchOfflineCatalog(catalog, 'shampoo ficticio')[0]?.product_id, 6);
   assert.equal(searchOfflineCatalog(catalog, 'HOMO-06BAAEC')[0]?.product_id, 6);
   assert.deepEqual(searchOfflineCatalog(catalog, 'produto ausente'), []);
+});
+
+test('consecutive offline sales reserve stock in the local snapshot', () => {
+  const snapshot = structuredClone(catalog);
+  const firstSale = [
+    ['items[0][product_id]', '6'],
+    ['items[0][quantity]', '1.5'],
+  ];
+  const secondSale = [
+    ['items[0][product_id]', '6'],
+    ['items[0][quantity]', '1'],
+  ];
+
+  reserveOfflineStock(snapshot, firstSale);
+  reserveOfflineStock(snapshot, secondSale);
+
+  assert.equal(snapshot.items[0].stock_quantity, 1.5);
 });

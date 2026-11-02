@@ -46,6 +46,8 @@ class PdvOfflineSalesTest extends TestCase
             ->assertJsonPath('complete', true)
             ->assertJsonStructure(['offline_context_token'])
             ->assertJsonPath('clinic.id', $clinic->id)
+            ->assertJsonPath('operator.id', $user->id)
+            ->assertJsonPath('operator.name', $user->name)
             ->assertJsonPath('items.0.product_id', $product->id)
             ->assertJsonPath('items.0.barcode', '7891000000001')
             ->assertJsonPath('items.1.type', 'service')
@@ -107,6 +109,31 @@ class PdvOfflineSalesTest extends TestCase
         $this->assertSame(1, InventoryMovement::query()->where('sale_id', $sale->id)->count());
         $this->assertSame(1, FinancialTransaction::query()->whereKey($sale->financial_transaction_id)->count());
         $this->assertSame(1, $sale->events()->where('event_type', 'offline_synced')->count());
+    }
+
+    public function test_online_pdv_retry_with_same_client_request_id_is_idempotent(): void
+    {
+        $clinic = $this->clinic('Clínica Retentativa Online', '00000000000908');
+        $product = $this->product($clinic, 'Produto retentativa', 5, 31);
+        $user = $this->userFor($clinic);
+        $this->openCashSession($user, $clinic, 50);
+        $requestId = (string) Str::uuid();
+        $payload = $this->offlinePayload($clinic, $product, $user, $requestId);
+        unset(
+            $payload['offline_device_id'],
+            $payload['offline_captured_at'],
+            $payload['offline_context_token']
+        );
+        $payload['source'] = 'pdv';
+
+        $first = $this->actingAs($user)->post(route('sales.store'), $payload);
+        $second = $this->post(route('sales.store'), $payload);
+
+        $first->assertRedirect();
+        $second->assertRedirect($first->headers->get('Location'));
+        $this->assertDatabaseCount('sales', 1);
+        $this->assertEquals(4, (float) $product->fresh()->stock_quantity);
+        $this->assertSame(1, InventoryMovement::query()->count());
     }
 
     public function test_offline_request_id_cannot_be_replayed_by_another_operator(): void

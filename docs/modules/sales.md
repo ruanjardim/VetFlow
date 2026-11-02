@@ -108,28 +108,39 @@ financial income, returns, refunds, cancellations, and sale event history.
   the server session every four minutes. The header exposes online, offline,
   unavailable and expired-session states. If authentication expires, the cart
   stays visible and the operator can authenticate in another tab before
-  continuing.
-- When connectivity is lost after the PDV has been loaded, a completed regular
-  sale can be placed in an encrypted IndexedDB queue. The queue and its catalog
-  snapshot use a non-extractable browser AES-GCM key; the catalog is clinic-
-  scoped, deliberately excludes customer and patient records, must be complete,
-  and is accepted for at most 24 hours. A random device identifier and one UUID
-  per checkout make later synchronization idempotent. A server-encrypted
-  context binds the snapshot to its clinic and operator so a queue left on a
-  shared computer cannot be assumed by a different login.
+  continuing. A successful heartbeat also rotates the shell's CSRF token and
+  verifies that the authenticated operator owns the encrypted offline context
+  before any queued record is sent.
+- While connected, a root-scoped service worker stores a dedicated privacy-safe
+  application shell and its versioned CSS/JavaScript assets. It never caches the
+  authenticated PDV HTML, customer/patient options, CSRF token or administrative
+  layout. After preparation, an offline refresh of the regular `/sales/create`
+  route falls back to that shell, which restores its clinic/operator context and
+  any unfinished cart from encrypted IndexedDB. Advanced, quote, package,
+  service-order and quote-conversion URLs do not use this navigation fallback.
+- When connectivity is lost, a completed regular sale can be placed in an
+  encrypted IndexedDB queue. The draft, queue and catalog snapshot use a non-
+  extractable browser AES-GCM key; the catalog is clinic-scoped, deliberately
+  excludes customer and patient records, must be complete, and is accepted for
+  at most 24 hours. A random device identifier and one UUID per checkout make
+  later synchronization idempotent. A server-encrypted context binds the
+  snapshot to its clinic and operator so a queue left on a shared computer
+  cannot be assumed by a different login.
 - The counter header exposes a separate offline-readiness state. Operators must
   wait for **Offline: Pronto** before disconnecting; **Abra o caixa** means the
-  encrypted catalog is saved but checkout still needs an online-confirmed cash
-  session. Once the connection is known to be offline or unavailable, name,
-  SKU, barcode, and scale-label searches bypass the server and read the local
-  encrypted catalog immediately instead of waiting for a network timeout.
+  shell and encrypted catalog are saved but checkout still needs an online-
+  confirmed cash session. Once the connection is known to be offline or
+  unavailable, name, SKU, barcode, and scale-label searches bypass the server
+  and read the local encrypted catalog immediately instead of waiting for a
+  network timeout.
 - Offline checkout requires a cash session that was already open in the latest
   local snapshot. It does not open or close cash, and it excludes deferred or
   externally linked workflows: pay-later sales, customer-credit use, change as
   credit, packages, service orders and quote conversions. Regular product,
   service and custom items with a fully received supported payment can be
-  queued. Local stock reservation reduces repeated sales on the same device but
-  remains advisory.
+  queued. Local stock reservation reduces repeated sales on the same device and
+  allows several supported checkouts to be captured consecutively, but remains
+  advisory.
 - The browser retries queued records automatically after connectivity returns.
   The server remains authoritative: tenant, payment, open cash and sellable
   stock rules are revalidated inside the normal atomic sale transaction. A
@@ -137,13 +148,12 @@ financial income, returns, refunds, cancellations, and sale event history.
   effects exactly once, saves the original capture time and device, and records
   source `pdv_offline`. Validation or business conflicts stay visibly queued
   for review/retry instead of being discarded.
-- The offline queue is continuity for an already loaded counter, not a complete
-  installable offline application. A UPS can keep the computer working through
-  a connection or external power outage and the persistent queue survives a
-  browser restart, but the hosted PDV route itself still needs connectivity to
-  be opened again before queued records can synchronize. Multiple offline
-  devices cannot guarantee live shared stock; conflicts are therefore resolved
-  only by the server on synchronization.
+- The offline shell is continuity for a previously prepared regular counter,
+  not a general installable application. A first visit still requires a valid
+  online session, and a deployment must be loaded online once before its newest
+  shell/assets replace the previous cached version. Multiple offline devices
+  cannot guarantee live shared stock; conflicts are therefore resolved only by
+  the server on synchronization.
 - A common USB barcode reader is treated as a keyboard wedge. With search
   focused, Enter submits an 8-14 digit EAN/GTIN immediately. When no editable
   field or PDV modal is active, a rapid numeric sequence is also captured and
@@ -179,7 +189,10 @@ financial income, returns, refunds, cancellations, and sale event history.
   change validations.
 - PDV completion requires full payment. Any change must be covered by cash
   received; suspended sales stay as editable drafts. Completion continues
-  through the existing SaleService stock, financial, and audit flow.
+  through the existing SaleService stock, financial, and audit flow. The
+  counter assigns a UUID before its online request as well: if the request
+  reaches the server but its response is lost, the same protected draft can be
+  retried or queued without applying the sale or stock movement twice.
 - A completed PDV sale opens its receipt with a direct new-sale action.
 - Sale item snapshots protect historical margin/reporting data from later
   product edits.

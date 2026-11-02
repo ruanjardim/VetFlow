@@ -15,6 +15,8 @@ final class PdvSessionController extends Controller
         return response()
             ->json([
                 'status' => 'ok',
+                'operator_id' => (int) $request->user()->id,
+                'csrf_token' => csrf_token(),
                 'session_lifetime_minutes' => (int) config('session.lifetime'),
             ])
             ->withHeaders([
