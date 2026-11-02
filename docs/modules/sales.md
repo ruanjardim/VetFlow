@@ -114,10 +114,12 @@ financial income, returns, refunds, cancellations, and sale event history.
 - While connected, a root-scoped service worker stores a dedicated privacy-safe
   application shell and its versioned CSS/JavaScript assets. It never caches the
   authenticated PDV HTML, customer/patient options, CSRF token or administrative
-  layout. After preparation, an offline refresh of the regular `/sales/create`
-  route falls back to that shell, which restores its clinic/operator context and
-  any unfinished cart from encrypted IndexedDB. Advanced, quote, package,
-  service-order and quote-conversion URLs do not use this navigation fallback.
+  layout. Its registration URL includes a content hash so the hosting CDN cannot
+  hold an older worker across releases. After preparation, an offline refresh of
+  the regular `/sales/create` route falls back to that shell, which restores its
+  clinic/operator context and any unfinished cart from encrypted IndexedDB.
+  Advanced, quote, package, service-order and quote-conversion URLs do not use
+  this navigation fallback.
 - When connectivity is lost, a completed regular sale can be placed in an
   encrypted IndexedDB queue. The draft, queue and catalog snapshot use a non-
   extractable browser AES-GCM key; the catalog is clinic-scoped, deliberately

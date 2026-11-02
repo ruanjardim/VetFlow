@@ -120,7 +120,7 @@
   data-offline-catalog-url="{{ url('/sales/pdv/offline-catalog') }}"
   data-offline-sync-url="{{ url('/sales/pdv/offline-sync') }}"
   data-offline-shell-url="{{ url('/sales/pdv/offline-shell') }}"
-  data-service-worker-url="{{ asset('pdv-sw.js') }}"
+  data-service-worker-url="{{ asset('pdv-sw.js') }}?v={{ substr(hash_file('sha256', public_path('pdv-sw.js')), 0, 12) }}"
   data-user-clinic-id="{{ $offlineShellMode ? '' : auth()->user()?->clinic_id }}"
   data-initial-scan="{{ request('scan', '') }}">
   @if($offlineShellMode)

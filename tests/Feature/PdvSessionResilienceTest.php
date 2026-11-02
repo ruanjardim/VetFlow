@@ -40,7 +40,7 @@ class PdvSessionResilienceTest extends TestCase
             ->assertSee('data-offline-catalog-url="'.route('sales.pdv.offline-catalog').'"', false)
             ->assertSee('data-offline-sync-url="'.route('sales.pdv.offline-sync').'"', false)
             ->assertSee('data-offline-shell-url="'.route('sales.pdv.offline-shell').'"', false)
-            ->assertSee('data-service-worker-url="'.asset('pdv-sw.js').'"', false)
+            ->assertSee('data-service-worker-url="'.asset('pdv-sw.js').'?v=', false)
             ->assertSee('data-pdv-client-request-id', false)
             ->assertSee('data-pdv-connection-state', false)
             ->assertSee('data-pdv-connectivity-alert', false)
