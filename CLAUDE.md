@@ -86,8 +86,12 @@ git checkout -b feat/<assunto>      # toda branch nova sai daqui
 
 ## 4. Onde estamos
 
-Última atualização: 05/11/2026.
+Última atualização: 06/11/2026.
 
+- **06/11/2026 — dependências de segurança:** o CI detectou alertas Symfony
+  publicados em 04/11. `symfony/http-foundation`, `http-kernel`, `routing` e
+  `yaml` foram atualizados para 7.4.23, com os patches transitivos necessários;
+  `composer audit --locked` voltou a ficar sem alertas conhecidos.
 - **Ciclo comercial, item 1/5 — preços públicos:** a landing page e os planos
   SaaS foram alinhados em R$ 97/mês para até 3 usuários (Essencial),
   R$ 197/mês para até 6 usuários (Profissional) e R$ 347/mês para até 15
