@@ -2,9 +2,9 @@
 
 namespace Tests\Feature;
 
-use App\Models\User;
 use App\Models\Permission;
 use App\Models\Role;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -25,6 +25,8 @@ class PublicSeoTest extends TestCase
             ->assertSee('<meta name="description"', false)
             ->assertSee('"@type": "SoftwareApplication"', false)
             ->assertSee('"@type": "Organization"', false)
+            ->assertSee('"@type": "AggregateOffer"', false)
+            ->assertSee('"lowPrice": "97.00"', false)
             ->assertSee('"email": "contato@vetflowsys.com.br"', false)
             ->assertSee('"email": "comercial@vetflowsys.com.br"', false)
             ->assertSee('mailto:comercial@vetflowsys.com.br?subject=Demonstra%C3%A7%C3%A3o%20do%20VetFlow', false)
@@ -32,6 +34,14 @@ class PublicSeoTest extends TestCase
             ->assertSee('href="'.route('home').'"', false)
             ->assertSee('id="recursos"', false)
             ->assertSee('id="para-quem"', false)
+            ->assertSee('id="planos"', false)
+            ->assertSee('R$ 97 por mês')
+            ->assertSee('Até 3 usuários')
+            ->assertSee('197<small>,00 / mês</small>', false)
+            ->assertSee('Até 6 usuários')
+            ->assertSee('347<small>,00 / mês</small>', false)
+            ->assertSee('Até 15 usuários')
+            ->assertSee('O comprovante padrão do PDV é não fiscal.')
             ->assertSee('images/auth-malinois-square.webp', false)
             ->assertSee('images/auth-pintabian-horse-square.png', false)
             ->assertSee('images/auth-beagle-square.png', false)

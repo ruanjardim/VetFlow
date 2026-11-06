@@ -1,6 +1,6 @@
 # VetFlow Status
 
-Updated: 2026-10-30
+Updated: 2026-11-06
 
 ## Current State
 
@@ -14,6 +14,17 @@ The local working tree was clean before this documentation pass.
 
 ## What Exists
 
+- Security dependencies were refreshed on 2026-11-06 after advisories released
+  on 2026-11-04: Symfony HTTP Foundation, HTTP Kernel, Routing and YAML are
+  locked at 7.4.23. `composer audit --locked` and the production-only npm audit
+  report no known advisories at this delivery.
+- Public launch pricing is now explicit and aligned with the SaaS plan records:
+  Essencial at R$ 97/month for up to 3 users, Profissional at R$ 197/month
+  for up to 6 users, and Completo at R$ 347/month for up to 15 users. Annual
+  prices equal ten monthly payments. The landing page separates plan scope
+  from fiscal homologation, direct scale protocols, extra users, multiple
+  units, hardware, messages and advanced migration. The five commercial
+  readiness gates are tracked in `docs/commercial-readiness.md`.
 - A dedicated counter-mode PDV that hides administrative navigation during a
   sale, keeps operator/unit/time and cash context visible, supports fullscreen,
   presents large payment shortcuts and preserves keyboard operation. USB

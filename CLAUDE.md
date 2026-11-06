@@ -86,8 +86,21 @@ git checkout -b feat/<assunto>      # toda branch nova sai daqui
 
 ## 4. Onde estamos
 
-Última atualização: 24/09/2026.
+Última atualização: 06/11/2026.
 
+- **06/11/2026 — dependências de segurança:** o CI detectou alertas Symfony
+  publicados em 04/11. `symfony/http-foundation`, `http-kernel`, `routing` e
+  `yaml` foram atualizados para 7.4.23, com os patches transitivos necessários;
+  `composer audit --locked` voltou a ficar sem alertas conhecidos.
+- **Ciclo comercial, item 1/5 — preços públicos:** a landing page e os planos
+  SaaS foram alinhados em R$ 97/mês para até 3 usuários (Essencial),
+  R$ 197/mês para até 6 usuários (Profissional) e R$ 347/mês para até 15
+  usuários (Completo), com anual equivalente a dez mensalidades. Fiscal,
+  hardware específico, usuários extras, múltiplas unidades, mensagens pagas e
+  migração avançada ficam fora da promessa automática. Os quatro gates ainda
+  amarelos e suas evidências de fechamento estão em
+  `docs/commercial-readiness.md`; o próximo item é formalização de LGPD,
+  contratos e suporte.
 - **No ar — plano de Vendas completo:** PR #25 (saldo do cliente, item 5),
   PR #24 (caixa por operador, item 4) e PR #23 (formas de pagamento por
   maquininha e recebíveis de cartão, item 3), todos sobre o schema do PR #22,

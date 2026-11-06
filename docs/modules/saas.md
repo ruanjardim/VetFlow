@@ -44,15 +44,17 @@ The internal plan is visible to platform operators for diagnosis but cannot be e
 
 ## Commercial seed data
 
-`SaasPlanSeeder` creates three examples only when their slugs do not already exist, so later operator edits are retained:
+`SaasPlanSeeder` creates three commercial plans only when their slugs do not already exist. The migration dated 05/11/2026 aligns existing records with the approved launch price and user limits; later operator edits remain available through the platform administration.
 
-| Plan | Users | Units | Intended composition |
-| --- | ---: | ---: | --- |
-| Essencial | 2 | 1 | Cadastros, PDV, products, inventory |
-| Profissional | 5 | 1 | Essencial plus agenda, services, purchases, suppliers, finance |
-| Completo | 15 | 3 | All current commercial modules |
+| Plan | Monthly | Annual | Users | Intended composition |
+| --- | ---: | ---: | ---: | --- |
+| Essencial | R$ 97,00 | R$ 970,00 | 3 | Cadastros, PDV, produtos e estoque |
+| Profissional | R$ 197,00 | R$ 1.970,00 | 6 | Essencial mais agenda, serviços, compras, fornecedores e financeiro |
+| Completo | R$ 347,00 | R$ 3.470,00 | 15 | Todos os módulos comerciais atuais, incluindo o módulo veterinário |
 
-The example prices and compositions are editable records rather than product rules in code.
+The annual price is equivalent to ten monthly payments. Public prices are launch values per establishment for an assisted pilot. Additional users, multiple units, advanced migration, paid messages, hardware-specific integrations, and fiscal activation require a separate commercial proposal. The plan price does not promise a compatible direct scale protocol or automatic fiscal issuance: those capabilities keep their own technical and homologation gates.
+
+The public landing page presents the same price, user limit, and module boundaries. The price and composition records remain editable rather than becoming immutable product rules in code.
 
 ## Client onboarding
 
