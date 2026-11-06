@@ -84,7 +84,7 @@ output of its last run.
 ## Migrations cron
 
 The Git deployment only runs `composer install`. Migrations and the
-authorization and plan catalogs are applied by an hourly **Custom** Cron Job
+authorization, plan and draft legal-document catalogs are applied by an hourly **Custom** Cron Job
 (minute 0):
 
 ```bash
@@ -92,7 +92,7 @@ authorization and plan catalogs are applied by an hourly **Custom** Cron Job
 ```
 
 `--seed` runs `Database\Seeders\DatabaseSeeder`, which in production only calls
-the idempotent `AuthorizationSeeder` and `SaasPlanSeeder`; the demo user is
+the idempotent `AuthorizationSeeder`, `SaasPlanSeeder` and `LegalDocumentSeeder`; the demo user is
 limited to the local and testing environments. Keep example data out of
 `DatabaseSeeder`, because this Cron Job runs it every hour.
 

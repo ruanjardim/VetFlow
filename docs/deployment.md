@@ -56,6 +56,7 @@ npm run build
 php artisan migrate --force
 php artisan db:seed --class=AuthorizationSeeder --force
 php artisan db:seed --class=SaasPlanSeeder --force
+php artisan db:seed --class=LegalDocumentSeeder --force
 php artisan config:cache
 php artisan route:cache
 php artisan view:cache
@@ -78,6 +79,8 @@ Laravel filesystem. In production:
   role edits.
 - Run `SaasPlanSeeder` after the SaaS migrations to create missing feature
   definitions and example commercial plans. Existing plan edits are retained.
+- Run `LegalDocumentSeeder` after the commercial-governance migration. It creates
+  only explicit non-effective drafts and never publishes or accepts a document.
 - Existing clinics are migrated to the internal compatibility plan. Reassign
   them to commercial plans only after reviewing the intended entitlements.
 - Back up the database before every production migration.
