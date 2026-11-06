@@ -179,6 +179,7 @@
         <div class="pricing-notes" aria-label="Condições dos planos">
           <p><strong>Contratação sob proposta:</strong> usuários adicionais, múltiplas unidades, migração avançada de dados, mensagens pagas e integração com hardware específico.</p>
           <p><strong>Emissão fiscal:</strong> ativada separadamente somente após configuração e homologação do estabelecimento. O comprovante padrão do PDV é não fiscal.</p>
+          <p><strong>Cupons promocionais:</strong> quando oferecidos, podem conceder 10%, 20%, 30% ou 40% por prazo e planos determinados. Antes do aceite, a proposta informa preço-base, desconto, valor final, duração e preço após o término; cupons não são cumulativos.</p>
         </div>
       </div>
     </section>
@@ -186,6 +187,6 @@
     <section class="closing section" aria-labelledby="closing-title"><div class="wrap closing-inner"><p class="eyebrow">VetFlow</p><h2 id="closing-title">Leve sua gestão para o próximo nível.</h2><p>Conecte as áreas do seu negócio em um único sistema.</p><a class="button-primary" href="mailto:comercial@vetflowsys.com.br?subject=Demonstra%C3%A7%C3%A3o%20do%20VetFlow">Falar com o VetFlow <span aria-hidden="true">↗</span></a></div></section>
   </main>
 
-  <footer class="site-footer"><div class="wrap footer-inner"><span class="footer-brand"><span class="brand-mark" aria-hidden="true">VF</span><strong>VetFlow</strong></span><a href="mailto:comercial@vetflowsys.com.br">comercial@vetflowsys.com.br</a><a href="{{ route('login') }}">Acesso ao sistema <span aria-hidden="true">↗</span></a></div></footer>
+  <footer class="site-footer"><div class="wrap footer-inner"><span class="footer-brand"><span class="brand-mark" aria-hidden="true">VF</span><strong>VetFlow</strong></span><a href="mailto:comercial@vetflowsys.com.br">comercial@vetflowsys.com.br</a><a href="{{ route('legal.show', 'subscription-contract') }}">Contrato SaaS</a><a href="{{ route('legal.show', 'terms-of-use') }}">Termos de uso</a><a href="{{ route('legal.show', 'privacy-notice') }}">Privacidade</a><a href="{{ route('legal.show', 'data-processing') }}">Tratamento de dados</a><a href="{{ route('legal.show', 'support-and-backup') }}">Suporte e backup</a><a href="{{ route('login') }}">Acesso ao sistema <span aria-hidden="true">↗</span></a></div></footer>
 </body>
 </html>

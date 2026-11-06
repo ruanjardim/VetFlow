@@ -125,6 +125,19 @@ This project follows the spirit of Keep a Changelog, with one practical adjustme
 
 ### Added
 
+- Added SaaS commercial governance with audited 10/20/30/40 promotional
+  coupons, validity/plan/duration/redemption controls, non-stacking rules,
+  exact-cent price snapshots, onboarding integration, preserved cancellation
+  history and explicit base/promotional/post-promotion price disclosure. This
+  records administrative billing conditions and does not claim a payment
+  gateway or automatic charge.
+- Added five versioned legal/operational document types with draft/publication
+  states, SHA-256 integrity, an explicit named legal-review gate, public status
+  pages and tenant-admin electronic acceptance. Each accepted package freezes
+  signer, tenant, plan, price, coupon, IP, user agent, document versions and
+  hashes in append-only evidence under one receipt UUID. Seeded text remains a
+  non-effective draft until external legal and operational review is complete.
+
 - Added a clinic-scoped financial chart of categories with safe defaults,
   custom income/expense categories, immutable types, activation and ordering.
   The financial ledger now assigns a fallback category to manual entries,

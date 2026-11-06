@@ -14,6 +14,19 @@ The local working tree was clean before this documentation pass.
 
 ## What Exists
 
+- SaaS commercial governance now includes audited promotional coupons restricted
+  to 10%, 20%, 30% or 40%, with plan/date/duration/redemption rules, exact-cent
+  price snapshots, no stacking, reasoned cancellation and onboarding support.
+  Establishment administration shows the base, discounted and post-promotion
+  prices while explicitly keeping billing administrative (no payment gateway).
+- Five legal/operational documents are versioned with SHA-256 integrity hashes.
+  Seeded texts remain clearly marked drafts without effect. External legal
+  review and named confirmation are required to publish; only a complete
+  published package can be accepted. Tenant acceptance stores append-only
+  evidence for signer, tenant, plan, price, coupon, IP, browser, versions and
+  hashes under a shared receipt UUID. This closes the software portion of the
+  commercial legal gate, not the pending counsel/operational review.
+
 - Security dependencies were refreshed on 2026-11-06 after advisories released
   on 2026-11-04: Symfony HTTP Foundation, HTTP Kernel, Routing and YAML are
   locked at 7.4.23. `composer audit --locked` and the production-only npm audit

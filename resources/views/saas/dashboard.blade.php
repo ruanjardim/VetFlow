@@ -13,6 +13,7 @@
     <div class="stat"><span>Estabelecimentos ativos</span><strong>{{ $activeClinics }}</strong></div>
     <div class="stat"><span>Assinaturas em operação</span><strong>{{ $activeSubscriptions }}</strong></div>
     <div class="stat"><span>Usuários ativos</span><strong>{{ $activeUsers }}</strong></div>
+    <div class="stat"><span>Cupons ativos</span><strong>{{ $activeCoupons }}</strong></div>
   </section>
 
   <section class="panel">
@@ -21,6 +22,8 @@
       <div class="form-actions">
         <a class="button" href="{{ route('saas.plans.index') }}">Gerenciar planos</a>
         <a class="button secondary" href="{{ route('saas.establishments.index') }}">Ver estabelecimentos</a>
+        <a class="button secondary" href="{{ route('saas.coupons.index') }}">Cupons promocionais</a>
+        <a class="button secondary" href="{{ route('saas.legal.index') }}">Documentos e aceites</a>
       </div>
       <div class="badge-list" style="margin-top: 18px;">
         @foreach($subscriptionsByStatus as $status => $total)<span class="badge muted-badge">{{ ucfirst($status) }}: {{ $total }}</span>@endforeach

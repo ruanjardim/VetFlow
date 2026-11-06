@@ -12,5 +12,16 @@ Route::put('/plans/{plan}', [SaasAdminController::class, 'updatePlan'])->name('p
 Route::get('/establishments', [SaasAdminController::class, 'establishments'])->name('establishments.index');
 Route::get('/establishments/{clinic}', [SaasAdminController::class, 'establishment'])->name('establishments.show');
 Route::put('/establishments/{clinic}/subscription', [SaasAdminController::class, 'updateSubscription'])->name('subscriptions.update');
+Route::post('/establishments/{clinic}/coupon', [SaasAdminController::class, 'applyCoupon'])->name('subscriptions.coupon.apply');
+Route::delete('/establishments/{clinic}/promotions/{promotion}', [SaasAdminController::class, 'cancelPromotion'])->name('subscriptions.promotion.cancel');
 Route::get('/onboarding', [SaasAdminController::class, 'createOnboarding'])->name('onboarding.create');
 Route::post('/onboarding', [SaasAdminController::class, 'storeOnboarding'])->name('onboarding.store');
+Route::get('/coupons', [SaasAdminController::class, 'coupons'])->name('coupons.index');
+Route::get('/coupons/create', [SaasAdminController::class, 'createCoupon'])->name('coupons.create');
+Route::post('/coupons', [SaasAdminController::class, 'storeCoupon'])->name('coupons.store');
+Route::get('/coupons/{coupon}/edit', [SaasAdminController::class, 'editCoupon'])->name('coupons.edit');
+Route::put('/coupons/{coupon}', [SaasAdminController::class, 'updateCoupon'])->name('coupons.update');
+Route::get('/legal', [SaasAdminController::class, 'legalDocuments'])->name('legal.index');
+Route::get('/legal/create', [SaasAdminController::class, 'createLegalDocument'])->name('legal.create');
+Route::post('/legal', [SaasAdminController::class, 'storeLegalDocument'])->name('legal.store');
+Route::post('/legal/{legalDocument}/publish', [SaasAdminController::class, 'publishLegalDocument'])->name('legal.publish');

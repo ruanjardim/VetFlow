@@ -200,6 +200,9 @@
               @endif
               @can('printers.manage')<a class="{{ request()->routeIs('printers.*') ? 'is-active' : '' }}" href="{{ route('printers.index') }}">Impressoras</a>@endcan
               @can('users.manage')<a class="{{ request()->routeIs('access-users.*') ? 'is-active' : '' }}" href="{{ route('access-users.index') }}">Usuários e acessos</a>@endcan
+              @if(auth()->user()?->clinic_id !== null)
+                @can('users.manage')<a class="{{ request()->routeIs('legal.acceptance.*') ? 'is-active' : '' }}" href="{{ route('legal.acceptance.show') }}">Contrato e termos</a>@endcan
+              @endif
               @can('audit.manage')<a class="{{ request()->routeIs('audit-events.*') ? 'is-active' : '' }}" href="{{ route('audit-events.index') }}">Auditoria</a>@endcan
               @can('implementation.manage')<a class="{{ request()->routeIs('implementation.*') ? 'is-active' : '' }}" href="{{ route('implementation.index') }}">Implantação</a>@endcan
               @can('operations.readiness')<a class="{{ request()->routeIs('operations.*') ? 'is-active' : '' }}" href="{{ route('operations.index') }}">Central de operações</a>@endcan

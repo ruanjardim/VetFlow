@@ -3,6 +3,7 @@
 namespace App\Modules\Saas\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password;
 
@@ -35,7 +36,13 @@ class OnboardTenantRequest extends FormRequest
             $admin['phone'] = $this->digits($admin['phone']);
         }
 
-        $this->merge(['clinic' => $clinic, 'admin' => $admin]);
+        $this->merge([
+            'clinic' => $clinic,
+            'admin' => $admin,
+            'coupon_code' => $this->filled('coupon_code')
+                ? Str::upper(trim((string) $this->input('coupon_code')))
+                : null,
+        ]);
     }
 
     public function rules(): array
@@ -53,6 +60,7 @@ class OnboardTenantRequest extends FormRequest
             'clinic.whatsapp' => ['nullable', 'string', 'regex:/^\d{10,11}$/'],
             'clinic.timezone' => ['nullable', 'string', 'max:80'],
             'plan_id' => ['required', 'integer', Rule::exists('saas_plans', 'id')->where(fn ($query) => $query->where('active', true)->where('internal', false)->whereNull('deleted_at'))],
+            'coupon_code' => ['nullable', 'string', 'max:64'],
             'overrides' => ['nullable', 'array'],
             'overrides.*' => ['nullable'],
             'overrides.max_users' => ['nullable', 'integer', 'min:1', 'max:100000'],

@@ -39,6 +39,11 @@ class Subscription extends Model
         return $this->hasMany(SubscriptionOverride::class);
     }
 
+    public function promotions(): HasMany
+    {
+        return $this->hasMany(SubscriptionPromotion::class);
+    }
+
     public function grantsAccess(): bool
     {
         if (! in_array($this->status, ['trial', 'active'], true) || ! $this->plan?->active) {

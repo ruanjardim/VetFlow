@@ -13,6 +13,8 @@ use App\Modules\Dashboard\Http\Controllers\DashboardController;
 use App\Modules\Fiscal\Controllers\FocusNfeWebhookController;
 use App\Modules\ProductIntelligence\Controllers\GlobalProductController;
 use App\Modules\ProductIntelligence\Controllers\ProductIntelligenceApiController;
+use App\Modules\Saas\Controllers\LegalAcceptanceController;
+use App\Modules\Saas\Controllers\PublicLegalController;
 use App\Modules\Saas\Support\FeatureCatalog;
 use Illuminate\Support\Facades\Route;
 
@@ -47,6 +49,9 @@ Route::post('/webhooks/focus-nfe/nfsen', FocusNfeWebhookController::class)
     ->name('webhooks.focus-nfe.nfsen');
 
 Route::view('/', 'public.home')->name('home');
+Route::get('/legal/{type}', [PublicLegalController::class, 'show'])
+    ->where('type', 'subscription-contract|terms-of-use|privacy-notice|data-processing|support-and-backup')
+    ->name('legal.show');
 
 Route::middleware('guest')->group(function () {
     Route::get('/login', [AuthenticatedSessionController::class, 'create'])->name('login');
@@ -68,6 +73,13 @@ Route::post('/logout', [AuthenticatedSessionController::class, 'destroy'])
     ->name('logout');
 
 Route::middleware(['auth', EnsureUserIsActive::class])->group(function () {
+    Route::get('/account/legal-acceptance', [LegalAcceptanceController::class, 'show'])
+        ->middleware(EnsureUserHasPermission::class.':users.manage')
+        ->name('legal.acceptance.show');
+    Route::post('/account/legal-acceptance', [LegalAcceptanceController::class, 'store'])
+        ->middleware(EnsureUserHasPermission::class.':users.manage')
+        ->name('legal.acceptance.store');
+
     Route::get('/dashboard', [DashboardController::class, 'index'])
         ->middleware([
             EnsureUserHasPermission::class.':dashboard.view',

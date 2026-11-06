@@ -22,7 +22,10 @@
       @foreach($plans as $plan)
         <label class="field"><span>{{ $plan->name }}</span><label><input type="radio" name="plan_id" value="{{ $plan->id }}" @checked((int)old('plan_id', $plans->first()?->id) === $plan->id)> {{ $plan->max_users ? $plan->max_users.' usuários' : 'Usuários ilimitados' }}</label><small class="field-hint">{{ $plan->description }}</small></label>
       @endforeach
+      <label class="field"><span>Cupom promocional (opcional)</span><input name="coupon_code" value="{{ old('coupon_code') }}" maxlength="64" placeholder="Ex.: LANCAMENTO20"><small class="field-hint">O cupom será validado contra plano, validade, limite e duração. O preço promocional ficará congelado no histórico da assinatura.</small></label>
     </div></div></section>
+
+    <div class="alert warning"><strong>Condição comercial:</strong> o VetFlow registra o preço-base, o desconto e o valor final. Nesta fase, a cobrança continua administrativa; não há débito automático, cartão ou PIX recorrente executado pelo sistema.</div>
 
     <section class="panel"><div class="panel-heading"><div><h2>3. Exceções opcionais</h2><p>Use apenas quando o contrato deste cliente diferir do plano.</p></div></div><div class="panel-body"><div class="form-grid">
       @foreach($features as $feature)<label class="field"><span>{{ $feature->name }}</span>

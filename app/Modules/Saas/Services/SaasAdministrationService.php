@@ -6,6 +6,7 @@ use App\Models\Role;
 use App\Models\User;
 use App\Modules\Audit\Services\AuditTrailService;
 use App\Modules\Clinics\Models\Clinic;
+use App\Modules\Saas\Models\Coupon;
 use App\Modules\Saas\Models\Feature;
 use App\Modules\Saas\Models\Plan;
 use App\Modules\Saas\Models\PlanFeature;
@@ -14,12 +15,17 @@ use App\Modules\Saas\Models\SubscriptionOverride;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 class SaasAdministrationService
 {
-    public function __construct(private readonly AuditTrailService $audit) {}
+    public function __construct(
+        private readonly AuditTrailService $audit,
+        private readonly CouponService $coupons,
+        private readonly SubscriptionPriceService $prices
+    ) {}
 
     /** @return array<string, mixed> */
     public function dashboardData(): array
@@ -29,6 +35,9 @@ class SaasAdministrationService
             'activeClinics' => Clinic::query()->active()->count(),
             'activeSubscriptions' => Subscription::query()->whereIn('status', ['active', 'trial'])->count(),
             'activeUsers' => User::query()->active()->whereNotNull('clinic_id')->count(),
+            'activeCoupons' => Schema::hasTable('saas_coupons')
+                ? Coupon::query()->where('active', true)->where('valid_until', '>=', now())->count()
+                : 0,
             'subscriptionsByStatus' => Subscription::query()->select('status', DB::raw('count(*) as total'))->groupBy('status')->pluck('total', 'status'),
             'recentClinics' => Clinic::query()->with('subscription.plan')->latest()->limit(8)->get(),
         ];
@@ -91,13 +100,21 @@ class SaasAdministrationService
     /** @return array<string, mixed> */
     public function establishmentData(Clinic $clinic): array
     {
-        $clinic->load(['subscription.plan.featureValues.feature', 'subscription.overrides.feature', 'children']);
+        $clinic->load([
+            'subscription.plan.featureValues.feature',
+            'subscription.overrides.feature',
+            'subscription.promotions',
+            'children',
+        ]);
+        $subscription = $clinic->subscription;
 
         return [
             'clinic' => $clinic,
             'plans' => Plan::query()->where('active', true)->orderBy('internal')->orderBy('display_order')->get(),
             'features' => Feature::query()->orderBy('display_order')->get(),
             'activeUsers' => User::query()->where('clinic_id', $clinic->id)->active()->count(),
+            'priceQuote' => $subscription ? $this->prices->quote($subscription) : null,
+            'promotions' => $subscription?->promotions()->latest('applied_at')->get() ?? new Collection,
         ];
     }
 
@@ -106,6 +123,7 @@ class SaasAdministrationService
         return DB::transaction(function () use ($clinic, $data, $actor): Subscription {
             $subscription = $clinic->subscription()->firstOrNew();
             $before = $subscription->exists ? $this->subscriptionSnapshot($subscription) : [];
+            $this->coupons->assertPlanChangeAllowed($subscription, (int) $data['plan_id']);
             $subscription->fill(collect($data)->only(['plan_id', 'status', 'starts_at', 'ends_at', 'trial_ends_at', 'renews_at'])->all());
             $subscription->save();
             $this->syncOverrides($subscription, $data['overrides'] ?? []);
@@ -164,6 +182,10 @@ class SaasAdministrationService
             $subscription->save();
             $this->syncOverrides($subscription, $data['overrides'] ?? []);
 
+            if (! empty($data['coupon_code'])) {
+                $this->coupons->apply($subscription, (string) $data['coupon_code'], $actor);
+            }
+
             $admin = User::query()->create([
                 'clinic_id' => $clinic->id,
                 'name' => $data['admin']['name'],
@@ -190,7 +212,7 @@ class SaasAdministrationService
                 $clinic->trade_name
             );
 
-            return $clinic->load(['subscription.plan']);
+            return $clinic->load(['subscription.plan', 'subscription.promotions']);
         });
     }
 
@@ -236,12 +258,20 @@ class SaasAdministrationService
     private function subscriptionSnapshot(Subscription $subscription): array
     {
         $subscription->loadMissing(['plan', 'overrides.feature']);
+        $quote = $this->prices->quote($subscription);
 
         return [
             'plan' => $subscription->plan?->slug, 'status' => $subscription->status,
             'starts_at' => $subscription->starts_at?->toDateString(), 'ends_at' => $subscription->ends_at?->toDateString(),
             'trial_ends_at' => $subscription->trial_ends_at?->toDateString(), 'renews_at' => $subscription->renews_at?->toDateString(),
             'overrides' => $subscription->overrides->mapWithKeys(fn (SubscriptionOverride $item) => [$item->feature->key => $item->value])->all(),
+            'price' => [
+                'billing_cycle' => $quote['billing_cycle'],
+                'base_price_cents' => $quote['base_price_cents'],
+                'coupon_code' => $quote['coupon_code'],
+                'discount_percentage' => $quote['discount_percentage'],
+                'final_price_cents' => $quote['final_price_cents'],
+            ],
         ];
     }
 }
