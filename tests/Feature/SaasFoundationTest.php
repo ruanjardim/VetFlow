@@ -28,6 +28,19 @@ class SaasFoundationTest extends TestCase
         $this->seed([AuthorizationSeeder::class, SaasPlanSeeder::class]);
     }
 
+    public function test_commercial_seed_matches_public_launch_prices_and_user_limits(): void
+    {
+        $this->assertDatabaseHas('saas_plans', [
+            'slug' => 'essencial', 'monthly_price' => 97, 'annual_price' => 970, 'max_users' => 3,
+        ]);
+        $this->assertDatabaseHas('saas_plans', [
+            'slug' => 'profissional', 'monthly_price' => 197, 'annual_price' => 1970, 'max_users' => 6,
+        ]);
+        $this->assertDatabaseHas('saas_plans', [
+            'slug' => 'completo', 'monthly_price' => 347, 'annual_price' => 3470, 'max_users' => 15,
+        ]);
+    }
+
     public function test_feature_resolution_uses_the_subscribed_plan(): void
     {
         $clinic = $this->clinic();

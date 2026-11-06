@@ -48,6 +48,13 @@
         "description": "Sistema de gestão para clínicas veterinárias, pet shops e negócios do segmento pet.",
         "applicationCategory": "BusinessApplication",
         "operatingSystem": "Web",
+        "offers": {
+          "@type": "AggregateOffer",
+          "priceCurrency": "BRL",
+          "lowPrice": "97.00",
+          "highPrice": "347.00",
+          "offerCount": "3"
+        },
         "publisher": {"@id": "https://vetflowsys.com.br/#organization"}
       }
     ]
@@ -62,6 +69,7 @@
       <nav class="site-nav" aria-label="Navegação principal">
         <a href="#para-quem">Para quem é</a>
         <a href="#recursos">Recursos</a>
+        <a href="#planos">Planos</a>
         <a href="mailto:comercial@vetflowsys.com.br?subject=Demonstra%C3%A7%C3%A3o%20do%20VetFlow">Fale conosco</a>
         <a class="nav-login" href="{{ route('login') }}">Entrar no sistema <span aria-hidden="true">↗</span></a>
       </nav>
@@ -76,7 +84,7 @@
           <h1 id="hero-title">Gestão veterinária <em>inteligente.</em></h1>
           <p class="hero-lead">Uma plataforma para clínicas veterinárias, pet shops, banho e tosa e negócios do segmento pet. Organize o cuidado e a operação em um só lugar.</p>
           <div class="hero-actions"><a class="button-primary" href="mailto:comercial@vetflowsys.com.br?subject=Demonstra%C3%A7%C3%A3o%20do%20VetFlow">Solicitar demonstração <span aria-hidden="true">↗</span></a><a class="button-quiet" href="{{ route('login') }}">Entrar no sistema <span aria-hidden="true">→</span></a></div>
-          <p class="hero-footnote">Da agenda ao financeiro, com informações organizadas para o dia a dia.</p>
+          <p class="hero-footnote">Planos a partir de <strong>R$ 97 por mês</strong>, com implantação assistida.</p>
         </div>
         <div class="hero-media" role="img" aria-label="Cães, gatos e cavalo representando os animais atendidos pelos negócios que usam o VetFlow">
           <div class="hero-media-slideshow" aria-hidden="true">
@@ -117,6 +125,63 @@
     </section>
 
     <section class="benefits section" aria-labelledby="benefits-title"><div class="wrap benefits-layout"><div><p class="eyebrow">Menos dispersão. Mais visão.</p><h2 id="benefits-title">Informação organizada para você focar no que importa.</h2></div><ul><li>Informações centralizadas</li><li>Atendimentos mais organizados</li><li>Rotina de gestão simplificada</li><li>Acesso online</li><li>Interface clara e moderna</li></ul></div></section>
+
+    <section class="pricing section" id="planos" aria-labelledby="pricing-title">
+      <div class="wrap">
+        <div class="pricing-heading">
+          <div><p class="eyebrow">Planos VetFlow</p><h2 id="pricing-title">Comece no tamanho certo. Evolua sem trocar de sistema.</h2></div>
+          <p>Valores de lançamento por estabelecimento, para implantação piloto assistida. Todos os planos contam com acesso online e suporte de implantação.</p>
+        </div>
+        <div class="pricing-grid">
+          <article class="pricing-card">
+            <div class="plan-heading"><p class="plan-name">Essencial</p><p class="plan-description">Para organizar a operação comercial do dia a dia.</p></div>
+            <p class="plan-price"><span>R$</span> 97<small>,00 / mês</small></p>
+            <p class="plan-annual">ou R$ 970,00 por ano</p>
+            <p class="plan-capacity"><strong>Até 3 usuários</strong> · 1 estabelecimento</p>
+            <ul class="plan-features">
+              <li>Clientes, responsáveis e pets</li>
+              <li>PDV, caixa e comprovante não fiscal</li>
+              <li>Produtos, estoque e etiquetas de balança</li>
+              <li>Continuidade do PDV preparada para falta de internet</li>
+            </ul>
+            <a class="plan-action" href="mailto:comercial@vetflowsys.com.br?subject=Quero%20o%20plano%20Essencial%20do%20VetFlow">Quero o Essencial <span aria-hidden="true">↗</span></a>
+          </article>
+
+          <article class="pricing-card pricing-card-featured">
+            <p class="plan-badge">Mais completo para pet shop</p>
+            <div class="plan-heading"><p class="plan-name">Profissional</p><p class="plan-description">Para pet shops, banho e tosa e operações integradas.</p></div>
+            <p class="plan-price"><span>R$</span> 197<small>,00 / mês</small></p>
+            <p class="plan-annual">ou R$ 1.970,00 por ano</p>
+            <p class="plan-capacity"><strong>Até 6 usuários</strong> · 1 estabelecimento</p>
+            <ul class="plan-features">
+              <li>Tudo do plano Essencial</li>
+              <li>Agenda, serviços, comandas e pacotes</li>
+              <li>Compras, fornecedores e estoque integrado</li>
+              <li>Financeiro e visão gerencial da operação</li>
+            </ul>
+            <a class="plan-action" href="mailto:comercial@vetflowsys.com.br?subject=Quero%20o%20plano%20Profissional%20do%20VetFlow">Quero o Profissional <span aria-hidden="true">↗</span></a>
+          </article>
+
+          <article class="pricing-card">
+            <div class="plan-heading"><p class="plan-name">Completo</p><p class="plan-description">Para unir a operação comercial e a rotina veterinária.</p></div>
+            <p class="plan-price"><span>R$</span> 347<small>,00 / mês</small></p>
+            <p class="plan-annual">ou R$ 3.470,00 por ano</p>
+            <p class="plan-capacity"><strong>Até 15 usuários</strong> · implantação personalizada</p>
+            <ul class="plan-features">
+              <li>Tudo do plano Profissional</li>
+              <li>Prontuário, vacinação, internação e receituário</li>
+              <li>Comissões e controles operacionais avançados</li>
+              <li>Acompanhamento de implantação personalizado</li>
+            </ul>
+            <a class="plan-action" href="mailto:comercial@vetflowsys.com.br?subject=Quero%20o%20plano%20Completo%20do%20VetFlow">Quero o Completo <span aria-hidden="true">↗</span></a>
+          </article>
+        </div>
+        <div class="pricing-notes" aria-label="Condições dos planos">
+          <p><strong>Contratação sob proposta:</strong> usuários adicionais, múltiplas unidades, migração avançada de dados, mensagens pagas e integração com hardware específico.</p>
+          <p><strong>Emissão fiscal:</strong> ativada separadamente somente após configuração e homologação do estabelecimento. O comprovante padrão do PDV é não fiscal.</p>
+        </div>
+      </div>
+    </section>
 
     <section class="closing section" aria-labelledby="closing-title"><div class="wrap closing-inner"><p class="eyebrow">VetFlow</p><h2 id="closing-title">Leve sua gestão para o próximo nível.</h2><p>Conecte as áreas do seu negócio em um único sistema.</p><a class="button-primary" href="mailto:comercial@vetflowsys.com.br?subject=Demonstra%C3%A7%C3%A3o%20do%20VetFlow">Falar com o VetFlow <span aria-hidden="true">↗</span></a></div></section>
   </main>
