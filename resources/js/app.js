@@ -397,10 +397,12 @@ document.addEventListener('DOMContentLoaded', () => {
     return Number.parseFloat(normalized) || 0;
   };
 
-  const formatCurrencyInput = (value, showZero = false) => {
+  const formatCurrencyInput = (value, showZero = false, allowNegative = false) => {
     const amount = toCurrencyNumber(value);
 
-    return amount > 0 || showZero ? amount.toFixed(2).replace('.', ',') : '';
+    return amount > 0 || (allowNegative && amount < 0) || showZero
+      ? amount.toFixed(2).replace('.', ',')
+      : '';
   };
 
   const applyCurrencyInputMask = (input) => {
@@ -408,18 +410,23 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    const digits = String(input.value || '').replace(/\D+/g, '');
+    const raw = String(input.value || '');
+    const allowNegative = input.hasAttribute('data-money-input-signed');
+    const negative = allowNegative && raw.trimStart().startsWith('-');
+    const digits = raw.replace(/\D+/g, '');
 
     if (!digits) {
-      input.value = '';
+      input.value = allowNegative && raw.trim() === '-' ? '-' : '';
       return;
     }
 
-    input.value = (Number.parseInt(digits, 10) / 100).toFixed(2).replace('.', ',');
+    const amount = Number.parseInt(digits, 10) / 100;
+    const formatted = amount.toFixed(2).replace('.', ',');
+    input.value = negative && amount > 0 ? `-${formatted}` : formatted;
   };
 
   document.querySelectorAll('[data-money-input]').forEach((input) => {
-    input.value = formatCurrencyInput(input.value, false);
+    input.value = formatCurrencyInput(input.value, false, input.hasAttribute('data-money-input-signed'));
     input.addEventListener('input', () => applyCurrencyInputMask(input));
   });
 

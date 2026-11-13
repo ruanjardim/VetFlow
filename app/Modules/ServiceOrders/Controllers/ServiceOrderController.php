@@ -6,19 +6,20 @@ use App\Core\Base\BaseCrudController;
 use App\Models\User;
 use App\Modules\Clinics\Models\Clinic;
 use App\Modules\Patients\Models\Patient;
+use App\Modules\PetShopServices\Models\PetPackage;
 use App\Modules\PetShopServices\Models\PetShopService;
 use App\Modules\Products\Models\Product;
+use App\Modules\ServiceOrders\Models\ServiceOrder;
 use App\Modules\ServiceOrders\Requests\StoreServiceOrderRequest;
 use App\Modules\ServiceOrders\Requests\UpdateServiceOrderRequest;
 use App\Modules\ServiceOrders\Requests\UpdateServiceOrderStatusRequest;
-use App\Modules\ServiceOrders\Models\ServiceOrder;
 use App\Modules\ServiceOrders\Services\GroomingAgendaService;
 use App\Modules\ServiceOrders\Services\ServiceOrderService;
+use App\Modules\Tutors\Models\Tutor;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Validation\Rule;
-use App\Modules\Tutors\Models\Tutor;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class ServiceOrderController extends BaseCrudController
 {
@@ -152,7 +153,7 @@ class ServiceOrderController extends BaseCrudController
                 ->orderBy('corporate_name')
                 ->get(),
             'tutors' => Tutor::query()->orderBy('name')->get(),
-            'patients' => Patient::query()->orderBy('name')->get(),
+            'patients' => Patient::query()->available()->orderBy('name')->get(),
             'assignedUsers' => User::query()
                 ->active()
                 ->whereNotNull('clinic_id')
@@ -178,7 +179,7 @@ class ServiceOrderController extends BaseCrudController
     /** @return array<int, string> resumo do saldo de pacotes ativos por pet */
     private function packageSummaries(): array
     {
-        return \App\Modules\PetShopServices\Models\PetPackage::query()
+        return PetPackage::query()
             ->with(['balances.usages'])
             ->where('status', 'active')
             ->where(fn ($query) => $query->whereNull('expires_on')->orWhereDate('expires_on', '>=', today()->toDateString()))

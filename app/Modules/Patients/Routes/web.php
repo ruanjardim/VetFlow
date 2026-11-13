@@ -21,5 +21,14 @@ Route::get('catalog/specialties', [PatientCatalogController::class, 'specialties
 Route::put('catalog/specialties', [PatientCatalogController::class, 'updateSpecialties'])
     ->name('patient-catalog.specialties.update');
 
+Route::get('patients/{patient}/photo', [PatientController::class, 'photo'])
+    ->whereNumber('patient')
+    ->name('patients.photo');
+
+Route::patch('patients/{patient}/lifecycle', [PatientController::class, 'changeLifecycle'])
+    ->whereNumber('patient')
+    ->name('patients.lifecycle');
+
 Route::resource('patients', PatientController::class)
+    ->except('destroy')
     ->names('patients');

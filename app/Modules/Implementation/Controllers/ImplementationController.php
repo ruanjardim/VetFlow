@@ -73,7 +73,7 @@ class ImplementationController extends Controller
             'input_name' => 'patients_file',
             'input_id' => 'patients-file',
             'default_file' => 'pacientes.csv',
-            'expected_columns' => 'tutor_documento, nome_pet, especie, raca, sexo, nascimento, peso e observacoes',
+            'expected_columns' => 'tutor_documento, nome_pet, especie, raca, sexo, nascimento, peso, microchip, pedigree, numero_pedigree, marcacoes, situacao, motivo_situacao e observacoes',
             'preview_columns' => [
                 ['key' => 'name', 'label' => 'Nome'],
                 ['key' => 'tutor_name', 'label' => 'Responsável'],
@@ -81,6 +81,9 @@ class ImplementationController extends Controller
                 ['key' => 'breed', 'label' => 'Raça'],
                 ['key' => 'birth_date', 'label' => 'Nascimento'],
                 ['key' => 'weight', 'label' => 'Peso'],
+                ['key' => 'microchip', 'label' => 'Microchip'],
+                ['key' => 'pedigree_number', 'label' => 'Nº do pedigree'],
+                ['key' => 'lifecycle_status', 'label' => 'Situação'],
             ],
         ],
         'suppliers' => [
@@ -185,6 +188,12 @@ class ImplementationController extends Controller
             'sexo',
             'nascimento',
             'peso',
+            'microchip',
+            'pedigree',
+            'numero_pedigree',
+            'marcacoes',
+            'situacao',
+            'motivo_situacao',
             'observacoes',
         ],
         'products' => [

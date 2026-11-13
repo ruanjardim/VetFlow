@@ -20,7 +20,7 @@ class VaccinationService extends BaseService
 
     public function create(array $data): Model
     {
-        $patient = Patient::query()->findOrFail($data['patient_id']);
+        $patient = Patient::query()->available()->findOrFail($data['patient_id']);
 
         $data = $this->prepareData($data, $patient, true);
         $data['clinic_id'] = $patient->clinic_id;
@@ -31,7 +31,7 @@ class VaccinationService extends BaseService
 
     public function update(int $id, array $data): Model
     {
-        $patient = Patient::query()->findOrFail($data['patient_id']);
+        $patient = Patient::query()->available()->findOrFail($data['patient_id']);
 
         $data = $this->prepareData($data, $patient, false);
         $data['clinic_id'] = $patient->clinic_id;

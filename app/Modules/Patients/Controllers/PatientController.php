@@ -3,24 +3,52 @@
 namespace App\Modules\Patients\Controllers;
 
 use App\Core\Base\BaseCrudController;
+use App\Modules\Patients\Requests\ChangePatientLifecycleRequest;
 use App\Modules\Patients\Requests\StorePatientRequest;
 use App\Modules\Patients\Requests\UpdatePatientRequest;
 use App\Modules\Patients\Services\PatientClinicalProfileService;
+use App\Modules\Patients\Services\PatientLifecycleService;
+use App\Modules\Patients\Services\PatientPhotoService;
 use App\Modules\Patients\Services\PatientService;
 use App\Modules\Patients\Services\PatientTaxonomyService;
+use App\Modules\Patients\Support\PatientLifecycleStatus;
 use App\Modules\Tutors\Models\Tutor;
+use Illuminate\Validation\Rule;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class PatientController extends BaseCrudController
 {
     public function __construct(
-        PatientService $service,
+        private readonly PatientService $patients,
         private readonly PatientTaxonomyService $taxonomy,
-        private readonly PatientClinicalProfileService $profile
+        private readonly PatientClinicalProfileService $profile,
+        private readonly PatientPhotoService $photos,
+        private readonly PatientLifecycleService $lifecycle
     ) {
-        $this->service = $service;
+        $this->service = $this->patients;
         $this->viewPath = 'patients';
         $this->routeName = 'patients';
         $this->viewVariable = 'patients';
+    }
+
+    public function index()
+    {
+        $request = request();
+        $validated = $request->validate([
+            'q' => ['nullable', 'string', 'max:100'],
+            'status' => ['nullable', 'string', Rule::in([...PatientLifecycleStatus::keys(), 'all'])],
+        ]);
+        $search = trim((string) ($validated['q'] ?? ''));
+        $status = (string) ($validated['status'] ?? PatientLifecycleStatus::ACTIVE);
+
+        return view('patients.index', [
+            'patients' => $this->patients
+                ->search($search !== '' ? $search : null, $status)
+                ->withQueryString(),
+            'search' => $search,
+            'lifecycleStatus' => $status,
+            'lifecycleLabels' => PatientLifecycleStatus::LABELS,
+        ]);
     }
 
     public function create()
@@ -31,6 +59,12 @@ class PatientController extends BaseCrudController
     public function edit(int $id)
     {
         $patient = $this->service->findOrFail($id);
+
+        if (! $patient->isAvailable()) {
+            return redirect()
+                ->route('patients.show', $patient->id)
+                ->with('error', 'Restaure a ficha antes de editar os dados do paciente.');
+        }
 
         return view('patients.edit', array_merge($this->formData($patient), [
             'item' => $patient,
@@ -48,6 +82,25 @@ class PatientController extends BaseCrudController
             'vaccinations' => $user?->can('vaccinations.manage') ?? false,
             'hospitalizations' => $user?->can('hospitalizations.manage') ?? false,
         ]));
+    }
+
+    public function photo(int $patient): StreamedResponse
+    {
+        return $this->photos->response($this->service->findOrFail($patient));
+    }
+
+    public function changeLifecycle(ChangePatientLifecycleRequest $request, int $patient)
+    {
+        $validated = $request->validated();
+        $updated = $this->lifecycle->transition(
+            $patient,
+            $validated['status'],
+            $validated['reason']
+        );
+
+        return redirect()
+            ->route('patients.show', $updated->id)
+            ->with('success', 'Estado do paciente atualizado com sucesso.');
     }
 
     protected function storeRequest(): string

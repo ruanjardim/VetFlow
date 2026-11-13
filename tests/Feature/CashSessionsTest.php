@@ -292,6 +292,53 @@ class CashSessionsTest extends TestCase
         $this->assertSame('Pix lançado como dinheiro durante a conferência.', $session->closing_notes);
     }
 
+    public function test_non_cash_method_can_close_with_negative_net_after_refund(): void
+    {
+        $pix = $this->method('pix');
+        $pixKey = 'payment_method_'.$pix->id;
+        $first = $this->openCashSession($this->operator, $this->clinic, 0);
+
+        $this->actingAs($this->operator)
+            ->post(route('sales.store'), $this->pdvSale(60, [['payment_method_id' => $pix->id, 'amount' => '60,00']]))
+            ->assertSessionDoesntHaveErrors();
+
+        $sale = Sale::query()->with('items')->latest('id')->firstOrFail();
+
+        $this->post(route('sales.cash-sessions.close.store', $first->id), [
+            'counted_cash' => '0,00',
+            'counted_methods' => [$pixKey => '60,00'],
+            'cash_left' => '0,00',
+        ])->assertSessionDoesntHaveErrors();
+
+        $second = $this->openCashSession($this->operator, $this->clinic, 0);
+        $this->post(route('sales.returns.store', $sale->id), [
+            'refund_method' => 'pix',
+            'refund_amount' => '60,00',
+            'items' => [$sale->items->first()->id => ['quantity' => '1']],
+        ])->assertSessionDoesntHaveErrors();
+
+        $pixRow = app(CashSessionService::class)->summary($second->fresh())['methods']->firstWhere('kind', 'pix');
+        $this->assertEquals(-60, $pixRow['expected']);
+
+        $this->get(route('sales.cash-sessions.close', $second->id))
+            ->assertOk()
+            ->assertSee('value="-60,00"', false)
+            ->assertSee('data-money-input-signed', false);
+
+        $this->post(route('sales.cash-sessions.close.store', $second->id), [
+            'counted_cash' => '0,00',
+            'counted_methods' => [$pixKey => '-60,00'],
+            'cash_left' => '0,00',
+        ])->assertRedirect(route('sales.cash-sessions.show', $second->id));
+
+        $second->refresh();
+        $closedPix = collect($second->closing_snapshot['methods'])->firstWhere('kind', 'pix');
+        $this->assertSame('closed', $second->status);
+        $this->assertEquals(-60, $closedPix['counted']);
+        $this->assertEquals(0, $closedPix['difference']);
+        $this->assertEquals(0, (float) $second->difference_total);
+    }
+
     public function test_manager_reviews_or_reopens_a_closed_session(): void
     {
         $session = $this->openCashSession($this->operator, $this->clinic, 0);

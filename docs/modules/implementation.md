@@ -160,7 +160,7 @@ nome,telefone,whatsapp,email,cpf_cnpj,endereco,observacoes
 The Patients template contains these columns:
 
 ```text
-tutor_documento,nome_pet,especie,raca,sexo,nascimento,peso,observacoes
+tutor_documento,nome_pet,especie,raca,sexo,nascimento,peso,microchip,pedigree,numero_pedigree,marcacoes,situacao,motivo_situacao,observacoes
 ```
 
 - `tutor_documento` and `nome_pet` are required in every row.
@@ -171,6 +171,19 @@ tutor_documento,nome_pet,especie,raca,sexo,nascimento,peso,observacoes
 - `nascimento` accepts `DD/MM/YYYY` or `YYYY-MM-DD` and cannot be a future date.
 - `peso`, when filled, accepts Brazilian decimal commas and must be greater
   than zero.
+- `microchip` and `marcacoes` are optional columns for compatibility with
+  earlier VetFlow templates. When present, they accept respectively up to 100
+  and 1,000 characters and populate the patient identification fields.
+- `pedigree` and `numero_pedigree` are also optional columns. `pedigree`
+  accepts `sim`/`não` (plus the normalized boolean equivalents), while the
+  registration number accepts up to 120 characters. Importing either value is
+  an operational record only and does not certify the document.
+- `situacao` and `motivo_situacao` are optional lifecycle columns so earlier
+  files remain compatible. An omitted or blank status imports the patient as
+  active. Accepted status labels normalize to active, archived, or deceased;
+  archived and deceased rows require a reason between 10 and 2,000 characters.
+  The import attributes the initial inactive state to the confirming user and
+  import time. It does not synthesize cancelled appointments or schedules.
 - The common delimiter, size, row-limit, UTF-8, and all-or-nothing rules also
   apply to Patients.
 

@@ -3,15 +3,20 @@
 namespace App\Modules\Patients\Models;
 
 use App\Models\Concerns\BelongsToClinicTenant;
+use App\Models\User;
 use App\Modules\Appointments\Models\Appointment;
+use App\Modules\Audit\Models\AuditEvent;
 use App\Modules\Hospitalizations\Models\Hospitalization;
 use App\Modules\MedicalRecords\Models\MedicalRecord;
+use App\Modules\Patients\Support\PatientLifecycleStatus;
 use App\Modules\Prescriptions\Models\Prescription;
 use App\Modules\Tutors\Models\Tutor;
 use App\Modules\Vaccinations\Models\Vaccination;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Patient extends Model
@@ -25,6 +30,9 @@ class Patient extends Model
 
     protected $casts = [
         'birth_date' => 'date',
+        'has_pedigree' => 'boolean',
+        'lifecycle_changed_at' => 'datetime',
+        'neutered' => 'boolean',
         'weight' => 'decimal:2',
     ];
 
@@ -76,6 +84,26 @@ class Patient extends Model
     public function clinicalAlerts(): HasMany
     {
         return $this->hasMany(PatientClinicalAlert::class)->latest();
+    }
+
+    public function lifecycleChangedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'lifecycle_changed_by_user_id');
+    }
+
+    public function auditEvents(): MorphMany
+    {
+        return $this->morphMany(AuditEvent::class, 'subject');
+    }
+
+    public function scopeAvailable(Builder $query): Builder
+    {
+        return $query->where('lifecycle_status', PatientLifecycleStatus::ACTIVE);
+    }
+
+    public function isAvailable(): bool
+    {
+        return $this->lifecycle_status === PatientLifecycleStatus::ACTIVE;
     }
 
     public function activeClinicalAlerts(): HasMany

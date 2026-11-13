@@ -151,7 +151,23 @@ overlap and must not be interpreted as independent statistical samples.
 Patient care now includes a permission-aware longitudinal
 profile that connects appointments, medical records, prescriptions,
 vaccinations, and hospitalizations while
-keeping the source records and their access boundaries intact. Structured
+keeping the source records and their access boundaries intact.
+Patient identity also supports an optional clinic-private profile photo and a
+tri-state sterilization value so missing legacy evidence remains visibly
+unknown instead of being treated as a negative answer. The photo is delivered
+only through the authenticated tenant-scoped patient route. Optional microchip
+and free-text identification markings can be maintained, searched, and
+imported without treating either as clinical interpretation; patient searches
+remain tenant-scoped and microchip is deliberately not unique. An optional
+tri-state pedigree declaration and searchable registration number preserve the
+reported identity evidence without VetFlow claiming document authenticity or
+genealogical verification. Patient records now also have an explicit active,
+archived, or deceased lifecycle. Reasoned, attributed transitions are appended
+to the audit trail; archive or death cancels future appointments and schedules,
+while restoration never silently reopens them. Inactive patients cannot receive
+new operational records but their clinical, financial, and longitudinal history
+remains readable under the original permissions. Generic patient deletion is
+not exposed. Structured
 prescriptions now extend that history with a reviewable draft, immutable
 finalization, and explicit cancellation trail. Structured exam requests can
 also receive protected result documents while VetFlow remains neutral about

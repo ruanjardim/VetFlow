@@ -77,6 +77,12 @@ class ImplementationExcelTest extends TestCase
                 'sexo',
                 'nascimento',
                 'peso',
+                'microchip',
+                'pedigree',
+                'numero_pedigree',
+                'marcacoes',
+                'situacao',
+                'motivo_situacao',
                 'observacoes',
             ],
             [
@@ -87,6 +93,12 @@ class ImplementationExcelTest extends TestCase
                 'Fêmea',
                 new DateTimeImmutable('2020-05-01'),
                 12.5,
+                'XLSX-CHIP-001',
+                'sim',
+                'CBKC/XLSX-001',
+                'Pata dianteira branca',
+                'arquivado',
+                'Cadastro legado arquivado na origem',
                 '',
             ]
         );
@@ -95,6 +107,12 @@ class ImplementationExcelTest extends TestCase
         $this->assertSame($clinic->id, $patient->clinic_id);
         $this->assertSame($tutor->id, $patient->tutor_id);
         $this->assertSame('2020-05-01', $patient->birth_date?->toDateString());
+        $this->assertSame('XLSX-CHIP-001', $patient->microchip);
+        $this->assertTrue($patient->has_pedigree);
+        $this->assertSame('CBKC/XLSX-001', $patient->pedigree_number);
+        $this->assertSame('Pata dianteira branca', $patient->markings);
+        $this->assertSame('archived', $patient->lifecycle_status);
+        $this->assertSame('Cadastro legado arquivado na origem', $patient->lifecycle_reason);
 
         $this->importExcel(
             $user,

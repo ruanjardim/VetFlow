@@ -12,7 +12,7 @@
 
   <div class="panel">
     <div class="panel-body">
-      <form method="POST" action="{{ route('patients.update', $item->id) }}" data-patient-form>
+      <form method="POST" action="{{ route('patients.update', $item->id) }}" enctype="multipart/form-data" data-patient-form>
         @csrf
         @method('PUT')
         @include('patients.form', ['patient' => $item])

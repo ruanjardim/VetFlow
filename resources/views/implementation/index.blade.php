@@ -968,13 +968,14 @@
               <tbody>
                 @foreach($mappingDefinitions as $mapping)
                   @php($columnFound = in_array($mapping['source_label'], $analysis['headers'] ?? [], true))
+                  @php($columnRequired = $mapping['required'] ?? true)
 
                   <tr>
                     <td><code>{{ $mapping['source_label'] }}</code></td>
                     <td>{{ $mapping['target_label'] }}</td>
                     <td>
-                      <span class="badge {{ $columnFound ? 'success' : 'danger' }}">
-                        {{ $columnFound ? 'Detectada' : 'Ausente' }}
+                      <span class="badge {{ $columnFound ? 'success' : ($columnRequired ? 'danger' : 'muted-badge') }}">
+                        {{ $columnFound ? 'Detectada' : ($columnRequired ? 'Ausente' : 'Opcional') }}
                       </span>
                     </td>
                   </tr>

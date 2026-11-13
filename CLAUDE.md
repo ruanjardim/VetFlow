@@ -86,8 +86,20 @@ git checkout -b feat/<assunto>      # toda branch nova sai daqui
 
 ## 4. Onde estamos
 
-Última atualização: 06/11/2026.
+Última atualização: 12/11/2026.
 
+- **Ciclo 5/5 concluído — ciclo de vida do paciente:** os cinco
+  itens estão implementados e validados localmente: correção de valores Pix
+  negativos no fechamento do caixa; foto privada e esterilização tri-state;
+  microchip e marcações; pedigree tri-state com número pesquisável; e estados
+  `ativo`, `arquivado` e `óbito`. Toda transição exige justificativa e gera
+  auditoria. Arquivo/óbito cancelam agenda futura e impedem novas operações sem
+  apagar o histórico; restauração/correção de óbito não reabrem eventos. A
+  exclusão genérica do paciente saiu das rotas. CSV/XLSX aceitam os campos de
+  ciclo de vida opcionalmente e planilhas antigas continuam entrando como
+  ativas. As quatro migrations aditivas foram publicadas primeiro pelo PR #53;
+  o cron de produção foi conferido às 23:00 de 12/11/2026 com nenhuma migration
+  pendente antes da publicação do código dependente em PR separado.
 - **06/11/2026 — dependências de segurança:** o CI detectou alertas Symfony
   publicados em 04/11. `symfony/http-foundation`, `http-kernel`, `routing` e
   `yaml` foram atualizados para 7.4.23, com os patches transitivos necessários;

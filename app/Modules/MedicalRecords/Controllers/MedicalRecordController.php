@@ -97,7 +97,7 @@ class MedicalRecordController extends BaseCrudController
 
         return [
             'appointments' => $appointments,
-            'patients' => Patient::query()->with('animalSpecies')->orderBy('name')->get(),
+            'patients' => Patient::query()->available()->with('animalSpecies')->orderBy('name')->get(),
             'pathologyRows' => $this->pathologies->formCatalog($catalogClinicId),
             'examRows' => $this->exams->formCatalog($catalogClinicId),
             'selectedPathologyIds' => old(

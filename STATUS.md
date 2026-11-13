@@ -1,6 +1,6 @@
 # VetFlow Status
 
-Updated: 2026-11-06
+Updated: 2026-11-12
 
 ## Current State
 
@@ -14,6 +14,18 @@ The local working tree was clean before this documentation pass.
 
 ## What Exists
 
+- The five-task cycle has all five tasks implemented and validated: signed
+  non-cash cash-closing totals; patient identity
+  with a private clinic-scoped photo plus tri-state sterilization; optional,
+  searchable microchip and identification markings; tri-state pedigree with a
+  searchable, non-certified registration number; and an audited active,
+  archived, or deceased patient lifecycle. Archive and death block new
+  operations and cancel future appointments/schedules without deleting history;
+  restoration and death correction require reasons and do not reopen cancelled
+  events. Patient search, private media, lifecycle transitions, selectors, and
+  imports retain the tenant boundary. Its four additive patient migrations were
+  released first through schema-only PR #53 and production reported no pending
+  migrations before the dependent application release proceeded.
 - SaaS commercial governance now includes audited promotional coupons restricted
   to 10%, 20%, 30% or 40%, with plan/date/duration/redemption rules, exact-cent
   price snapshots, no stacking, reasoned cancellation and onboarding support.

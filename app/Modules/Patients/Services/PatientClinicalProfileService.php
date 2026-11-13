@@ -21,7 +21,19 @@ class PatientClinicalProfileService
     {
         $patient = $this->patients->findOrFail($patientId);
 
-        $patient->loadMissing(['tutor', 'animalSpecies', 'animalBreed', 'animalCoat']);
+        $patient->loadMissing(['tutor', 'animalSpecies', 'animalBreed', 'animalCoat', 'lifecycleChangedBy']);
+
+        $lifecycleEvents = $patient->auditEvents()
+            ->with('actor')
+            ->whereIn('event', [
+                'patient.lifecycle.archived',
+                'patient.lifecycle.restored',
+                'patient.lifecycle.deceased',
+                'patient.lifecycle.death-corrected',
+            ])
+            ->latest('occurred_at')
+            ->limit(20)
+            ->get();
 
         $appointments = $visibility['appointments']
             ? $patient->appointments()
@@ -116,6 +128,7 @@ class PatientClinicalProfileService
             'vaccinations',
             'hospitalizations',
             'clinicalTimeline',
+            'lifecycleEvents',
             'visibility'
         );
     }

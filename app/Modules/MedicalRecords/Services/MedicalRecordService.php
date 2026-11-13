@@ -32,7 +32,7 @@ class MedicalRecordService extends BaseService
             ]);
         }
 
-        $patient = Patient::query()->findOrFail($data['patient_id']);
+        $patient = Patient::query()->available()->findOrFail($data['patient_id']);
         $clinicId = (int) $appointment->clinic_id;
         $creatorId = auth()->id();
 
