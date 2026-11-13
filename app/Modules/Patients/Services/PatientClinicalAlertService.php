@@ -12,7 +12,7 @@ class PatientClinicalAlertService
 {
     public function create(int $patientId, array $data): PatientClinicalAlert
     {
-        $patient = Patient::query()->findOrFail($patientId);
+        $patient = Patient::query()->available()->findOrFail($patientId);
 
         return $patient->clinicalAlerts()->create([
             ...Arr::only($data, ['title', 'details']),
@@ -25,7 +25,7 @@ class PatientClinicalAlertService
     public function resolve(int $patientId, int $alertId, string $resolutionNotes): PatientClinicalAlert
     {
         return DB::transaction(function () use ($patientId, $alertId, $resolutionNotes): PatientClinicalAlert {
-            Patient::query()->findOrFail($patientId);
+            Patient::query()->available()->findOrFail($patientId);
 
             $alert = PatientClinicalAlert::query()
                 ->where('patient_id', $patientId)

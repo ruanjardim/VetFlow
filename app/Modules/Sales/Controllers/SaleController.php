@@ -1055,7 +1055,7 @@ class SaleController extends BaseCrudController
         $data = [
             'clinics' => Clinic::query()->orderBy('trade_name')->get(),
             'tutors' => Tutor::query()->orderBy('name')->get(),
-            'patients' => Patient::query()->orderBy('name')->get(),
+            'patients' => Patient::query()->available()->orderBy('name')->get(),
         ];
 
         if (! $includeCatalog) {

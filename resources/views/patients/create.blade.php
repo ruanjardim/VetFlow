@@ -12,7 +12,7 @@
 
   <div class="panel">
     <div class="panel-body">
-      <form method="POST" action="{{ route('patients.store') }}" data-patient-form>
+      <form method="POST" action="{{ route('patients.store') }}" enctype="multipart/form-data" data-patient-form>
         @csrf
         @include('patients.form', ['patient' => null])
       </form>

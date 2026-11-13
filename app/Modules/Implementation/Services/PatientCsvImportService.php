@@ -7,6 +7,7 @@ use App\Core\Validation\Rules\ValidCpf;
 use App\Modules\Implementation\Contracts\CsvImportService;
 use App\Modules\Patients\Models\Patient;
 use App\Modules\Patients\Services\PatientTaxonomyService;
+use App\Modules\Patients\Support\PatientLifecycleStatus;
 use App\Modules\Tutors\Models\Tutor;
 use DateTimeImmutable;
 use DomainException;
@@ -15,6 +16,7 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 use RuntimeException;
 
 class PatientCsvImportService implements CsvImportService
@@ -57,6 +59,42 @@ class PatientCsvImportService implements CsvImportService
             'source_label' => 'peso',
             'target_label' => 'Peso',
         ],
+        'microchip' => [
+            'field' => 'microchip',
+            'source_label' => 'microchip',
+            'target_label' => 'Microchip',
+            'required' => false,
+        ],
+        'pedigree' => [
+            'field' => 'has_pedigree',
+            'source_label' => 'pedigree',
+            'target_label' => 'Possui pedigree',
+            'required' => false,
+        ],
+        'numero_pedigree' => [
+            'field' => 'pedigree_number',
+            'source_label' => 'numero_pedigree',
+            'target_label' => 'Número do pedigree',
+            'required' => false,
+        ],
+        'marcacoes' => [
+            'field' => 'markings',
+            'source_label' => 'marcacoes',
+            'target_label' => 'Marcações de identificação',
+            'required' => false,
+        ],
+        'situacao' => [
+            'field' => 'lifecycle_status',
+            'source_label' => 'situacao',
+            'target_label' => 'Situação da ficha',
+            'required' => false,
+        ],
+        'motivo_situacao' => [
+            'field' => 'lifecycle_reason',
+            'source_label' => 'motivo_situacao',
+            'target_label' => 'Justificativa da situação',
+            'required' => false,
+        ],
         'observacoes' => [
             'field' => 'notes',
             'source_label' => 'observacoes',
@@ -64,12 +102,10 @@ class PatientCsvImportService implements CsvImportService
         ],
     ];
 
-    public function __construct(private readonly PatientTaxonomyService $taxonomy)
-    {
-    }
+    public function __construct(private readonly PatientTaxonomyService $taxonomy) {}
 
     /**
-     * @return array<int, array<string, string>>
+     * @return array<int, array<string, mixed>>
      */
     public function mappingDefinitions(): array
     {
@@ -258,6 +294,14 @@ class PatientCsvImportService implements CsvImportService
                     'gender' => $values['gender'],
                     'birth_date' => $values['birth_date'],
                     'weight' => $values['weight'],
+                    'microchip' => $values['microchip'],
+                    'has_pedigree' => $values['has_pedigree'],
+                    'pedigree_number' => $values['pedigree_number'],
+                    'markings' => $values['markings'],
+                    'lifecycle_status' => $values['lifecycle_status'],
+                    'lifecycle_reason' => $values['lifecycle_reason'],
+                    'lifecycle_changed_at' => $values['lifecycle_status'] === PatientLifecycleStatus::ACTIVE ? null : now(),
+                    'lifecycle_changed_by_user_id' => $values['lifecycle_status'] === PatientLifecycleStatus::ACTIVE ? null : auth()->id(),
                     'notes' => $values['notes'],
                 ]);
 
@@ -309,7 +353,11 @@ class PatientCsvImportService implements CsvImportService
             $errors[] = 'O cabeçalho contém colunas duplicadas: '.implode(', ', $duplicates).'.';
         }
 
-        $missing = array_values(array_diff(array_keys(self::COLUMNS), $headers));
+        $requiredColumns = array_keys(array_filter(
+            self::COLUMNS,
+            fn (array $column): bool => $column['required'] ?? true
+        ));
+        $missing = array_values(array_diff($requiredColumns, $headers));
 
         if ($missing !== []) {
             $errors[] = 'Faltam colunas obrigatórias no cabeçalho: '.implode(', ', $missing).'.';
@@ -331,7 +379,7 @@ class PatientCsvImportService implements CsvImportService
 
     /**
      * @param  array<string, mixed>  $source
-     * @return array<string, string|null>
+     * @return array<string, mixed>
      */
     private function mapRow(array $source): array
     {
@@ -347,6 +395,12 @@ class PatientCsvImportService implements CsvImportService
             'gender' => $value('sexo'),
             'birth_date' => $this->normalizeDate($value('nascimento')),
             'weight' => $this->normalizeWeight($value('peso')),
+            'microchip' => $value('microchip'),
+            'has_pedigree' => $this->normalizeBoolean($value('pedigree')),
+            'pedigree_number' => $value('numero_pedigree'),
+            'markings' => $value('marcacoes'),
+            'lifecycle_status' => $this->normalizeLifecycleStatus($value('situacao')),
+            'lifecycle_reason' => $value('motivo_situacao'),
             'notes' => $value('observacoes'),
         ];
     }
@@ -367,6 +421,12 @@ class PatientCsvImportService implements CsvImportService
                 'gender' => ['nullable', 'string', 'max:50'],
                 'birth_date' => ['nullable', 'date_format:Y-m-d', 'before_or_equal:today'],
                 'weight' => ['nullable', 'numeric', 'gt:0', 'max:999999.99'],
+                'microchip' => ['nullable', 'string', 'max:100'],
+                'has_pedigree' => ['nullable', 'boolean'],
+                'pedigree_number' => ['nullable', 'string', 'max:120'],
+                'markings' => ['nullable', 'string', 'max:1000'],
+                'lifecycle_status' => ['required', 'string', Rule::in(PatientLifecycleStatus::keys())],
+                'lifecycle_reason' => ['nullable', 'string', 'required_unless:lifecycle_status,active', 'min:10', 'max:2000'],
                 'notes' => ['nullable', 'string', 'max:5000'],
             ],
             [
@@ -380,6 +440,14 @@ class PatientCsvImportService implements CsvImportService
                 'birth_date.before_or_equal' => 'A data de nascimento não pode estar no futuro.',
                 'weight.numeric' => 'Informe um peso válido.',
                 'weight.gt' => 'O peso deve ser maior que zero.',
+                'microchip.max' => 'O microchip deve ter no máximo 100 caracteres.',
+                'has_pedigree.boolean' => 'Informe pedigree como sim ou não.',
+                'pedigree_number.max' => 'O número do pedigree deve ter no máximo 120 caracteres.',
+                'markings.max' => 'As marcações devem ter no máximo 1.000 caracteres.',
+                'lifecycle_status.in' => 'Informe a situação como ativo, arquivado ou óbito.',
+                'lifecycle_reason.required_unless' => 'Informe a justificativa para pacientes arquivados ou em óbito.',
+                'lifecycle_reason.min' => 'A justificativa da situação deve ter pelo menos 10 caracteres.',
+                'lifecycle_reason.max' => 'A justificativa da situação deve ter no máximo 2.000 caracteres.',
                 'notes.max' => 'As observações devem ter no máximo 5.000 caracteres.',
             ]
         )->errors()->all();
@@ -435,6 +503,45 @@ class PatientCsvImportService implements CsvImportService
         }
 
         return $value;
+    }
+
+    private function normalizeBoolean(?string $value): bool|string|null
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        $normalized = Str::of($value)
+            ->ascii()
+            ->lower()
+            ->trim()
+            ->toString();
+
+        return match ($normalized) {
+            'sim', 's', '1', 'true' => true,
+            'nao', 'n', '0', 'false' => false,
+            default => $value,
+        };
+    }
+
+    private function normalizeLifecycleStatus(?string $value): string
+    {
+        if ($value === null) {
+            return PatientLifecycleStatus::ACTIVE;
+        }
+
+        $normalized = Str::of($value)
+            ->ascii()
+            ->lower()
+            ->trim()
+            ->toString();
+
+        return match ($normalized) {
+            'ativo', 'active', 'vivo' => PatientLifecycleStatus::ACTIVE,
+            'arquivado', 'archived', 'inativo' => PatientLifecycleStatus::ARCHIVED,
+            'obito', 'falecido', 'deceased' => PatientLifecycleStatus::DECEASED,
+            default => $value,
+        };
     }
 
     private function nullableString(mixed $value): ?string

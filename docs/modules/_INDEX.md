@@ -25,7 +25,7 @@ This index maps the current code modules and the documentation that should event
 | Prescriptions | Structured clinical prescriptions with protected lifecycle | Documented in [Prescriptions](prescriptions.md) |
 | Printers | Clinic printer inventory, defaults, connection details, and browser print testing | Documented in [Printers](printers.md) |
 | Vaccinations | Patient vaccination schedules and applications | Documented in [Vaccinations](vaccinations.md) |
-| Patients | Pets/patients with extensible taxonomy, clinical alerts, and longitudinal timeline | Documented in [Patient Taxonomy](patient-taxonomy.md), [Patient Clinical Alerts](patient-clinical-alerts.md), [Patient Clinical Timeline](patient-clinical-timeline.md), and [Clinical Core](clinical-core.md) |
+| Patients | Pets/patients with an audited active/archived/deceased lifecycle, searchable microchip, pedigree number and markings, private profile photo, tri-state identity fields, extensible taxonomy, clinical alerts, and longitudinal timeline | Documented in [Patients](patients.md), [Patient Taxonomy](patient-taxonomy.md), [Patient Clinical Alerts](patient-clinical-alerts.md), [Patient Clinical Timeline](patient-clinical-timeline.md), and [Clinical Core](clinical-core.md) |
 | Pets | Pet-related area | Pending review; overlaps with Patients |
 | PetShopServices | Pet shop service catalog with size prices and durations | Documented in [PetShop Operations](petshop-operations.md) |
 | ProductIntelligence | Global product data, suggestions, GTIN intelligence | Documented in [Product Intelligence](product-intelligence.md) |

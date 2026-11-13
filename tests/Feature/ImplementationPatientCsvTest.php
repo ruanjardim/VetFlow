@@ -28,9 +28,9 @@ class ImplementationPatientCsvTest extends TestCase
         $this->configureCsvImport($user, $clinic);
 
         $csv = implode("\n", [
-            'tutor_documento;nome_pet;especie;raca;sexo;nascimento;peso;observacoes',
-            '529.982.247-25;Luna;Canino;Spitz Alemão;Fêmea;12/05/2022;4,80;Paciente antiga',
-            '529.982.247-25;Thor;Felino;SRD;Macho;2021-08-20;5.25;',
+            'tutor_documento;nome_pet;especie;raca;sexo;nascimento;peso;microchip;pedigree;numero_pedigree;marcacoes;situacao;motivo_situacao;observacoes',
+            '529.982.247-25;Luna;Canino;Spitz Alemão;Fêmea;12/05/2022;4,80;CHIP-001;sim;CBKC/RG-7788;Mancha branca no peito;ativo;;Paciente antiga',
+            '529.982.247-25;Thor;Felino;SRD;Macho;2021-08-20;5.25;;;;;óbito;Óbito confirmado na migração;',
         ]);
 
         $this->post(route('implementation.patients.upload'), [
@@ -73,6 +73,11 @@ class ImplementationPatientCsvTest extends TestCase
             'gender' => 'Fêmea',
             'birth_date' => '2022-05-12 00:00:00',
             'weight' => 4.80,
+            'microchip' => 'CHIP-001',
+            'has_pedigree' => true,
+            'pedigree_number' => 'CBKC/RG-7788',
+            'markings' => 'Mancha branca no peito',
+            'lifecycle_status' => 'active',
             'notes' => 'Paciente antiga',
         ]);
         $this->assertDatabaseHas('patients', [
@@ -81,6 +86,8 @@ class ImplementationPatientCsvTest extends TestCase
             'name' => 'Thor',
             'birth_date' => '2021-08-20 00:00:00',
             'weight' => 5.25,
+            'lifecycle_status' => 'deceased',
+            'lifecycle_reason' => 'Óbito confirmado na migração',
         ]);
 
         $this->get(route('implementation.index', ['step' => 8]))
@@ -104,10 +111,11 @@ class ImplementationPatientCsvTest extends TestCase
         $user = $this->authorizedUser();
         $this->configureCsvImport($user, $clinic);
 
+        $longPedigree = Str::repeat('P', 121);
         $csv = implode("\n", [
-            'tutor_documento,nome_pet,especie,raca,sexo,nascimento,peso,observacoes',
-            '52998224725,,Canino,,,31/02/2024,peso-invalido,',
-            '11144477735,Futuro,Canino,,,31/12/2999,0,',
+            'tutor_documento,nome_pet,especie,raca,sexo,nascimento,peso,pedigree,numero_pedigree,situacao,motivo_situacao,observacoes',
+            '52998224725,,Canino,,,31/02/2024,peso-invalido,talvez,'.$longPedigree.',desconhecido,,',
+            '11144477735,Futuro,Canino,,,31/12/2999,0,não,,arquivado,,',
         ]);
 
         $this->post(route('implementation.patients.upload'), [
@@ -120,6 +128,10 @@ class ImplementationPatientCsvTest extends TestCase
             ->assertSee('Informe o nome do paciente.')
             ->assertSee('Informe o nascimento em DD/MM/AAAA ou AAAA-MM-DD.')
             ->assertSee('Informe um peso válido.')
+            ->assertSee('Informe pedigree como sim ou não.')
+            ->assertSee('O número do pedigree deve ter no máximo 120 caracteres.')
+            ->assertSee('Informe a situação como ativo, arquivado ou óbito.')
+            ->assertSee('Informe a justificativa para pacientes arquivados ou em óbito.')
             ->assertSee('Nenhum responsável com este CPF foi encontrado')
             ->assertSee('A data de nascimento não pode estar no futuro.')
             ->assertSee('O peso deve ser maior que zero.')
@@ -167,7 +179,7 @@ class ImplementationPatientCsvTest extends TestCase
             ->assertOk()
             ->assertHeader('content-type', 'text/csv; charset=UTF-8')
             ->assertSee(
-                'tutor_documento,nome_pet,especie,raca,sexo,nascimento,peso,observacoes',
+                'tutor_documento,nome_pet,especie,raca,sexo,nascimento,peso,microchip,pedigree,numero_pedigree,marcacoes,situacao,motivo_situacao,observacoes',
                 false
             );
     }

@@ -9,6 +9,15 @@ use Illuminate\Validation\Rule;
 
 class StorePatientRequest extends FormRequest
 {
+    protected function prepareForValidation(): void
+    {
+        $this->merge([
+            'microchip' => $this->nullableTrimmedString('microchip'),
+            'pedigree_number' => $this->nullableTrimmedString('pedigree_number'),
+            'markings' => $this->nullableTrimmedString('markings'),
+        ]);
+    }
+
     public function authorize(): bool
     {
         return true;
@@ -37,9 +46,16 @@ class StorePatientRequest extends FormRequest
             'new_coat' => ['nullable', 'string', 'max:120'],
             'coat' => ['nullable', 'string', 'max:255'],
             'gender' => ['nullable', 'string', 'max:50'],
+            'neutered' => ['nullable', 'boolean'],
+            'microchip' => ['nullable', 'string', 'max:100'],
+            'has_pedigree' => ['nullable', 'boolean'],
+            'pedigree_number' => ['nullable', 'string', 'max:120'],
+            'markings' => ['nullable', 'string', 'max:1000'],
             'birth_date' => ['nullable', 'date', 'before_or_equal:today'],
             'weight' => ['nullable', 'numeric', 'gt:0', 'max:999999.99'],
             'size' => ['nullable', 'string', Rule::in(PatientSize::keys())],
+            'photo' => ['nullable', 'file', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
+            'remove_photo' => ['nullable', 'boolean'],
             'notes' => ['nullable', 'string', 'max:5000'],
         ];
     }
@@ -56,7 +72,22 @@ class StorePatientRequest extends FormRequest
             'weight.numeric' => 'Informe um peso válido.',
             'weight.gt' => 'O peso deve ser maior que zero.',
             'size.in' => 'Informe um porte válido.',
+            'neutered.boolean' => 'Informe uma opção válida para esterilização.',
+            'microchip.max' => 'O microchip deve ter no máximo 100 caracteres.',
+            'has_pedigree.boolean' => 'Informe uma opção válida para pedigree.',
+            'pedigree_number.max' => 'O número do pedigree deve ter no máximo 120 caracteres.',
+            'markings.max' => 'As marcações devem ter no máximo 1.000 caracteres.',
+            'photo.image' => 'Envie uma imagem válida para a foto do paciente.',
+            'photo.mimes' => 'A foto deve estar em JPEG, PNG ou WebP.',
+            'photo.max' => 'A foto deve ter no máximo 5 MB.',
             'notes.max' => 'As observações devem ter no máximo 5.000 caracteres.',
         ];
+    }
+
+    private function nullableTrimmedString(string $key): ?string
+    {
+        $value = trim((string) $this->input($key, ''));
+
+        return $value !== '' ? $value : null;
     }
 }

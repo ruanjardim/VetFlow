@@ -17,6 +17,10 @@ trait ValidatesTenantScopedReferences
             $rule->where(fn ($query) => $query->where('clinic_id', $clinicId));
         }
 
+        if ($table === 'patients') {
+            $rule->where('lifecycle_status', 'active');
+        }
+
         return $rule;
     }
 

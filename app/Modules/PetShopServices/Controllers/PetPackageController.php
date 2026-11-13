@@ -15,9 +15,7 @@ use Illuminate\View\View;
 /** Pacotes vendidos por pet (saldo, validade, consumo). */
 class PetPackageController extends Controller
 {
-    public function __construct(private readonly PetPackageService $packages)
-    {
-    }
+    public function __construct(private readonly PetPackageService $packages) {}
 
     public function index(Request $request): View
     {
@@ -51,7 +49,7 @@ class PetPackageController extends Controller
     {
         return view('pet-packages.create', [
             'templates' => PetshopPackage::query()->active()->with('items.service')->orderBy('name')->get(),
-            'patients' => Patient::query()->with('tutor')->orderBy('name')->get(),
+            'patients' => Patient::query()->available()->with('tutor')->orderBy('name')->get(),
             'selectedTemplateId' => $request->integer('petshop_package_id') ?: null,
             'selectedPatientId' => $request->integer('patient_id') ?: null,
         ]);

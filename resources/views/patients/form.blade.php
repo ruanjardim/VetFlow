@@ -1,3 +1,14 @@
+@php
+  $selectedNeutered = old(
+    'neutered',
+    isset($patient) && $patient?->neutered !== null ? ($patient->neutered ? '1' : '0') : ''
+  );
+  $selectedPedigree = old(
+    'has_pedigree',
+    isset($patient) && $patient?->has_pedigree !== null ? ($patient->has_pedigree ? '1' : '0') : ''
+  );
+@endphp
+
 <div class="form-section">
   <div class="panel-heading">
     <div>
@@ -102,6 +113,39 @@
         <option value="Fêmea">
       </datalist>
     </div>
+    <div class="field">
+      <label for="neutered">Esterilização</label>
+      <select id="neutered" name="neutered">
+        <option value="" @selected($selectedNeutered === '')>Não informado</option>
+        <option value="1" @selected((string) $selectedNeutered === '1')>Castrado / esterilizado</option>
+        <option value="0" @selected((string) $selectedNeutered === '0')>Não castrado</option>
+      </select>
+      <div class="field-hint">Registros antigos permanecem como não informados até uma conferência humana.</div>
+    </div>
+    <div class="field">
+      <label for="microchip">Microchip</label>
+      <input id="microchip" name="microchip" value="{{ old('microchip', $patient->microchip ?? '') }}" maxlength="100" autocomplete="off">
+      <div class="field-hint">Identificador informado pela clínica ou pelo responsável; não precisa ser exclusivo.</div>
+    </div>
+    <div class="field">
+      <label for="has_pedigree">Pedigree</label>
+      <select id="has_pedigree" name="has_pedigree">
+        <option value="" @selected($selectedPedigree === '')>Não informado</option>
+        <option value="1" @selected((string) $selectedPedigree === '1')>Possui pedigree</option>
+        <option value="0" @selected((string) $selectedPedigree === '0')>Não possui pedigree</option>
+      </select>
+      <div class="field-hint">Registre somente a informação declarada; o VetFlow não certifica autenticidade.</div>
+    </div>
+    <div class="field">
+      <label for="pedigree_number">Número do pedigree</label>
+      <input id="pedigree_number" name="pedigree_number" value="{{ old('pedigree_number', $patient->pedigree_number ?? '') }}" maxlength="120" autocomplete="off">
+      <div class="field-hint">Aceita letras, números, barras e outros caracteres do registro informado.</div>
+    </div>
+    <div class="field full">
+      <label for="markings">Marcações de identificação</label>
+      <textarea id="markings" name="markings" maxlength="1000" rows="3">{{ old('markings', $patient->markings ?? '') }}</textarea>
+      <div class="field-hint">Descreva sinais visuais úteis para identificação, sem interpretação clínica.</div>
+    </div>
   </div>
 </div>
 
@@ -130,6 +174,29 @@
         @endforeach
       </select>
       <small class="muted" data-patient-size-hint>Define a tabela de preço do banho e tosa. Sem porte, usamos o peso: até 10 kg pequeno, até 25 kg médio, até 45 kg grande, acima gigante.</small>
+    </div>
+    <div class="field full patient-photo-input">
+      <label for="photo">Foto do paciente</label>
+      <div class="patient-photo-editor">
+        <div class="patient-photo-frame patient-photo-frame-large">
+          @if(isset($patient) && $patient?->photo_path)
+            <img src="{{ route('patients.photo', $patient->id) }}" alt="Foto atual de {{ $patient->name }}">
+          @else
+            <span aria-hidden="true">🐾</span>
+          @endif
+        </div>
+        <div class="patient-photo-controls">
+          <input id="photo" name="photo" type="file" accept="image/jpeg,image/png,image/webp">
+          <small>JPEG, PNG ou WebP, até 5 MB. A imagem fica em armazenamento privado da clínica.</small>
+          @if(isset($patient) && $patient?->photo_path)
+            <label class="checkbox-row" for="remove_photo">
+              <input id="remove_photo" name="remove_photo" type="checkbox" value="1" @checked(old('remove_photo'))>
+              Remover a foto atual
+            </label>
+            <small>Uma nova foto substitui a atual; o novo envio tem prioridade sobre a opção de remoção.</small>
+          @endif
+        </div>
+      </div>
     </div>
     <div class="field full">
       <label for="notes">Observações</label>

@@ -73,7 +73,7 @@
                 <td>{{ $row['count'] }}</td>
                 <td>{{ $money($row['expected']) }}</td>
                 <td>
-                  <input name="counted_methods[{{ $row['key'] }}]" type="text" inputmode="decimal" value="{{ old('counted_methods.'.$row['key'], $moneyInput($row['expected'])) }}" aria-label="Conferido em {{ $row['label'] }}" data-money-input data-cash-close-method data-expected="{{ $row['expected'] }}">
+                  <input name="counted_methods[{{ $row['key'] }}]" type="text" inputmode="decimal" value="{{ old('counted_methods.'.$row['key'], $moneyInput($row['expected'])) }}" aria-label="Conferido em {{ $row['label'] }}" data-money-input data-money-input-signed data-cash-close-method data-expected="{{ $row['expected'] }}">
                 </td>
               </tr>
             @empty

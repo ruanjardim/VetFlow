@@ -3,8 +3,8 @@
 namespace App\Modules\Appointments\Controllers;
 
 use App\Core\Base\BaseCrudController;
-use App\Modules\Appointments\Requests\StoreAppointmentRequest;
 use App\Modules\Appointments\Requests\StoreAppointmentReminderRequest;
+use App\Modules\Appointments\Requests\StoreAppointmentRequest;
 use App\Modules\Appointments\Requests\UpdateAppointmentRequest;
 use App\Modules\Appointments\Services\AppointmentReminderService;
 use App\Modules\Appointments\Services\AppointmentService;
@@ -87,7 +87,7 @@ class AppointmentController extends BaseCrudController
     private function formData(): array
     {
         return [
-            'patients' => Patient::query()->orderBy('name')->get(),
+            'patients' => Patient::query()->available()->orderBy('name')->get(),
             'tutors' => Tutor::query()->orderBy('name')->get(),
             'preselectedPatientId' => (int) request()->query('patient_id'),
             'preselectedTutorId' => (int) request()->query('tutor_id'),

@@ -7,8 +7,8 @@ use App\Modules\MedicalRecords\Models\MedicalRecord;
 use App\Modules\Patients\Models\Patient;
 use App\Modules\Vaccinations\Requests\StoreVaccinationRequest;
 use App\Modules\Vaccinations\Requests\UpdateVaccinationRequest;
-use App\Modules\Vaccinations\Services\VaccineCatalogService;
 use App\Modules\Vaccinations\Services\VaccinationService;
+use App\Modules\Vaccinations\Services\VaccineCatalogService;
 use App\Support\Tenancy\TenantContext;
 
 class VaccinationController extends BaseCrudController
@@ -53,7 +53,7 @@ class VaccinationController extends BaseCrudController
     private function formData(?int $includeVaccineId = null, ?int $clinicId = null): array
     {
         return [
-            'patients' => Patient::query()->orderBy('name')->get(),
+            'patients' => Patient::query()->available()->orderBy('name')->get(),
             'medicalRecords' => MedicalRecord::query()->with('patient')->latest('examined_at')->get(),
             'vaccines' => $this->vaccines->formCatalog($this->tenant->clinicId() ?? $clinicId, $includeVaccineId),
         ];

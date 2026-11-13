@@ -19,7 +19,7 @@ class HospitalizationService extends BaseService
 
     public function create(array $data): Model
     {
-        $patient = Patient::query()->findOrFail($data['patient_id']);
+        $patient = Patient::query()->available()->findOrFail($data['patient_id']);
 
         $this->assertMedicalRecordMatchesPatient($data['medical_record_id'] ?? null, $patient);
 

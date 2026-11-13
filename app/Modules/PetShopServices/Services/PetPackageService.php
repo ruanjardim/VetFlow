@@ -92,7 +92,7 @@ class PetPackageService
             /** @var PetshopPackage $template */
             $template = PetshopPackage::query()->with('items.service')->findOrFail($data['petshop_package_id']);
             /** @var Patient $patient */
-            $patient = Patient::query()->findOrFail($data['patient_id']);
+            $patient = Patient::query()->available()->findOrFail($data['patient_id']);
 
             if ((int) $template->clinic_id !== (int) $patient->clinic_id) {
                 throw ValidationException::withMessages([

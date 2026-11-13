@@ -7,38 +7,153 @@
     <div>
       <h1>Ficha de {{ $patient->name }}</h1>
       <p>Histórico consolidado do paciente, sem alterar os registros clínicos originais.</p>
+      <span class="badge {{ $patient->lifecycle_status === 'active' ? 'success' : ($patient->lifecycle_status === 'deceased' ? 'danger' : 'muted-badge') }}">
+        {{ \App\Modules\Patients\Support\PatientLifecycleStatus::label($patient->lifecycle_status) }}
+      </span>
     </div>
     <div class="actions">
-      @can('schedules.manage')
-        <a class="button secondary" href="{{ route('schedules.create', ['patient_id' => $patient->id, 'tutor_id' => $patient->tutor_id]) }}">Agendar</a>
-      @endcan
-      @can('appointments.manage')
-        <a class="button secondary" href="{{ route('appointments.create', ['patient_id' => $patient->id, 'tutor_id' => $patient->tutor_id]) }}">Nova consulta</a>
-      @endcan
-      @can('vaccinations.manage')
-        <a class="button secondary" href="{{ route('vaccinations.create', ['patient_id' => $patient->id]) }}">Nova vacina</a>
-      @endcan
-      @can('hospitalizations.manage')
-        <a class="button secondary" href="{{ route('hospitalizations.create', ['patient_id' => $patient->id]) }}">Internar</a>
-      @endcan
-      <a class="button secondary" href="{{ route('patients.edit', $patient->id) }}">Editar cadastro</a>
+      @if($patient->isAvailable())
+        @can('schedules.manage')
+          <a class="button secondary" href="{{ route('schedules.create', ['patient_id' => $patient->id, 'tutor_id' => $patient->tutor_id]) }}">Agendar</a>
+        @endcan
+        @can('appointments.manage')
+          <a class="button secondary" href="{{ route('appointments.create', ['patient_id' => $patient->id, 'tutor_id' => $patient->tutor_id]) }}">Nova consulta</a>
+        @endcan
+        @can('vaccinations.manage')
+          <a class="button secondary" href="{{ route('vaccinations.create', ['patient_id' => $patient->id]) }}">Nova vacina</a>
+        @endcan
+        @can('hospitalizations.manage')
+          <a class="button secondary" href="{{ route('hospitalizations.create', ['patient_id' => $patient->id]) }}">Internar</a>
+        @endcan
+        <a class="button secondary" href="{{ route('patients.edit', $patient->id) }}">Editar cadastro</a>
+      @endif
       <a class="button secondary" href="{{ route('patients.index') }}">Voltar</a>
     </div>
   </header>
 
   <section class="panel">
     <h2>Identificação</h2>
+    <div class="patient-profile-summary">
+      <div class="patient-photo-frame patient-photo-frame-large">
+        @if($patient->photo_path)
+          <img src="{{ route('patients.photo', $patient->id) }}" alt="Foto de {{ $patient->name }}">
+        @else
+          <span aria-hidden="true">🐾</span>
+        @endif
+      </div>
+      <div>
+        <strong>{{ $patient->name }}</strong>
+        <p class="muted">{{ $patient->animalSpecies?->name ?? $patient->species ?? 'Espécie não informada' }} · {{ $patient->tutor?->name ?? 'Sem responsável vinculado' }}</p>
+      </div>
+    </div>
     <div class="form-grid">
       <div class="field"><label>Responsável</label><input value="{{ $patient->tutor?->name ?? 'Sem responsável vinculado' }}" disabled></div>
       <div class="field"><label>Espécie</label><input value="{{ $patient->animalSpecies?->name ?? $patient->species ?? '-' }}" disabled></div>
       <div class="field"><label>Raça ou variedade</label><input value="{{ $patient->animalBreed?->name ?? $patient->breed ?? '-' }}" disabled></div>
       <div class="field"><label>Pelagem ou padrão</label><input value="{{ $patient->animalCoat?->name ?? '-' }}" disabled></div>
       <div class="field"><label>Sexo</label><input value="{{ $patient->gender ?? '-' }}" disabled></div>
+      <div class="field"><label>Esterilização</label><input value="{{ $patient->neutered === null ? 'Não informado' : ($patient->neutered ? 'Castrado / esterilizado' : 'Não castrado') }}" disabled></div>
+      <div class="field"><label>Microchip</label><input value="{{ $patient->microchip ?? '-' }}" disabled></div>
+      <div class="field"><label>Pedigree</label><input value="{{ $patient->has_pedigree === null ? 'Não informado' : ($patient->has_pedigree ? 'Possui pedigree' : 'Não possui pedigree') }}" disabled></div>
+      <div class="field"><label>Número do pedigree</label><input value="{{ $patient->pedigree_number ?? '-' }}" disabled></div>
       <div class="field"><label>Data de nascimento</label><input value="{{ optional($patient->birth_date)->format('d/m/Y') ?: '-' }}" disabled></div>
       <div class="field"><label>Peso cadastrado</label><input value="{{ $patient->weight !== null ? $patient->weight.' kg' : '-' }}" disabled></div>
       <div class="field"><label>Porte</label><input value="{{ \App\Modules\Patients\Support\PatientSize::label(\App\Modules\Patients\Support\PatientSize::resolve($patient->size, $patient->weight)) ?? '-' }}{{ $patient->size ? '' : ($patient->weight ? ' (pelo peso)' : '') }}" disabled></div>
+      <div class="field full"><label>Marcações de identificação</label><div class="panel">{!! $patient->markings ? nl2br(e($patient->markings)) : '<span class="muted">Nenhuma marcação cadastrada.</span>' !!}</div></div>
       <div class="field full"><label>Observações do cadastro</label><div class="panel">{!! $patient->notes ? nl2br(e($patient->notes)) : '<span class="muted">Nenhuma observação cadastrada.</span>' !!}</div></div>
     </div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-heading">
+      <div>
+        <h2>Ciclo de vida da ficha</h2>
+        <p>Arquivamento e óbito impedem novas operações, mas não apagam o histórico do paciente.</p>
+      </div>
+      <span class="badge {{ $patient->lifecycle_status === 'active' ? 'success' : ($patient->lifecycle_status === 'deceased' ? 'danger' : 'muted-badge') }}">
+        {{ \App\Modules\Patients\Support\PatientLifecycleStatus::label($patient->lifecycle_status) }}
+      </span>
+    </div>
+
+    @if($patient->lifecycle_changed_at)
+      <p>
+        Última alteração em <strong>{{ $patient->lifecycle_changed_at->format('d/m/Y H:i') }}</strong>
+        por <strong>{{ $patient->lifecycleChangedBy?->name ?? 'usuário não disponível' }}</strong>.
+      </p>
+      <div class="panel">{!! nl2br(e($patient->lifecycle_reason)) !!}</div>
+    @else
+      <p class="muted">A ficha está ativa e ainda não possui mudança de ciclo de vida registrada.</p>
+    @endif
+
+    <div class="form-grid">
+      @if($patient->lifecycle_status === 'active')
+        <form method="POST" action="{{ route('patients.lifecycle', $patient->id) }}" class="field">
+          @csrf
+          @method('PATCH')
+          <input type="hidden" name="status" value="archived">
+          <label for="archive-reason">Arquivar ficha</label>
+          <textarea id="archive-reason" name="reason" required minlength="10" maxlength="2000" placeholder="Informe por que esta ficha não deve receber novas operações."></textarea>
+          <button class="secondary" type="submit" data-confirm="Arquivar a ficha e cancelar agendamentos futuros deste paciente?">Arquivar ficha</button>
+        </form>
+        <form method="POST" action="{{ route('patients.lifecycle', $patient->id) }}" class="field">
+          @csrf
+          @method('PATCH')
+          <input type="hidden" name="status" value="deceased">
+          <label for="death-reason">Registrar óbito</label>
+          <textarea id="death-reason" name="reason" required minlength="10" maxlength="2000" placeholder="Registre a origem e o contexto da informação recebida."></textarea>
+          <button class="danger" type="submit" data-confirm="Registrar o óbito e cancelar agendamentos futuros deste paciente?">Registrar óbito</button>
+        </form>
+      @elseif($patient->lifecycle_status === 'archived')
+        <form method="POST" action="{{ route('patients.lifecycle', $patient->id) }}" class="field">
+          @csrf
+          @method('PATCH')
+          <input type="hidden" name="status" value="active">
+          <label for="restore-reason">Restaurar ficha</label>
+          <textarea id="restore-reason" name="reason" required minlength="10" maxlength="2000" placeholder="Informe por que a ficha deve voltar a aceitar novas operações."></textarea>
+          <button type="submit" data-confirm="Restaurar a ficha? Agendamentos cancelados não serão reabertos.">Restaurar ficha</button>
+        </form>
+        <form method="POST" action="{{ route('patients.lifecycle', $patient->id) }}" class="field">
+          @csrf
+          @method('PATCH')
+          <input type="hidden" name="status" value="deceased">
+          <label for="archived-death-reason">Registrar óbito</label>
+          <textarea id="archived-death-reason" name="reason" required minlength="10" maxlength="2000" placeholder="Registre a origem e o contexto da informação recebida."></textarea>
+          <button class="danger" type="submit" data-confirm="Alterar esta ficha arquivada para óbito?">Registrar óbito</button>
+        </form>
+      @else
+        <form method="POST" action="{{ route('patients.lifecycle', $patient->id) }}" class="field full">
+          @csrf
+          @method('PATCH')
+          <input type="hidden" name="status" value="active">
+          <label for="death-correction-reason">Corrigir registro de óbito</label>
+          <textarea id="death-correction-reason" name="reason" required minlength="10" maxlength="2000" placeholder="Explique a evidência que confirma que o registro de óbito estava incorreto."></textarea>
+          <button type="submit" data-confirm="Corrigir o óbito e reativar a ficha? Agendamentos cancelados não serão reabertos.">Corrigir e reativar</button>
+        </form>
+      @endif
+    </div>
+
+    @if($lifecycleEvents->isNotEmpty())
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Data</th><th>Ação</th><th>Responsável</th><th>Justificativa</th><th>Impactos</th></tr></thead>
+          <tbody>
+            @foreach($lifecycleEvents as $lifecycleEvent)
+              @php($eventLabel = \App\Modules\Audit\Services\AuditTrailService::eventLabels()[$lifecycleEvent->event] ?? $lifecycleEvent->event)
+              <tr>
+                <td>{{ optional($lifecycleEvent->occurred_at)->format('d/m/Y H:i') }}</td>
+                <td>{{ $eventLabel }}</td>
+                <td>{{ $lifecycleEvent->actor?->name ?? '-' }}</td>
+                <td>{!! nl2br(e($lifecycleEvent->metadata['reason'] ?? '-')) !!}</td>
+                <td>
+                  {{ (int) ($lifecycleEvent->metadata['cancelled_appointments'] ?? 0) }} consulta(s) e
+                  {{ (int) ($lifecycleEvent->metadata['cancelled_schedules'] ?? 0) }} agendamento(s) cancelado(s)
+                </td>
+              </tr>
+            @endforeach
+          </tbody>
+        </table>
+      </div>
+    @endif
   </section>
 
   @if($visibility['medicalRecords'])
@@ -60,15 +175,17 @@
               <strong>{{ $clinicalAlert->title }}</strong>
               @if($clinicalAlert->details)<p>{!! nl2br(e($clinicalAlert->details)) !!}</p>@endif
               <small>Registrado em {{ optional($clinicalAlert->created_at)->format('d/m/Y H:i') }} por {{ $clinicalAlert->createdBy?->name ?? '-' }}.</small>
-              <form class="clinical-alert-resolution" method="POST" action="{{ route('patient-clinical-alerts.resolve', [$patient->id, $clinicalAlert->id]) }}">
-                @csrf
-                @method('PATCH')
-                <div class="field">
-                  <label for="resolution_notes_{{ $clinicalAlert->id }}">Motivo da resolução</label>
-                  <textarea id="resolution_notes_{{ $clinicalAlert->id }}" name="resolution_notes" required minlength="10" maxlength="2000" placeholder="Descreva o fato que permite encerrar este alerta."></textarea>
-                </div>
-                <button class="secondary" type="submit" data-confirm="Resolver este alerta mantendo-o no histórico?">Resolver alerta</button>
-              </form>
+              @if($patient->isAvailable())
+                <form class="clinical-alert-resolution" method="POST" action="{{ route('patient-clinical-alerts.resolve', [$patient->id, $clinicalAlert->id]) }}">
+                  @csrf
+                  @method('PATCH')
+                  <div class="field">
+                    <label for="resolution_notes_{{ $clinicalAlert->id }}">Motivo da resolução</label>
+                    <textarea id="resolution_notes_{{ $clinicalAlert->id }}" name="resolution_notes" required minlength="10" maxlength="2000" placeholder="Descreva o fato que permite encerrar este alerta."></textarea>
+                  </div>
+                  <button class="secondary" type="submit" data-confirm="Resolver este alerta mantendo-o no histórico?">Resolver alerta</button>
+                </form>
+              @endif
             </article>
           @endforeach
         </div>
@@ -76,21 +193,23 @@
         <p class="muted">Nenhum alerta clínico ativo para este paciente.</p>
       @endif
 
-      <form method="POST" action="{{ route('patient-clinical-alerts.store', $patient->id) }}">
-        @csrf
-        <div class="form-grid">
-          <div class="field">
-            <label for="clinical_alert_title">Novo alerta</label>
-            <input id="clinical_alert_title" name="title" required maxlength="160" value="{{ old('title') }}" placeholder="Ex.: reação documentada a medicamento">
+      @if($patient->isAvailable())
+        <form method="POST" action="{{ route('patient-clinical-alerts.store', $patient->id) }}">
+          @csrf
+          <div class="form-grid">
+            <div class="field">
+              <label for="clinical_alert_title">Novo alerta</label>
+              <input id="clinical_alert_title" name="title" required maxlength="160" value="{{ old('title') }}" placeholder="Ex.: reação documentada a medicamento">
+            </div>
+            <div class="field full">
+              <label for="clinical_alert_details">Detalhes observados</label>
+              <textarea id="clinical_alert_details" name="details" maxlength="5000" rows="3">{{ old('details') }}</textarea>
+              <small>Registre fatos conhecidos. O VetFlow não classifica gravidade nem gera interpretação clínica.</small>
+            </div>
           </div>
-          <div class="field full">
-            <label for="clinical_alert_details">Detalhes observados</label>
-            <textarea id="clinical_alert_details" name="details" maxlength="5000" rows="3">{{ old('details') }}</textarea>
-            <small>Registre fatos conhecidos. O VetFlow não classifica gravidade nem gera interpretação clínica.</small>
-          </div>
-        </div>
-        <button type="submit">Registrar alerta</button>
-      </form>
+          <button type="submit">Registrar alerta</button>
+        </form>
+      @endif
 
       @if($resolvedClinicalAlerts->isNotEmpty())
         <div class="table-wrap">

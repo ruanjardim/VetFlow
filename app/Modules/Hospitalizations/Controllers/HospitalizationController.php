@@ -48,7 +48,7 @@ class HospitalizationController extends BaseCrudController
     private function formData(): array
     {
         return [
-            'patients' => Patient::query()->with('tutor')->orderBy('name')->get(),
+            'patients' => Patient::query()->available()->with('tutor')->orderBy('name')->get(),
             'medicalRecords' => MedicalRecord::query()->with('patient')->latest('examined_at')->get(),
         ];
     }

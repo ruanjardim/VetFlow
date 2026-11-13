@@ -210,6 +210,10 @@ financial income, returns, refunds, cancellations, and sale event history.
   expected value deducts refunds recorded in that method and, for cash, also
   deducts change. Expected, counted, and difference values are preserved in
   closure metadata so existing closure columns and records remain compatible.
+- Non-cash methods accept a negative counted total when refunds in the current
+  session exceed receipts in that same method. The signed currency mask keeps
+  the negative value visible so an operator can close a refund-only Pix or
+  transfer session without creating an artificial difference.
 - Pending, cancelled, and refunded payment rows never compose the amount paid
   on a sale or the cash received by the cashier.
 - The cashier report exposes operator performance for operational review. It is

@@ -49,6 +49,7 @@ The employee/access note documents the current decision to use `users`,
 - [Financial](modules/financial.md)
 - [Fiscal](modules/fiscal.md)
 - [Clinical Core](modules/clinical-core.md)
+- [Patients](modules/patients.md)
 - [Patient Clinical Alerts](modules/patient-clinical-alerts.md)
 - [Patient Clinical Timeline](modules/patient-clinical-timeline.md)
 - [Exam Results](modules/exam-results.md)
