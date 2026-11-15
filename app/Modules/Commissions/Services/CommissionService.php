@@ -60,7 +60,7 @@ class CommissionService extends BaseService
     {
         [$start, $end] = $this->range($from, $to);
         $rules = CommissionRule::query()
-            ->with('seller.clinic')
+            ->with(['seller.clinic', 'seller.employee'])
             ->where('active', true)
             ->whereDate('starts_on', '<=', $end)
             ->where(fn ($query) => $query->whereNull('ends_on')->orWhereDate('ends_on', '>=', $start))
@@ -123,7 +123,7 @@ class CommissionService extends BaseService
     public function recentSettlements(): Collection
     {
         return SalesCommissionSettlement::query()
-            ->with(['seller.clinic', 'financialTransaction', 'createdBy'])
+            ->with(['seller.clinic', 'employee', 'financialTransaction', 'createdBy'])
             ->latest()
             ->limit(20)
             ->get();
@@ -146,7 +146,7 @@ class CommissionService extends BaseService
         }
 
         /** @var User $seller */
-        $seller = User::query()->active()->whereNotNull('clinic_id')->findOrFail($sellerId);
+        $seller = User::query()->with('employee')->active()->whereNotNull('clinic_id')->findOrFail($sellerId);
 
         if ($actor->clinic_id !== null && (int) $actor->clinic_id !== (int) $seller->clinic_id) {
             abort(404);
@@ -216,6 +216,7 @@ class CommissionService extends BaseService
             $settlement = SalesCommissionSettlement::query()->withoutGlobalScope('clinic_tenant')->create([
                 'clinic_id' => $seller->clinic_id,
                 'seller_user_id' => $seller->id,
+                'employee_id' => $seller->employee?->id,
                 'period_start' => $start->toDateString(),
                 'period_end' => $end->toDateString(),
                 'total' => $this->amount($totalCents),
@@ -225,6 +226,7 @@ class CommissionService extends BaseService
                 'due_date' => Carbon::parse($dueDate)->toDateString(),
                 'notes' => filled($notes) ? trim((string) $notes) : null,
                 'snapshot_hash' => $snapshotHash,
+                'payment_snapshot' => $seller->employee?->paymentSnapshot(),
                 'created_by' => $actor->id,
             ]);
 
@@ -274,7 +276,7 @@ class CommissionService extends BaseService
                 'Comissão de vendas — '.$seller->name,
             );
 
-            return $settlement->load(['seller', 'financialTransaction', 'items']);
+            return $settlement->load(['seller', 'employee', 'financialTransaction', 'items']);
         });
     }
 

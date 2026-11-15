@@ -50,7 +50,8 @@
         <a href="{{ route('sales.index', ['status' => 'draft']) }}">Vendas suspensas</a>
         <a href="{{ route('sales.quotes.index') }}">Orçamentos</a>
         <a href="{{ route('sales.cash-sessions.index') }}">Caixa</a>
-        <a href="{{ route('sales.pdv-scale-settings.edit') }}" target="_blank" rel="noopener">Balança e etiquetas ↗</a>
+        <a href="{{ route('sales.pdv-scale-labels.create', $selectedClinicId ? ['clinic_id' => $selectedClinicId] : []) }}" target="_blank" rel="noopener">Gerar etiqueta por peso ↗</a>
+        <a href="{{ route('sales.pdv-scale-settings.edit') }}" target="_blank" rel="noopener">Configurar balança ↗</a>
         <a href="{{ route('sales.create', ['mode' => 'advanced']) }}">Comanda / formulário avançado</a>
       </nav>
     </details>

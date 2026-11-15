@@ -22,6 +22,10 @@ period, an immutable settlement history, and linked financial payables.
 - Closing creates one pending expense in the `Commissions` financial category
   and freezes the source rows, rules, values and evidence hash without marking
   the payable as paid.
+- When the seller has a linked functional record, closure also freezes its
+  `employee_id` and a masked snapshot of the preferred payment method. Clear
+  Pix/bank credentials are never copied into the settlement, and later profile
+  changes do not rewrite the historical snapshot.
 - Repeating or overlapping a period does not pay the same source twice. A later
   receipt remains available, while a return or cancellation creates a negative
   adjustment against the next positive settlement.
@@ -40,7 +44,7 @@ responsible for rule approval, due dates and the final payment decision.
 
 - `commission_rules`: percentage, basis, recognition and validity.
 - `sales_commission_settlements`: one reviewed seller/period closure linked to
-  its financial transaction.
+  its financial transaction, optional employee and masked payment snapshot.
 - `sales_commission_settlement_items`: immutable source revisions that prevent
   duplicate closure and preserve later adjustments.
 
@@ -48,5 +52,6 @@ responsible for rule approval, due dates and the final payment decision.
 
 `tests/Feature/SalesCommissionSettlementTest.php` covers source composition,
 idempotency, partial receipts, post-settlement returns, tenant isolation,
-financial-origin protection and audit evidence. Existing preview compatibility
-remains covered by `tests/Feature/OperationalFlowTest.php`.
+financial-origin protection, immutable masked payment data and audit evidence.
+Existing preview compatibility remains covered by
+`tests/Feature/OperationalFlowTest.php`.
