@@ -6,6 +6,7 @@ use App\Models\Role;
 use App\Models\User;
 use App\Modules\Access\Contracts\AccessUserRepositoryInterface;
 use App\Modules\Audit\Services\AuditTrailService;
+use App\Modules\Employees\Models\Employee;
 use App\Modules\Saas\Services\SubscriptionFeatureService;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Collection;
@@ -37,15 +38,23 @@ class AccessUserService
     }
 
     /**
-     * @return array{accessUser: ?User, roles: Collection, clinics: Collection, preferredClinicId: ?int, returnTo: ?string}
+     * @return array{accessUser: ?User, roles: Collection, clinics: Collection, preferredClinicId: ?int, preferredEmployee: ?Employee, returnTo: ?string}
      */
     public function formData(
         User $actor,
         ?User $accessUser = null,
         ?int $preferredClinicId = null,
-        ?string $returnTo = null
+        ?string $returnTo = null,
+        ?int $preferredEmployeeId = null,
     ): array {
         $clinics = $this->repository->availableClinics($actor);
+        $preferredEmployee = $accessUser === null && $preferredEmployeeId
+            ? Employee::query()
+                ->whereNull('user_id')
+                ->when($actor->clinic_id === null && $preferredClinicId, fn ($query) => $query->where('clinic_id', $preferredClinicId))
+                ->find($preferredEmployeeId)
+            : null;
+        $preferredClinicId = $preferredEmployee?->clinic_id ?? $preferredClinicId;
         $preferredClinicId = $actor->clinic_id === null
             && $clinics->contains('id', $preferredClinicId)
                 ? $preferredClinicId
@@ -56,6 +65,7 @@ class AccessUserService
             'roles' => $this->repository->assignableRoles(),
             'clinics' => $clinics,
             'preferredClinicId' => $preferredClinicId,
+            'preferredEmployee' => $preferredEmployee,
             'returnTo' => $returnTo === 'implementation' ? 'implementation' : null,
         ];
     }
@@ -68,13 +78,16 @@ class AccessUserService
         [$roleIds] = $this->validatedRoles($data['role_ids'] ?? []);
         $attributes = $this->userAttributes($actor, $data);
 
-        return DB::transaction(function () use ($actor, $attributes, $roleIds): User {
+        $employeeId = filled($data['employee_id'] ?? null) ? (int) $data['employee_id'] : null;
+
+        return DB::transaction(function () use ($actor, $attributes, $roleIds, $employeeId): User {
             $this->lockLicenseScope($attributes['clinic_id']);
             $this->guardActiveUserLimit($attributes['clinic_id'], (bool) $attributes['active']);
             $user = $this->repository->create($attributes);
             $this->repository->syncRoles($user, $roleIds, $actor);
+            $this->syncEmployee($user, true, $employeeId);
 
-            $user->load(['clinic', 'roles']);
+            $user->load(['clinic', 'roles', 'employee']);
             $this->audit->record(
                 'access.user.created',
                 $user,
@@ -109,7 +122,8 @@ class AccessUserService
             $this->guardActiveUserLimit($attributes['clinic_id'], $consumesNewLicense);
             $user = $this->repository->update($accessUser, $attributes);
             $this->repository->syncRoles($user, $roleIds, $actor);
-            $user->load(['clinic', 'roles']);
+            $this->syncEmployee($user);
+            $user->load(['clinic', 'roles', 'employee']);
 
             $this->audit->record(
                 'access.user.updated',
@@ -243,13 +257,56 @@ class AccessUserService
         }
     }
 
+    private function syncEmployee(User $user, bool $creatingAccess = false, ?int $preferredEmployeeId = null): void
+    {
+        if ($user->clinic_id === null) {
+            return;
+        }
+
+        $employee = $preferredEmployeeId
+            ? Employee::query()
+                ->whereKey($preferredEmployeeId)
+                ->where('clinic_id', $user->clinic_id)
+                ->whereNull('user_id')
+                ->lockForUpdate()
+                ->first()
+            : Employee::withTrashed()->firstOrNew(['user_id' => $user->id]);
+
+        if (! $employee) {
+            throw ValidationException::withMessages([
+                'employee_id' => 'O cadastro funcional não está mais disponível para receber este acesso.',
+            ]);
+        }
+
+        $employee->fill([
+            'clinic_id' => $user->clinic_id,
+            'user_id' => $user->id,
+            'name' => $user->name,
+            'email' => $user->email,
+            'phone' => $user->phone,
+            'position' => $user->position,
+            'employment_type' => $employee->employment_type ?: 'employee',
+        ]);
+
+        if (! $employee->exists || ($creatingAccess && $preferredEmployeeId === null)) {
+            $employee->active = (bool) $user->active;
+        }
+
+        $employee->save();
+
+        if ($employee->trashed()) {
+            $employee->restore();
+        }
+    }
+
     /** @return array<string, mixed> */
     private function auditSnapshot(User $user): array
     {
-        $user->loadMissing('roles');
+        $user->loadMissing(['roles', 'employee']);
 
         return [
             'clinic_id' => $user->clinic_id,
+            'employee_id' => $user->employee?->id,
             'name' => $user->name,
             'email' => $user->email,
             'phone' => $user->phone,

@@ -12,6 +12,7 @@
     <link rel="stylesheet" href="{{ route('assets.css', ['v' => filemtime(resource_path('css/app.css'))]) }}">
     <script src="{{ route('assets.js', ['v' => filemtime(resource_path('js/app.js'))]) }}" defer></script>
   @endif
+  @stack('head')
 </head>
 <body class="@yield('body_class')">
   @php($currentClinic = auth()->user()?->clinic)
@@ -111,7 +112,7 @@
                 <a class="{{ request()->routeIs('sales.cashier', 'sales.cashier.close') ? 'is-active' : '' }}" href="{{ route('sales.cashier') }}">Movimentos de caixa</a>
                 <a class="{{ request()->routeIs('sales.profitability') ? 'is-active' : '' }}" href="{{ route('sales.profitability') }}">Rentabilidade</a>
                 <a class="{{ request()->routeIs('sales.product-abc') ? 'is-active' : '' }}" href="{{ route('sales.product-abc') }}">Curva ABC</a>
-                <a class="{{ request()->routeIs('sales.pdv-scale-settings.*') ? 'is-active' : '' }}" href="{{ route('sales.pdv-scale-settings.edit') }}">Balança e etiquetas</a>
+                <a class="{{ request()->routeIs('sales.pdv-scale-settings.*', 'sales.pdv-scale-labels.*') ? 'is-active' : '' }}" href="{{ route('sales.pdv-scale-labels.create') }}">Balança e etiquetas</a>
               @endcan
               @can('payment-methods.manage')
                 <a class="{{ request()->routeIs('sales.receivables') ? 'is-active' : '' }}" href="{{ route('sales.receivables') }}">Recebíveis de cartão</a>
@@ -186,7 +187,7 @@
         @endcanany
 
         @canany(['clinics.manage', 'clinic-branding.manage', 'printers.manage', 'users.manage', 'implementation.manage', 'audit.manage', 'operations.readiness', 'saas.manage'])
-          <details class="nav-group" @if(request()->routeIs('clinics.*', 'clinic-branding.*', 'printers.*', 'access-users.*', 'implementation.*', 'audit-events.*', 'operations.*', 'saas.*')) open @endif>
+          <details class="nav-group" @if(request()->routeIs('clinics.*', 'clinic-branding.*', 'printers.*', 'access-users.*', 'employees.*', 'implementation.*', 'audit-events.*', 'operations.*', 'saas.*')) open @endif>
             <summary><span class="nav-item-label"><x-ui-icon name="settings" /><span>Administração</span></span><span class="nav-chevron"><x-ui-icon name="chevron" :size="17" /></span></summary>
             <div class="nav-submenu">
               @if(auth()->user()?->clinic_id === null)
@@ -200,6 +201,7 @@
               @endif
               @can('printers.manage')<a class="{{ request()->routeIs('printers.*') ? 'is-active' : '' }}" href="{{ route('printers.index') }}">Impressoras</a>@endcan
               @can('users.manage')<a class="{{ request()->routeIs('access-users.*') ? 'is-active' : '' }}" href="{{ route('access-users.index') }}">Usuários e acessos</a>@endcan
+              @can('users.manage')<a class="{{ request()->routeIs('employees.*') ? 'is-active' : '' }}" href="{{ route('employees.index') }}">Cadastros funcionais</a>@endcan
               @if(auth()->user()?->clinic_id !== null)
                 @can('users.manage')<a class="{{ request()->routeIs('legal.acceptance.*') ? 'is-active' : '' }}" href="{{ route('legal.acceptance.show') }}">Contrato e termos</a>@endcan
               @endif

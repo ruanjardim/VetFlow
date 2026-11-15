@@ -15,6 +15,8 @@ class AuditTrailService
     public const EVENT_LABELS = [
         'access.user.created' => 'Colaborador criado',
         'access.user.updated' => 'Acesso de colaborador atualizado',
+        'employee.created' => 'Cadastro funcional criado',
+        'employee.updated' => 'Cadastro funcional atualizado',
         'clinic.branding.updated' => 'Identidade visual atualizada',
         'printer.created' => 'Impressora cadastrada',
         'printer.updated' => 'Impressora atualizada',

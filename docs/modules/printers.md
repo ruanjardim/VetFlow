@@ -51,6 +51,20 @@ address, manufacturer, model, status, and default selection.
   validity comes from an authorized NFC-e/NFS-e document, not from the Epson
   TM-T20X or another receipt printer.
 
+## Adhesive Weight Labels
+
+- **Vendas > Balança e etiquetas > Gerar etiqueta** creates an adhesive label
+  for an active clinic product sold in kilograms.
+- The operator selects the product, net weight, physical width/height and copy
+  count, with optional origin lot and expiration copied from the source package.
+- The browser print document contains product and establishment identity,
+  weight, price per kilogram, calculated total and a standards-compatible
+  EAN-13 that the VetFlow PDV decodes back into the same product and weight.
+- A configured active label printer is shown as operational guidance, but the
+  browser/system dialog still selects the physical queue. The printer driver
+  must use the same paper dimensions, 100% scale, no margins, and no browser
+  headers or footers.
+
 ## Browser And Fiscal Boundary
 
 The web application stores configuration and provides a test document, while

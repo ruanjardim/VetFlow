@@ -11,6 +11,7 @@ use App\Modules\Commissions\Models\CommissionRule;
 use App\Modules\Commissions\Models\SalesCommissionSettlement;
 use App\Modules\Commissions\Models\SalesCommissionSettlementItem;
 use App\Modules\Commissions\Services\CommissionService;
+use App\Modules\Employees\Models\Employee;
 use App\Modules\Financial\Models\FinancialCategory;
 use App\Modules\Financial\Models\FinancialTransaction;
 use App\Modules\Sales\Models\Sale;
@@ -45,6 +46,15 @@ class SalesCommissionSettlementTest extends TestCase
         [$clinic, $manager, $seller] = $this->scenario();
         $sale = $this->sale($clinic, $seller, 'VEN-COM-002', 100, 40);
         $rule = $this->rule($clinic, $seller, percentage: 10);
+        $employee = Employee::query()->create([
+            'clinic_id' => $clinic->id,
+            'user_id' => $seller->id,
+            'name' => $seller->name,
+            'employment_type' => 'employee',
+            'payment_method' => 'pix',
+            'payment_details' => ['pix_key' => 'comissao-real-1234'],
+            'active' => true,
+        ]);
         $payload = $this->settlementPayload($seller);
 
         $this->actingAs($manager)
@@ -56,6 +66,10 @@ class SalesCommissionSettlementTest extends TestCase
         $item = $settlement->items->sole();
         $this->assertSame($clinic->id, (int) $settlement->clinic_id);
         $this->assertSame($seller->id, (int) $settlement->seller_user_id);
+        $this->assertSame($employee->id, (int) $settlement->employee_id);
+        $this->assertSame('Pix', $settlement->payment_snapshot['method_label']);
+        $this->assertStringEndsWith('1234', $settlement->payment_snapshot['pix_key_masked']);
+        $this->assertStringNotContainsString('comissao-real', json_encode($settlement->payment_snapshot));
         $this->assertSame('10.00', (string) $settlement->total);
         $this->assertSame(64, strlen($settlement->snapshot_hash));
         $this->assertSame($rule->id, (int) $item->commission_rule_id);
@@ -69,6 +83,9 @@ class SalesCommissionSettlementTest extends TestCase
             'event' => 'commission.sales-settlement.created',
             'subject_id' => (string) $settlement->id,
         ]);
+
+        $employee->update(['payment_details' => ['pix_key' => 'nova-chave-9999']]);
+        $this->assertStringEndsWith('1234', $settlement->fresh()->payment_snapshot['pix_key_masked']);
 
         $this->post(route('commissions.settle'), $payload)
             ->assertSessionHasErrors('seller_user_id');

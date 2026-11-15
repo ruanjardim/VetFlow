@@ -93,6 +93,93 @@ class PdvScaleLabelsTest extends TestCase
         $this->assertSame('9.275', $product->refresh()->stock_quantity);
     }
 
+    public function test_vetflow_generates_a_printable_weight_label_readable_by_the_pdv(): void
+    {
+        $clinic = $this->clinic('Pet Shop Etiqueta Própria', '00000000001007');
+        $user = $this->user($clinic, ['sales.manage']);
+        $setting = $this->setting($clinic);
+        $product = $this->product($clinic, 'Ração premium fracionada', '54321', 12, 39.90);
+        $service = app(PdvScaleLabelService::class);
+        $ean13 = $service->encode($setting, $product, 1.000);
+        $expiration = today()->addMonth()->toDateString();
+
+        $response = $this->actingAs($user)
+            ->get(route('sales.pdv-scale-labels.print', [
+                'product_id' => $product->id,
+                'weight' => '1,000',
+                'copies' => 2,
+                'label_width_mm' => 60,
+                'label_height_mm' => 40,
+                'lot' => 'RACAO-LOTE-01',
+                'expires_on' => $expiration,
+                'autoprint' => 0,
+            ]));
+
+        $response
+            ->assertOk()
+            ->assertHeader('Cache-Control', 'max-age=0, no-store, private')
+            ->assertSee('Ração premium fracionada')
+            ->assertSee('1,000 kg')
+            ->assertSee('R$ 39,90')
+            ->assertSee('Lote: RACAO-LOTE-01')
+            ->assertSee('Val.: '.today()->addMonth()->format('d/m/Y'))
+            ->assertSee('data-ean13="'.$ean13.'"', false);
+
+        $this->assertSame(2, substr_count($response->getContent(), 'data-weight-label-copy='));
+        $this->assertSame(95, strlen($service->barcodeModules($ean13)));
+
+        $decoded = $service->inspect($ean13, $clinic->id);
+        $this->assertTrue($decoded['valid']);
+        $this->assertSame(1.0, $decoded['quantity']);
+        $this->assertTrue($decoded['product']->is($product));
+    }
+
+    public function test_weight_label_generator_lists_only_products_ready_for_the_current_layout(): void
+    {
+        $clinic = $this->clinic('Pet Shop Lista de Etiquetas', '00000000001008');
+        $user = $this->user($clinic, ['sales.manage']);
+        $this->setting($clinic);
+        $this->product($clinic, 'Ração pronta para etiqueta', '00123', 8, 22);
+        $this->product($clinic, 'Ração com código curto', '123', 8, 22);
+
+        $this->actingAs($user)
+            ->get(route('sales.pdv-scale-labels.create'))
+            ->assertOk()
+            ->assertSee('Gerar etiqueta por peso')
+            ->assertSee('Ração pronta para etiqueta')
+            ->assertDontSee('Ração com código curto')
+            ->assertSee('1 produto(s) por peso ficaram fora da lista');
+    }
+
+    public function test_weight_label_generation_rejects_other_tenant_and_insufficient_stock(): void
+    {
+        $clinicA = $this->clinic('Pet Shop Etiqueta A', '00000000001009');
+        $clinicB = $this->clinic('Pet Shop Etiqueta B', '00000000001010');
+        $user = $this->user($clinicA, ['sales.manage']);
+        $this->setting($clinicA);
+        $this->setting($clinicB);
+        $productA = $this->product($clinicA, 'Ração com pouco estoque', '10001', 0.500, 30);
+        $productB = $this->product($clinicB, 'Ração de outra clínica', '10002', 10, 30);
+        $base = [
+            'weight' => '1,000',
+            'copies' => 1,
+            'label_width_mm' => 60,
+            'label_height_mm' => 40,
+            'autoprint' => 0,
+        ];
+
+        $this->actingAs($user)
+            ->from(route('sales.pdv-scale-labels.create'))
+            ->get(route('sales.pdv-scale-labels.print', $base + ['product_id' => $productB->id]))
+            ->assertRedirect(route('sales.pdv-scale-labels.create'))
+            ->assertSessionHasErrors('product_id');
+
+        $this->from(route('sales.pdv-scale-labels.create'))
+            ->get(route('sales.pdv-scale-labels.print', $base + ['product_id' => $productA->id]))
+            ->assertRedirect(route('sales.pdv-scale-labels.create'))
+            ->assertSessionHasErrors('weight');
+    }
+
     public function test_scale_label_fails_closed_for_checksum_unknown_product_and_other_tenant(): void
     {
         $clinicA = $this->clinic('Pet Shop A', '00000000001003');

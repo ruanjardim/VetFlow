@@ -6,9 +6,12 @@
   <header class="topbar">
     <div>
       <h1>Balança e etiquetas de peso</h1>
-      <p>Configure a leitura segura de etiquetas EAN-13 impressas pela balança no PDV.</p>
+      <p>Configure a leitura segura de etiquetas EAN-13 e gere adesivos de peso pelo próprio VetFlow.</p>
     </div>
-    <a class="button secondary" href="{{ route('sales.create') }}" target="_blank" rel="noopener">Abrir PDV ↗</a>
+    <div class="actions">
+      <a class="button" href="{{ route('sales.pdv-scale-labels.create', $requiresClinic ? ['clinic_id' => $clinic->id] : []) }}">Gerar etiqueta</a>
+      <a class="button secondary" href="{{ route('sales.create') }}" target="_blank" rel="noopener">Abrir PDV ↗</a>
+    </div>
   </header>
 
   @if($requiresClinic)
@@ -26,7 +29,7 @@
 
   <div class="alert-soft">
     <span>
-      <strong>Compatibilidade comercial:</strong> esta integração funciona com balanças que imprimem etiqueta EAN-13 contendo código do produto e peso. O leitor USB deve operar como teclado e enviar Enter. Conexão serial direta exige driver e protocolo específicos do fabricante.
+      <strong>Compatibilidade comercial:</strong> o VetFlow gera uma etiqueta EAN-13 de peso para impressão pelo navegador e também lê etiquetas compatíveis produzidas pela própria balança. O leitor USB deve operar como teclado e enviar Enter. Conexão serial direta exige driver e protocolo específicos do fabricante.
     </span>
   </div>
 
@@ -92,14 +95,14 @@
         <ol>
           <li>Cadastre o produto com unidade <strong>kg</strong> e preço de venda por quilo.</li>
           <li>No produto, informe o <strong>código da balança</strong> com zeros à esquerda.</li>
-          <li>Imprima uma etiqueta de teste e confira prefixo, código e peso.</li>
+          <li>Gere uma etiqueta no VetFlow ou imprima uma amostra na balança e confira prefixo, código e peso.</li>
           <li>Leia no PDV: o peso entra como quantidade e o estoque baixa com três casas decimais.</li>
         </ol>
         <div class="stat">
           <span>Etiqueta de exemplo para código 1 e 1,250 kg</span>
           <strong>{{ $exampleLabel }}</strong>
         </div>
-        <p class="muted">Use este número apenas para entender a divisão dos campos; a etiqueta real deve ser gerada pela própria balança.</p>
+        <p class="muted">Este número demonstra a divisão dos campos. A tela <strong>Gerar etiqueta</strong> produz o adesivo completo; uma balança etiquetadora compatível também pode produzir o mesmo EAN-13.</p>
       </div>
     </section>
   </div>

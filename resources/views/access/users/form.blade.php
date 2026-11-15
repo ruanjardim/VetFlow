@@ -3,8 +3,16 @@
     ->map(fn ($roleId) => (int) $roleId)
     ->all();
   $isGlobalActor = auth()->user()->clinic_id === null;
-  $defaultClinicId = $accessUser?->clinic_id ?? $preferredClinicId ?? null;
+  $defaultClinicId = $accessUser?->clinic_id ?? $preferredEmployee?->clinic_id ?? $preferredClinicId ?? null;
+  $formPerson = $accessUser ?? $preferredEmployee;
 @endphp
+
+@if($preferredEmployee)
+  <input type="hidden" name="employee_id" value="{{ $preferredEmployee->id }}">
+  <div class="alert-soft" style="margin-bottom: 18px;">
+    <span><strong>Cadastro funcional existente:</strong> este novo login será vinculado a {{ $preferredEmployee->name }} sem criar outro colaborador.</span>
+  </div>
+@endif
 
 @if($returnTo)
   <input type="hidden" name="return_to" value="{{ $returnTo }}">
@@ -13,22 +21,22 @@
 <div class="form-grid">
   <div class="field">
     <label for="name">Nome</label>
-    <input id="name" name="name" value="{{ old('name', $accessUser?->name) }}" required>
+    <input id="name" name="name" value="{{ old('name', $formPerson?->name) }}" required>
   </div>
 
   <div class="field">
     <label for="email">E-mail de acesso</label>
-    <input id="email" name="email" type="email" value="{{ old('email', $accessUser?->email) }}" autocomplete="email" required>
+    <input id="email" name="email" type="email" value="{{ old('email', $formPerson?->email) }}" autocomplete="email" required>
   </div>
 
   <div class="field">
     <label for="phone">Telefone</label>
-    <input id="phone" name="phone" value="{{ old('phone', $accessUser?->phone) }}">
+    <input id="phone" name="phone" value="{{ old('phone', $formPerson?->phone) }}">
   </div>
 
   <div class="field">
     <label for="position">Cargo ou funcao</label>
-    <input id="position" name="position" value="{{ old('position', $accessUser?->position) }}" placeholder="Ex.: Veterinaria responsavel">
+    <input id="position" name="position" value="{{ old('position', $formPerson?->position) }}" placeholder="Ex.: Veterinaria responsavel">
   </div>
 
   <div class="field">
@@ -141,7 +149,7 @@
   <div class="field full">
     <div class="actions">
       <button type="submit">Salvar acesso</button>
-      <a class="button secondary" href="{{ $returnTo === 'implementation' ? route('implementation.index') : route('access-users.index') }}">Cancelar</a>
+      <a class="button secondary" href="{{ $preferredEmployee ? route('employees.edit', $preferredEmployee->id) : ($returnTo === 'implementation' ? route('implementation.index') : route('access-users.index')) }}">Cancelar</a>
     </div>
   </div>
 </div>

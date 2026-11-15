@@ -1,6 +1,7 @@
 <?php
 
 use App\Modules\Access\Controllers\AccessUserController;
+use App\Modules\Employees\Controllers\EmployeeController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('access/users')
@@ -16,3 +17,8 @@ Route::prefix('access/users')
             ->whereNumber('user')
             ->name('update');
     });
+
+Route::resource('employees', EmployeeController::class)
+    ->except(['show', 'destroy'])
+    ->whereNumber('employee')
+    ->names('employees');

@@ -1,5 +1,36 @@
 # Changelog
 
+## 2026-11-14
+
+- Updated Laravel from 12.69.3 to 12.72.0 and refreshed its compatible locked
+  dependency set after CVE-2026-128083 was published for earlier 12.x releases.
+  The post-update Composer and npm production audits report no known security
+  advisories, and the complete 555-test backend suite remains green.
+- Hardened NF-e access-key cache reads for Windows ACL, mounted-volume and
+  sandbox environments where metadata can report a readable file as
+  unreadable. VetFlow now attempts the bounded read directly, reports a safe
+  diagnostic when inspection or reading actually fails, and preserves XML
+  upload as the operational fallback.
+- Added clinic-scoped functional collaborator records independent from login
+  accounts, with optional user linkage, relationship/admission data,
+  informational base compensation and encrypted document/payment fields.
+  Creating a clinic user now creates its functional link; sales commission
+  settlements freeze the represented employee and only a masked payment
+  snapshot. A collaborator initially registered without login can later receive
+  credentials and roles without duplicating the functional record. Payroll,
+  taxes, payslips and automatic bank transfers remain explicitly outside this
+  delivery.
+- Added VetFlow-generated adhesive labels for products sold by kilogram. An
+  operator can select a clinic-scoped product, enter up to three decimal places
+  of net weight, choose physical label dimensions and copies, and optionally
+  print origin lot and expiration. The print view renders a standards-compatible
+  EAN-13 carrying the same product code and weight already decoded by the PDV,
+  displays price per kilogram and the calculated total, opens the browser print
+  flow, and fails closed for disabled layouts, incompatible codes, foreign
+  products, invalid precision, field overflow, non-positive prices, and weight
+  above sellable stock. Browser/driver selection remains explicit; direct
+  USB/serial control still requires a model-specific local bridge.
+
 ## 2026-10-30
 
 - Added clinic-scoped variable-weight EAN-13 labels to the PDV. Each clinic

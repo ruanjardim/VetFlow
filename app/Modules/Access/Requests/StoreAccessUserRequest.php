@@ -15,11 +15,21 @@ class StoreAccessUserRequest extends FormRequest
 
     public function rules(): array
     {
+        $clinicId = $this->integer('clinic_id') ?: null;
+
         return [
             'clinic_id' => [
                 'nullable',
                 'integer',
                 Rule::exists('clinics', 'id')->whereNull('deleted_at'),
+            ],
+            'employee_id' => [
+                'nullable',
+                'integer',
+                Rule::exists('employees', 'id')
+                    ->where('clinic_id', $clinicId)
+                    ->whereNull('user_id')
+                    ->whereNull('deleted_at'),
             ],
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')],
@@ -52,6 +62,7 @@ class StoreAccessUserRequest extends FormRequest
     {
         return [
             'clinic_id.exists' => 'Selecione uma clinica valida.',
+            'employee_id.exists' => 'O cadastro funcional não está disponível para este estabelecimento.',
             'name.required' => 'Informe o nome do colaborador.',
             'email.required' => 'Informe o e-mail de acesso.',
             'email.email' => 'Informe um e-mail valido.',
@@ -70,6 +81,10 @@ class StoreAccessUserRequest extends FormRequest
 
     protected function prepareForValidation(): void
     {
+        $this->merge([
+            'clinic_id' => $this->user()?->clinic_id ?? $this->input('clinic_id'),
+        ]);
+
         if ($this->filled('veterinary_license_state')) {
             $this->merge([
                 'veterinary_license_state' => strtoupper((string) $this->input('veterinary_license_state')),

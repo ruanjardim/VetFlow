@@ -17,7 +17,7 @@ class AccessUserRepository implements AccessUserRepositoryInterface
     public function paginateFor(User $actor, int $perPage = 15): LengthAwarePaginator
     {
         return $this->scopedUsers($actor)
-            ->with(['clinic', 'roles'])
+            ->with(['clinic', 'roles', 'employee'])
             ->orderBy('name')
             ->paginate($perPage);
     }
@@ -25,7 +25,7 @@ class AccessUserRepository implements AccessUserRepositoryInterface
     public function findFor(User $actor, int $id): User
     {
         return $this->scopedUsers($actor)
-            ->with(['clinic', 'roles.permissions'])
+            ->with(['clinic', 'roles.permissions', 'employee'])
             ->findOrFail($id);
     }
 

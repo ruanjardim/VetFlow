@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\Role;
 use App\Models\User;
 use App\Modules\Clinics\Models\Clinic;
+use App\Modules\Employees\Models\Employee;
 use Database\Seeders\AuthorizationSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -137,6 +138,10 @@ class AccessManagementTest extends TestCase
         $this->assertTrue($createdUser->hasRole('veterinario'));
         $this->assertSame('12345', $createdUser->veterinary_license_number);
         $this->assertSame('RJ', $createdUser->veterinary_license_state);
+        $employee = Employee::query()->where('user_id', $createdUser->id)->sole();
+        $this->assertSame($clinicA->id, $employee->clinic_id);
+        $this->assertSame($createdUser->name, $employee->name);
+        $this->assertTrue($employee->active);
     }
 
     public function test_global_administrator_can_choose_users_clinic(): void
