@@ -5,8 +5,8 @@
 @section('content')
   <header class="topbar">
     <div>
-      <h1>Nova comanda</h1>
-      <p>Abra um atendimento com servicos e produtos.</p>
+      <h1>{{ request()->filled('scheduled_at') || request('status') === 'scheduled' ? 'Novo agendamento de banho e tosa' : 'Nova comanda' }}</h1>
+      <p>Agende ou abra um atendimento com serviços, produtos, profissional e horário.</p>
     </div>
   </header>
 

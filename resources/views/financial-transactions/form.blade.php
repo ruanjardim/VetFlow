@@ -15,6 +15,18 @@
     </select>
   </div>
   <div class="field">
+    <label for="financial_category_id">Categoria</label>
+    <select id="financial_category_id" name="financial_category_id">
+      <option value="">Categoria padrão do tipo</option>
+      @foreach(($categories ?? collect()) as $category)
+        <option value="{{ $category->id }}" @selected((int) old('financial_category_id', $transaction->financial_category_id ?? 0) === $category->id)>
+          {{ $category->name }} ({{ $category->typeLabel() }}){{ $category->active ? '' : ' — inativa' }}
+        </option>
+      @endforeach
+    </select>
+    <small class="muted">A categoria precisa ter o mesmo tipo do lançamento.</small>
+  </div>
+  <div class="field">
     <label for="amount">Valor</label>
     <input id="amount" name="amount" type="number" step="0.01" min="0" value="{{ old('amount', $transaction->amount ?? '') }}" required>
   </div>

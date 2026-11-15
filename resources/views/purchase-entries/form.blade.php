@@ -13,6 +13,8 @@
     'supplier_sku' => $item->supplier_sku,
     'intelligence_status' => $item->intelligence_status,
     'intelligence_metadata' => $item->intelligence_metadata,
+    'replenishment_adjustment_reason' => data_get($item->intelligence_metadata, 'replenishment_decision.adjustment_reason.code'),
+    'replenishment_adjustment_note' => data_get($item->intelligence_metadata, 'replenishment_decision.adjustment_reason.note'),
     'lot_number' => $item->lot_number,
     'expires_at' => optional($item->expires_at)->format('Y-m-d'),
     'notes' => $item->notes,
@@ -21,6 +23,9 @@
     $entryItems[] = $suggestedItem;
   }
   $rows = array_values(old('items', $entryItems));
+  $replenishmentRows = collect($rows)->filter(
+    fn ($item) => ($item['intelligence_status'] ?? null) === 'replenishment_suggestion'
+  );
   $rowCount = max(12, count($rows));
   $financials = $entry?->financialTransactions?->sortBy('installment_number')->values() ?? collect();
   $firstFinancial = $financials->first();
@@ -338,6 +343,44 @@
       </tbody>
     </table>
   </div>
+  @if($replenishmentRows->isNotEmpty())
+    <div class="panel-body">
+      <div class="intelligence-health">
+        <div>
+          <strong>Justificativa das alterações da reposição</strong>
+          <span>Se quantidade, custo ou fornecedor forem diferentes da sugestão, informe o motivo antes de salvar.</span>
+        </div>
+      </div>
+      <div class="form-grid">
+        @foreach($replenishmentRows as $index => $item)
+          <div class="field">
+            <label for="replenishment-adjustment-reason-{{ $index }}">
+              Motivo — {{ $item['description'] ?? 'Produto sugerido' }}
+            </label>
+            <select
+              id="replenishment-adjustment-reason-{{ $index }}"
+              name="items[{{ $index }}][replenishment_adjustment_reason]"
+            >
+              <option value="">Selecione somente se houver ajuste</option>
+              @foreach($replenishmentAdjustmentReasons as $code => $label)
+                <option value="{{ $code }}" @selected(($item['replenishment_adjustment_reason'] ?? null) === $code)>{{ $label }}</option>
+              @endforeach
+            </select>
+          </div>
+          <div class="field">
+            <label for="replenishment-adjustment-note-{{ $index }}">Observação do ajuste</label>
+            <textarea
+              id="replenishment-adjustment-note-{{ $index }}"
+              name="items[{{ $index }}][replenishment_adjustment_note]"
+              maxlength="500"
+              rows="2"
+              placeholder="Obrigatória quando selecionar Outro motivo"
+            >{{ $item['replenishment_adjustment_note'] ?? '' }}</textarea>
+          </div>
+        @endforeach
+      </div>
+    </div>
+  @endif
 </div>
 
 <div class="panel nested-panel purchase-impact-preview" data-purchase-impact-preview>

@@ -15,18 +15,32 @@ class StoreAccessUserRequest extends FormRequest
 
     public function rules(): array
     {
+        $clinicId = $this->integer('clinic_id') ?: null;
+
         return [
             'clinic_id' => [
                 'nullable',
                 'integer',
                 Rule::exists('clinics', 'id')->whereNull('deleted_at'),
             ],
+            'employee_id' => [
+                'nullable',
+                'integer',
+                Rule::exists('employees', 'id')
+                    ->where('clinic_id', $clinicId)
+                    ->whereNull('user_id')
+                    ->whereNull('deleted_at'),
+            ],
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')],
             'phone' => ['nullable', 'string', 'max:30'],
             'position' => ['nullable', 'string', 'max:120'],
+            'veterinary_license_number' => ['nullable', 'required_with:veterinary_license_state', 'string', 'max:30'],
+            'veterinary_license_state' => ['nullable', 'required_with:veterinary_license_number', 'string', 'size:2', 'regex:/^[A-Za-z]{2}$/'],
             'password' => ['required', 'confirmed', Password::defaults()],
             'active' => ['required', 'boolean'],
+            'grooming_professional' => ['nullable', 'boolean'],
+            'grooming_commission_percent' => ['nullable', 'numeric', 'min:0', 'max:100'],
             'role_ids' => ['required', 'array', 'min:1'],
             'role_ids.*' => [
                 'required',
@@ -40,6 +54,7 @@ class StoreAccessUserRequest extends FormRequest
                         ->whereNull('deleted_at')
                 ),
             ],
+            'return_to' => ['nullable', 'string', Rule::in(['implementation'])],
         ];
     }
 
@@ -47,15 +62,33 @@ class StoreAccessUserRequest extends FormRequest
     {
         return [
             'clinic_id.exists' => 'Selecione uma clinica valida.',
+            'employee_id.exists' => 'O cadastro funcional não está disponível para este estabelecimento.',
             'name.required' => 'Informe o nome do colaborador.',
             'email.required' => 'Informe o e-mail de acesso.',
             'email.email' => 'Informe um e-mail valido.',
             'email.unique' => 'Este e-mail ja esta em uso.',
             'password.required' => 'Informe uma senha para o novo colaborador.',
             'password.confirmed' => 'A confirmacao da senha nao confere.',
+            'veterinary_license_number.required_with' => 'Informe o numero do CRMV junto com a UF.',
+            'veterinary_license_state.required_with' => 'Informe a UF do CRMV.',
+            'veterinary_license_state.size' => 'A UF do CRMV deve ter duas letras.',
+            'veterinary_license_state.regex' => 'A UF do CRMV deve conter somente letras.',
             'role_ids.required' => 'Selecione ao menos um perfil de acesso.',
             'role_ids.min' => 'Selecione ao menos um perfil de acesso.',
             'role_ids.*.exists' => 'Um dos perfis selecionados nao esta disponivel.',
         ];
+    }
+
+    protected function prepareForValidation(): void
+    {
+        $this->merge([
+            'clinic_id' => $this->user()?->clinic_id ?? $this->input('clinic_id'),
+        ]);
+
+        if ($this->filled('veterinary_license_state')) {
+            $this->merge([
+                'veterinary_license_state' => strtoupper((string) $this->input('veterinary_license_state')),
+            ]);
+        }
     }
 }

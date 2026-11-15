@@ -210,6 +210,7 @@ class ProductService extends BaseService
 
             if ($this->linkGlobalProduct($product)) {
                 $linked++;
+
                 return;
             }
 
@@ -225,6 +226,11 @@ class ProductService extends BaseService
         unset($data['image_file']);
 
         $gtin = Gtin::normalize($data['gtin'] ?? $data['barcode'] ?? null);
+
+        if (array_key_exists('scale_code', $data)) {
+            $scaleCode = preg_replace('/\D+/', '', (string) $data['scale_code']);
+            $data['scale_code'] = $scaleCode !== '' ? $scaleCode : null;
+        }
 
         if ($gtin) {
             $data['gtin'] = $gtin;

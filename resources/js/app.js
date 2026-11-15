@@ -1,10 +1,371 @@
+import './pdv.js';
+import { initPatientSizeHint, initServiceOrderForm } from './service-orders.js';
+
 document.addEventListener('DOMContentLoaded', () => {
+  initServiceOrderForm();
+  initPatientSizeHint();
+
+  const sidebarToggle = document.querySelector('[data-sidebar-toggle]');
+  const sidebarCloseButtons = document.querySelectorAll('[data-sidebar-close]');
+  const primaryNavigation = document.querySelector('#primary-navigation');
+  const closeSidebar = () => {
+    document.body.classList.remove('sidebar-open');
+    sidebarToggle?.setAttribute('aria-expanded', 'false');
+  };
+
+  sidebarToggle?.addEventListener('click', () => {
+    const opening = !document.body.classList.contains('sidebar-open');
+
+    document.body.classList.toggle('sidebar-open', opening);
+    sidebarToggle.setAttribute('aria-expanded', String(opening));
+  });
+  sidebarCloseButtons.forEach((button) => button.addEventListener('click', closeSidebar));
+  primaryNavigation?.querySelectorAll('a').forEach((link) => {
+    link.addEventListener('click', () => {
+      if (window.matchMedia('(max-width: 980px)').matches) {
+        closeSidebar();
+      }
+    });
+  });
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && document.body.classList.contains('sidebar-open')) {
+      closeSidebar();
+      sidebarToggle?.focus();
+    }
+  });
+
+  const onlyDigits = (value) => String(value || '').replace(/\D+/g, '');
+  const formatDocument = (value, type) => {
+    const maxDigits = type === 'cpf' ? 11 : 14;
+    const valueDigits = onlyDigits(value).slice(0, maxDigits);
+
+    if (type === 'cpf') {
+      return valueDigits
+        .replace(/(\d{3})(\d)/, '$1.$2')
+        .replace(/(\d{3})(\d)/, '$1.$2')
+        .replace(/(\d{3})(\d{1,2})$/, '$1-$2');
+    }
+
+    return valueDigits
+      .replace(/(\d{2})(\d)/, '$1.$2')
+      .replace(/(\d{3})(\d)/, '$1.$2')
+      .replace(/(\d{3})(\d)/, '$1/$2')
+      .replace(/(\d{4})(\d{1,2})$/, '$1-$2');
+  };
+  const formatBrazilianPhone = (value) => {
+    const valueDigits = onlyDigits(value).slice(0, 11);
+
+    if (valueDigits.length <= 2) {
+      return valueDigits;
+    }
+
+    if (valueDigits.length <= 6) {
+      return valueDigits.replace(/(\d{2})(\d+)/, '($1) $2');
+    }
+
+    if (valueDigits.length <= 10) {
+      return valueDigits.replace(/(\d{2})(\d{4})(\d+)/, '($1) $2-$3');
+    }
+
+    return valueDigits.replace(/(\d{2})(\d{5})(\d+)/, '($1) $2-$3');
+  };
+
+  document.querySelectorAll('[data-document-form]').forEach((form) => {
+    const typeInput = form.querySelector('[data-document-type]');
+    const numberInput = form.querySelector('[data-document-number]');
+    const label = form.querySelector('[data-document-label]');
+    const hint = form.querySelector('[data-document-hint]');
+
+    if (!typeInput || !numberInput) {
+      return;
+    }
+
+    const refreshDocumentField = () => {
+      const type = typeInput.value === 'cpf' ? 'cpf' : 'cnpj';
+      const documentLabel = type.toUpperCase();
+
+      numberInput.value = formatDocument(numberInput.value, type);
+      numberInput.maxLength = type === 'cpf' ? 14 : 18;
+      numberInput.placeholder = type === 'cpf' ? '000.000.000-00' : '00.000.000/0000-00';
+      numberInput.setAttribute('aria-label', documentLabel);
+
+      if (label) {
+        label.textContent = documentLabel;
+      }
+
+      if (hint) {
+        hint.textContent = type === 'cpf'
+          ? 'Digite os 11 dígitos do CPF.'
+          : 'Digite os 14 dígitos do CNPJ.';
+      }
+    };
+
+    typeInput.addEventListener('change', () => {
+      numberInput.value = '';
+      refreshDocumentField();
+      numberInput.focus();
+    });
+    numberInput.addEventListener('input', refreshDocumentField);
+    refreshDocumentField();
+  });
+
+  document.querySelectorAll('[data-phone-mask]').forEach((input) => {
+    input.value = formatBrazilianPhone(input.value);
+    input.addEventListener('input', () => {
+      input.value = formatBrazilianPhone(input.value);
+    });
+  });
+
+  document.querySelectorAll('[data-password-toggle]').forEach((button) => {
+    const input = document.getElementById(button.dataset.passwordToggle);
+
+    if (!input) {
+      return;
+    }
+
+    button.addEventListener('click', () => {
+      const passwordIsVisible = input.type === 'text';
+
+      input.type = passwordIsVisible ? 'password' : 'text';
+      button.setAttribute('aria-label', passwordIsVisible ? 'Mostrar senha' : 'Ocultar senha');
+      button.setAttribute('aria-pressed', passwordIsVisible ? 'false' : 'true');
+      input.focus({ preventScroll: true });
+    });
+  });
+
   document.querySelectorAll('[data-confirm]').forEach((element) => {
     element.addEventListener('click', (event) => {
       if (!window.confirm(element.dataset.confirm)) {
         event.preventDefault();
       }
     });
+  });
+
+  document.querySelectorAll('[data-history-back]').forEach((link) => {
+    link.addEventListener('click', (event) => {
+      let previousPageIsVetFlow = false;
+
+      if (document.referrer) {
+        try {
+          previousPageIsVetFlow = new URL(document.referrer).origin === window.location.origin;
+        } catch {
+          previousPageIsVetFlow = false;
+        }
+      }
+
+      if (previousPageIsVetFlow && window.history.length > 1) {
+        event.preventDefault();
+        window.history.back();
+      }
+    });
+  });
+
+  const patientForm = document.querySelector('[data-patient-form]');
+
+  if (patientForm) {
+    const tutorSelect = patientForm.querySelector('#tutor_id');
+    const speciesSelect = patientForm.querySelector('[data-patient-species]');
+    const breedSelect = patientForm.querySelector('[data-patient-breed]');
+    const coatSelect = patientForm.querySelector('[data-patient-coat]');
+    const newSpeciesField = patientForm.querySelector('[data-new-species-field]');
+    const newBreedField = patientForm.querySelector('[data-new-breed-field]');
+    const newCoatField = patientForm.querySelector('[data-new-coat-field]');
+    const newSpeciesInput = patientForm.querySelector('#new_species');
+    const newBreedInput = patientForm.querySelector('#new_breed');
+    const newCoatInput = patientForm.querySelector('#new_coat');
+
+    const selectedClinicId = () => tutorSelect?.selectedOptions?.[0]?.dataset.clinicId || '';
+
+    const updateTaxonomyFields = () => {
+      const clinicId = selectedClinicId();
+      const speciesId = speciesSelect?.value || '';
+
+      speciesSelect?.querySelectorAll('option[data-clinic-id]').forEach((option) => {
+        const available = !option.dataset.clinicId || !clinicId || option.dataset.clinicId === clinicId;
+        option.hidden = !available;
+        option.disabled = !available;
+      });
+
+      if (speciesSelect?.selectedOptions?.[0]?.disabled) {
+        speciesSelect.value = '';
+      }
+
+      breedSelect?.querySelectorAll('option[data-species-id]').forEach((option) => {
+        const sameSpecies = option.dataset.speciesId === speciesSelect?.value;
+        const sameClinic = !option.dataset.clinicId || !clinicId || option.dataset.clinicId === clinicId;
+        const available = sameSpecies && sameClinic;
+        option.hidden = !available;
+        option.disabled = !available;
+      });
+
+      if (breedSelect?.selectedOptions?.[0]?.disabled) {
+        breedSelect.value = '';
+      }
+
+      coatSelect?.querySelectorAll('option[data-species-id]').forEach((option) => {
+        const sameSpecies = option.dataset.speciesId === speciesSelect?.value;
+        const sameClinic = !option.dataset.clinicId || !clinicId || option.dataset.clinicId === clinicId;
+        const available = sameSpecies && sameClinic;
+        option.hidden = !available;
+        option.disabled = !available;
+      });
+
+      if (coatSelect?.selectedOptions?.[0]?.disabled) {
+        coatSelect.value = '';
+      }
+
+      const customSpecies = speciesSelect?.value === 'other';
+      const customBreed = customSpecies || breedSelect?.value === 'other';
+      const customCoat = customSpecies || coatSelect?.value === 'other';
+
+      if (newSpeciesField) {
+        newSpeciesField.hidden = !customSpecies;
+      }
+
+      if (newSpeciesInput) {
+        newSpeciesInput.required = customSpecies;
+      }
+
+      if (newBreedField) {
+        newBreedField.hidden = !customBreed;
+      }
+
+      if (newBreedInput) {
+        newBreedInput.required = breedSelect?.value === 'other';
+      }
+
+      if (newCoatField) {
+        newCoatField.hidden = !customCoat;
+      }
+
+      if (newCoatInput) {
+        newCoatInput.required = coatSelect?.value === 'other';
+      }
+
+      if (breedSelect) {
+        breedSelect.disabled = !speciesSelect?.value;
+      }
+
+      if (coatSelect) {
+        coatSelect.disabled = !speciesSelect?.value;
+      }
+    };
+
+    tutorSelect?.addEventListener('change', updateTaxonomyFields);
+    speciesSelect?.addEventListener('change', () => {
+      if (breedSelect) {
+        breedSelect.value = '';
+      }
+
+      if (coatSelect) {
+        coatSelect.value = '';
+      }
+
+      updateTaxonomyFields();
+    });
+    breedSelect?.addEventListener('change', updateTaxonomyFields);
+    coatSelect?.addEventListener('change', updateTaxonomyFields);
+    updateTaxonomyFields();
+  }
+
+  document.querySelectorAll('[data-catalog-auto-submit]').forEach((form) => {
+    form.querySelectorAll('[data-auto-submit-select]').forEach((select) => {
+      select.addEventListener('change', () => form.requestSubmit());
+    });
+  });
+
+  const linkedPatientSelect = document.getElementById('patient_id');
+  const linkedTutorSelect = document.getElementById('tutor_id');
+
+  linkedPatientSelect?.addEventListener('change', () => {
+    const tutorId = linkedPatientSelect.selectedOptions?.[0]?.dataset.tutorId;
+
+    if (tutorId && linkedTutorSelect) {
+      linkedTutorSelect.value = tutorId;
+    }
+  });
+
+  const linkedAppointmentSelect = document.getElementById('appointment_id');
+
+  linkedAppointmentSelect?.addEventListener('change', () => {
+    const patientId = linkedAppointmentSelect.selectedOptions?.[0]?.dataset.patientId;
+
+    if (patientId && linkedPatientSelect) {
+      linkedPatientSelect.value = patientId;
+    }
+  });
+
+  document.querySelectorAll('[data-catalog-search]').forEach((search) => {
+    const table = search.closest('.panel')?.querySelector('[data-catalog-table]');
+    const rows = Array.from(table?.querySelectorAll('[data-catalog-row]') || []);
+
+    search.addEventListener('input', () => {
+      const query = search.value.trim().toLocaleLowerCase('pt-BR');
+
+      rows.forEach((row) => {
+        row.hidden = Boolean(query) && !row.textContent.toLocaleLowerCase('pt-BR').includes(query);
+      });
+    });
+  });
+
+  document.querySelectorAll('[data-specialty-form]').forEach((form) => {
+    const boxes = Array.from(form.querySelectorAll('input[name="species_ids[]"]'));
+    const count = form.querySelector('[data-specialty-count]');
+
+    const updateCount = () => {
+      const selected = boxes.filter((box) => box.checked).length;
+      count.textContent = selected
+        ? `${selected} espécie${selected === 1 ? '' : 's'} selecionada${selected === 1 ? '' : 's'}`
+        : 'Sem filtro: todas as espécies serão exibidas';
+    };
+
+    boxes.forEach((box) => box.addEventListener('change', updateCount));
+    updateCount();
+  });
+
+  document.querySelectorAll('[data-pathology-picker], [data-exam-picker]').forEach((picker) => {
+    const select = picker.querySelector('[data-pathology-select], [data-exam-select]');
+    const search = picker.querySelector('[data-pathology-search], [data-exam-search]');
+    const appointmentSelect = document.getElementById('appointment_id');
+    const patientSelect = document.getElementById('patient_id');
+
+    if (!select) {
+      return;
+    }
+
+    const currentSpeciesId = () => {
+      if (picker.dataset.fixedSpeciesId) {
+        return picker.dataset.fixedSpeciesId;
+      }
+
+      return appointmentSelect?.selectedOptions?.[0]?.dataset.speciesId
+        || patientSelect?.selectedOptions?.[0]?.dataset.speciesId
+        || '';
+    };
+
+    const refresh = () => {
+      const speciesId = currentSpeciesId();
+      const query = (search?.value || '').trim().toLocaleLowerCase('pt-BR');
+
+      select.querySelectorAll('option').forEach((option) => {
+        const speciesIds = (option.dataset.speciesIds || '').split(',').filter(Boolean);
+        const matchesSpecies = !speciesId || speciesIds.length === 0 || speciesIds.includes(speciesId);
+        const matchesSearch = !query || option.textContent.toLocaleLowerCase('pt-BR').includes(query);
+        const visible = matchesSpecies && matchesSearch;
+
+        option.hidden = !visible;
+        option.disabled = !visible;
+
+        if (!matchesSpecies && option.selected) {
+          option.selected = false;
+        }
+      });
+    };
+
+    search?.addEventListener('input', refresh);
+    appointmentSelect?.addEventListener('change', refresh);
+    patientSelect?.addEventListener('change', refresh);
+    refresh();
   });
 
   const normalizeBarcode = (value) => value.replace(/\D+/g, '');
@@ -36,10 +397,12 @@ document.addEventListener('DOMContentLoaded', () => {
     return Number.parseFloat(normalized) || 0;
   };
 
-  const formatCurrencyInput = (value, showZero = false) => {
+  const formatCurrencyInput = (value, showZero = false, allowNegative = false) => {
     const amount = toCurrencyNumber(value);
 
-    return amount > 0 || showZero ? amount.toFixed(2).replace('.', ',') : '';
+    return amount > 0 || (allowNegative && amount < 0) || showZero
+      ? amount.toFixed(2).replace('.', ',')
+      : '';
   };
 
   const applyCurrencyInputMask = (input) => {
@@ -47,18 +410,23 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    const digits = String(input.value || '').replace(/\D+/g, '');
+    const raw = String(input.value || '');
+    const allowNegative = input.hasAttribute('data-money-input-signed');
+    const negative = allowNegative && raw.trimStart().startsWith('-');
+    const digits = raw.replace(/\D+/g, '');
 
     if (!digits) {
-      input.value = '';
+      input.value = allowNegative && raw.trim() === '-' ? '-' : '';
       return;
     }
 
-    input.value = (Number.parseInt(digits, 10) / 100).toFixed(2).replace('.', ',');
+    const amount = Number.parseInt(digits, 10) / 100;
+    const formatted = amount.toFixed(2).replace('.', ',');
+    input.value = negative && amount > 0 ? `-${formatted}` : formatted;
   };
 
   document.querySelectorAll('[data-money-input]').forEach((input) => {
-    input.value = formatCurrencyInput(input.value, false);
+    input.value = formatCurrencyInput(input.value, false, input.hasAttribute('data-money-input-signed'));
     input.addEventListener('input', () => applyCurrencyInputMask(input));
   });
 
@@ -323,6 +691,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const statusSelect = document.querySelector('[data-sale-status]');
     const discountInput = document.querySelector('[data-sale-discount]');
     const additionsInput = document.querySelector('[data-sale-additions]');
+    const saleTypeSelect = document.querySelector('[data-sale-type]');
+    const deliveryFeeInput = document.querySelector('[data-sale-delivery-fee]');
+    const deliveryFields = Array.from(document.querySelectorAll('[data-sale-delivery]'));
+    let saleDeliveryTypes = [];
+    try { saleDeliveryTypes = JSON.parse(saleTypeSelect?.dataset.deliveryTypes || '[]'); } catch { saleDeliveryTypes = []; }
+    const saleHasDelivery = () => Boolean(saleTypeSelect && saleDeliveryTypes.includes(saleTypeSelect.value));
     const totalInput = document.querySelector('[data-sale-total-input]');
     const subtotalDisplay = document.querySelector('[data-sale-subtotal-display]');
     const discountDisplay = document.querySelector('[data-sale-discount-display]');
@@ -342,6 +716,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const moneyInputs = [
       discountInput,
       additionsInput,
+      deliveryFeeInput,
       receivedAmountInput,
       ...unitPriceInputs,
       ...itemDiscountInputs,
@@ -427,7 +802,8 @@ document.addEventListener('DOMContentLoaded', () => {
       const subtotal = rows.reduce((total, row) => total + rowTotal(row), 0);
       const discount = Math.min(subtotal, toNumber(discountInput?.value));
       const additions = toNumber(additionsInput?.value);
-      const total = Math.max(0, subtotal + additions - discount);
+      const deliveryFee = saleHasDelivery() ? toNumber(deliveryFeeInput?.value) : 0;
+      const total = Math.max(0, subtotal + additions + deliveryFee - discount);
       const paid = paymentAmounts.reduce((sum, input) => sum + toNumber(input.value), 0);
       const balance = total - paid;
 
@@ -474,6 +850,44 @@ document.addEventListener('DOMContentLoaded', () => {
       return { balance, paid, subtotal, total };
     };
 
+    // Payment rows list the clinic methods (one per card machine and type);
+    // the hidden kind keeps the legacy sale_payments.method in sync.
+    const saleClinicSelect = saleForm?.querySelector('select[name="clinic_id"]');
+    const syncPaymentKind = (select) => {
+      const kindInput = select.closest('td')?.querySelector('[data-sale-payment-kind]');
+
+      if (kindInput) {
+        kindInput.value = select.selectedOptions[0]?.dataset.kind || '';
+      }
+    };
+    const selectCashMethod = (select) => {
+      const cashOption = Array.from(select.options).find((option) => option.dataset.kind === 'cash' && !option.hidden && !option.disabled);
+
+      if (cashOption) {
+        select.value = cashOption.value;
+        syncPaymentKind(select);
+      }
+    };
+    const filterPaymentMethodsByClinic = () => {
+      const clinicId = saleClinicSelect?.value || '';
+
+      paymentMethods.forEach((select) => {
+        Array.from(select.options).forEach((option) => {
+          if (!option.dataset.clinicId) {
+            return;
+          }
+
+          option.hidden = Boolean(saleClinicSelect) && option.dataset.clinicId !== clinicId;
+        });
+
+        if (select.selectedOptions[0]?.hidden) {
+          select.value = '';
+        }
+
+        syncPaymentKind(select);
+      });
+    };
+
     const fillBalancePayment = () => {
       const { balance } = calculateSaleTotals();
 
@@ -491,7 +905,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const targetMethod = paymentMethods[targetIndex] || paymentMethods[0];
 
       if (targetMethod && !targetMethod.value) {
-        targetMethod.value = 'cash';
+        selectCashMethod(targetMethod);
       }
 
       calculateSaleTotals();
@@ -508,7 +922,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const targetMethod = paymentMethods[0];
 
       if (targetMethod && amount > 0 && !targetMethod.value) {
-        targetMethod.value = 'cash';
+        selectCashMethod(targetMethod);
       }
 
       calculateSaleTotals();
@@ -851,6 +1265,16 @@ document.addEventListener('DOMContentLoaded', () => {
       applyMoneyMask(event.target);
       calculateSaleTotals();
     });
+    deliveryFeeInput?.addEventListener('input', (event) => {
+      applyMoneyMask(event.target);
+      calculateSaleTotals();
+    });
+    const syncSaleDelivery = () => {
+      deliveryFields.forEach((field) => { field.hidden = !saleHasDelivery(); });
+      calculateSaleTotals();
+    };
+    saleTypeSelect?.addEventListener('change', syncSaleDelivery);
+    syncSaleDelivery();
     receivedAmountInput?.addEventListener('input', (event) => {
       applyMoneyMask(event.target);
       applyReceivedAmount();
@@ -860,9 +1284,15 @@ document.addEventListener('DOMContentLoaded', () => {
       applyMoneyMask(event.target);
       calculateSaleTotals();
     }));
+    paymentMethods.forEach((select) => select.addEventListener('change', () => syncPaymentKind(select)));
+    if (!isLocked) {
+      saleClinicSelect?.addEventListener('change', filterPaymentMethodsByClinic);
+      filterPaymentMethodsByClinic();
+    }
     saleForm?.addEventListener('submit', () => {
       normalizeMoneyField(discountInput);
       normalizeMoneyField(additionsInput);
+      normalizeMoneyField(deliveryFeeInput);
       unitPriceInputs.forEach(normalizeMoneyField);
       itemDiscountInputs.forEach(normalizeMoneyField);
       paymentAmounts.forEach(normalizeMoneyField);
@@ -890,6 +1320,162 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     calculateSaleTotals();
+  }
+
+  const paymentMethodForm = document.querySelector('[data-payment-method-form]');
+
+  if (paymentMethodForm) {
+    const kindSelect = paymentMethodForm.querySelector('[data-payment-method-kind]');
+    const feeLabel = paymentMethodForm.querySelector('[data-payment-method-fee-label]');
+    const settlementInput = paymentMethodForm.querySelector('#settlement_days');
+    const maxInstallmentsInput = paymentMethodForm.querySelector('#max_installments');
+    const typicalSettlement = (kind) => ({ debit_card: 1, credit_card: 30 })[kind] ?? 0;
+    let previousKind = kindSelect?.value || '';
+    const toggleFields = (selector, visible) => {
+      paymentMethodForm.querySelectorAll(selector).forEach((field) => {
+        field.hidden = !visible;
+        field.querySelectorAll('input, select').forEach((input) => { input.disabled = !visible; });
+      });
+    };
+    const syncPaymentMethodKind = () => {
+      const kind = kindSelect?.value || '';
+      const credit = kind === 'credit_card';
+
+      toggleFields('[data-payment-method-card]', credit || kind === 'debit_card');
+      toggleFields('[data-payment-method-credit]', credit);
+
+      if (feeLabel) {
+        feeLabel.textContent = credit ? 'Taxa à vista (%)' : 'Taxa (%)';
+      }
+    };
+
+    kindSelect?.addEventListener('change', () => {
+      const kind = kindSelect.value;
+
+      // Suggests the usual settlement while the field still has the
+      // suggestion of the previous kind.
+      if (settlementInput && Number(settlementInput.value || 0) === typicalSettlement(previousKind)) {
+        settlementInput.value = String(typicalSettlement(kind));
+      }
+
+      if (kind === 'credit_card' && maxInstallmentsInput && Number(maxInstallmentsInput.value || 1) <= 1) {
+        maxInstallmentsInput.value = '12';
+      }
+
+      previousKind = kind;
+      syncPaymentMethodKind();
+    });
+    syncPaymentMethodKind();
+  }
+
+  const cashMovementForm = document.querySelector('[data-cash-movement-form]');
+
+  if (cashMovementForm) {
+    const typeSelect = cashMovementForm.querySelector('[data-cash-movement-type]');
+    const categoryField = cashMovementForm.querySelector('[data-cash-movement-category]');
+    const syncMovementType = () => {
+      if (categoryField) {
+        categoryField.hidden = typeSelect?.value !== 'expense';
+      }
+    };
+
+    typeSelect?.addEventListener('change', syncMovementType);
+    syncMovementType();
+  }
+
+  const cashCloseForm = document.querySelector('[data-cash-close-form]');
+
+  if (cashCloseForm) {
+    const countedInput = cashCloseForm.querySelector('[data-cash-close-counted]');
+    const countedMethods = [...cashCloseForm.querySelectorAll('[data-cash-close-method]')];
+    const differenceNote = cashCloseForm.querySelector('[data-cash-close-difference]');
+    const notesInput = cashCloseForm.querySelector('[data-cash-close-notes]');
+    const notesHint = cashCloseForm.querySelector('[data-cash-close-notes-hint]');
+    const money = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
+    const toAmount = (value) => {
+      const raw = String(value || '').trim();
+      const normalized = raw.includes(',') ? raw.replace(/\./g, '').replace(',', '.') : raw;
+
+      return Number.parseFloat(normalized) || 0;
+    };
+    const syncDifference = () => {
+      if (!countedInput || !differenceNote) {
+        return;
+      }
+
+      if (!String(countedInput.value || '').trim()) {
+        differenceNote.textContent = '';
+        return;
+      }
+
+      const cashDifference = toAmount(countedInput.value) - Number(countedInput.dataset.expected || 0);
+      const methodsDifference = countedMethods.reduce((total, input) => {
+        return total + toAmount(input.value) - Number(input.dataset.expected || 0);
+      }, 0);
+      const difference = Math.round((cashDifference + methodsDifference) * 100) / 100;
+      const hasDifference = Math.abs(cashDifference) >= 0.01 || countedMethods.some((input) => {
+        return Math.abs(toAmount(input.value) - Number(input.dataset.expected || 0)) >= 0.01;
+      });
+      differenceNote.textContent = !hasDifference
+        ? 'Todos os valores contados batem com o esperado.'
+        : (Math.abs(difference) < 0.01
+            ? 'Há divergências entre as formas, embora o total geral esteja correto.'
+            : (difference > 0 ? 'Sobra total de ' : 'Falta total de ') + money.format(Math.abs(difference)) + '.');
+
+      if (notesInput) {
+        notesInput.required = hasDifference;
+      }
+
+      if (notesHint) {
+        notesHint.textContent = !hasDifference
+          ? 'Sem divergência: a observação é opcional.'
+          : 'Justificativa obrigatória para concluir este fechamento.';
+      }
+    };
+
+    countedInput?.addEventListener('input', syncDifference);
+    countedMethods.forEach((input) => input.addEventListener('input', syncDifference));
+    syncDifference();
+  }
+
+  const receiptPaymentForm = document.querySelector('[data-receipt-payment-form]');
+
+  if (receiptPaymentForm) {
+    const methodSelect = receiptPaymentForm.querySelector('[data-receipt-payment-method]');
+    const installmentsField = receiptPaymentForm.querySelector('[data-receipt-installments-field]');
+    const installmentsInput = receiptPaymentForm.querySelector('[data-receipt-installments]');
+    const referenceLabel = receiptPaymentForm.querySelector('[data-receipt-reference-label]');
+    const referenceInput = receiptPaymentForm.querySelector('#payment_reference');
+    const syncReceiptMethod = () => {
+      const option = methodSelect?.selectedOptions[0];
+      const kind = option?.dataset.kind || '';
+      const maxInstallments = Math.max(1, Number(option?.dataset.maxInstallments) || 1);
+      const required = option?.dataset.requiresReference === '1';
+      const label = kind === 'credit_card' || kind === 'debit_card'
+        ? 'NSU / autorização'
+        : (kind === 'pix' ? 'ID da transação Pix' : 'Referência');
+
+      if (installmentsField && installmentsInput) {
+        installmentsField.hidden = maxInstallments <= 1;
+        installmentsInput.disabled = maxInstallments <= 1;
+        installmentsInput.max = String(maxInstallments);
+
+        if (Number(installmentsInput.value) > maxInstallments) {
+          installmentsInput.value = String(maxInstallments);
+        }
+      }
+
+      if (referenceLabel) {
+        referenceLabel.textContent = label + (required ? '' : ' (opcional)');
+      }
+
+      if (referenceInput) {
+        referenceInput.required = required;
+      }
+    };
+
+    methodSelect?.addEventListener('change', syncReceiptMethod);
+    syncReceiptMethod();
   }
 
   const purchaseForm = document.querySelector('[data-purchase-form]');
@@ -2285,4 +2871,338 @@ document.addEventListener('DOMContentLoaded', () => {
 
     updatePurchaseTotals();
   }
+
+  const vaccinationForm = document.querySelector('[data-vaccination-form]');
+
+  if (vaccinationForm) {
+    const patientSelect = vaccinationForm.querySelector('[data-vaccination-patient]');
+    const vaccineSelect = vaccinationForm.querySelector('[data-vaccine-select]');
+    const vaccineNameInput = vaccinationForm.querySelector('[data-vaccine-name-input]');
+    const scheduledForInput = vaccinationForm.querySelector('[data-vaccination-scheduled]');
+    const appliedAtInput = vaccinationForm.querySelector('[data-vaccination-applied]');
+    const nextDueInput = vaccinationForm.querySelector('[data-vaccination-next-due]');
+
+    const addDaysToDate = (value, days) => {
+      const dateValue = String(value || '').slice(0, 10);
+
+      if (! /^\d{4}-\d{2}-\d{2}$/.test(dateValue)) {
+        return '';
+      }
+
+      const [year, month, day] = dateValue.split('-').map(Number);
+      const date = new Date(year, month - 1, day);
+      date.setDate(date.getDate() + Number(days));
+
+      return [date.getFullYear(), String(date.getMonth() + 1).padStart(2, '0'), String(date.getDate()).padStart(2, '0')].join('-');
+    };
+
+    const refreshVaccineOptions = () => {
+      const selectedPatient = patientSelect?.options[patientSelect.selectedIndex];
+      const speciesId = selectedPatient?.dataset.speciesId || '';
+
+      [...(vaccineSelect?.options || [])].forEach((option) => {
+        if (! option.value) {
+          return;
+        }
+
+        const speciesIds = String(option.dataset.speciesIds || '').split(',').filter(Boolean);
+        option.hidden = speciesId !== '' && speciesIds.length > 0 && ! speciesIds.includes(speciesId);
+      });
+    };
+
+    const suggestNextDue = () => {
+      const selectedVaccine = vaccineSelect?.options[vaccineSelect.selectedIndex];
+      const intervalDays = Number(selectedVaccine?.dataset.recommendedIntervalDays || 0);
+
+      if (! intervalDays || ! nextDueInput || (nextDueInput.value && nextDueInput.dataset.suggested !== 'true')) {
+        return;
+      }
+
+      const suggested = addDaysToDate(appliedAtInput?.value || scheduledForInput?.value, intervalDays);
+
+      if (suggested) {
+        nextDueInput.value = suggested;
+        nextDueInput.dataset.suggested = 'true';
+      }
+    };
+
+    patientSelect?.addEventListener('change', refreshVaccineOptions);
+    vaccineSelect?.addEventListener('change', () => {
+      const selectedVaccine = vaccineSelect.options[vaccineSelect.selectedIndex];
+
+      if (selectedVaccine?.value && vaccineNameInput) {
+        vaccineNameInput.value = selectedVaccine.dataset.vaccineName || '';
+      }
+
+      suggestNextDue();
+    });
+    scheduledForInput?.addEventListener('change', suggestNextDue);
+    appliedAtInput?.addEventListener('change', suggestNextDue);
+    nextDueInput?.addEventListener('input', () => {
+      delete nextDueInput.dataset.suggested;
+    });
+    refreshVaccineOptions();
+  }
+
+  const hospitalizationForm = document.querySelector('[data-hospitalization-form]');
+
+  if (hospitalizationForm) {
+    const patientSelect = hospitalizationForm.querySelector('[data-hospitalization-patient]');
+    const medicalRecordSelect = hospitalizationForm.querySelector('[data-hospitalization-medical-record]');
+
+    const refreshMedicalRecords = () => {
+      const patientId = patientSelect?.value || hospitalizationForm.querySelector('input[name="patient_id"]')?.value || '';
+
+      medicalRecordSelect?.querySelectorAll('option[data-patient-id]').forEach((option) => {
+        const available = !patientId || option.dataset.patientId === patientId;
+        option.hidden = !available;
+        option.disabled = !available;
+
+        if (!available && option.selected) {
+          medicalRecordSelect.value = '';
+        }
+      });
+    };
+
+    patientSelect?.addEventListener('change', refreshMedicalRecords);
+    refreshMedicalRecords();
+  }
+
+  const tutorForm = document.querySelector('[data-tutor-form]');
+
+  if (tutorForm) {
+    const digits = (value) => String(value || '').replace(/\D+/g, '');
+    const cpfInput = tutorForm.querySelector('[data-tutor-cpf]');
+    const cpfStatus = tutorForm.querySelector('[data-tutor-cpf-status]');
+    const cepInput = tutorForm.querySelector('[data-tutor-cep]');
+    const cepStatus = tutorForm.querySelector('[data-tutor-cep-status]');
+    let cepLookupTimer = null;
+    let cepLookupController = null;
+
+    const setTutorLookupStatus = (element, message, state = '') => {
+      if (!element) {
+        return;
+      }
+
+      element.textContent = message;
+      element.classList.remove('is-success', 'is-warning', 'is-error');
+
+      if (state) {
+        element.classList.add(`is-${state}`);
+      }
+    };
+
+    const formatCpf = (value) => {
+      const valueDigits = digits(value).slice(0, 11);
+
+      return valueDigits
+        .replace(/(\d{3})(\d)/, '$1.$2')
+        .replace(/(\d{3})(\d)/, '$1.$2')
+        .replace(/(\d{3})(\d{1,2})$/, '$1-$2');
+    };
+
+    const isValidCpf = (value) => {
+      const valueDigits = digits(value);
+
+      if (valueDigits.length !== 11 || /^(\d)\1{10}$/.test(valueDigits)) {
+        return false;
+      }
+
+      const digitAt = (position) => {
+        let sum = 0;
+
+        for (let index = 0; index < position - 1; index += 1) {
+          sum += Number(valueDigits[index]) * (position - index);
+        }
+
+        const remainder = (sum * 10) % 11;
+
+        return remainder === 10 ? 0 : remainder;
+      };
+
+      return digitAt(10) === Number(valueDigits[9]) && digitAt(11) === Number(valueDigits[10]);
+    };
+
+    const formatPhone = (value) => {
+      const valueDigits = digits(value).slice(0, 11);
+
+      if (valueDigits.length <= 2) {
+        return valueDigits;
+      }
+
+      if (valueDigits.length <= 6) {
+        return valueDigits.replace(/(\d{2})(\d+)/, '($1) $2');
+      }
+
+      if (valueDigits.length <= 10) {
+        return valueDigits.replace(/(\d{2})(\d{4})(\d+)/, '($1) $2-$3');
+      }
+
+      return valueDigits.replace(/(\d{2})(\d{5})(\d+)/, '($1) $2-$3');
+    };
+
+    const formatCep = (value) => {
+      const valueDigits = digits(value).slice(0, 8);
+
+      return valueDigits.replace(/(\d{5})(\d+)/, '$1-$2');
+    };
+
+    const fillAddress = (address) => {
+      const fields = {
+        street: address.logradouro,
+        district: address.bairro,
+        city: address.localidade,
+        state: address.uf,
+      };
+
+      Object.entries(fields).forEach(([field, value]) => {
+        const input = tutorForm.querySelector(`#${field}`);
+
+        if (input && value) {
+          input.value = value;
+        }
+      });
+    };
+
+    const lookupCep = async () => {
+      const cep = digits(cepInput?.value);
+
+      if (cep.length !== 8) {
+        setTutorLookupStatus(cepStatus, cep ? 'Informe os 8 dígitos do CEP.' : '', cep ? 'warning' : '');
+        return;
+      }
+
+      cepLookupController?.abort();
+      cepLookupController = new AbortController();
+      setTutorLookupStatus(cepStatus, 'Buscando endereço pelo CEP...');
+
+      try {
+        const response = await fetch(`https://viacep.com.br/ws/${cep}/json/`, {
+          signal: cepLookupController.signal,
+        });
+
+        if (!response.ok) {
+          throw new Error('CEP lookup failed');
+        }
+
+        const address = await response.json();
+
+        if (address.erro) {
+          setTutorLookupStatus(cepStatus, 'CEP não encontrado. Preencha o endereço manualmente.', 'warning');
+          return;
+        }
+
+        fillAddress(address);
+        setTutorLookupStatus(cepStatus, 'Endereço preenchido. Revise número e complemento.', 'success');
+        tutorForm.querySelector('#number')?.focus();
+      } catch (error) {
+        if (error.name !== 'AbortError') {
+          setTutorLookupStatus(cepStatus, 'Não foi possível buscar o CEP agora. Preencha manualmente.', 'warning');
+        }
+      }
+    };
+
+    if (cpfInput) {
+      cpfInput.value = formatCpf(cpfInput.value);
+      cpfInput.addEventListener('input', () => {
+        cpfInput.value = formatCpf(cpfInput.value);
+        const valueDigits = digits(cpfInput.value);
+        const valid = isValidCpf(valueDigits);
+
+        setTutorLookupStatus(
+          cpfStatus,
+          valueDigits.length === 11 ? (valid ? 'CPF válido.' : 'CPF inválido.') : '',
+          valueDigits.length === 11 ? (valid ? 'success' : 'error') : ''
+        );
+      });
+    }
+
+    tutorForm.querySelectorAll('[data-tutor-phone]').forEach((input) => {
+      input.value = formatPhone(input.value);
+      input.addEventListener('input', () => {
+        input.value = formatPhone(input.value);
+      });
+    });
+
+    if (cepInput) {
+      cepInput.value = formatCep(cepInput.value);
+      cepInput.addEventListener('input', () => {
+        cepInput.value = formatCep(cepInput.value);
+        window.clearTimeout(cepLookupTimer);
+
+        if (digits(cepInput.value).length === 8) {
+          cepLookupTimer = window.setTimeout(lookupCep, 450);
+        }
+      });
+      cepInput.addEventListener('blur', lookupCep);
+    }
+  }
+
+  const prescriptionForm = document.querySelector('[data-prescription-form]');
+
+  if (prescriptionForm) {
+    const itemsContainer = prescriptionForm.querySelector('[data-prescription-items]');
+    const itemTemplate = prescriptionForm.querySelector('[data-prescription-item-template]');
+    const addButton = prescriptionForm.querySelector('[data-prescription-add-item]');
+
+    const refreshPrescriptionItems = () => {
+      const items = [...itemsContainer.querySelectorAll('[data-prescription-item]')];
+
+      items.forEach((item, index) => {
+        const number = item.querySelector('[data-prescription-item-number]');
+
+        if (number) {
+          number.textContent = String(index + 1);
+        }
+      });
+
+      addButton.disabled = items.length >= 30;
+      itemsContainer.querySelectorAll('[data-prescription-remove-item]').forEach((button) => {
+        button.disabled = items.length === 1;
+      });
+    };
+
+    addButton?.addEventListener('click', () => {
+      const nextIndex = Number(itemsContainer.dataset.nextIndex || 0);
+      const wrapper = document.createElement('div');
+
+      wrapper.innerHTML = itemTemplate.innerHTML.replaceAll('__INDEX__', String(nextIndex)).trim();
+      itemsContainer.append(wrapper.firstElementChild);
+      itemsContainer.dataset.nextIndex = String(nextIndex + 1);
+      refreshPrescriptionItems();
+      itemsContainer.lastElementChild?.querySelector('input')?.focus();
+    });
+
+    itemsContainer?.addEventListener('click', (event) => {
+      const removeButton = event.target.closest('[data-prescription-remove-item]');
+
+      if (!removeButton) {
+        return;
+      }
+
+      removeButton.closest('[data-prescription-item]')?.remove();
+      refreshPrescriptionItems();
+    });
+
+    refreshPrescriptionItems();
+  }
+
+  document.querySelectorAll('[data-print-page]').forEach((button) => {
+    button.addEventListener('click', () => window.print());
+  });
+
+  document.querySelectorAll('[data-printer-form]').forEach((form) => {
+    const connection = form.querySelector('[data-printer-connection]');
+    const networkFields = form.querySelectorAll('[data-printer-network-field]');
+
+    const refreshNetworkFields = () => {
+      const networkSelected = connection?.value === 'network';
+      networkFields.forEach((field) => {
+        field.hidden = !networkSelected;
+      });
+    };
+
+    connection?.addEventListener('change', refreshNetworkFields);
+    refreshNetworkFields();
+  });
 });

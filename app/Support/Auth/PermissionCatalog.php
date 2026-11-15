@@ -23,16 +23,52 @@ class PermissionCatalog
                 'description' => 'Permite acessar cadastro e manutencao de clinicas.',
             ],
             [
+                'slug' => 'clinic-branding.manage',
+                'name' => 'Gerenciar identidade visual',
+                'group' => 'Administrativo',
+                'description' => 'Permite escolher o ícone da clínica exibido no menu do VetFlow.',
+            ],
+            [
+                'slug' => 'printers.manage',
+                'name' => 'Gerenciar impressoras',
+                'group' => 'Administrativo',
+                'description' => 'Permite configurar e testar impressoras do estabelecimento.',
+            ],
+            [
+                'slug' => 'audit.manage',
+                'name' => 'Consultar auditoria',
+                'group' => 'Administrativo',
+                'description' => 'Permite consultar alterações administrativas sensíveis da clínica.',
+            ],
+            [
                 'slug' => 'implementation.manage',
                 'name' => 'Gerenciar implantacao',
                 'group' => 'Administrativo',
                 'description' => 'Permite acessar o roteiro de implantacao e migracao de dados da clinica.',
             ],
             [
+                'slug' => 'operations.readiness',
+                'name' => 'Consultar prontidao operacional',
+                'group' => 'Administrativo',
+                'description' => 'Permite consultar identidade da release e sinais tecnicos seguros do ambiente.',
+            ],
+            [
+                'slug' => 'operations.execute',
+                'name' => 'Executar controles operacionais',
+                'group' => 'Administrativo',
+                'description' => 'Permite registrar decisões, smoke tests e evidências operacionais da release.',
+            ],
+            [
                 'slug' => 'users.manage',
                 'name' => 'Gerenciar usuarios e acessos',
                 'group' => 'Administrativo',
                 'description' => 'Permite cadastrar colaboradores e atribuir perfis de acesso.',
+            ],
+            [
+                'slug' => 'saas.manage',
+                'name' => 'Gerenciar plataforma SaaS',
+                'group' => 'Plataforma',
+                'description' => 'Permite administrar planos, assinaturas, limites e implantar estabelecimentos.',
             ],
             [
                 'slug' => 'tutors.manage',
@@ -59,6 +95,30 @@ class PermissionCatalog
                 'description' => 'Permite acessar consultas e atendimentos clinicos.',
             ],
             [
+                'slug' => 'medical-records.manage',
+                'name' => 'Gerenciar prontuários',
+                'group' => 'Atendimento',
+                'description' => 'Permite registrar e consultar prontuários clínicos.',
+            ],
+            [
+                'slug' => 'vaccinations.manage',
+                'name' => 'Gerenciar vacinação',
+                'group' => 'Atendimento',
+                'description' => 'Permite registrar e acompanhar a carteira de vacinação.',
+            ],
+            [
+                'slug' => 'hospitalizations.manage',
+                'name' => 'Gerenciar internações',
+                'group' => 'Atendimento',
+                'description' => 'Permite registrar e acompanhar internações clínicas.',
+            ],
+            [
+                'slug' => 'prescriptions.manage',
+                'name' => 'Gerenciar prescrições',
+                'group' => 'Atendimento',
+                'description' => 'Permite elaborar, finalizar, consultar e cancelar prescrições clínicas.',
+            ],
+            [
                 'slug' => 'petshop-services.manage',
                 'name' => 'Gerenciar servicos PetShop',
                 'group' => 'Operacao',
@@ -75,6 +135,24 @@ class PermissionCatalog
                 'name' => 'Gerenciar PDV e vendas',
                 'group' => 'Vendas',
                 'description' => 'Permite acessar vendas, caixa, recibos, cancelamentos e devolucoes.',
+            ],
+            [
+                'slug' => 'payment-methods.manage',
+                'name' => 'Gerenciar formas de pagamento',
+                'group' => 'Vendas',
+                'description' => 'Permite cadastrar formas de pagamento, maquininhas, taxas e prazos de repasse.',
+            ],
+            [
+                'slug' => 'cash-sessions.review',
+                'name' => 'Conferir e encerrar caixas',
+                'group' => 'Vendas',
+                'description' => 'Permite conferir, encerrar e reabrir os caixas dos operadores.',
+            ],
+            [
+                'slug' => 'fiscal.manage',
+                'name' => 'Gerenciar módulo fiscal',
+                'group' => 'Fiscal',
+                'description' => 'Permite configurar a preparação e acompanhar documentos fiscais do estabelecimento.',
             ],
             [
                 'slug' => 'products.manage',
@@ -112,6 +190,12 @@ class PermissionCatalog
                 'group' => 'Financeiro',
                 'description' => 'Permite acessar contas, fluxo de caixa, baixas e cancelamentos.',
             ],
+            [
+                'slug' => 'commissions.manage',
+                'name' => 'Gerenciar comissoes',
+                'group' => 'Financeiro',
+                'description' => 'Permite configurar regras e consultar previas de comissoes.',
+            ],
         ];
     }
 
@@ -137,7 +221,12 @@ class PermissionCatalog
                     'patients.manage',
                     'schedules.manage',
                     'appointments.manage',
+                    'medical-records.manage',
+                    'vaccinations.manage',
+                    'hospitalizations.manage',
+                    'prescriptions.manage',
                     'service-orders.manage',
+                    'printers.manage',
                 ],
             ],
             'atendimento' => [
@@ -152,6 +241,7 @@ class PermissionCatalog
                     'petshop-services.manage',
                     'service-orders.manage',
                     'sales.manage',
+                    'printers.manage',
                 ],
             ],
             'estoque-compras' => [
@@ -164,6 +254,7 @@ class PermissionCatalog
                     'inventory.manage',
                     'purchase-entries.manage',
                     'suppliers.manage',
+                    'printers.manage',
                 ],
             ],
             'caixa' => [
@@ -175,6 +266,8 @@ class PermissionCatalog
                     'patients.manage',
                     'service-orders.manage',
                     'sales.manage',
+                    'fiscal.manage',
+                    'printers.manage',
                 ],
             ],
             'financeiro' => [
@@ -183,9 +276,14 @@ class PermissionCatalog
                 'permissions' => [
                     'dashboard.view',
                     'sales.manage',
+                    'payment-methods.manage',
+                    'cash-sessions.review',
+                    'fiscal.manage',
                     'purchase-entries.manage',
                     'suppliers.manage',
                     'financial.manage',
+                    'commissions.manage',
+                    'printers.manage',
                 ],
             ],
         ];

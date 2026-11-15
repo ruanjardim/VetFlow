@@ -16,6 +16,7 @@ class UpdateAccessUserRequest extends StoreAccessUserRequest
             Rule::unique('users', 'email')->ignore((int) $this->route('user')),
         ];
         $rules['password'][0] = 'nullable';
+        $rules['employee_id'] = ['prohibited'];
 
         return $rules;
     }

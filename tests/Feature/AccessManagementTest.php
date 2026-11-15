@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\Role;
 use App\Models\User;
 use App\Modules\Clinics\Models\Clinic;
+use App\Modules\Employees\Models\Employee;
 use Database\Seeders\AuthorizationSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -84,6 +85,7 @@ class AccessManagementTest extends TestCase
             ->get(route('access-users.create'))
             ->assertOk()
             ->assertSee('Veterinario')
+            ->assertSee('CRMV')
             ->assertSee($clinicA->trade_name)
             ->assertDontSee($clinicB->trade_name);
 
@@ -118,6 +120,8 @@ class AccessManagementTest extends TestCase
                 'email' => 'veterinaria-a@vetflow.test',
                 'phone' => '21999990001',
                 'position' => 'Veterinaria',
+                'veterinary_license_number' => '12345',
+                'veterinary_license_state' => 'rj',
                 'password' => 'Password123!',
                 'password_confirmation' => 'Password123!',
                 'active' => '1',
@@ -132,6 +136,12 @@ class AccessManagementTest extends TestCase
 
         $this->assertSame($clinicA->id, $createdUser->clinic_id);
         $this->assertTrue($createdUser->hasRole('veterinario'));
+        $this->assertSame('12345', $createdUser->veterinary_license_number);
+        $this->assertSame('RJ', $createdUser->veterinary_license_state);
+        $employee = Employee::query()->where('user_id', $createdUser->id)->sole();
+        $this->assertSame($clinicA->id, $employee->clinic_id);
+        $this->assertSame($createdUser->name, $employee->name);
+        $this->assertTrue($employee->active);
     }
 
     public function test_global_administrator_can_choose_users_clinic(): void
@@ -162,6 +172,70 @@ class AccessManagementTest extends TestCase
         $this->assertDatabaseHas('users', [
             'clinic_id' => $clinic->id,
             'email' => 'caixa@vetflow.test',
+        ]);
+    }
+
+    public function test_implementation_handoff_prefills_clinic_and_returns_after_creation(): void
+    {
+        $this->seed(AuthorizationSeeder::class);
+
+        $clinic = $this->clinic('Clínica em Implantação', '00000000000302');
+        $actor = User::factory()->create([
+            'clinic_id' => null,
+            'active' => true,
+        ]);
+        $this->attachRole($actor, $this->role('administrador'));
+        $receptionist = $this->role('atendimento');
+
+        $this->actingAs($actor)
+            ->get(route('implementation.index'))
+            ->assertOk()
+            ->assertSee('Ativação da equipe')
+            ->assertSee(route('access-users.create', [
+                'clinic_id' => $clinic->id,
+                'return_to' => 'implementation',
+            ]));
+
+        $this->actingAs($actor)
+            ->get(route('access-users.create', [
+                'clinic_id' => $clinic->id,
+                'return_to' => 'implementation',
+            ]))
+            ->assertOk()
+            ->assertViewHas('preferredClinicId', $clinic->id)
+            ->assertViewHas('returnTo', 'implementation');
+
+        $this->post(route('access-users.store'), [
+            'clinic_id' => $clinic->id,
+            'name' => 'Recepção do Piloto',
+            'email' => 'recepcao-piloto@vetflow.test',
+            'password' => 'Password123!',
+            'password_confirmation' => 'Password123!',
+            'active' => '1',
+            'role_ids' => [$receptionist->id],
+            'return_to' => 'implementation',
+        ])
+            ->assertRedirect(route('implementation.index'))
+            ->assertSessionHasNoErrors();
+
+        $this->assertDatabaseHas('users', [
+            'clinic_id' => $clinic->id,
+            'email' => 'recepcao-piloto@vetflow.test',
+        ]);
+
+        $this->post(route('access-users.store'), [
+            'clinic_id' => $clinic->id,
+            'name' => 'Retorno Inválido',
+            'email' => 'retorno-invalido@vetflow.test',
+            'password' => 'Password123!',
+            'password_confirmation' => 'Password123!',
+            'active' => '1',
+            'role_ids' => [$receptionist->id],
+            'return_to' => 'https://example.test',
+        ])->assertSessionHasErrors('return_to');
+
+        $this->assertDatabaseMissing('users', [
+            'email' => 'retorno-invalido@vetflow.test',
         ]);
     }
 
@@ -321,6 +395,8 @@ class AccessManagementTest extends TestCase
             'email' => $user->email,
             'phone' => $user->phone,
             'position' => $user->position,
+            'veterinary_license_number' => $user->veterinary_license_number,
+            'veterinary_license_state' => $user->veterinary_license_state,
             'active' => '1',
             'role_ids' => $roleIds,
         ];

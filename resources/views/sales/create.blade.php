@@ -1,21 +1,345 @@
-@extends('layouts.admin')
-
-@section('title', 'Nova venda - VetFlow')
-
+@extends(($offlineShell ?? false) ? 'layouts.pdv-offline' : 'layouts.admin')
+@section('title', 'PDV - VetFlow')
+@section('body_class', 'pdv-counter-mode')
 @section('content')
-  <header class="topbar">
-    <div>
-      <h1>Nova venda</h1>
-      <p>Registre venda direta, servico avulso ou fechamento de comanda.</p>
-    </div>
-  </header>
-
-  <div class="panel">
-    <div class="panel-body">
-      <form method="POST" action="{{ route('sales.store') }}">
-        @csrf
-        @include('sales.form', ['sale' => null])
-      </form>
-    </div>
+@php
+  $offlineShellMode = (bool) ($offlineShell ?? false);
+  $checkoutOrder = $serviceOrderCheckout['order'] ?? null;
+  $checkoutPackage = $serviceOrderCheckout['package'] ?? null;
+  $checkoutQuote = $serviceOrderCheckout['quote'] ?? null;
+  $quoteSource = $checkoutQuote ?? $editingQuote;
+  $checkoutSource = $checkoutOrder ?? $checkoutPackage ?? $quoteSource;
+  $money = fn ($value) => number_format((float) $value, 2, ',', '.');
+  $selectedClinicId = $offlineShellMode ? 0 : (int) old('clinic_id', $checkoutSource?->clinic_id ?? auth()->user()?->clinic_id ?? ($clinics->count() === 1 ? $clinics->first()->id : 0));
+  $selectedTutorId = $offlineShellMode ? 0 : (int) old('tutor_id', $checkoutSource?->tutor_id ?? 0);
+  $selectedPatientId = $offlineShellMode ? 0 : (int) old('patient_id', $checkoutSource?->patient_id ?? 0);
+  $initialItems = $offlineShellMode ? [] : old('items', $editingQuote ? app(\App\Modules\Sales\Services\SaleQuoteService::class)->cartItems($editingQuote) : ($serviceOrderCheckout['items'] ?? []));
+  $initialDiscount = $offlineShellMode ? '0,00' : old('discount_total', $checkoutOrder ? $money($checkoutOrder->discount_total) : ($quoteSource ? $money($quoteSource->discount_total) : '0,00'));
+  $initialAdditions = $offlineShellMode ? '0,00' : old('additions_total', $quoteSource ? $money($quoteSource->additions_total) : '0,00');
+  $initialSaleType = $offlineShellMode ? \App\Modules\Sales\Support\SaleType::DEFAULT : old('sale_type', $quoteSource?->sale_type ?? \App\Modules\Sales\Support\SaleType::DEFAULT);
+  $initialDeliveryFee = $offlineShellMode ? '0,00' : old('delivery_fee', $quoteSource ? $money($quoteSource->delivery_fee) : '0,00');
+  $initialDeliveryAddress = $offlineShellMode ? '' : old('delivery_address', $quoteSource?->delivery_address ?? '');
+  $initialNotes = $offlineShellMode ? '' : old('notes', $quoteSource?->notes ?? '');
+  $initialValidUntil = $offlineShellMode ? $defaultQuoteValidUntil : old('valid_until', $editingQuote?->valid_until?->toDateString() ?? $defaultQuoteValidUntil);
+  $canToggleMode = ! $checkoutSource && ! $offlineShellMode;
+  $mode = $editingQuote ? 'quote' : ($canToggleMode ? old('pdv_mode', $startMode) : 'sale');
+  $mode = in_array($mode, ['sale', 'quote'], true) ? $mode : 'sale';
+  $selectedClinic = $clinics->firstWhere('id', $selectedClinicId);
+  $selectedClinicName = $selectedClinic?->trade_name ?? $selectedClinic?->corporate_name ?? 'Selecione a clínica';
+@endphp
+<header class="pdv-counter-bar">
+  <div class="pdv-counter-brand">
+    <span class="pdv-counter-mark" aria-hidden="true">VF</span>
+    <div><strong>VetFlow</strong><span>Ponto de venda</span></div>
   </div>
+  <div class="pdv-counter-context" aria-label="Contexto do ponto de venda">
+    <span><small>Operador</small><strong data-pdv-header-operator>{{ $offlineShellMode ? 'Recuperando contexto local' : auth()->user()?->name }}</strong></span>
+    <span><small>Unidade</small><strong data-pdv-header-clinic>{{ $selectedClinicName }}</strong></span>
+    <span><small>Horário</small><strong data-pdv-clock>--:--</strong></span>
+    <span class="pdv-connection is-checking" data-pdv-connection-state role="status" aria-live="polite"><small>Conexão</small><strong><i aria-hidden="true"></i><b data-pdv-connection-label>Verificando</b></strong></span>
+    <span class="pdv-offline-readiness is-checking" data-pdv-offline-readiness role="status" aria-live="polite" title="Preparando o catálogo local criptografado."><small>Offline</small><strong><i aria-hidden="true"></i><b data-pdv-offline-readiness-label>Preparando</b></strong></span>
+  </div>
+  <div class="pdv-counter-actions">
+    <button type="button" class="button pdv-offline-queue" data-pdv-offline-queue hidden>
+      Fila offline <b data-pdv-offline-count>0</b>
+    </button>
+    <button type="button" class="button secondary" data-pdv-fullscreen aria-pressed="false">Tela cheia</button>
+    <details class="pdv-counter-more" @if($offlineShellMode) hidden @endif>
+      <summary class="button secondary">Mais opções</summary>
+      <nav aria-label="Atalhos administrativos do PDV">
+        <a href="{{ route('sales.index', ['status' => 'draft']) }}">Vendas suspensas</a>
+        <a href="{{ route('sales.quotes.index') }}">Orçamentos</a>
+        <a href="{{ route('sales.cash-sessions.index') }}">Caixa</a>
+        <a href="{{ route('sales.pdv-scale-labels.create', $selectedClinicId ? ['clinic_id' => $selectedClinicId] : []) }}" target="_blank" rel="noopener">Gerar etiqueta por peso ↗</a>
+        <a href="{{ route('sales.pdv-scale-settings.edit') }}" target="_blank" rel="noopener">Configurar balança ↗</a>
+        <a href="{{ route('sales.create', ['mode' => 'advanced']) }}">Comanda / formulário avançado</a>
+      </nav>
+    </details>
+    <button class="button pdv-counter-exit" type="button" data-pdv-close data-pdv-exit-url="{{ route('sales.index') }}">Sair do PDV</button>
+  </div>
+</header>
+@unless($offlineShellMode)
+  @include('shared.clinic-required-alert', ['clinics' => $clinics])
+@endunless
+@if($offlineShellMode)
+  <div class="alert warning" role="status" data-pdv-offline-shell-alert>
+    PDV reaberto no modo de contingência. O catálogo, o carrinho e a fila serão recuperados do armazenamento criptografado deste dispositivo.
+  </div>
+@endif
+@if($checkoutOrder)
+  <div class="alert success" role="status">
+    Recebendo a comanda <strong>{{ $checkoutOrder->code }}</strong>
+    — {{ $checkoutOrder->tutor?->name ?? 'Sem responsável' }} / {{ $checkoutOrder->patient?->name ?? 'Sem pet' }}.
+    Ao concluir a venda, a comanda é finalizada automaticamente.
+  </div>
+@elseif($checkoutPackage)
+  <div class="alert success" role="status">
+    Vendendo o pacote <strong>{{ $checkoutPackage->name }}</strong> ({{ $checkoutPackage->code }})
+    para {{ $checkoutPackage->patient?->name ?? 'o pet' }}. O saldo é liberado quando a venda for concluída.
+  </div>
+@elseif($checkoutQuote)
+  <div class="alert {{ $checkoutQuote->isExpired() ? 'warning' : 'success' }}" role="status">
+    Convertendo o orçamento <strong>{{ $checkoutQuote->code }}</strong>
+    — {{ $checkoutQuote->tutor?->name ?? 'Consumidor não identificado' }}.
+    @if($checkoutQuote->isExpired())
+      Ele venceu em {{ $checkoutQuote->valid_until->format('d/m/Y') }}; os preços orçados foram mantidos, confira antes de receber.
+    @else
+      Os preços orçados foram mantidos. Ao concluir a venda, o orçamento fica como convertido.
+    @endif
+  </div>
+@elseif($editingQuote)
+  <div class="alert success" role="status">
+    Editando o orçamento <strong>{{ $editingQuote->code }}</strong>. Salve para atualizar itens, preços e validade.
+  </div>
+@elseif(request()->filled('pet_package_id'))
+  <div class="alert error" role="alert">O pacote informado não está aguardando pagamento.</div>
+@elseif(request()->filled('service_order_id'))
+  <div class="alert error" role="alert">A comanda informada não está disponível para recebimento (cancelada, inexistente ou já vendida).</div>
+@elseif(request()->filled('quote_id'))
+  <div class="alert error" role="alert">O orçamento informado não está aberto (convertido, cancelado, inexistente ou com venda em andamento).</div>
+@endif
+<form method="POST" action="{{ $editingQuote ? route('sales.quotes.update', $editingQuote->id) : route('sales.store') }}" data-pdv-form
+  data-pdv-offline-shell="{{ $offlineShellMode ? '1' : '0' }}"
+  data-pdv-mode="{{ $mode }}"
+  data-delivery-types="{{ json_encode($deliverySaleTypes) }}"
+  data-search-url="{{ route('sales.quick-search') }}"
+  data-lookup-url="{{ route('sales.product-lookup', ['gtin' => '__GTIN__']) }}"
+  data-quick-product-url="{{ route('sales.quick-products.store') }}"
+  data-product-create-url="{{ route('products.create') }}?gtin=__GTIN__&from=sales"
+  data-old-items="{{ json_encode($initialItems, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) }}"
+  data-old-payments="{{ json_encode($offlineShellMode ? [] : old('payments', []), JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) }}"
+  data-payment-methods="{{ json_encode($paymentMethods->map->toPdvArray()->values(), JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) }}"
+  data-cash-sessions="{{ json_encode((object) $cashSessions, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) }}"
+  data-cash-suggested="{{ json_encode((object) $suggestedOpenings, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) }}"
+  data-cash-open-url="{{ route('sales.cash-sessions.store') }}"
+  data-customer-balance-url="{{ route('sales.customer-balances.summary', ['tutor' => '__TUTOR__']) }}"
+  data-cash-index-url="{{ route('sales.cash-sessions.index') }}"
+  data-session-heartbeat-url="{{ route('sales.pdv.session') }}"
+  data-session-login-url="{{ route('login') }}"
+  {{-- Offline continuity is optional. A stale route cache during a rolling deploy
+       must never prevent the core online PDV from rendering. --}}
+  data-offline-catalog-url="{{ url('/sales/pdv/offline-catalog') }}"
+  data-offline-sync-url="{{ url('/sales/pdv/offline-sync') }}"
+  data-offline-shell-url="{{ url('/sales/pdv/offline-shell') }}"
+  data-service-worker-url="{{ asset('pdv-sw.js') }}?v={{ substr(hash_file('sha256', public_path('pdv-sw.js')), 0, 12) }}"
+  data-user-clinic-id="{{ $offlineShellMode ? '' : auth()->user()?->clinic_id }}"
+  data-initial-scan="{{ request('scan', '') }}">
+  @if($offlineShellMode)
+    <input type="hidden" name="_token" value="">
+  @else
+    @csrf
+  @endif
+  @if($editingQuote)
+    @method('PUT')
+  @endif
+  <input type="hidden" name="source" value="pdv">
+  <input type="hidden" name="client_request_id" value="{{ $offlineShellMode ? '' : old('client_request_id', '') }}" data-pdv-client-request-id>
+  <input type="hidden" name="pdv_mode" value="{{ $mode }}" data-pdv-mode-input>
+  @if($checkoutOrder)
+    <input type="hidden" name="service_order_id" value="{{ $checkoutOrder->id }}">
+  @endif
+  @if($checkoutPackage)
+    <input type="hidden" name="pet_package_id" value="{{ $checkoutPackage->id }}">
+  @endif
+  @if($checkoutQuote)
+    <input type="hidden" name="sale_quote_id" value="{{ $checkoutQuote->id }}">
+  @endif
+  <input type="hidden" name="pdv_checkout" value="1">
+  <input type="hidden" name="status" value="draft" data-pdv-status>
+  <div class="pdv-connectivity-alert" role="alert" data-pdv-connectivity-alert hidden>
+    <span data-pdv-connectivity-message></span>
+    <a href="{{ route('login') }}" target="_blank" rel="noopener" data-pdv-reauthenticate hidden>Reabrir sessão em outra aba</a>
+  </div>
+  <dialog class="pdv-offline-dialog" data-pdv-offline-dialog>
+    <header>
+      <div>
+        <small>Continuidade operacional</small>
+        <h2>Fila de vendas offline</h2>
+      </div>
+      <button type="button" class="secondary" data-pdv-offline-close>Fechar</button>
+    </header>
+    <p data-pdv-offline-summary>Nenhuma venda aguardando sincronização.</p>
+    <div class="pdv-offline-list" data-pdv-offline-list></div>
+    <footer>
+      <span>Os dados ficam criptografados neste navegador até a confirmação do servidor.</span>
+      <button type="button" data-pdv-offline-sync>Sincronizar agora</button>
+    </footer>
+  </dialog>
+  <div class="pdv-shell">
+    <section class="pdv-main" aria-label="Itens da venda">
+      @if($canToggleMode)
+        <div class="pdv-mode" role="group" aria-label="Tipo de lançamento">
+          <button type="button" class="{{ $mode === 'sale' ? 'is-active' : '' }}" aria-pressed="{{ $mode === 'sale' ? 'true' : 'false' }}" data-pdv-mode-button="sale">Venda</button>
+          <button type="button" class="{{ $mode === 'quote' ? 'is-active' : '' }}" aria-pressed="{{ $mode === 'quote' ? 'true' : 'false' }}" data-pdv-mode-button="quote">Orçamento</button>
+        </div>
+      @endif
+      @if($offlineShellMode || auth()->user()?->clinic_id === null)
+        <div class="field">
+          <label for="pdv_clinic">Clínica</label>
+          <select id="pdv_clinic" name="clinic_id" data-pdv-clinic required>
+            <option value="">Selecione uma clínica</option>
+            @foreach($clinics as $clinic)
+              <option value="{{ $clinic->id }}" @selected($selectedClinicId === $clinic->id)>{{ $clinic->trade_name ?? $clinic->corporate_name }}</option>
+            @endforeach
+          </select>
+        </div>
+      @endif
+      <div class="pdv-search-panel">
+        <div class="pdv-scanner-state is-ready" data-pdv-scanner-state role="status" aria-live="polite">
+          <span class="pdv-scanner-light" aria-hidden="true"></span>
+          <div><strong data-pdv-scanner-label>Leitura pronta</strong><small data-pdv-scanner-detail>Aponte o leitor para o código de barras ou pesquise pelo nome.</small></div>
+        </div>
+        <label for="pdv_search">Código de barras ou busca de produto <kbd>F2</kbd></label>
+        <div class="pdv-search-row">
+          <span class="pdv-search-icon" aria-hidden="true"></span>
+          <input id="pdv_search" type="search" autocomplete="off" enterkeyhint="search" spellcheck="false"
+            aria-describedby="pdv_search_hint" placeholder="Leia o código ou digite nome, SKU ou EAN/GTIN" data-pdv-search autofocus>
+          <button type="button" class="secondary" data-pdv-search-button>Buscar</button>
+        </div>
+        <small id="pdv_search_hint" class="pdv-search-hint">O leitor USB funciona como teclado e deve enviar Enter. Etiquetas de peso configuradas entram com a quantidade em kg.</small>
+        <div class="pdv-search-results" role="listbox" aria-label="Resultados da busca" data-pdv-results hidden></div>
+        <p class="lookup-status" role="status" aria-live="polite" data-pdv-lookup-status></p>
+        <a class="button secondary" target="_blank" rel="noopener" data-pdv-create-product hidden>Cadastrar produto</a>
+      </div>
+      <details class="pdv-customer" data-pdv-customer @if($selectedTutorId || $quoteSource) open @endif>
+        <summary data-pdv-customer-summary>Consumidor não identificado · Identificar cliente <kbd>F4</kbd></summary>
+        <div class="pdv-customer-fields">
+          <div class="field">
+            <label for="pdv_tutor">Responsável</label>
+            <select id="pdv_tutor" name="tutor_id" data-pdv-tutor>
+              <option value="">Consumidor não identificado</option>
+              @foreach($tutors as $tutor)
+                <option value="{{ $tutor->id }}" data-clinic-id="{{ $tutor->clinic_id }}" data-address="{{ $tutor->fullAddress() }}" @selected($selectedTutorId === $tutor->id)>{{ $tutor->name }}</option>
+              @endforeach
+            </select>
+          </div>
+          <p class="pdv-customer-balance full" role="status" aria-live="polite" data-pdv-customer-balance hidden></p>
+          <div class="field">
+            <label for="pdv_patient">Pet (opcional)</label>
+            <select id="pdv_patient" name="patient_id" data-pdv-patient>
+              <option value="">Sem pet</option>
+              @foreach($patients as $patient)
+                <option value="{{ $patient->id }}" data-clinic-id="{{ $patient->clinic_id }}" @selected($selectedPatientId === $patient->id)>{{ $patient->name }}</option>
+              @endforeach
+            </select>
+          </div>
+        </div>
+      </details>
+      <div class="pdv-sale-type">
+        <div class="field">
+          <label for="pdv_sale_type">Tipo de venda</label>
+          <select id="pdv_sale_type" name="sale_type" data-pdv-sale-type>
+            @foreach($saleTypes as $value => $label)
+              <option value="{{ $value }}" @selected($initialSaleType === $value)>{{ $label }}</option>
+            @endforeach
+          </select>
+        </div>
+        <div class="field" data-pdv-delivery hidden>
+          <label for="pdv_delivery_address">Endereço de entrega</label>
+          <textarea id="pdv_delivery_address" name="delivery_address" rows="2" maxlength="500" placeholder="Rua, número, complemento, bairro, cidade" data-pdv-delivery-address>{{ $initialDeliveryAddress }}</textarea>
+        </div>
+      </div>
+      <div class="pdv-cart-heading">
+        <div><h2>Itens da venda</h2><span data-pdv-item-count>0 itens</span></div>
+        <button type="button" class="secondary" data-pdv-add-custom>+ Item avulso</button>
+      </div>
+      <div class="pdv-cart" data-pdv-cart>
+        <div class="pdv-empty" data-pdv-empty>
+          <span class="pdv-empty-barcode" aria-hidden="true"></span>
+          <strong>Caixa livre</strong>
+          <p>Leia o primeiro código de barras para iniciar a venda.</p>
+        </div>
+      </div>
+      <details class="pdv-notes" @if($initialNotes !== '') open @endif>
+        <summary>Observações</summary>
+        <textarea id="pdv_notes" name="notes" rows="3" maxlength="2000" aria-label="Observações" placeholder="Aparecem no comprovante e no orçamento impresso">{{ $initialNotes }}</textarea>
+      </details>
+    </section>
+    <aside class="pdv-summary" aria-label="Resumo">
+      <div class="pdv-cash" data-pdv-cash data-pdv-sale-only @if($mode === 'quote') hidden @endif>
+        <span data-pdv-cash-label>Caixa</span>
+        <a href="{{ route('sales.cash-sessions.index') }}" data-pdv-cash-link>Ver caixa</a>
+        <button type="button" class="secondary" data-pdv-cash-open hidden>Abrir caixa</button>
+      </div>
+      <div class="pdv-summary-head"><span data-pdv-summary-label>{{ $mode === 'quote' ? 'Orçamento em andamento' : 'Venda em andamento' }}</span><strong data-pdv-total>R$ 0,00</strong></div>
+      <div class="pdv-summary-lines">
+        <div><span>Subtotal</span><strong data-pdv-subtotal>R$ 0,00</strong></div>
+        <div><span>Desconto dos itens</span><strong data-pdv-item-discounts>R$ 0,00</strong></div>
+        <div class="field"><label for="pdv_discount">Desconto na venda <kbd>F6</kbd></label><input id="pdv_discount" name="discount_total" type="text" inputmode="decimal" value="{{ $initialDiscount }}" data-pdv-discount></div>
+        <div class="field"><label for="pdv_additions">Acréscimos</label><input id="pdv_additions" name="additions_total" type="text" inputmode="decimal" value="{{ $initialAdditions }}" data-pdv-additions></div>
+        <div class="field" data-pdv-delivery-fee-field hidden><label for="pdv_delivery_fee">Taxa de entrega</label><input id="pdv_delivery_fee" name="delivery_fee" type="text" inputmode="decimal" value="{{ $initialDeliveryFee }}" data-pdv-delivery-fee></div>
+        <div class="field" data-pdv-quote-only @if($mode !== 'quote') hidden @endif><label for="pdv_valid_until">Orçamento válido até</label><input id="pdv_valid_until" name="valid_until" type="date" value="{{ $initialValidUntil }}" data-pdv-valid-until @disabled($mode !== 'quote')></div>
+        <div data-pdv-sale-only @if($mode === 'quote') hidden @endif><span>Recebido</span><strong data-pdv-paid>R$ 0,00</strong></div>
+        <div data-pdv-sale-only @if($mode === 'quote') hidden @endif><span data-pdv-balance-label>Falta</span><strong data-pdv-balance>R$ 0,00</strong></div>
+      </div>
+      @unless($editingQuote)
+        <button type="button" class="pdv-receive-button" data-pdv-open-payment data-pdv-sale-only @if($mode === 'quote') hidden @endif>Receber / finalizar <kbd>F8</kbd></button>
+        <button type="submit" class="secondary pdv-suspend-button" data-pdv-suspend data-pdv-sale-only @if($mode === 'quote') hidden @endif>Suspender venda</button>
+      @endunless
+      <button type="submit" class="pdv-receive-button" data-pdv-save-quote data-pdv-quote-only
+        @unless($editingQuote) formaction="{{ route('sales.quotes.store') }}" @endunless
+        @if($mode !== 'quote') hidden @endif>{{ $editingQuote ? 'Salvar alterações do orçamento' : 'Salvar orçamento' }}</button>
+      @if($editingQuote)
+        <a class="button secondary pdv-suspend-button" href="{{ route('sales.quotes.show', $editingQuote->id) }}">Voltar ao orçamento</a>
+      @endif
+      <p class="lookup-status" role="status" aria-live="polite" data-pdv-checkout-status></p>
+      <small data-pdv-sale-only @if($mode === 'quote') hidden @endif>F2 busca · F4 cliente · F6 desconto · F8 receber · Esc fechar</small>
+      <small data-pdv-quote-only @if($mode !== 'quote') hidden @endif>Orçamento não baixa estoque, não gera financeiro nem comissão.</small>
+    </aside>
+  </div>
+  <dialog class="pdv-payment-dialog" data-pdv-payment-dialog aria-labelledby="pdv_payment_title">
+    <div class="pdv-dialog-head">
+      <div><h2 id="pdv_payment_title">Recebimento</h2><p>Combine formas de pagamento, se necessário.</p></div>
+      <button type="button" class="secondary" data-pdv-close-payment aria-label="Fechar recebimento">Fechar</button>
+    </div>
+    <div class="pdv-payment-total">Total <strong data-pdv-payment-total>R$ 0,00</strong></div>
+    <div class="pdv-payment-shortcuts" aria-label="Forma de pagamento rápida" data-pdv-method-shortcuts></div>
+    @can('payment-methods.manage')
+      <p class="pdv-payment-settings"><a href="{{ route('sales.payment-methods.index') }}" target="_blank" rel="noopener">Configurar maquininhas, taxas e prazos</a></p>
+    @endcan
+    <div data-pdv-payments></div>
+    <button type="button" class="secondary" data-pdv-add-payment>+ Adicionar pagamento</button>
+    <div class="pdv-payment-reconciliation">
+      <span>Recebido <strong data-pdv-dialog-paid>R$ 0,00</strong></span>
+      <span>Falta <strong data-pdv-dialog-balance>R$ 0,00</strong></span>
+      <span>Troco <strong data-pdv-dialog-change>R$ 0,00</strong></span>
+    </div>
+    <div class="pdv-payment-options" data-pdv-customer-options>
+      <label><input type="checkbox" name="pay_later" value="1" data-pdv-pay-later @checked(! $offlineShellMode && old('pay_later'))> Receber o que falta depois (fiado)</label>
+      <label><input type="checkbox" name="change_as_credit" value="1" data-pdv-change-as-credit @checked(! $offlineShellMode && old('change_as_credit'))> Guardar o troco como crédito do cliente</label>
+      <small class="muted" data-pdv-customer-options-hint>Identifique o cliente (F4) para vender fiado ou guardar o troco como crédito.</small>
+    </div>
+    <p class="lookup-status" role="status" aria-live="polite" data-pdv-payment-status></p>
+    <button type="button" class="pdv-finish-button" data-pdv-finish>Finalizar venda <kbd>F10</kbd></button>
+  </dialog>
+  <dialog class="pdv-payment-dialog pdv-cash-dialog" data-pdv-cash-dialog aria-labelledby="pdv_cash_title">
+    <div class="pdv-dialog-head">
+      <div><h2 id="pdv_cash_title">Abrir caixa</h2><p>Para receber, abra o seu caixa com o dinheiro que já está na gaveta.</p></div>
+      <button type="button" class="secondary" data-pdv-close-cash aria-label="Fechar abertura de caixa">Fechar</button>
+    </div>
+    <div class="field">
+      <label for="pdv_cash_opening">Fundo de troco</label>
+      <input id="pdv_cash_opening" type="text" inputmode="decimal" placeholder="0,00" data-pdv-cash-opening>
+      <small class="muted">Sugerido: o que ficou na gaveta no último fechamento.</small>
+    </div>
+    <p class="lookup-status" role="status" aria-live="polite" data-pdv-cash-status></p>
+    <button type="button" class="pdv-finish-button" data-pdv-cash-confirm>Abrir caixa</button>
+  </dialog>
+  <dialog class="pdv-payment-dialog pdv-quick-product-dialog" data-pdv-quick-product-dialog aria-labelledby="pdv_quick_product_title">
+    <div class="pdv-dialog-head">
+      <div><h2 id="pdv_quick_product_title">Cadastro rápido</h2><p>Salve o produto e adicione ao carrinho sem sair do PDV.</p></div>
+      <button type="button" class="secondary" data-pdv-close-quick-product aria-label="Fechar cadastro rápido">Fechar</button>
+    </div>
+    <div class="pdv-quick-product-code">Código de barras <strong data-pdv-quick-product-code></strong></div>
+    <div class="pdv-quick-product-grid">
+      <div class="field full"><label for="pdv_quick_name">Nome do produto</label><input id="pdv_quick_name" maxlength="255" data-pdv-quick-product-name></div>
+      <div class="field"><label for="pdv_quick_price">Preço de venda</label><input id="pdv_quick_price" inputmode="decimal" placeholder="0,00" data-pdv-quick-product-price></div>
+      <div class="field"><label for="pdv_quick_stock">Estoque inicial</label><input id="pdv_quick_stock" inputmode="decimal" value="1" data-pdv-quick-product-stock></div>
+      <div class="field"><label for="pdv_quick_unit">Unidade</label><select id="pdv_quick_unit" data-pdv-quick-product-unit><option value="un">Unidade</option><option value="kg">Quilograma</option><option value="g">Grama</option><option value="pct">Pacote</option><option value="cx">Caixa</option></select></div>
+      <div class="field"><label for="pdv_quick_cost">Custo (opcional)</label><input id="pdv_quick_cost" inputmode="decimal" placeholder="0,00" data-pdv-quick-product-cost></div>
+    </div>
+    <p class="lookup-status" role="status" aria-live="polite" data-pdv-quick-product-status></p>
+    <button type="button" class="pdv-finish-button" data-pdv-save-quick-product>Salvar e adicionar ao carrinho</button>
+  </dialog>
+</form>
 @endsection

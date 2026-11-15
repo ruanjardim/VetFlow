@@ -28,6 +28,13 @@ class QueueCronDrainTest extends TestCase
 {
     private ?string $databasePath = null;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        config(['app.key' => 'base64:'.base64_encode(str_repeat('q', 32))]);
+    }
+
     protected function tearDown(): void
     {
         if ($this->databasePath !== null) {
@@ -70,6 +77,17 @@ class QueueCronDrainTest extends TestCase
     public function test_cron_endpoint_is_hidden_when_disabled(): void
     {
         config(['operations.queue.cron.enabled' => false]);
+
+        $this->get('/ops/cron/queue')->assertNotFound();
+    }
+
+    public function test_cron_endpoint_is_hidden_when_cli_transport_is_selected(): void
+    {
+        config([
+            'operations.queue.cron.transport' => 'cli',
+            'operations.queue.cron.enabled' => true,
+            'operations.queue.cron.token' => str_repeat('a', 32),
+        ]);
 
         $this->get('/ops/cron/queue')->assertNotFound();
     }

@@ -2,20 +2,24 @@
 
 namespace App\Modules\PurchaseEntries\Services;
 
+use App\Modules\Financial\Models\FinancialCategory;
+use App\Modules\Financial\Models\FinancialTransaction;
+use App\Modules\Financial\Services\FinancialCategoryService;
 use App\Modules\Inventory\Models\InventoryMovement;
 use App\Modules\Inventory\Services\InventoryMovementService;
 use App\Modules\Products\Models\Product;
 use App\Modules\PurchaseEntries\Models\PurchaseEntry;
-use App\Modules\Financial\Models\FinancialTransaction;
 use Carbon\Carbon;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
 
 class PurchaseEntryService
 {
-    public function __construct(private readonly InventoryMovementService $inventoryMovementService)
-    {
-    }
+    public function __construct(
+        private readonly InventoryMovementService $inventoryMovementService,
+        private readonly ReplenishmentPurchaseDecisionService $replenishmentDecisions,
+        private readonly FinancialCategoryService $financialCategories,
+    ) {}
 
     public function paginate(int $perPage = 15): LengthAwarePaginator
     {
@@ -127,7 +131,7 @@ class PurchaseEntryService
                 continue;
             }
 
-            $normalized = $this->normalizeItem($item);
+            $normalized = $this->normalizeItem($entry, $item);
 
             if ($normalized === null) {
                 continue;
@@ -137,7 +141,7 @@ class PurchaseEntryService
         }
     }
 
-    private function normalizeItem(array $item): ?array
+    private function normalizeItem(PurchaseEntry $entry, array $item): ?array
     {
         $productId = $item['product_id'] ?? null;
         $quantity = (float) ($item['quantity'] ?? 0);
@@ -169,6 +173,17 @@ class PurchaseEntryService
             ? (float) $minimumStock
             : null;
         $metadata = $this->decodeMetadata($item['intelligence_metadata'] ?? null);
+        $intelligenceStatus = trim((string) ($item['intelligence_status'] ?? '')) ?: null;
+        $metadata = $this->replenishmentDecisions->evaluate(
+            $entry,
+            $product,
+            $quantity,
+            $unitCost,
+            $metadata,
+            $intelligenceStatus,
+            $item['replenishment_adjustment_reason'] ?? null,
+            $item['replenishment_adjustment_note'] ?? null,
+        );
 
         return [
             'product_id' => $product->id,
@@ -182,7 +197,7 @@ class PurchaseEntryService
             'margin_percent' => $marginPercent,
             'update_sale_price' => (bool) ($item['update_sale_price'] ?? false),
             'minimum_stock_after_entry' => $minimumStock,
-            'intelligence_status' => trim((string) ($item['intelligence_status'] ?? '')) ?: null,
+            'intelligence_status' => $intelligenceStatus,
             'intelligence_metadata' => array_merge($metadata, [
                 'normalized_at' => now()->toDateTimeString(),
                 'product_cost_before_entry' => (float) $product->cost_price,
@@ -274,6 +289,7 @@ class PurchaseEntryService
     {
         if ($entry->status !== 'received' || (float) $entry->total <= 0) {
             $this->releasePayable($entry);
+
             return;
         }
 
@@ -296,6 +312,7 @@ class PurchaseEntryService
 
             FinancialTransaction::query()->create([
                 'clinic_id' => $entry->clinic_id,
+                'financial_category_id' => $this->financialCategories->idForCode($entry->clinic_id, FinancialCategory::CODE_INVENTORY_PURCHASES),
                 'supplier_id' => $entry->supplier_id,
                 'purchase_entry_id' => $entry->id,
                 'installment_number' => $installmentNumber,

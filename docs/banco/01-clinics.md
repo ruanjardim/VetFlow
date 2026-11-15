@@ -32,6 +32,8 @@ clinic through `clinic_id`.
 | `number` | string | No | Address number. |
 | `complement` | string | No | Address complement. |
 | `logo` | string | No | Stored logo path. |
+| `brand_icon_mode` | string | Yes | `automatic`, `manual`, or `none`; defaults to `automatic`. |
+| `brand_icon_key` | string | Yes | Selected animal icon; defaults to `generic`. |
 | `timezone` | string | Yes | Defaults to `America/Sao_Paulo`. |
 | `currency` | string(3) | Yes | Defaults to `BRL`. |
 | `language` | string | Yes | Defaults to `pt_BR`. |

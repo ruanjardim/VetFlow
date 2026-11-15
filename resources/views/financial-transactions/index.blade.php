@@ -9,10 +9,50 @@
       <p>Entradas, saidas e recebimentos.</p>
     </div>
     <div class="actions">
+      <a class="button secondary" href="{{ route('financial-categories.index') }}">Categorias</a>
       <a class="button secondary" href="{{ route('financial-transactions.cash-flow') }}">Fluxo de caixa</a>
+      <a class="button secondary" href="{{ route('financial-results.index') }}">Resultado gerencial</a>
       <a class="button" href="{{ route('financial-transactions.create') }}">Novo lancamento</a>
     </div>
   </header>
+
+  <form method="GET" action="{{ route('financial-transactions.index') }}" class="panel panel-body">
+    <div class="form-grid">
+      <div class="field">
+        <label for="filter-type">Tipo</label>
+        <select id="filter-type" name="type">
+          <option value="">Todos</option>
+          <option value="income" @selected(($filters['type'] ?? '') === 'income')>Entrada</option>
+          <option value="expense" @selected(($filters['type'] ?? '') === 'expense')>Saída</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="filter-status">Status</label>
+        <select id="filter-status" name="status">
+          <option value="">Todos</option>
+          <option value="pending" @selected(($filters['status'] ?? '') === 'pending')>Pendente</option>
+          <option value="paid" @selected(($filters['status'] ?? '') === 'paid')>Pago</option>
+          <option value="overdue" @selected(($filters['status'] ?? '') === 'overdue')>Vencido</option>
+          <option value="cancelled" @selected(($filters['status'] ?? '') === 'cancelled')>Cancelado</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="filter-category">Categoria</label>
+        <select id="filter-category" name="financial_category_id">
+          <option value="">Todas</option>
+          @foreach(($categories ?? collect()) as $category)
+            <option value="{{ $category->id }}" @selected((int) ($filters['financial_category_id'] ?? 0) === $category->id)>{{ $category->name }} ({{ $category->typeLabel() }})</option>
+          @endforeach
+        </select>
+      </div>
+      <div class="field full">
+        <div class="actions">
+          <button type="submit">Filtrar</button>
+          <a class="button secondary" href="{{ route('financial-transactions.index') }}">Limpar</a>
+        </div>
+      </div>
+    </div>
+  </form>
 
   @if(! empty($filters))
     <div class="alert-soft">
@@ -37,6 +77,7 @@
           <tr>
             <th>Descricao</th>
             <th>Tipo</th>
+            <th>Categoria</th>
             <th>Fornecedor</th>
             <th>Valor</th>
             <th>Vencimento</th>
@@ -72,19 +113,30 @@
                 default => '-',
               };
             @endphp
+            @php($commissionSettlement = $transaction->salesCommissionSettlement ?: $transaction->groomingCommissionSettlement)
             <tr>
               <td>
                 {{ $transaction->description }}
                 @if((int) $transaction->installment_total > 1)
                   <div class="muted">Parcela {{ $transaction->installment_number }}/{{ $transaction->installment_total }}</div>
                 @endif
+                @if($transaction->sale)
+                  <div class="muted">Gerenciado pela venda {{ $transaction->sale->code }}.</div>
+                @elseif($commissionSettlement)
+                  <div class="muted">Gerenciado por fechamento de comissão.</div>
+                @endif
               </td>
               <td>{{ $typeLabel }}</td>
+              <td>{{ $transaction->category?->name ?: '-' }}</td>
               <td>{{ $transaction->supplier?->name ?: '-' }}</td>
               <td>R$ {{ number_format((float) $transaction->amount, 2, ',', '.') }}</td>
               <td>{{ optional($transaction->due_date)->format('d/m/Y') }}</td>
               <td>
-                @if($transaction->purchaseEntry)
+                @if($transaction->salesCommissionSettlement)
+                  Comissão de vendas
+                @elseif($transaction->groomingCommissionSettlement)
+                  Comissão do Banho &amp; Tosa
+                @elseif($transaction->purchaseEntry)
                   <a href="{{ route('purchase-entries.edit', $transaction->purchaseEntry->id) }}">{{ $transaction->purchaseEntry->code }}</a>
                   <div class="muted">{{ $transaction->reference ?: $transaction->purchaseEntry->invoice_number }}</div>
                 @else
@@ -99,29 +151,37 @@
               </td>
               <td><span class="badge {{ $statusBadge }}">{{ $statusLabel }}</span></td>
               <td>
-                <a class="button secondary" href="{{ route('financial-transactions.edit', $transaction->id) }}">Editar</a>
-                @if($transaction->status !== 'paid' && $transaction->status !== 'cancelled')
+                @if($transaction->sale)
+                  <a class="button secondary" href="{{ route('sales.edit', $transaction->sale->id) }}">Abrir venda</a>
+                @elseif(! $commissionSettlement)
+                  <a class="button secondary" href="{{ route('financial-transactions.edit', $transaction->id) }}">Editar</a>
+                @endif
+                @if(! $transaction->sale && $transaction->status !== 'paid' && $transaction->status !== 'cancelled')
                   <form class="inline" action="{{ route('financial-transactions.pay', $transaction->id) }}" method="POST">
                     @csrf
                     @method('PATCH')
                     <button type="submit">Pagar</button>
                   </form>
-                  <form class="inline" action="{{ route('financial-transactions.cancel', $transaction->id) }}" method="POST">
+                  @if(! $commissionSettlement)
+                    <form class="inline" action="{{ route('financial-transactions.cancel', $transaction->id) }}" method="POST">
+                      @csrf
+                      @method('PATCH')
+                      <button class="secondary" type="submit" data-confirm="Cancelar este lancamento?">Cancelar</button>
+                    </form>
+                  @endif
+                @endif
+                @if(! $transaction->sale && ! $commissionSettlement)
+                  <form class="inline" action="{{ route('financial-transactions.destroy', $transaction->id) }}" method="POST">
                     @csrf
-                    @method('PATCH')
-                    <button class="secondary" type="submit" data-confirm="Cancelar este lancamento?">Cancelar</button>
+                    @method('DELETE')
+                    <button class="danger" type="submit" data-confirm="Remover este lancamento?">Excluir</button>
                   </form>
                 @endif
-                <form class="inline" action="{{ route('financial-transactions.destroy', $transaction->id) }}" method="POST">
-                  @csrf
-                  @method('DELETE')
-                  <button class="danger" type="submit" data-confirm="Remover este lancamento?">Excluir</button>
-                </form>
               </td>
             </tr>
           @empty
             <tr>
-              <td colspan="9" class="muted">Nenhum lancamento cadastrado.</td>
+              <td colspan="10" class="muted">Nenhum lancamento cadastrado.</td>
             </tr>
           @endforelse
         </tbody>

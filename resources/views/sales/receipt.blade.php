@@ -6,20 +6,15 @@
   @php
     $money = fn ($value) => 'R$ '.number_format((float) $value, 2, ',', '.');
     $quantity = fn ($value) => number_format((float) $value, 3, ',', '.');
-    $paymentMethods = [
-      'cash' => 'Dinheiro',
-      'pix' => 'Pix',
-      'debit_card' => 'Cartao debito',
-      'credit_card' => 'Cartao credito',
-      'transfer' => 'Transferencia',
-      'other' => 'Outro',
-    ];
     $statusLabels = [
       'draft' => 'Rascunho',
       'completed' => 'Concluida',
       'cancelled' => 'Cancelada',
       'returned' => 'Devolvida',
     ];
+    $receiptPaperSize = in_array($receiptPrinter?->paper_size, ['58mm', '80mm'], true)
+      ? $receiptPrinter->paper_size
+      : '80mm';
   @endphp
 
   <header class="topbar receipt-actions">
@@ -28,7 +23,8 @@
       <p>{{ $sale->code }} - {{ optional($sale->sold_at)->format('d/m/Y H:i') }}</p>
     </div>
     <div class="actions">
-      <button type="button" onclick="window.print()">Imprimir</button>
+      <a class="button" href="{{ route('sales.create') }}">Nova venda</a>
+      <button type="button" data-print-page>Imprimir cupom</button>
       @if($sale->status === 'completed')
         <a class="button secondary" href="{{ route('sales.returns.create', $sale->id) }}">Devolver</a>
       @endif
@@ -39,6 +35,10 @@
 
   <div class="panel receipt-card">
     <div class="panel-body">
+      <div class="alert warning">
+        <strong>DOCUMENTO SEM VALOR FISCAL</strong>
+        <div>Comprovante interno de venda e pagamento. Não substitui NFC-e, NFS-e ou outro documento fiscal exigido para a operação.</div>
+      </div>
       <div class="receipt-header">
         <div>
           <strong>VetFlow</strong>
@@ -56,7 +56,7 @@
           <strong>{{ $sale->clinic?->trade_name ?? $sale->clinic?->corporate_name ?? '-' }}</strong>
         </div>
         <div>
-          <span>Tutor</span>
+          <span>Responsável</span>
           <strong>{{ $sale->tutor?->name ?? '-' }}</strong>
         </div>
         <div>
@@ -71,7 +71,24 @@
           <span>Status</span>
           <strong>{{ $statusLabels[$sale->status] ?? ucfirst($sale->status) }}</strong>
         </div>
+        <div>
+          <span>Tipo de venda</span>
+          <strong>{{ $sale->saleTypeLabel() }}</strong>
+        </div>
+        @if($sale->quote)
+          <div>
+            <span>Orçamento</span>
+            <strong><a href="{{ route('sales.quotes.show', $sale->quote->id) }}">{{ $sale->quote->code }}</a></strong>
+          </div>
+        @endif
       </div>
+
+      @if($sale->hasDelivery() && $sale->delivery_address)
+        <div class="receipt-section">
+          <h2>Entrega</h2>
+          <p>{{ $sale->delivery_address }}</p>
+        </div>
+      @endif
 
       <div class="table-wrap receipt-table">
         <table>
@@ -116,6 +133,12 @@
           <span>Acrescimo</span>
           <strong>{{ $money($sale->additions_total) }}</strong>
         </div>
+        @if($sale->hasDelivery())
+          <div>
+            <span>Taxa de entrega</span>
+            <strong>{{ $money($sale->delivery_fee) }}</strong>
+          </div>
+        @endif
         <div>
           <span>Total</span>
           <strong>{{ $money($sale->total) }}</strong>
@@ -148,6 +171,7 @@
                 <th>Valor</th>
                 <th>Parcelas</th>
                 <th>Cartao</th>
+                <th>Status</th>
                 <th>Data</th>
                 <th>Referencia</th>
               </tr>
@@ -155,16 +179,17 @@
             <tbody>
               @forelse($sale->payments as $payment)
                 <tr>
-                  <td>{{ $paymentMethods[$payment->method] ?? 'Outro' }}</td>
+                  <td>{{ $payment->methodLabel() }}</td>
                   <td>{{ $money($payment->amount) }}</td>
                   <td>{{ $payment->installments ?? 1 }}x</td>
                   <td>{{ trim(($payment->card_brand ?: '').' '.($payment->acquirer ?: '')) ?: '-' }}</td>
+                  <td>{{ $payment->status === 'paid' ? 'Recebido' : ucfirst($payment->status ?? 'pendente') }}</td>
                   <td>{{ optional($payment->paid_at)->format('d/m/Y H:i') ?: '-' }}</td>
                   <td>{{ $payment->reference ?: $payment->transaction_reference ?: '-' }}</td>
                 </tr>
               @empty
                 <tr>
-                  <td colspan="6" class="muted">Nenhum pagamento registrado.</td>
+                  <td colspan="7" class="muted">Nenhum pagamento registrado.</td>
                 </tr>
               @endforelse
             </tbody>
@@ -208,6 +233,67 @@
           </div>
         </div>
       @endif
+
+      @can('fiscal.manage')
+        <div class="receipt-section">
+          <h2>Fiscal</h2>
+          @php($preparedFiscalTypes = $sale->fiscalDocuments->pluck('type')->all())
+          @if($sale->fiscalDocuments->isNotEmpty())
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Documento</th>
+                    <th>Ambiente</th>
+                    <th>Status</th>
+                    <th>Preparado em</th>
+                    <th>Ação</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @foreach($sale->fiscalDocuments->sortByDesc('created_at') as $document)
+                    <tr>
+                      <td>{{ strtoupper($document->type) }}</td>
+                      <td>Homologação</td>
+                      <td><span class="badge">{{ $document->status === 'draft' ? 'Preparado' : ucfirst($document->status) }}</span></td>
+                      <td>{{ optional($document->created_at)->format('d/m/Y H:i') }}</td>
+                      <td><a class="button secondary" href="{{ route('fiscal.documents.show', $document->id) }}">Ver preparação</a></td>
+                    </tr>
+                  @endforeach
+                </tbody>
+              </table>
+            </div>
+          @endif
+
+          @if($sale->status === 'completed' && $fiscalProfile?->enabled)
+            <p class="muted">Prepare manualmente o documento para revisar os dados. Esta ação não transmite nada para a SEFAZ ou prefeitura.</p>
+            <div class="actions">
+              @if($fiscalProfile->nfce_enabled && ! in_array('nfce', $preparedFiscalTypes, true))
+                <form method="POST" action="{{ route('fiscal.prepare', $sale->id) }}">
+                  @csrf
+                  <input type="hidden" name="type" value="nfce">
+                  <button type="submit">Preparar NFC-e</button>
+                </form>
+              @endif
+              @if($fiscalProfile->nfse_enabled && ! in_array('nfse', $preparedFiscalTypes, true))
+                <form method="POST" action="{{ route('fiscal.prepare', $sale->id) }}">
+                  @csrf
+                  <input type="hidden" name="type" value="nfse">
+                  <button type="submit">Preparar NFS-e</button>
+                </form>
+              @endif
+            </div>
+          @elseif($sale->fiscalDocuments->isEmpty())
+            <p class="muted">A preparação fiscal está desativada para este estabelecimento.</p>
+            <a class="button secondary" href="{{ route('fiscal.index') }}">Abrir configuração fiscal</a>
+          @endif
+        </div>
+      @endcan
     </div>
   </div>
+
+  @include('sales.partials.thermal-receipt', [
+    'paperSize' => $receiptPaperSize,
+    'printer' => $receiptPrinter,
+  ])
 @endsection

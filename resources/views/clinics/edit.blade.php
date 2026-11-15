@@ -12,7 +12,7 @@
 
   <div class="panel">
     <div class="panel-body">
-      <form method="POST" action="{{ route('clinics.update', $item->id) }}">
+      <form method="POST" action="{{ route('clinics.update', $item->id) }}" data-document-form>
         @csrf
         @method('PUT')
         @include('clinics.form', ['clinic' => $item])

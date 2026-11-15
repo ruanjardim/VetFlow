@@ -6,9 +6,16 @@
   <header class="topbar">
     <div>
       <h1>PDV / Vendas</h1>
-      <p>Fechamento de produtos, servicos e comandas com baixa de estoque e caixa.</p>
+      <p>{{ request('status') === 'draft' ? 'Vendas suspensas para retomar no formulário.' : 'Fechamento de produtos, serviços e comandas com baixa de estoque e caixa.' }}</p>
     </div>
     <div class="actions">
+      @if(request('status') === 'draft')
+        <a class="button secondary" href="{{ route('sales.index') }}">Todas as vendas</a>
+      @else
+        <a class="button secondary" href="{{ route('sales.index', ['status' => 'draft']) }}">Vendas suspensas</a>
+      @endif
+      <a class="button secondary" href="{{ route('sales.quotes.index') }}">Orçamentos</a>
+      <a class="button secondary" href="{{ route('sales.profitability') }}">Rentabilidade</a>
       <a class="button secondary" href="{{ route('sales.cashier') }}">Caixa do dia</a>
       <a class="button" href="{{ route('sales.create') }}">Nova venda</a>
     </div>
@@ -36,9 +43,10 @@
         <thead>
           <tr>
             <th>Codigo</th>
-            <th>Tutor</th>
+            <th>Responsável</th>
             <th>Pet</th>
             <th>Comanda</th>
+            <th>Tipo</th>
             <th>Status</th>
             <th>Pagamento</th>
             <th>Data</th>
@@ -53,6 +61,7 @@
               <td>{{ $sale->tutor?->name ?? '-' }}</td>
               <td>{{ $sale->patient?->name ?? '-' }}</td>
               <td>{{ $sale->serviceOrder?->code ?? '-' }}</td>
+              <td>{{ \App\Modules\Sales\Support\SaleType::shortLabel($sale->sale_type) }}</td>
               <td>
                 {{ $statusLabels[$sale->status] ?? ucfirst($sale->status) }}
               </td>
@@ -62,7 +71,7 @@
               <td>{{ optional($sale->sold_at)->format('d/m/Y H:i') }}</td>
               <td>R$ {{ number_format((float) $sale->total, 2, ',', '.') }}</td>
               <td>
-                <a class="button secondary" href="{{ route('sales.edit', $sale->id) }}">Editar</a>
+                <a class="button secondary" href="{{ route('sales.edit', $sale->id) }}">{{ $sale->status === 'draft' ? 'Retomar' : 'Editar' }}</a>
                 <a class="button secondary" href="{{ route('sales.receipt', $sale->id) }}">Comprovante</a>
                 @if($sale->status === 'completed')
                   <a class="button secondary" href="{{ route('sales.returns.create', $sale->id) }}">Devolver</a>
@@ -82,7 +91,7 @@
             </tr>
           @empty
             <tr>
-              <td colspan="9" class="muted">Nenhuma venda cadastrada.</td>
+              <td colspan="10" class="muted">Nenhuma venda cadastrada.</td>
             </tr>
           @endforelse
         </tbody>

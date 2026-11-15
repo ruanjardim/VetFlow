@@ -3,12 +3,16 @@
 namespace App\Modules\Products\Controllers;
 
 use App\Core\Base\BaseCrudController;
+use App\Modules\Clinics\Models\Clinic;
 use App\Modules\Products\Models\Product;
+use App\Modules\Products\Requests\ProductPricingRadarRequest;
 use App\Modules\Products\Requests\StoreProductRequest;
 use App\Modules\Products\Requests\UpdateProductRequest;
 use App\Modules\Products\Services\ProductIntelligenceAuditService;
+use App\Modules\Products\Services\ProductPricingRadarService;
 use App\Modules\Products\Services\ProductService;
 use Illuminate\Http\Request;
+use Illuminate\View\View;
 use InvalidArgumentException;
 
 class ProductController extends BaseCrudController
@@ -19,6 +23,15 @@ class ProductController extends BaseCrudController
         $this->viewPath = 'products';
         $this->routeName = 'products';
         $this->viewVariable = 'products';
+    }
+
+    public function create(): View
+    {
+        $clinics = auth()->user()?->clinic_id === null
+            ? Clinic::query()->active()->orderBy('trade_name')->orderBy('corporate_name')->get()
+            : collect();
+
+        return view('products.create', compact('clinics'));
     }
 
     public function index()
@@ -34,6 +47,11 @@ class ProductController extends BaseCrudController
         return view('products.diagnostics', $auditService->diagnosticsData($request));
     }
 
+    public function pricingRadar(ProductPricingRadarRequest $request, ProductPricingRadarService $radar): View
+    {
+        return view('products.pricing-radar', $radar->data($request->validated()));
+    }
+
     public function store(Request $request)
     {
         $validated = $this->validateRequest($request, $this->storeRequest());
@@ -43,13 +61,19 @@ class ProductController extends BaseCrudController
 
         if ($request->input('return_to') === 'sales') {
             return redirect()
-                ->route('sales.create', ['scan' => $scan])
+                ->route('sales.create', array_filter([
+                    'scan' => $scan,
+                    'clinic_id' => $product->clinic_id,
+                ]))
                 ->with('success', 'Produto cadastrado com sucesso. O PDV vai buscar este EAN automaticamente.');
         }
 
         if ($request->input('return_to') === 'inventory') {
             return redirect()
-                ->route('inventory-movements.create', ['scan' => $scan])
+                ->route('inventory-movements.create', array_filter([
+                    'scan' => $scan,
+                    'clinic_id' => $product->clinic_id,
+                ]))
                 ->with('success', 'Produto cadastrado com sucesso. O estoque vai buscar este EAN automaticamente.');
         }
 
@@ -57,7 +81,7 @@ class ProductController extends BaseCrudController
             return redirect()
                 ->route('purchase-entries.create', array_filter([
                     'scan' => $scan,
-                    'clinic_id' => $request->input('clinic_id'),
+                    'clinic_id' => $product->clinic_id,
                 ]))
                 ->with('success', 'Produto cadastrado com sucesso. A entrada vai buscar este EAN automaticamente.');
         }

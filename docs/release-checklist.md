@@ -1,6 +1,6 @@
 # VetFlow Release Checklist
 
-Updated: 2026-07-30
+Updated: 2026-09-28
 
 Use this checklist for a staging release and before the first production pilot.
 It complements the [deployment guide](deployment.md); it does not replace a
@@ -9,6 +9,10 @@ provider-specific runbook.
 ## 1. Release Scope
 
 - Confirm the target commit and pull request.
+- Confirm that Composer generated `bootstrap/cache/vetflow-release.sha` with
+  the full 40-character commit SHA. Use `VETFLOW_RELEASE_SHA` only as the
+  fallback for archive deployments without Git metadata; Render can use
+  `RENDER_GIT_COMMIT` automatically.
 - Confirm CI is green for Laravel tests and the frontend build.
 - Review migrations, seeders, environment changes, storage paths, and queue
   changes included in the release.
@@ -25,8 +29,10 @@ provider-specific runbook.
 - Preserve the previous application build and environment configuration.
 - Define the rollback commit and the database restore decision before starting.
 
-The `--backup-confirmed` flag described below is an operator attestation. It
-does not create or validate a backup by itself.
+Prefer the repository's [backup restore drill](deployment/backup-restore-drill.md),
+which records control totals before export validation and produces evidence
+after an isolated restore. `--backup-confirmed` remains a manual operator
+attestation and does not create or validate a backup by itself.
 
 ## 3. Pre-Release Validation
 
@@ -67,14 +73,24 @@ supported process controls.
 
 ## 5. Automated Runtime Check
 
-After deployment, run:
+After deployment, prepare a synthetic probe, let the real worker or bounded
+cron process it, and generate operational evidence:
 
 ```bash
-php artisan vetflow:release:check --backup-confirmed
+php artisan vetflow:runtime:probe
+php artisan vetflow:runtime:probe --verify --probe=<ULID> \
+  --evidence=/secure/evidence/runtime-evidence.json
+php artisan vetflow:release:check \
+  --runtime-evidence=/secure/evidence/runtime-evidence.json \
+  --backup-evidence=/secure/evidence/restore-evidence.json
 ```
+
+See the [runtime operations probe](deployment/runtime-operations-probe.md) for
+the worker/cron and restart-boundary procedure.
 
 The command blocks a production release when it finds:
 
+- a missing or invalid full Git commit identity;
 - a missing `APP_KEY`;
 - `APP_DEBUG=true`;
 - an `APP_URL` without HTTPS;
@@ -84,15 +100,23 @@ The command blocks a production release when it finds:
 - a synchronous or invalid queue connection;
 - a missing `jobs` table for the database queue;
 - a storage disk that cannot create and remove a temporary probe;
-- missing operator confirmation for a restorable backup.
+- missing, stale, failed, or wrong-environment evidence that storage and the
+  asynchronous queue completed an end-to-end probe;
+- missing fresh evidence or operator confirmation for a restorable backup.
 
 Run the command without `--backup-confirmed` in local or testing environments.
 
 ## 6. Smoke Tests
 
 - Open `/up` and confirm a successful health response.
+- Open `/ops/release`, confirm `200`, and compare `release.sha` with the exact
+  deployed commit before testing business flows.
 - Log in with an active administrator.
 - Confirm the expected clinic context and tenant-scoped lists.
+- Open Implementation and confirm coverage, data-quality, checklist,
+  release-plan, and readiness evidence remain scoped to the selected clinic.
+- Confirm a readiness approval is unavailable while any of the four evidence
+  gates is pending; do not approve a real pilot during a smoke test.
 - Open Users and Access and confirm the administrator preset.
 - Run one product lookup without depending on paid providers.
 - Import a known fictitious NF-e XML in staging and stop before saving the
@@ -102,6 +126,11 @@ Run the command without `--backup-confirmed` in local or testing environments.
 - Create a draft sale and confirm stock and financial side effects are absent.
 - Complete a small staging sale and verify stock, payment, and financial
   records.
+- When scale-label support changes, configure a fictitious clinic and kilogram
+  product, scan one manufacturer-generated EAN-13 weight label, verify the
+  decoded three-decimal quantity and stock exit, then repeat with an altered
+  check digit and confirm it is rejected. Do not learn the format from a real
+  production product during a smoke test.
 - Confirm the queue worker consumes a harmless test job or, for the KingHost
   staging bridge, that the authenticated cron receives `204` and removes the
   job from the `jobs` table without creating a `failed_jobs` record.
@@ -112,6 +141,15 @@ Run the command without `--backup-confirmed` in local or testing environments.
 
 Do not perform destructive smoke tests in a real clinic. Use a dedicated
 staging or pilot-validation clinic.
+
+### Banho & Tosa pilot validation
+
+For a release that changes Banho & Tosa, also complete the separate eight-item
+module checklist in the Operations Center: agenda/availability, booking/pricing,
+service lifecycle, package balance, PDV/receipt, commission/returns,
+cash/financial effects, and audit/tenant isolation. Record the real pilot
+operator and concise evidence for every item. This module checklist does not
+replace or modify the 12 required release smoke checks above.
 
 ## 7. Release Decision
 
@@ -131,8 +169,16 @@ permission checks fail.
 Record:
 
 - deployed commit and release time;
+- `/ops/release` response matched to that commit;
 - migration and seeder result;
 - runtime-check output;
+- runtime-probe ULID and evidence location, without sentinel contents;
 - smoke-test operator and result;
 - backup location identifier, without credentials;
 - rollback or follow-up decision.
+
+Authorized administrators can review these gates in **Administração → Central
+de operações**. The interface reads only safe evidence summaries, preserves
+every smoke-check decision, and produces a report tied to the current
+environment and full release SHA. It does not replace the provider-side backup,
+worker/cron operation, or isolated restore procedure.

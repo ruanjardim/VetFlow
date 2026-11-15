@@ -1,0 +1,174 @@
+<?php
+
+namespace App\Modules\Audit\Services;
+
+use App\Models\User;
+use App\Modules\Audit\Models\AuditEvent;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Str;
+
+class AuditTrailService
+{
+    public const EVENT_LABELS = [
+        'access.user.created' => 'Colaborador criado',
+        'access.user.updated' => 'Acesso de colaborador atualizado',
+        'employee.created' => 'Cadastro funcional criado',
+        'employee.updated' => 'Cadastro funcional atualizado',
+        'clinic.branding.updated' => 'Identidade visual atualizada',
+        'printer.created' => 'Impressora cadastrada',
+        'printer.updated' => 'Impressora atualizada',
+        'saas.plan.created' => 'Plano SaaS criado',
+        'saas.plan.updated' => 'Plano SaaS atualizado',
+        'saas.subscription.updated' => 'Assinatura SaaS atualizada',
+        'saas.tenant.onboarded' => 'Estabelecimento implantado',
+        'saas.coupon.created' => 'Cupom SaaS criado',
+        'saas.coupon.updated' => 'Cupom SaaS atualizado',
+        'saas.coupon.applied' => 'Cupom aplicado à assinatura',
+        'saas.coupon.cancelled' => 'Promoção da assinatura cancelada',
+        'saas.legal-document.created' => 'Versão jurídica criada',
+        'saas.legal-document.published' => 'Documento jurídico publicado',
+        'saas.legal-package.accepted' => 'Pacote jurídico aceito',
+        'grooming.schedule.clinic.updated' => 'Expediente do Banho & Tosa atualizado',
+        'grooming.schedule.professional.updated' => 'Disponibilidade de profissional atualizada',
+        'grooming.schedule.block.created' => 'Bloqueio da agenda criado',
+        'grooming.schedule.block.deleted' => 'Bloqueio da agenda removido',
+        'cash.session.opened' => 'Caixa aberto',
+        'cash.session.closed' => 'Caixa fechado',
+        'cash.session.reviewed' => 'Caixa conferido e encerrado',
+        'cash.session.reopened' => 'Caixa reaberto',
+        'patient.lifecycle.archived' => 'Paciente arquivado',
+        'patient.lifecycle.restored' => 'Paciente restaurado',
+        'patient.lifecycle.deceased' => 'Óbito do paciente registrado',
+        'patient.lifecycle.death-corrected' => 'Óbito do paciente corrigido',
+        'pdv.scale-settings.updated' => 'Configuração da balança atualizada',
+        'financial.budget.updated' => 'Orçamento financeiro atualizado',
+        'financial.budget.copied' => 'Orçamento financeiro copiado',
+        'financial.obligations.reviewed' => 'Contas a pagar e receber revisadas',
+        'financial.bank-account.created' => 'Conta financeira cadastrada',
+        'financial.bank-account.updated' => 'Conta financeira atualizada',
+        'financial.bank-statement.imported' => 'Extrato bancário importado',
+        'financial.bank-reconciliation.confirmed' => 'Conciliação bancária confirmada',
+        'financial.bank-reconciliation.reversed' => 'Conciliação bancária desfeita',
+        'commission.sales-settlement.created' => 'Comissão de vendas fechada',
+        'fiscal.dps-sequence.configured' => 'Sequência DPS configurada',
+        'fiscal.nfce-sequence.configured' => 'Sequência NFC-e configurada',
+        'fiscal.provider-credential.connected' => 'Conta Focus conectada',
+        'fiscal.provider-credential.rotated' => 'Token Focus substituído',
+        'fiscal.provider-credential.disconnected' => 'Conta Focus desconectada',
+        'fiscal.nfce-inutilization.queued' => 'Inutilização de NFC-e colocada na fila',
+        'fiscal.nfce-inutilization.processing' => 'Inutilização de NFC-e enviada',
+        'fiscal.nfce-inutilization.authorized' => 'Inutilização de NFC-e autorizada',
+        'fiscal.nfce-inutilization.rejected' => 'Inutilização de NFC-e rejeitada',
+        'fiscal.nfce-inutilization.failed' => 'Inutilização de NFC-e sem confirmação',
+        'fiscal.homologation-review.recorded' => 'Revisão da homologação fiscal registrada',
+        'fiscal.production.activated' => 'Produção fiscal ativada',
+        'fiscal.production.deactivated' => 'Produção fiscal desativada',
+        'fiscal.period-closure.recorded' => 'Fechamento fiscal operacional registrado',
+        'fiscal.return-review.recorded' => 'Revisão fiscal de devolução registrada',
+    ];
+
+    /**
+     * @param  array<string, mixed>  $before
+     * @param  array<string, mixed>  $after
+     * @param  array<string, mixed>  $metadata
+     */
+    public function record(
+        string $event,
+        Model $subject,
+        array $before,
+        array $after,
+        ?User $actor = null,
+        array $metadata = [],
+        ?int $clinicId = null,
+        ?string $subjectLabel = null
+    ): ?AuditEvent {
+        $changes = $this->changedValues($before, $after);
+
+        if ($changes === [] && $metadata === []) {
+            return null;
+        }
+
+        $actor ??= Auth::user();
+        $request = app()->bound('request') ? request() : null;
+        $resolvedClinicId = $clinicId
+            ?? $subject->getAttribute('clinic_id')
+            ?? $actor?->clinic_id;
+
+        return AuditEvent::query()->create([
+            'clinic_id' => $resolvedClinicId,
+            'actor_user_id' => $actor?->id,
+            'event' => $event,
+            'subject_type' => $subject->getMorphClass(),
+            'subject_id' => (string) $subject->getKey(),
+            'subject_label' => $subjectLabel,
+            'changes' => $changes ?: null,
+            'metadata' => $metadata ?: null,
+            'ip_address' => $request instanceof Request ? $request->ip() : null,
+            'user_agent' => $request instanceof Request
+                ? Str::limit((string) $request->userAgent(), 255, '')
+                : null,
+            'occurred_at' => now(),
+        ]);
+    }
+
+    /**
+     * @param  array{event?: string|null, search?: string|null, from?: string|null, to?: string|null}  $filters
+     */
+    public function paginate(array $filters, int $perPage = 25): LengthAwarePaginator
+    {
+        return AuditEvent::query()
+            ->with(['actor', 'clinic'])
+            ->when($filters['event'] ?? null, fn ($query, string $event) => $query->where('event', $event))
+            ->when($filters['search'] ?? null, function ($query, string $search): void {
+                $term = '%'.addcslashes($search, '%_').'%';
+                $query->where(function ($searchQuery) use ($term): void {
+                    $searchQuery
+                        ->where('subject_label', 'like', $term)
+                        ->orWhereHas('actor', fn ($actorQuery) => $actorQuery
+                            ->where('name', 'like', $term)
+                            ->orWhere('email', 'like', $term))
+                        ->orWhereHas('clinic', fn ($clinicQuery) => $clinicQuery
+                            ->where('trade_name', 'like', $term)
+                            ->orWhere('corporate_name', 'like', $term));
+                });
+            })
+            ->when($filters['from'] ?? null, fn ($query, string $date) => $query->whereDate('occurred_at', '>=', $date))
+            ->when($filters['to'] ?? null, fn ($query, string $date) => $query->whereDate('occurred_at', '<=', $date))
+            ->latest('occurred_at')
+            ->latest('id')
+            ->paginate($perPage)
+            ->withQueryString();
+    }
+
+    /** @return array<string, string> */
+    public static function eventLabels(): array
+    {
+        return self::EVENT_LABELS;
+    }
+
+    /**
+     * @param  array<string, mixed>  $before
+     * @param  array<string, mixed>  $after
+     * @return array<string, array{before: mixed, after: mixed}>
+     */
+    private function changedValues(array $before, array $after): array
+    {
+        $changes = [];
+
+        foreach (array_unique([...array_keys($before), ...array_keys($after)]) as $field) {
+            $old = $before[$field] ?? null;
+            $new = $after[$field] ?? null;
+
+            if ($old === $new) {
+                continue;
+            }
+
+            $changes[$field] = ['before' => $old, 'after' => $new];
+        }
+
+        return $changes;
+    }
+}

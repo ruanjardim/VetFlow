@@ -3,27 +3,51 @@
     ->map(fn ($roleId) => (int) $roleId)
     ->all();
   $isGlobalActor = auth()->user()->clinic_id === null;
+  $defaultClinicId = $accessUser?->clinic_id ?? $preferredEmployee?->clinic_id ?? $preferredClinicId ?? null;
+  $formPerson = $accessUser ?? $preferredEmployee;
 @endphp
+
+@if($preferredEmployee)
+  <input type="hidden" name="employee_id" value="{{ $preferredEmployee->id }}">
+  <div class="alert-soft" style="margin-bottom: 18px;">
+    <span><strong>Cadastro funcional existente:</strong> este novo login será vinculado a {{ $preferredEmployee->name }} sem criar outro colaborador.</span>
+  </div>
+@endif
+
+@if($returnTo)
+  <input type="hidden" name="return_to" value="{{ $returnTo }}">
+@endif
 
 <div class="form-grid">
   <div class="field">
     <label for="name">Nome</label>
-    <input id="name" name="name" value="{{ old('name', $accessUser?->name) }}" required>
+    <input id="name" name="name" value="{{ old('name', $formPerson?->name) }}" required>
   </div>
 
   <div class="field">
     <label for="email">E-mail de acesso</label>
-    <input id="email" name="email" type="email" value="{{ old('email', $accessUser?->email) }}" autocomplete="email" required>
+    <input id="email" name="email" type="email" value="{{ old('email', $formPerson?->email) }}" autocomplete="email" required>
   </div>
 
   <div class="field">
     <label for="phone">Telefone</label>
-    <input id="phone" name="phone" value="{{ old('phone', $accessUser?->phone) }}">
+    <input id="phone" name="phone" value="{{ old('phone', $formPerson?->phone) }}">
   </div>
 
   <div class="field">
     <label for="position">Cargo ou funcao</label>
-    <input id="position" name="position" value="{{ old('position', $accessUser?->position) }}" placeholder="Ex.: Veterinaria responsavel">
+    <input id="position" name="position" value="{{ old('position', $formPerson?->position) }}" placeholder="Ex.: Veterinaria responsavel">
+  </div>
+
+  <div class="field">
+    <label for="veterinary_license_number">CRMV</label>
+    <input id="veterinary_license_number" name="veterinary_license_number" value="{{ old('veterinary_license_number', $accessUser?->veterinary_license_number) }}" maxlength="30" placeholder="Ex.: 12345">
+    <div class="field-hint">Preencha para profissionais responsáveis por documentos veterinários.</div>
+  </div>
+
+  <div class="field">
+    <label for="veterinary_license_state">UF do CRMV</label>
+    <input id="veterinary_license_state" name="veterinary_license_state" value="{{ old('veterinary_license_state', $accessUser?->veterinary_license_state) }}" maxlength="2" placeholder="Ex.: RJ">
   </div>
 
   @if($isGlobalActor)
@@ -32,7 +56,7 @@
       <select id="clinic_id" name="clinic_id">
         <option value="">Acesso global</option>
         @foreach($clinics as $clinic)
-          <option value="{{ $clinic->id }}" @selected((string) old('clinic_id', $accessUser?->clinic_id) === (string) $clinic->id)>
+          <option value="{{ $clinic->id }}" @selected((string) old('clinic_id', $defaultClinicId) === (string) $clinic->id)>
             {{ $clinic->trade_name ?? $clinic->corporate_name }}
           </option>
         @endforeach
@@ -55,6 +79,21 @@
       <option value="1" @selected((string) old('active', $accessUser ? (int) $accessUser->active : 1) === '1')>Ativo</option>
       <option value="0" @selected((string) old('active', $accessUser ? (int) $accessUser->active : 1) === '0')>Inativo</option>
     </select>
+  </div>
+
+  <div class="field">
+    <label class="checkbox-inline">
+      <input type="hidden" name="grooming_professional" value="0">
+      <input type="checkbox" name="grooming_professional" value="1" @checked((string) old('grooming_professional', $accessUser ? (int) $accessUser->grooming_professional : 0) === '1')>
+      Atende banho e tosa
+    </label>
+    <div class="field-hint">Mostra o colaborador como coluna na agenda de banho e tosa.</div>
+  </div>
+
+  <div class="field">
+    <label for="grooming_commission_percent">Comissão padrão em banho e tosa (%)</label>
+    <input id="grooming_commission_percent" name="grooming_commission_percent" type="number" step="0.01" min="0" max="100" value="{{ old('grooming_commission_percent', $accessUser?->grooming_commission_percent) }}">
+    <div class="field-hint">Usada quando o serviço não tem comissão própria.</div>
   </div>
 
   <div class="field">
@@ -110,7 +149,7 @@
   <div class="field full">
     <div class="actions">
       <button type="submit">Salvar acesso</button>
-      <a class="button secondary" href="{{ route('access-users.index') }}">Cancelar</a>
+      <a class="button secondary" href="{{ $preferredEmployee ? route('employees.edit', $preferredEmployee->id) : ($returnTo === 'implementation' ? route('implementation.index') : route('access-users.index')) }}">Cancelar</a>
     </div>
   </div>
 </div>

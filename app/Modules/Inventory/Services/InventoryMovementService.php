@@ -21,7 +21,10 @@ class InventoryMovementService extends BaseService
         return DB::transaction(function () use ($data) {
             $data['occurred_at'] = $data['occurred_at'] ?? now();
             $data['source'] = $data['source'] ?? 'manual';
-            $data['balance_before'] = $this->currentProductStock((int) $data['product_id']);
+            $data['balance_before'] = (float) Product::query()
+                ->lockForUpdate()
+                ->findOrFail((int) $data['product_id'])
+                ->stock_quantity;
 
             /** @var InventoryMovement $movement */
             $movement = $this->repository->create($data);
@@ -102,6 +105,7 @@ class InventoryMovementService extends BaseService
     {
         if ($effect >= 0) {
             $product->increment('stock_quantity', $effect);
+
             return;
         }
 

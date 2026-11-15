@@ -5,6 +5,9 @@ namespace App\Modules\Access\Services;
 use App\Models\Role;
 use App\Models\User;
 use App\Modules\Access\Contracts\AccessUserRepositoryInterface;
+use App\Modules\Audit\Services\AuditTrailService;
+use App\Modules\Employees\Models\Employee;
+use App\Modules\Saas\Services\SubscriptionFeatureService;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
@@ -13,12 +16,20 @@ use Illuminate\Validation\ValidationException;
 class AccessUserService
 {
     public function __construct(
-        private readonly AccessUserRepositoryInterface $repository
+        private readonly AccessUserRepositoryInterface $repository,
+        private readonly AuditTrailService $audit,
+        private readonly SubscriptionFeatureService $features
     ) {}
 
     public function paginate(User $actor): LengthAwarePaginator
     {
         return $this->repository->paginateFor($actor);
+    }
+
+    /** @return array{used: int, limit: ?int, available: ?int}|null */
+    public function licenseUsage(User $actor): ?array
+    {
+        return $actor->clinic_id === null ? null : $this->features->userUsage($actor->clinic_id);
     }
 
     public function find(User $actor, int $id): User
@@ -27,14 +38,35 @@ class AccessUserService
     }
 
     /**
-     * @return array{accessUser: ?User, roles: Collection, clinics: Collection}
+     * @return array{accessUser: ?User, roles: Collection, clinics: Collection, preferredClinicId: ?int, preferredEmployee: ?Employee, returnTo: ?string}
      */
-    public function formData(User $actor, ?User $accessUser = null): array
-    {
+    public function formData(
+        User $actor,
+        ?User $accessUser = null,
+        ?int $preferredClinicId = null,
+        ?string $returnTo = null,
+        ?int $preferredEmployeeId = null,
+    ): array {
+        $clinics = $this->repository->availableClinics($actor);
+        $preferredEmployee = $accessUser === null && $preferredEmployeeId
+            ? Employee::query()
+                ->whereNull('user_id')
+                ->when($actor->clinic_id === null && $preferredClinicId, fn ($query) => $query->where('clinic_id', $preferredClinicId))
+                ->find($preferredEmployeeId)
+            : null;
+        $preferredClinicId = $preferredEmployee?->clinic_id ?? $preferredClinicId;
+        $preferredClinicId = $actor->clinic_id === null
+            && $clinics->contains('id', $preferredClinicId)
+                ? $preferredClinicId
+                : null;
+
         return [
             'accessUser' => $accessUser,
             'roles' => $this->repository->assignableRoles(),
-            'clinics' => $this->repository->availableClinics($actor),
+            'clinics' => $clinics,
+            'preferredClinicId' => $preferredClinicId,
+            'preferredEmployee' => $preferredEmployee,
+            'returnTo' => $returnTo === 'implementation' ? 'implementation' : null,
         ];
     }
 
@@ -46,11 +78,28 @@ class AccessUserService
         [$roleIds] = $this->validatedRoles($data['role_ids'] ?? []);
         $attributes = $this->userAttributes($actor, $data);
 
-        return DB::transaction(function () use ($actor, $attributes, $roleIds): User {
+        $employeeId = filled($data['employee_id'] ?? null) ? (int) $data['employee_id'] : null;
+
+        return DB::transaction(function () use ($actor, $attributes, $roleIds, $employeeId): User {
+            $this->lockLicenseScope($attributes['clinic_id']);
+            $this->guardActiveUserLimit($attributes['clinic_id'], (bool) $attributes['active']);
             $user = $this->repository->create($attributes);
             $this->repository->syncRoles($user, $roleIds, $actor);
+            $this->syncEmployee($user, true, $employeeId);
 
-            return $user->load(['clinic', 'roles']);
+            $user->load(['clinic', 'roles', 'employee']);
+            $this->audit->record(
+                'access.user.created',
+                $user,
+                [],
+                $this->auditSnapshot($user),
+                $actor,
+                [],
+                $user->clinic_id,
+                $user->name
+            );
+
+            return $user;
         });
     }
 
@@ -61,14 +110,33 @@ class AccessUserService
     {
         [$roleIds, $roles] = $this->validatedRoles($data['role_ids'] ?? []);
         $attributes = $this->userAttributes($actor, $data, $accessUser);
+        $before = $this->auditSnapshot($accessUser);
+        $passwordChanged = ! empty($data['password']);
 
         $this->guardSelfUpdate($actor, $accessUser, $attributes, $roles);
 
-        return DB::transaction(function () use ($actor, $accessUser, $attributes, $roleIds): User {
+        return DB::transaction(function () use ($actor, $accessUser, $attributes, $roleIds, $before, $passwordChanged): User {
+            $consumesNewLicense = (bool) $attributes['active']
+                && (! $accessUser->active || $accessUser->clinic_id !== $attributes['clinic_id']);
+            $this->lockLicenseScope($attributes['clinic_id']);
+            $this->guardActiveUserLimit($attributes['clinic_id'], $consumesNewLicense);
             $user = $this->repository->update($accessUser, $attributes);
             $this->repository->syncRoles($user, $roleIds, $actor);
+            $this->syncEmployee($user);
+            $user->load(['clinic', 'roles', 'employee']);
 
-            return $user->load(['clinic', 'roles']);
+            $this->audit->record(
+                'access.user.updated',
+                $user,
+                $before,
+                $this->auditSnapshot($user),
+                $actor,
+                $passwordChanged ? ['password_changed' => true] : [],
+                $user->clinic_id,
+                $user->name
+            );
+
+            return $user;
         });
     }
 
@@ -108,7 +176,13 @@ class AccessUserService
             'email' => $data['email'],
             'phone' => $data['phone'] ?? null,
             'position' => $data['position'] ?? null,
+            'veterinary_license_number' => $data['veterinary_license_number'] ?? null,
+            'veterinary_license_state' => $data['veterinary_license_state'] ?? null,
             'active' => (bool) $data['active'],
+            'grooming_professional' => (bool) ($data['grooming_professional'] ?? false),
+            'grooming_commission_percent' => isset($data['grooming_commission_percent']) && $data['grooming_commission_percent'] !== ''
+                ? (float) $data['grooming_commission_percent']
+                : null,
         ];
 
         if (! empty($data['password'])) {
@@ -158,5 +232,91 @@ class AccessUserService
                 'role_ids' => 'Mantenha um perfil com gestao de usuarios no seu proprio acesso.',
             ]);
         }
+    }
+
+    private function guardActiveUserLimit(?int $clinicId, bool $willConsumeLicense): void
+    {
+        if (! $willConsumeLicense || $clinicId === null) {
+            return;
+        }
+
+        $usage = $this->features->userUsage($clinicId);
+        if ($usage['limit'] === null || $usage['used'] < $usage['limit']) {
+            return;
+        }
+
+        throw ValidationException::withMessages([
+            'active' => "O limite de {$usage['limit']} usuários ativos do plano foi atingido. Desative um usuário ou ajuste a assinatura.",
+        ]);
+    }
+
+    private function lockLicenseScope(?int $clinicId): void
+    {
+        if ($clinicId !== null) {
+            DB::table('clinics')->where('id', $clinicId)->lockForUpdate()->first();
+        }
+    }
+
+    private function syncEmployee(User $user, bool $creatingAccess = false, ?int $preferredEmployeeId = null): void
+    {
+        if ($user->clinic_id === null) {
+            return;
+        }
+
+        $employee = $preferredEmployeeId
+            ? Employee::query()
+                ->whereKey($preferredEmployeeId)
+                ->where('clinic_id', $user->clinic_id)
+                ->whereNull('user_id')
+                ->lockForUpdate()
+                ->first()
+            : Employee::withTrashed()->firstOrNew(['user_id' => $user->id]);
+
+        if (! $employee) {
+            throw ValidationException::withMessages([
+                'employee_id' => 'O cadastro funcional não está mais disponível para receber este acesso.',
+            ]);
+        }
+
+        $employee->fill([
+            'clinic_id' => $user->clinic_id,
+            'user_id' => $user->id,
+            'name' => $user->name,
+            'email' => $user->email,
+            'phone' => $user->phone,
+            'position' => $user->position,
+            'employment_type' => $employee->employment_type ?: 'employee',
+        ]);
+
+        if (! $employee->exists || ($creatingAccess && $preferredEmployeeId === null)) {
+            $employee->active = (bool) $user->active;
+        }
+
+        $employee->save();
+
+        if ($employee->trashed()) {
+            $employee->restore();
+        }
+    }
+
+    /** @return array<string, mixed> */
+    private function auditSnapshot(User $user): array
+    {
+        $user->loadMissing(['roles', 'employee']);
+
+        return [
+            'clinic_id' => $user->clinic_id,
+            'employee_id' => $user->employee?->id,
+            'name' => $user->name,
+            'email' => $user->email,
+            'phone' => $user->phone,
+            'position' => $user->position,
+            'veterinary_license_number' => $user->veterinary_license_number,
+            'veterinary_license_state' => $user->veterinary_license_state,
+            'active' => (bool) $user->active,
+            'grooming_professional' => (bool) $user->grooming_professional,
+            'grooming_commission_percent' => $user->grooming_commission_percent,
+            'roles' => $user->roles->pluck('slug')->sort()->values()->all(),
+        ];
     }
 }

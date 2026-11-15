@@ -24,6 +24,12 @@ the last selected role that grants `users.manage`.
 | `GET /access/users/{user}/edit` | Opens a tenant-scoped user record. |
 | `PUT /access/users/{user}` | Updates profile, status, optional password, and roles. |
 
+When the create screen is opened from Implementation, a global administrator
+can receive an allowlisted clinic preset. The saved collaborator still passes
+through the same tenant, role, license, and audit rules; after success, the
+operator returns to the Implementation assistant. Arbitrary return URLs are
+not accepted.
+
 The module is implemented by:
 
 - `AccessUserController`;
@@ -31,6 +37,27 @@ The module is implemented by:
 - `AccessUserRepository`;
 - store and update form requests;
 - Blade views under `resources/views/access/users`.
+
+Every clinic user created through this module also receives a linked
+`employees` functional record in the same transaction. Updates synchronize
+name, email, phone, position and clinic. The functional active status is kept
+independent: blocking a login does not automatically declare that the person
+was terminated. Collaborators who do not need a login are registered directly
+in the Employees module and do not consume a user license.
+
+An existing functional record without a user can later open the Access create
+flow with its clinic and employee identifiers preselected. Store validation
+requires the same clinic and an unlinked, non-deleted record; the transactional
+service locks that record, creates the user/roles and attaches it without
+duplicating the collaborator. Cross-clinic or already-linked records are
+rejected.
+
+## Professional Identification
+
+The collaborator form accepts an optional CRMV number and state. Both fields
+must be supplied together. They are used only when the collaborator is selected
+as the responsible veterinarian for a clinical document; assigning an access
+role alone does not create or infer a professional registration.
 
 ## Tenant Rules
 
@@ -59,6 +86,10 @@ The module is implemented by:
 More than one preset can be selected. Effective permissions are the union of
 the active selected roles.
 
+All six standard presets include `printers.manage` so the operational team can
+reach the establishment's shared printer setup. Tenant isolation and the
+permission middleware still apply to every printer route.
+
 ## Role Link History
 
 `user_roles` has a required ULID and soft deletion. Role changes therefore use
@@ -71,6 +102,12 @@ an explicit synchronization flow:
 
 There is no destructive delete action in this module. Administrators deactivate
 a collaborator when access must be blocked.
+
+Creation and updates also write an `audit_events` entry in the same transaction.
+The snapshot includes profile, professional identification, status, clinic,
+and role slugs. A password change
+is acknowledged without retaining the password or its hash. Reading those
+events requires the separate `audit.manage` permission.
 
 ## Deployment
 
@@ -90,6 +127,12 @@ php artisan db:seed --class=AuthorizationSeeder --force
 - clinic-scoped list and edit behavior;
 - clinic stamping during creation;
 - global administrator clinic selection;
+- the Implementation handoff with clinic preselection and safe return;
 - rejection of custom or inactive roles;
 - soft-deleted role link restoration;
 - protection against administrator self-lockout.
+- automatic creation of the linked functional record.
+- later login assignment to an existing employee without duplication.
+
+`tests/Feature/AdministrativeAuditTrailTest.php` additionally covers the safe,
+tenant-scoped audit snapshots produced by this module.

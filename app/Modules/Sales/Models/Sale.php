@@ -6,12 +6,17 @@ use App\Models\Concerns\BelongsToClinicTenant;
 use App\Models\User;
 use App\Modules\Clinics\Models\Clinic;
 use App\Modules\Financial\Models\FinancialTransaction;
+use App\Modules\Fiscal\Models\FiscalDocument;
+use App\Modules\Fiscal\Models\FiscalReturnReview;
+use App\Modules\Fiscal\Models\FiscalSaleAllocation;
 use App\Modules\Patients\Models\Patient;
+use App\Modules\Sales\Support\SaleType;
 use App\Modules\ServiceOrders\Models\ServiceOrder;
 use App\Modules\Tutors\Models\Tutor;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Sale extends Model
@@ -25,9 +30,12 @@ class Sale extends Model
 
     protected $casts = [
         'sold_at' => 'datetime',
+        'offline_captured_at' => 'datetime',
+        'offline_synced_at' => 'datetime',
         'subtotal' => 'decimal:2',
         'discount_total' => 'decimal:2',
         'additions_total' => 'decimal:2',
+        'delivery_fee' => 'decimal:2',
         'total' => 'decimal:2',
         'paid_total' => 'decimal:2',
         'change_total' => 'decimal:2',
@@ -73,6 +81,11 @@ class Sale extends Model
         return $this->belongsTo(FinancialTransaction::class);
     }
 
+    public function cashSession(): BelongsTo
+    {
+        return $this->belongsTo(CashSession::class);
+    }
+
     public function seller(): BelongsTo
     {
         return $this->belongsTo(User::class, 'seller_user_id');
@@ -91,5 +104,35 @@ class Sale extends Model
     public function events(): HasMany
     {
         return $this->hasMany(SaleEvent::class);
+    }
+
+    public function fiscalDocuments(): HasMany
+    {
+        return $this->hasMany(FiscalDocument::class);
+    }
+
+    public function fiscalAllocation(): HasOne
+    {
+        return $this->hasOne(FiscalSaleAllocation::class);
+    }
+
+    public function fiscalReturnReviews(): HasMany
+    {
+        return $this->hasMany(FiscalReturnReview::class);
+    }
+
+    public function quote(): BelongsTo
+    {
+        return $this->belongsTo(SaleQuote::class, 'sale_quote_id');
+    }
+
+    public function saleTypeLabel(): string
+    {
+        return SaleType::label($this->sale_type);
+    }
+
+    public function hasDelivery(): bool
+    {
+        return SaleType::hasDelivery($this->sale_type);
     }
 }

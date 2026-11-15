@@ -8,8 +8,23 @@
       <h1>Usuarios e acessos</h1>
       <p>Colaboradores, clinicas e perfis operacionais.</p>
     </div>
-    <a class="button" href="{{ route('access-users.create') }}">Novo colaborador</a>
+    <div class="actions">
+      <a class="button secondary" href="{{ route('employees.index') }}">Cadastros funcionais</a>
+      <a class="button" href="{{ route('access-users.create') }}">Novo acesso</a>
+    </div>
   </header>
+
+  @if($licenseUsage)
+    <div class="panel" style="margin-bottom: 18px;">
+      <strong>Licenças de usuários</strong>
+      <div class="muted">
+        {{ $licenseUsage['used'] }} de {{ $licenseUsage['limit'] ?? 'ilimitados' }} usuários ativos utilizados.
+      </div>
+      @if($licenseUsage['limit'] !== null && $licenseUsage['available'] === 0)
+        <div class="alert warning" style="margin-top: 12px;">O limite do plano foi atingido. Usuários inativos continuam disponíveis para consulta e não consomem licença.</div>
+      @endif
+    </div>
+  @endif
 
   <div class="panel">
     <div class="table-wrap">
@@ -48,7 +63,12 @@
                 </span>
               </td>
               <td>
-                <a class="button secondary" href="{{ route('access-users.edit', $accessUser->id) }}">Editar acesso</a>
+                <div class="actions">
+                  @if($accessUser->employee)
+                    <a class="button secondary" href="{{ route('employees.edit', $accessUser->employee->id) }}">Cadastro funcional</a>
+                  @endif
+                  <a class="button secondary" href="{{ route('access-users.edit', $accessUser->id) }}">Editar acesso</a>
+                </div>
               </td>
             </tr>
           @empty

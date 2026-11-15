@@ -11,6 +11,24 @@ validation, mapping review, and explicit confirmation.
 
 ## Current Flow
 
+Before the import wizard, a global SaaS operator should use the transactional
+client onboarding entry point. It creates the clinic, subscription, and initial
+administrator together, then exposes a direct handoff back to this assistant
+from the establishment page. An authorized clinic manager keeps the direct
+clinic-registration fallback for compatibility. Operators without either
+permission receive guidance instead of a link that would end in a forbidden
+page.
+
+For each accessible clinic, the assistant also exposes an activation panel
+before the migration and pilot sections. It reports only observable access
+facts: active users, active administrators, veterinarians with both CRMV
+fields, and collaborators marked as Banho e Tosa professionals. It does not
+turn those counts into automatic readiness. The existing human
+`access_validated` checklist decision remains the authority for pilot
+preparation. Operators with `users.manage` can open Access directly or create
+a collaborator with the destination clinic preselected; after that creation,
+the guided handoff returns to Implementation.
+
 1. Select an active destination clinic.
 2. Select CSV or Excel as the data source.
 3. Choose a supported data block, download its template, and upload the
@@ -22,6 +40,68 @@ validation, mapping review, and explicit confirmation.
 8. Review the completion summary.
 9. Consult the permanent summary in the recent import history.
 
+The top of the assistant also presents a read-only onboarding coverage panel
+for every clinic available to the current user. A block is considered complete
+only after at least one successful import has been recorded for that clinic.
+Repeated imports do not inflate progress: the panel keeps the latest successful
+execution for each of the six supported blocks, displays its source, timestamp,
+and imported count, and calculates a percentage from distinct completed blocks.
+It does not claim that business validation or pilot acceptance is complete.
+
+A second read-only panel evaluates data quality only for blocks whose import
+coverage is already complete. It counts clinic-scoped records that need manual
+review using six transparent checks: Tutors without CPF or email; Patients
+without Tutor, catalogued species, or birth date; Suppliers without a document
+or contact channel; Products without a positive sale price or commercial
+identifier; positive Stock without a registered cost; and Financial records
+whose value or dates conflict with their status. A block without a completed
+import remains marked as awaiting instead of receiving a misleading zero-issue
+score. These checks guide review and do not automatically alter business data.
+Every attention block links to a paginated, clinic-scoped review queue that
+identifies the affected records and the exact missing fields. A direct edit
+action is shown only when the operator also has permission for the source
+module; otherwise the page clearly delegates the correction to its owner.
+
+The pilot-preparation checklist adds five explicit human decisions per clinic:
+data review, quality resolution, access validation, backup alignment, and team
+training. Marking an item complete or reopening it always appends a new event
+with clinic and user snapshots, an optional observation, and decision time.
+The interface presents the latest decision while preserving earlier events for
+audit; it never edits or deletes an earlier answer.
+
+Each clinic can also maintain a versioned pilot-release plan. The required
+operational owner, support owner, functional scope, and release notes, plus an
+optional planned start date, are stored as an append-only revision attributed
+to the authenticated user. The assistant loads the latest revision into the
+form while retaining all previous plans for audit and recovery.
+
+The consolidated pilot-readiness panel evaluates four transparent gates: all
+six import blocks complete; all six quality checks evaluated without pending
+records; all five human checklist items complete; and a pilot-release plan
+revision present. Meeting those gates does not approve the pilot by itself. An
+authorized operator must append an explicit `approved` or `held` decision.
+Every decision stores a JSON snapshot and SHA-256 hash of the evidence. If an
+import, quality result, checklist answer, or release revision changes, the
+previous decision is visibly stale and a new decision is required. Approval is
+rejected while any gate is pending; an in-waiting decision requires notes.
+
+Each readiness card links to a clinic-scoped pilot history. The read-only page
+consolidates paginated import executions, checklist decisions, release-plan
+revisions, and evidence-bound readiness decisions. Earlier events remain
+visible in their original attributed form, including a shortened evidence hash
+for operational correlation.
+
+The current preparation state can also be emitted as a print-friendly report
+or downloaded as a no-cache JSON artifact. Both formats are generated on
+demand from the same tenant-scoped coverage, quality, checklist, release, and
+readiness services, so they do not introduce a second source of truth. The
+report identifies its generation time and current evidence hash.
+
+For multi-clinic operation, the readiness section also acts as a pilot
+portfolio. It summarizes blocked, awaiting, held, approved, and stale-decision
+counts, prioritizes unresolved clinics, and supports a status filter without
+changing the evidence or hiding other onboarding panels.
+
 The wizard state is kept in the authenticated session. Normalized rows are
 stored temporarily as a private JSON file on the `local` disk, separated by
 entity type, and removed when the wizard is reset or the import finishes.
@@ -29,6 +109,16 @@ After a successful confirmation, VetFlow permanently records only audit
 metadata: destination clinic, responsible user, data block, source, file name,
 row counts, and completion time. Imported row contents and validation details
 are not copied into the history.
+
+## Fictitious Pilot Validation
+
+`WalkthroughDemoSeeder` now creates a reproducible preparation scenario for
+the walkthrough clinic. It records coverage for all six blocks, three completed
+human checks, and one versioned release plan. The source records intentionally
+retain two visible quality pendencies, so the consolidated gate must remain
+blocked instead of implying a successful pilot. The local/testing-only
+`vetflow:demo:reset --reseed` command removes and recreates only the records
+identified by the walkthrough fixture, preserving unrelated clinic data.
 
 ## CSV Contract
 
@@ -70,7 +160,7 @@ nome,telefone,whatsapp,email,cpf_cnpj,endereco,observacoes
 The Patients template contains these columns:
 
 ```text
-tutor_documento,nome_pet,especie,raca,sexo,nascimento,peso,observacoes
+tutor_documento,nome_pet,especie,raca,sexo,nascimento,peso,microchip,pedigree,numero_pedigree,marcacoes,situacao,motivo_situacao,observacoes
 ```
 
 - `tutor_documento` and `nome_pet` are required in every row.
@@ -81,6 +171,19 @@ tutor_documento,nome_pet,especie,raca,sexo,nascimento,peso,observacoes
 - `nascimento` accepts `DD/MM/YYYY` or `YYYY-MM-DD` and cannot be a future date.
 - `peso`, when filled, accepts Brazilian decimal commas and must be greater
   than zero.
+- `microchip` and `marcacoes` are optional columns for compatibility with
+  earlier VetFlow templates. When present, they accept respectively up to 100
+  and 1,000 characters and populate the patient identification fields.
+- `pedigree` and `numero_pedigree` are also optional columns. `pedigree`
+  accepts `sim`/`não` (plus the normalized boolean equivalents), while the
+  registration number accepts up to 120 characters. Importing either value is
+  an operational record only and does not certify the document.
+- `situacao` and `motivo_situacao` are optional lifecycle columns so earlier
+  files remain compatible. An omitted or blank status imports the patient as
+  active. Accepted status labels normalize to active, archived, or deceased;
+  archived and deceased rows require a reason between 10 and 2,000 characters.
+  The import attributes the initial inactive state to the confirming user and
+  import time. It does not synthesize cancelled appointments or schedules.
 - The common delimiter, size, row-limit, UTF-8, and all-or-nothing rules also
   apply to Patients.
 
@@ -159,8 +262,20 @@ tipo,descricao,pessoa_documento,valor,vencimento,status,forma_pagamento,data_pag
 | `ImplementationFileAnalyzer` | Validates the selected source, safely reads the first XLSX worksheet, and bridges it to the existing import contracts. |
 | `ExcelTemplateService` | Streams standardized `.xlsx` templates for all six blocks. |
 | `ImplementationImportService` | Runs the selected importer and durable audit write in one outer transaction, and scopes recent history queries. |
+| `ImplementationReadinessService` | Builds tenant-safe onboarding coverage from the latest successful execution of each supported import block. |
+| `ImplementationDataQualityService` | Consolidates transparent, read-only quality checks for completed onboarding blocks in the accessible clinic scope. |
+| `ImplementationTeamActivationService` | Summarizes active access and professional-identification facts per accessible clinic without approving the pilot automatically. |
+| `ImplementationPilotChecklistService` | Builds the latest checklist state and appends auditable completion or reopening decisions. |
+| `ImplementationPilotHistoryService` | Reads the four clinic-scoped audit streams with independent pagination for the consolidated pilot history. |
+| `ImplementationPilotPortfolioService` | Summarizes, prioritizes, and filters current readiness across accessible clinics. |
+| `ImplementationPilotReleaseService` | Reads the latest pilot plan and appends sequential, attributed revisions. |
+| `ImplementationPilotReportService` | Builds the printable and JSON current-state report from the existing tenant-scoped readiness services. |
+| `ImplementationPilotReadinessService` | Consolidates four evidence gates, detects stale decisions, and appends evidence-bound human decisions. |
 | `ImplementationWorkflowService` | Manages session state and private temporary analysis files. |
 | `ImplementationImport` | Represents one successfully completed import summary. |
+| `ImplementationPilotCheck` | Represents one immutable pilot-checklist decision event. |
+| `ImplementationPilotRelease` | Represents one immutable revision of the clinic pilot plan. |
+| `ImplementationPilotDecision` | Represents one immutable readiness decision and its evidence snapshot/hash. |
 | `CsvFileAnalyzer` | Applies shared delimiter, header, encoding, row-limit, and summary rules to catalog, Stock, and Financial CSV files. |
 | `CsvValueNormalizer` | Normalizes strings, Brazilian decimals, and supported dates for catalog, Stock, and Financial imports. |
 | `TutorCsvImportService` | Parses, maps, validates, previews, and imports Tutor rows. |
@@ -191,6 +306,16 @@ tipo,descricao,pessoa_documento,valor,vencimento,status,forma_pagamento,data_pag
 - Every imported Financial Transaction receives the selected `clinic_id`.
 - Temporary analysis is associated with the authenticated user's session.
 - Clinic users can see only import history from their own clinic.
+- Clinic users can see onboarding coverage only for their own clinic; global
+  implementation users see only the active clinics already available to the
+  assistant.
+- Onboarding quality queries use that same accessible clinic list and ignore
+  soft-deleted records.
+- Pilot-checklist validation and reads use the same active accessible-clinic
+  boundary; every decision stores the authenticated responsible user.
+- Pilot-release validation and revision reads use that same clinic boundary.
+- Readiness decisions are calculated and recorded only inside that same active
+  accessible-clinic boundary.
 - Global implementation users can see recent history across the active clinic
   scope available to the wizard.
 - The import rows and their sensitive business fields are never copied into
@@ -202,6 +327,13 @@ The module owns `implementation_imports`, an append-only operational audit
 summary for successfully completed imports. It stores clinic and user foreign
 keys plus name snapshots, the imported block and source, the normalized
 original file name, total/imported/invalid counts, and completion time.
+
+The module also owns `implementation_pilot_checks`, an append-only audit log
+for checklist completion and reopening decisions. The database restore control
+totals also include `implementation_pilot_releases`, whose sequential records
+preserve the responsible owners, planned date, scope, and release notes. All
+four Implementation audit tables, including the evidence-bound
+`implementation_pilot_decisions`, participate in restore control totals.
 
 Confirmed imports continue creating their business records in `tutors`,
 `patients`, `suppliers`, `products`, `inventory_movements`, or
@@ -234,7 +366,14 @@ cross-clinic Supplier isolation.
 
 `tests/Feature/ImplementationImportHistoryTest.php` covers permanent summaries
 after successful confirmation, absence of row payloads, survival after wizard
-reset, clinic-scoped visibility, and no history for blocked imports.
+reset, clinic-scoped visibility, guided coverage, completed-block quality
+checks, append-only pilot decisions, checklist clinic isolation, and no history
+for blocked imports. It also covers append-only pilot-plan revisions and their
+clinic boundary, approval preconditions, evidence snapshots, and automatic
+staleness after a source decision changes, the consolidated tenant-safe pilot
+history, current-state report export, multi-clinic portfolio filtering, and
+tenant-safe team-activation counts linked to the latest human access-validation
+decision.
 
 `tests/Feature/ImplementationExcelTest.php` covers all six Excel imports,
 first-worksheet date normalization, `implementation_excel` trace metadata,

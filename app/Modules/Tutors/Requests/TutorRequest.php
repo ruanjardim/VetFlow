@@ -23,100 +23,41 @@ class TutorRequest extends FormRequest
 
     public function rules(): array
     {
-        $tutorId = $this->route('tutore')?->id
-            ?? $this->route('tutor')?->id
+        $routeTutor = $this->route('tutore')
+            ?? $this->route('tutor')
             ?? $this->route('id');
+        $tutorId = is_object($routeTutor)
+            ? $routeTutor->getKey()
+            : $routeTutor;
 
         return [
-            'name' => [
-                'required',
-                'string',
-                'max:255',
-            ],
-
-            'cpf' => [
-                'nullable',
-                new ValidCpf(),
-                Rule::unique('tutors', 'cpf')->ignore($tutorId),
-            ],
-
-            'rg' => [
-                'nullable',
-                'string',
-                'max:30',
-            ],
-
-            'email' => [
-                'nullable',
-                'email',
-                'max:255',
-            ],
-
-            'phone' => [
-                'nullable',
-                'string',
-                'max:20',
-            ],
-
-            'zip_code' => [
-                'nullable',
-                'string',
-                'max:9',
-            ],
-
-            'address' => [
-                'nullable',
-                'string',
-                'max:255',
-            ],
-
-            'number' => [
-                'nullable',
-                'string',
-                'max:20',
-            ],
-
-            'complement' => [
-                'nullable',
-                'string',
-                'max:255',
-            ],
-
-            'district' => [
-                'nullable',
-                'string',
-                'max:255',
-            ],
-
-            'city' => [
-                'nullable',
-                'string',
-                'max:255',
-            ],
-
-            'state' => [
-                'nullable',
-                'string',
-                'size:2',
-            ],
-
-            'notes' => [
-                'nullable',
-                'string',
-            ],
+            'name' => ['required', 'string', 'max:255'],
+            'cpf' => ['nullable', new ValidCpf(), Rule::unique('tutors', 'cpf')->ignore($tutorId)],
+            'rg' => ['nullable', 'string', 'max:30'],
+            'birth_date' => ['nullable', 'date'],
+            'gender' => ['nullable', 'string', 'max:50'],
+            'phone' => ['required', 'string', 'max:20'],
+            'phone_secondary' => ['nullable', 'string', 'max:20'],
+            'email' => ['nullable', 'email', 'max:255'],
+            'zip_code' => ['nullable', 'string', 'max:10'],
+            'street' => ['nullable', 'string', 'max:255'],
+            'number' => ['nullable', 'string', 'max:50'],
+            'complement' => ['nullable', 'string', 'max:255'],
+            'district' => ['nullable', 'string', 'max:255'],
+            'city' => ['nullable', 'string', 'max:255'],
+            'state' => ['nullable', 'string', 'max:255'],
+            'notes' => ['nullable', 'string'],
+            'active' => ['nullable', 'boolean'],
         ];
     }
 
     public function messages(): array
     {
         return [
-            'name.required' => 'Informe o nome do tutor.',
-
-            'cpf.unique' => 'Já existe um tutor cadastrado com este CPF.',
-
+            'name.required' => 'Informe o nome do responsável.',
+            'phone.required' => 'Informe o telefone principal do responsável.',
+            'cpf.unique' => 'Já existe um responsável cadastrado com este CPF.',
             'email.email' => 'Informe um e-mail válido.',
-
-            'state.size' => 'O estado deve possuir 2 caracteres.',
         ];
     }
 }

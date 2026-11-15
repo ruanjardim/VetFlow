@@ -99,6 +99,9 @@
               @foreach($paymentMethods as $value => $label)
                 <option value="{{ $value }}" @selected($value === 'cash')>{{ $label }}</option>
               @endforeach
+              @if($sale->tutor_id)
+                <option value="customer_credit" @selected(old('refund_method') === 'customer_credit')>Crédito do cliente ({{ $sale->tutor?->name }})</option>
+              @endif
             </select>
           </div>
           <div class="field">

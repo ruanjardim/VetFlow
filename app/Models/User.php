@@ -5,10 +5,13 @@ namespace App\Models;
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 
 use App\Modules\Clinics\Models\Clinic;
+use App\Modules\Employees\Models\Employee;
+use App\Modules\Patients\Models\AnimalSpecies;
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -28,8 +31,13 @@ class User extends Authenticatable
         'phone',
         'photo',
         'position',
+        'veterinary_license_number',
+        'veterinary_license_state',
         'password',
         'active',
+        'grooming_professional',
+        'grooming_commission_percent',
+        'grooming_schedule',
         'last_login_at',
     ];
 
@@ -44,6 +52,9 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'last_login_at' => 'datetime',
             'active' => 'boolean',
+            'grooming_professional' => 'boolean',
+            'grooming_commission_percent' => 'decimal:2',
+            'grooming_schedule' => 'array',
             'password' => 'hashed',
         ];
     }
@@ -58,6 +69,11 @@ class User extends Authenticatable
         return $this->belongsTo(Clinic::class);
     }
 
+    public function employee(): HasOne
+    {
+        return $this->hasOne(Employee::class);
+    }
+
     public function roles(): BelongsToMany
     {
         return $this->belongsToMany(
@@ -66,6 +82,14 @@ class User extends Authenticatable
         )
             ->wherePivotNull('deleted_at')
             ->withTimestamps();
+    }
+
+    public function animalSpeciesPreferences(): BelongsToMany
+    {
+        return $this->belongsToMany(
+            AnimalSpecies::class,
+            'user_animal_species'
+        )->withTimestamps();
     }
 
     public function hasRole(string $role): bool
@@ -82,7 +106,7 @@ class User extends Authenticatable
     }
 
     /**
-     * @param array<int, string> $permissions
+     * @param  array<int, string>  $permissions
      */
     public function hasAnyPermission(array $permissions): bool
     {

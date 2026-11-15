@@ -90,13 +90,23 @@ class NfeAccessKeyImportService
             'message' => 'XML ainda nao esta no cache interno.',
         ];
 
-        if (! is_file($path) || ! is_readable($path)) {
+        if (! is_file($path)) {
             $diagnostics[] = $diagnostic;
 
             return null;
         }
 
-        if (filesize($path) > $this->maxXmlBytes()) {
+        $size = @filesize($path);
+
+        if ($size === false) {
+            $diagnostic['status'] = 'unreadable';
+            $diagnostic['message'] = 'Arquivo de cache existe, mas não pôde ser inspecionado.';
+            $diagnostics[] = $diagnostic;
+
+            return null;
+        }
+
+        if ($size > $this->maxXmlBytes()) {
             $diagnostic['status'] = 'too_large';
             $diagnostic['message'] = 'Arquivo de cache excede o limite permitido.';
             $diagnostics[] = $diagnostic;
@@ -104,9 +114,17 @@ class NfeAccessKeyImportService
             return null;
         }
 
-        $xml = file_get_contents($path);
+        $xml = @file_get_contents($path);
 
-        if (is_string($xml) && str_contains($xml, $accessKey)) {
+        if ($xml === false) {
+            $diagnostic['status'] = 'unreadable';
+            $diagnostic['message'] = 'Arquivo de cache existe, mas não pôde ser lido.';
+            $diagnostics[] = $diagnostic;
+
+            return null;
+        }
+
+        if (str_contains($xml, $accessKey)) {
             $diagnostic['status'] = 'found';
             $diagnostic['message'] = 'XML encontrado no cache interno.';
             $diagnostics[] = $diagnostic;
@@ -338,11 +356,15 @@ class NfeAccessKeyImportService
 
     private function readXmlIfMatches(SplFileInfo $file, string $accessKey): ?string
     {
-        if (! $file->isReadable() || $file->getSize() > $this->maxXmlBytes()) {
+        try {
+            if ($file->getSize() > $this->maxXmlBytes()) {
+                return null;
+            }
+        } catch (Throwable) {
             return null;
         }
 
-        $content = file_get_contents($file->getPathname());
+        $content = @file_get_contents($file->getPathname());
 
         return is_string($content) && str_contains($content, $accessKey) ? $content : null;
     }

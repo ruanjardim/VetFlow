@@ -34,7 +34,7 @@ class StoreScheduleRequest extends FormRequest
     {
         return [
             'patient_id.exists' => 'O paciente informado nao foi encontrado.',
-            'tutor_id.exists' => 'O tutor informado nao foi encontrado.',
+            'tutor_id.exists' => 'O responsável informado nao foi encontrado.',
             'scheduled_date.date' => 'Informe uma data valida.',
             'scheduled_time.date_format' => 'Informe uma hora valida.',
             'status.in' => 'Informe um status valido para a agenda.',

@@ -44,7 +44,7 @@ class DashboardOperationalInsightService
                 'service_orders_waiting_pickup',
                 'Comandas',
                 'Liberar pedidos aguardando retirada',
-                'Avise os tutores e conclua entregas prontas.',
+                'Avise os responsáveis e conclua entregas prontas.',
                 'warning',
                 (float) ($stats['service_orders_waiting_pickup'] ?? 0),
                 'count',

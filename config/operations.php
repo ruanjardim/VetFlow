@@ -1,10 +1,34 @@
 <?php
 
 return [
+    'release' => [
+        'sha' => env('VETFLOW_RELEASE_SHA', env('RENDER_GIT_COMMIT')),
+        'marker_path' => env('VETFLOW_RELEASE_MARKER_PATH')
+            ?: base_path('bootstrap/cache/vetflow-release.sha'),
+    ],
+
+    'backup' => [
+        'evidence_max_age_days' => (int) env('VETFLOW_BACKUP_EVIDENCE_MAX_AGE_DAYS', 30),
+        'evidence_directory' => env(
+            'VETFLOW_BACKUP_EVIDENCE_DIRECTORY',
+            storage_path('app/private/backup-drills')
+        ),
+    ],
+
+    'runtime_probe' => [
+        'disk' => env('VETFLOW_RUNTIME_PROBE_DISK'),
+        'evidence_max_age_minutes' => (int) env('VETFLOW_RUNTIME_PROBE_EVIDENCE_MAX_AGE_MINUTES', 180),
+        'evidence_directory' => env(
+            'VETFLOW_RUNTIME_PROBE_EVIDENCE_DIRECTORY',
+            storage_path('app/private/runtime-probes')
+        ),
+    ],
+
     'queue' => [
         'mode' => env('VETFLOW_QUEUE_MODE', 'worker'),
 
         'cron' => [
+            'transport' => env('VETFLOW_QUEUE_CRON_TRANSPORT', 'http'),
             'enabled' => (bool) env('VETFLOW_QUEUE_CRON_ENABLED', false),
             'token' => env('VETFLOW_QUEUE_CRON_TOKEN'),
             'header' => env('VETFLOW_QUEUE_CRON_HEADER', 'X-Cron-Auth'),

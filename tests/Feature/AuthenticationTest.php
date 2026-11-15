@@ -25,7 +25,20 @@ class AuthenticationTest extends TestCase
         $this->get(route('login'))
             ->assertOk()
             ->assertSee('Acesse o VetFlow')
-            ->assertSee('images/auth-malinois-square.webp');
+            ->assertSee('images/auth-malinois-square.webp')
+            ->assertSee('data-password-toggle="password"', false)
+            ->assertSee('aria-label="Mostrar senha"', false);
+    }
+
+    public function test_password_reset_screen_has_visibility_controls(): void
+    {
+        $this->get(route('password.reset', [
+            'token' => 'test-token',
+            'email' => 'user@example.com',
+        ]))
+            ->assertOk()
+            ->assertSee('data-password-toggle="password"', false)
+            ->assertSee('data-password-toggle="password_confirmation"', false);
     }
 
     public function test_active_user_can_authenticate(): void

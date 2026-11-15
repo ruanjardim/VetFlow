@@ -4,11 +4,18 @@ use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Auth\NewPasswordController;
 use App\Http\Controllers\Auth\PasswordResetLinkController;
 use App\Http\Controllers\Operations\QueueCronController;
+use App\Http\Controllers\Operations\ReleaseIdentityController;
+use App\Http\Middleware\EnsureTenantHasFeature;
 use App\Http\Middleware\EnsureUserHasPermission;
 use App\Http\Middleware\EnsureUserIsActive;
+use App\Http\Middleware\EnsureUserIsGlobal;
 use App\Modules\Dashboard\Http\Controllers\DashboardController;
+use App\Modules\Fiscal\Controllers\FocusNfeWebhookController;
 use App\Modules\ProductIntelligence\Controllers\GlobalProductController;
 use App\Modules\ProductIntelligence\Controllers\ProductIntelligenceApiController;
+use App\Modules\Saas\Controllers\LegalAcceptanceController;
+use App\Modules\Saas\Controllers\PublicLegalController;
+use App\Modules\Saas\Support\FeatureCatalog;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/assets/app.css', function () {
@@ -33,6 +40,19 @@ Route::get('/ops/cron/queue', QueueCronController::class)
     ->middleware('throttle:6,1')
     ->name('operations.queue-cron');
 
+Route::get('/ops/release', ReleaseIdentityController::class)
+    ->middleware('throttle:30,1')
+    ->name('operations.release');
+
+Route::post('/webhooks/focus-nfe/nfsen', FocusNfeWebhookController::class)
+    ->middleware('throttle:120,1')
+    ->name('webhooks.focus-nfe.nfsen');
+
+Route::view('/', 'public.home')->name('home');
+Route::get('/legal/{type}', [PublicLegalController::class, 'show'])
+    ->where('type', 'subscription-contract|terms-of-use|privacy-notice|data-processing|support-and-backup')
+    ->name('legal.show');
+
 Route::middleware('guest')->group(function () {
     Route::get('/login', [AuthenticatedSessionController::class, 'create'])->name('login');
     Route::post('/login', [AuthenticatedSessionController::class, 'store'])
@@ -53,11 +73,24 @@ Route::post('/logout', [AuthenticatedSessionController::class, 'destroy'])
     ->name('logout');
 
 Route::middleware(['auth', EnsureUserIsActive::class])->group(function () {
-    Route::get('/', [DashboardController::class, 'index'])
-        ->middleware(EnsureUserHasPermission::class.':dashboard.view')
+    Route::get('/account/legal-acceptance', [LegalAcceptanceController::class, 'show'])
+        ->middleware(EnsureUserHasPermission::class.':users.manage')
+        ->name('legal.acceptance.show');
+    Route::post('/account/legal-acceptance', [LegalAcceptanceController::class, 'store'])
+        ->middleware(EnsureUserHasPermission::class.':users.manage')
+        ->name('legal.acceptance.store');
+
+    Route::get('/dashboard', [DashboardController::class, 'index'])
+        ->middleware([
+            EnsureUserHasPermission::class.':dashboard.view',
+            EnsureTenantHasFeature::class.':dashboard',
+        ])
         ->name('dashboard');
 
-    Route::middleware(EnsureUserHasPermission::class.':global-products.manage')->group(function () {
+    Route::middleware([
+        EnsureUserHasPermission::class.':global-products.manage',
+        EnsureTenantHasFeature::class.':products',
+    ])->group(function () {
         Route::get('/global-products', [GlobalProductController::class, 'index'])->name('global-products.index');
         Route::get('/global-products/export', [GlobalProductController::class, 'export'])->name('global-products.export');
         Route::get('/global-products/suggestions', [GlobalProductController::class, 'suggestions'])->name('global-products.suggestions');
@@ -91,28 +124,53 @@ Route::middleware(['auth', EnsureUserIsActive::class])->group(function () {
     });
 
     $moduleRoutes = [
+        'audit.manage' => app_path('Modules/Audit/Routes/web.php'),
         'appointments.manage' => app_path('Modules/Appointments/Routes/web.php'),
         'clinics.manage' => app_path('Modules/Clinics/Routes/web.php'),
+        'clinic-branding.manage' => app_path('Modules/Clinics/Routes/branding.php'),
+        'commissions.manage' => app_path('Modules/Commissions/Routes/web.php'),
         'users.manage' => app_path('Modules/Access/Routes/web.php'),
         'implementation.manage' => app_path('Modules/Implementation/Routes/web.php'),
+        'operations.readiness' => app_path('Modules/Operations/Routes/web.php'),
         'financial.manage' => app_path('Modules/Financial/Routes/web.php'),
+        'fiscal.manage' => app_path('Modules/Fiscal/Routes/web.php'),
+        'hospitalizations.manage' => app_path('Modules/Hospitalizations/Routes/web.php'),
         'inventory.manage' => app_path('Modules/Inventory/Routes/web.php'),
+        'medical-records.manage' => app_path('Modules/MedicalRecords/Routes/web.php'),
         'patients.manage' => app_path('Modules/Patients/Routes/web.php'),
         'petshop-services.manage' => app_path('Modules/PetShopServices/Routes/web.php'),
+        'printers.manage' => app_path('Modules/Printers/Routes/web.php'),
         'products.manage' => app_path('Modules/Products/Routes/web.php'),
+        'prescriptions.manage' => app_path('Modules/Prescriptions/Routes/web.php'),
         'purchase-entries.manage' => app_path('Modules/PurchaseEntries/Routes/web.php'),
         'sales.manage' => app_path('Modules/Sales/Routes/web.php'),
+        'payment-methods.manage' => app_path('Modules/Sales/Routes/payment-methods.php'),
+        'cash-sessions.review' => app_path('Modules/Sales/Routes/cash-sessions-review.php'),
         'schedules.manage' => app_path('Modules/Schedules/Routes/web.php'),
         'service-orders.manage' => app_path('Modules/ServiceOrders/Routes/web.php'),
         'suppliers.manage' => app_path('Modules/Suppliers/Routes/web.php'),
         'tutors.manage' => app_path('Modules/Tutors/Routes/web.php'),
+        'vaccinations.manage' => app_path('Modules/Vaccinations/Routes/web.php'),
     ];
 
     foreach ($moduleRoutes as $permission => $routeFile) {
-        Route::middleware(EnsureUserHasPermission::class.':'.$permission)->group(function () use ($routeFile) {
+        $middleware = [EnsureUserHasPermission::class.':'.$permission];
+        $feature = FeatureCatalog::forPermission($permission);
+        if ($feature !== null) {
+            $middleware[] = EnsureTenantHasFeature::class.':'.$feature;
+        }
+
+        Route::middleware($middleware)->group(function () use ($routeFile) {
             if (file_exists($routeFile)) {
                 require $routeFile;
             }
         });
     }
+
+    Route::prefix('admin/saas')
+        ->name('saas.')
+        ->middleware([EnsureUserIsGlobal::class, EnsureUserHasPermission::class.':saas.manage'])
+        ->group(function (): void {
+            require app_path('Modules/Saas/Routes/web.php');
+        });
 });

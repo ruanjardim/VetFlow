@@ -3,6 +3,7 @@
 namespace App\Modules\PurchaseEntries\Services;
 
 use App\Modules\Financial\Models\FinancialTransaction;
+use App\Models\User;
 use App\Modules\Products\Models\Product;
 use App\Modules\Products\Services\ProductLookupService;
 use App\Modules\Products\Support\Gtin;
@@ -14,7 +15,8 @@ class PurchaseEntryInsightService
 {
     public function __construct(
         private readonly ProductLookupService $lookupService,
-        private readonly ReplenishmentSuggestionService $replenishmentSuggestions
+        private readonly ReplenishmentSuggestionService $replenishmentSuggestions,
+        private readonly ReplenishmentReviewService $replenishmentReviews,
     ) {}
 
     public function dashboard(): array
@@ -58,9 +60,12 @@ class PurchaseEntryInsightService
         ];
     }
 
-    public function replenishmentData(): array
+    public function replenishmentData(User $user): array
     {
-        $items = $this->replenishmentSuggestions->suggestions();
+        $items = $this->replenishmentReviews->attachLatest(
+            $user,
+            $this->replenishmentSuggestions->suggestions(),
+        );
 
         return [
             'items' => $items,
@@ -79,8 +84,33 @@ class PurchaseEntryInsightService
                 'without_history' => $items
                     ->where('history_count', 0)
                     ->count(),
+                'with_recent_demand' => $items
+                    ->where('has_recent_demand', true)
+                    ->count(),
+                'without_recent_demand' => $items
+                    ->where('has_recent_demand', false)
+                    ->count(),
+                'with_supplier_lead_time' => $items
+                    ->where('has_supplier_lead_time', true)
+                    ->count(),
+                'coverage_risk' => $items
+                    ->whereIn('coverage_risk', ['critical', 'risk'])
+                    ->count(),
+                'coverage_unmeasured' => $items
+                    ->whereIn('coverage_risk', ['insufficient', 'unmeasured'])
+                    ->count(),
+                'reviews_current' => $items
+                    ->whereIn('review_status.key', ['reviewed', 'held'])
+                    ->count(),
+                'reviews_stale' => $items
+                    ->where('review_status.key', 'stale')
+                    ->count(),
+                'reviews_pending' => $items
+                    ->where('review_status.key', 'pending')
+                    ->count(),
             ],
             'historyWindowDays' => ReplenishmentSuggestionService::HISTORY_WINDOW_DAYS,
+            'demandWindowDays' => ProductDemandSignalService::WINDOW_DAYS,
         ];
     }
 
@@ -213,6 +243,16 @@ class PurchaseEntryInsightService
             'replenishment_confidence' => $suggestion['confidence'],
             'replenishment_history_count' => $suggestion['history_count'],
             'replenishment_reason' => $suggestion['reason'],
+            'demand_window_days' => $suggestion['demand_window_days'],
+            'net_demand_quantity' => $suggestion['net_demand_quantity'],
+            'average_monthly_demand' => $suggestion['average_monthly_demand'],
+            'reference_supplier_deliveries' => $suggestion['reference_supplier_deliveries'],
+            'reference_supplier_average_lead_time_days' => $suggestion['reference_supplier_average_lead_time_days'],
+            'coverage_days' => $suggestion['coverage_days'],
+            'coverage_margin_days' => $suggestion['coverage_margin_days'],
+            'projected_stock_at_receipt' => $suggestion['projected_stock_at_receipt'],
+            'coverage_risk' => $suggestion['coverage_risk'],
+            'coverage_risk_label' => $suggestion['coverage_risk_label'],
         ];
     }
 

@@ -73,6 +73,10 @@ class DashboardOperationalInsightsTest extends TestCase
         $this->assertSame($alertStats['inventory'] + $alertStats['financial'], $alertStats['total']);
 
         $response
+            ->assertSee('data-dashboard-shell="control-center-v2"', false)
+            ->assertSee('Prioridades operacionais')
+            ->assertSee('data-dashboard-metric-link="financial-result"', false)
+            ->assertSee('data-dashboard-metric-link="catalog-coverage"', false)
             ->assertSee('data-dashboard-priority="expenses_overdue"', false)
             ->assertSee('data-dashboard-priority="low_stock"', false)
             ->assertDontSee('data-dashboard-priority="financial_overdue"', false);

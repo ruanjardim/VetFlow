@@ -2,6 +2,6 @@
 
 namespace App\Modules\Tutors\Requests;
 
-class UpdateTutorRequest extends StoreTutorRequest
+class UpdateTutorRequest extends TutorRequest
 {
 }

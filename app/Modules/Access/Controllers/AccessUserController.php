@@ -20,17 +20,35 @@ class AccessUserController extends Controller
     {
         return view('access.users.index', [
             'users' => $this->service->paginate($request->user()),
+            'licenseUsage' => $this->service->licenseUsage($request->user()),
         ]);
     }
 
     public function create(Request $request): View
     {
-        return view('access.users.create', $this->service->formData($request->user()));
+        return view('access.users.create', $this->service->formData(
+            $request->user(),
+            preferredClinicId: $request->integer('clinic_id') ?: null,
+            returnTo: $request->string('return_to')->toString(),
+            preferredEmployeeId: $request->integer('employee_id') ?: null,
+        ));
     }
 
     public function store(StoreAccessUserRequest $request): RedirectResponse
     {
-        $this->service->create($request->user(), $request->validated());
+        $createdUser = $this->service->create($request->user(), $request->validated());
+
+        if ($request->validated('return_to') === 'implementation') {
+            return redirect()
+                ->route('implementation.index')
+                ->with('success', 'Colaborador criado. Continue a ativação da equipe desta clínica.');
+        }
+
+        if ($request->filled('employee_id') && $createdUser->employee) {
+            return redirect()
+                ->route('employees.edit', $createdUser->employee->id)
+                ->with('success', 'Acesso criado e vinculado ao cadastro funcional existente.');
+        }
 
         return redirect()
             ->route('access-users.index')

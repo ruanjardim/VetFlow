@@ -16,7 +16,8 @@
       <p>Resumo operacional do PDV em {{ $period['label'] }}.</p>
     </div>
     <div class="actions">
-      <a class="button" href="{{ route('sales.cashier.close', ['from' => $period['from'], 'to' => $period['to']]) }}">Fechar caixa</a>
+      <a class="button secondary" href="{{ route('sales.profitability', ['from' => $period['from'], 'to' => $period['to']]) }}">Rentabilidade</a>
+      <a class="button" href="{{ route('sales.cash-sessions.index') }}">Caixas por operador</a>
       <a class="button secondary" href="{{ route('sales.index') }}">Ver vendas</a>
       <a class="button" href="{{ route('sales.create') }}">Nova venda</a>
     </div>
@@ -95,6 +96,10 @@
       <strong>{{ $money($stats['non_cash_received']) }}</strong>
     </div>
     <div class="stat">
+      <span>Taxas de cartão</span>
+      <strong>{{ $money($stats['card_fees'] ?? 0) }}</strong>
+    </div>
+    <div class="stat">
       <span>Troco</span>
       <strong>{{ $money($stats['change']) }}</strong>
     </div>
@@ -138,18 +143,27 @@
               <th>Forma</th>
               <th>Qtd</th>
               <th>Total</th>
+              <th>Taxas</th>
+              <th>Líquido</th>
             </tr>
           </thead>
           <tbody>
             @forelse($summary['payments_by_method'] as $method)
               <tr>
-                <td>{{ $method['label'] }}</td>
+                <td>
+                  {{ $method['label'] }}
+                  @if(($method['kind_label'] ?? $method['label']) !== $method['label'])
+                    <div class="muted">{{ $method['kind_label'] }}</div>
+                  @endif
+                </td>
                 <td>{{ $method['count'] }}</td>
                 <td>{{ $money($method['amount']) }}</td>
+                <td>{{ $money($method['fees'] ?? 0) }}</td>
+                <td>{{ $money($method['net'] ?? $method['amount']) }}</td>
               </tr>
             @empty
               <tr>
-                <td colspan="3" class="muted">Nenhum recebimento no periodo.</td>
+                <td colspan="5" class="muted">Nenhum recebimento no periodo.</td>
               </tr>
             @endforelse
           </tbody>
@@ -288,6 +302,50 @@
   <div class="panel nested-panel">
     <div class="panel-heading">
       <div>
+        <h2>Desempenho por operador</h2>
+        <p>Base para acompanhar vendas e recebimentos antes de configurar regras de comissao.</p>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Operador</th>
+            <th>Vendas</th>
+            <th>Vendido</th>
+            <th>Recebido no periodo</th>
+            <th>Pendente nas vendas</th>
+            <th>Margem bruta</th>
+          </tr>
+        </thead>
+        <tbody>
+          @forelse($summary['seller_performance'] as $seller)
+            <tr>
+              <td><strong>{{ $seller['seller_name'] }}</strong></td>
+              <td>{{ $seller['sales_count'] }}</td>
+              <td>{{ $money($seller['sold_total']) }}</td>
+              <td>{{ $money($seller['received']) }}</td>
+              <td>{{ $money($seller['pending']) }}</td>
+              <td>
+                {{ $money($seller['gross_profit']) }}
+                @if($seller['gross_margin_percent'] !== null)
+                  <div class="muted">{{ number_format($seller['gross_margin_percent'], 2, ',', '.') }}%</div>
+                @endif
+              </td>
+            </tr>
+          @empty
+            <tr>
+              <td colspan="6" class="muted">Nenhuma venda ou recebimento no periodo.</td>
+            </tr>
+          @endforelse
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="panel nested-panel">
+    <div class="panel-heading">
+      <div>
         <h2>Fechamentos recentes</h2>
         <p>Conferencias de caixa salvas.</p>
       </div>
@@ -298,9 +356,10 @@
         <thead>
           <tr>
             <th>Periodo</th>
-            <th>Esperado</th>
-            <th>Contado</th>
-            <th>Diferenca</th>
+            <th>Total esperado</th>
+            <th>Total conferido</th>
+            <th>Diferenca total</th>
+            <th>Por forma</th>
             <th>Status</th>
             <th>Fechado em</th>
           </tr>
@@ -309,9 +368,24 @@
           @forelse($summary['closures'] as $closure)
             <tr>
               <td>{{ $closure->period_from->format('d/m/Y') }} a {{ $closure->period_to->format('d/m/Y') }}</td>
-              <td>{{ $money($closure->expected_cash) }}</td>
-              <td>{{ $money($closure->counted_cash) }}</td>
-              <td>{{ $money($closure->cash_difference) }}</td>
+              <td>{{ $money($closure->expected_total) }}</td>
+              <td>{{ $money($closure->counted_total) }}</td>
+              <td>{{ $money($closure->total_difference) }}</td>
+              <td>
+                @forelse(data_get($closure->metadata, 'payment_reconciliation', []) as $method)
+                  @if(abs((float) ($method['expected'] ?? 0)) >= 0.01 || abs((float) ($method['counted'] ?? 0)) >= 0.01 || abs((float) ($method['difference'] ?? 0)) >= 0.01)
+                    <div>
+                      <strong>{{ $method['label'] ?? $method['method'] }}:</strong>
+                      {{ $money($method['counted'] ?? 0) }}
+                      @if(abs((float) ($method['difference'] ?? 0)) >= 0.01)
+                        <span class="badge warning">{{ $money($method['difference']) }}</span>
+                      @endif
+                    </div>
+                  @endif
+                @empty
+                  <span class="muted">Fechamento anterior</span>
+                @endforelse
+              </td>
               <td>
                 @if($closure->status === 'balanced')
                   <span class="badge success">Conferido</span>
@@ -323,7 +397,7 @@
             </tr>
           @empty
             <tr>
-              <td colspan="6" class="muted">Nenhum fechamento registrado ainda.</td>
+              <td colspan="7" class="muted">Nenhum fechamento registrado ainda.</td>
             </tr>
           @endforelse
         </tbody>

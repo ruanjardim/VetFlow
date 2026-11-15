@@ -3,6 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <link rel="icon" type="image/svg+xml" href="{{ asset('favicon.svg') }}">
   <title>@yield('title', 'VetFlow')</title>
   @if(file_exists(public_path('build/manifest.json')))
     @vite(['resources/css/app.css', 'resources/js/app.js'])
@@ -10,87 +12,262 @@
     <link rel="stylesheet" href="{{ route('assets.css', ['v' => filemtime(resource_path('css/app.css'))]) }}">
     <script src="{{ route('assets.js', ['v' => filemtime(resource_path('js/app.js'))]) }}" defer></script>
   @endif
+  @stack('head')
 </head>
-<body>
+<body class="@yield('body_class')">
+  @php($currentClinic = auth()->user()?->clinic)
+  @php($currentClinicName = $currentClinic?->trade_name ?: ($currentClinic?->corporate_name ?: 'Administração global'))
   <div class="shell">
-    <aside class="sidebar">
-      <a class="brand" href="{{ route('dashboard') }}">
-        <strong>VetFlow</strong>
-        <span>ERP veterinario</span>
-      </a>
+    <aside class="sidebar" id="primary-navigation" aria-label="Navegação principal">
+      <div class="sidebar-header">
+        <a class="brand" href="{{ route('dashboard') }}">
+          <span class="brand-mark">
+            @if($brandIconKey)
+              <x-brand-animal-icon :icon="$brandIconKey" />
+            @else
+              <x-ui-icon name="paw" :size="24" />
+            @endif
+          </span>
+          <span>
+            <span class="brand-heading"><strong>VetFlow</strong></span>
+            <span class="brand-subtitle">Gestão veterinária</span>
+          </span>
+        </a>
+        <button class="sidebar-close" type="button" data-sidebar-close aria-label="Fechar menu">
+          <x-ui-icon name="close" />
+        </button>
+      </div>
+
+      <div class="sidebar-context">
+        <span class="sidebar-context-icon"><x-ui-icon name="building" :size="18" /></span>
+        <span>
+          <small>Unidade ativa</small>
+          <strong>{{ $currentClinicName }}</strong>
+        </span>
+      </div>
 
       <nav class="nav">
         @can('dashboard.view')
-          <a class="{{ request()->routeIs('dashboard') ? 'is-active' : '' }}" href="{{ route('dashboard') }}">Dashboard</a>
+          <a class="nav-link {{ request()->routeIs('dashboard') ? 'is-active' : '' }}" href="{{ route('dashboard') }}" @if(request()->routeIs('dashboard')) aria-current="page" @endif>
+            <span class="nav-item-label"><x-ui-icon name="dashboard" /><span>Painel de controle</span></span>
+          </a>
         @endcan
-        @if(auth()->user()?->clinic_id === null)
-          @can('clinics.manage')
-            <a class="{{ request()->routeIs('clinics.*') ? 'is-active' : '' }}" href="{{ route('clinics.index') }}">Clinicas</a>
-          @endcan
-        @endif
-        @can('users.manage')
-          <a class="{{ request()->routeIs('access-users.*') ? 'is-active' : '' }}" href="{{ route('access-users.index') }}">Usuarios e acessos</a>
-        @endcan
-        @can('implementation.manage')
-          <a class="{{ request()->routeIs('implementation.*') ? 'is-active' : '' }}" href="{{ route('implementation.index') }}">Implantacao</a>
-        @endcan
-        @can('tutors.manage')
-          <a class="{{ request()->routeIs('tutores.*') ? 'is-active' : '' }}" href="{{ route('tutores.index') }}">Tutores</a>
-        @endcan
-        @can('patients.manage')
-          <a class="{{ request()->routeIs('patients.*') ? 'is-active' : '' }}" href="{{ route('patients.index') }}">Pacientes</a>
-        @endcan
-        @can('schedules.manage')
-          <a class="{{ request()->routeIs('schedules.*') ? 'is-active' : '' }}" href="{{ route('schedules.index') }}">Agenda</a>
-        @endcan
-        @can('appointments.manage')
-          <a class="{{ request()->routeIs('appointments.*') ? 'is-active' : '' }}" href="{{ route('appointments.index') }}">Consultas</a>
-        @endcan
-        @can('petshop-services.manage')
-          <a class="{{ request()->routeIs('petshop-services.*') ? 'is-active' : '' }}" href="{{ route('petshop-services.index') }}">Servicos PetShop</a>
-        @endcan
-        @can('service-orders.manage')
-          <a class="{{ request()->routeIs('service-orders.*') ? 'is-active' : '' }}" href="{{ route('service-orders.index') }}">Comandas</a>
-        @endcan
-        @can('sales.manage')
-          <a class="{{ request()->routeIs('sales.*') ? 'is-active' : '' }}" href="{{ route('sales.index') }}">PDV / Vendas</a>
-        @endcan
-        @can('products.manage')
-          <a class="{{ request()->routeIs('products.*') ? 'is-active' : '' }}" href="{{ route('products.index') }}">Produtos</a>
-        @endcan
-        @can('global-products.manage')
-          <a class="{{ request()->routeIs('global-products.*') ? 'is-active' : '' }}" href="{{ route('global-products.index') }}">Catalogo Global</a>
-        @endcan
-        @can('inventory.manage')
-          <a class="{{ request()->routeIs('inventory-movements.*') && ! request()->routeIs('inventory-movements.alerts') ? 'is-active' : '' }}" href="{{ route('inventory-movements.index') }}">Estoque</a>
-          <a class="{{ request()->routeIs('inventory-movements.alerts') ? 'is-active' : '' }}" href="{{ route('inventory-movements.alerts') }}">Alertas</a>
-        @endcan
-        @can('purchase-entries.manage')
-          <a class="{{ request()->routeIs('purchase-entries.*') ? 'is-active' : '' }}" href="{{ route('purchase-entries.index') }}">Entradas</a>
-        @endcan
-        @can('suppliers.manage')
-          <a class="{{ request()->routeIs('suppliers.*') ? 'is-active' : '' }}" href="{{ route('suppliers.index') }}">Fornecedores</a>
-        @endcan
-        @can('financial.manage')
-          <a class="{{ request()->routeIs('financial-transactions.*') ? 'is-active' : '' }}" href="{{ route('financial-transactions.index') }}">Financeiro</a>
-        @endcan
+
+        @canany(['tutors.manage', 'patients.manage', 'medical-records.manage', 'vaccinations.manage', 'hospitalizations.manage', 'prescriptions.manage'])
+          <details class="nav-group" @if(request()->routeIs('tutores.*', 'patients.*', 'medical-records.*', 'vaccinations.*', 'hospitalizations.*', 'prescriptions.*')) open @endif>
+            <summary><span class="nav-item-label"><x-ui-icon name="clinical" /><span>Atendimento clínico</span></span><span class="nav-chevron"><x-ui-icon name="chevron" :size="17" /></span></summary>
+            <div class="nav-submenu">
+              @can('tutors.manage')<a class="{{ request()->routeIs('tutores.*') ? 'is-active' : '' }}" href="{{ route('tutores.index') }}">Responsáveis</a>@endcan
+              @can('patients.manage')<a class="{{ request()->routeIs('patients.*') ? 'is-active' : '' }}" href="{{ route('patients.index') }}">Pacientes</a>@endcan
+              @can('medical-records.manage')<a class="{{ request()->routeIs('medical-records.*') ? 'is-active' : '' }}" href="{{ route('medical-records.index') }}">Prontuários</a>@endcan
+              @can('prescriptions.manage')<a class="{{ request()->routeIs('prescriptions.*') ? 'is-active' : '' }}" href="{{ route('prescriptions.index') }}">Prescrições</a>@endcan
+              @can('vaccinations.manage')<a class="{{ request()->routeIs('vaccinations.*') ? 'is-active' : '' }}" href="{{ route('vaccinations.index') }}">Vacinação</a>@endcan
+              @can('hospitalizations.manage')<a class="{{ request()->routeIs('hospitalizations.*') ? 'is-active' : '' }}" href="{{ route('hospitalizations.index') }}">Internações</a>@endcan
+            </div>
+          </details>
+        @endcanany
+
+        @canany(['schedules.manage', 'appointments.manage'])
+          <details class="nav-group" @if(request()->routeIs('schedules.*', 'appointments.*')) open @endif>
+            <summary><span class="nav-item-label"><x-ui-icon name="calendar" /><span>Agenda</span></span><span class="nav-chevron"><x-ui-icon name="chevron" :size="17" /></span></summary>
+            <div class="nav-submenu">
+              @can('schedules.manage')<a class="{{ request()->routeIs('schedules.*') ? 'is-active' : '' }}" href="{{ route('schedules.index') }}">Agenda visual</a>@endcan
+              @can('appointments.manage')
+                <a class="{{ request()->routeIs('appointments.index', 'appointments.create', 'appointments.edit') ? 'is-active' : '' }}" href="{{ route('appointments.index') }}">Consultas</a>
+                <a class="{{ request()->routeIs('appointments.reminders') ? 'is-active' : '' }}" href="{{ route('appointments.reminders') }}">Lembretes</a>
+              @endcan
+            </div>
+          </details>
+        @endcanany
+
+        @canany(['petshop-services.manage', 'service-orders.manage'])
+          <details class="nav-group" @if(request()->routeIs('petshop-services.*', 'service-orders.*', 'pet-packages.*', 'petshop-packages.*', 'grooming-commissions.*')) open @endif>
+            <summary><span class="nav-item-label"><x-ui-icon name="grooming" /><span>Banho e tosa</span></span><span class="nav-chevron"><x-ui-icon name="chevron" :size="17" /></span></summary>
+            <div class="nav-submenu">
+              @can('service-orders.manage')
+                <a class="{{ request()->routeIs('service-orders.agenda') ? 'is-active' : '' }}" href="{{ route('service-orders.agenda') }}">Agenda banho e tosa</a>
+                <a class="{{ request()->routeIs('service-orders.board') ? 'is-active' : '' }}" href="{{ route('service-orders.board') }}">Operação do dia</a>
+                <a class="{{ request()->routeIs('service-orders.index', 'service-orders.create', 'service-orders.edit') ? 'is-active' : '' }}" href="{{ route('service-orders.index') }}">Comandas</a>
+                <a class="{{ request()->routeIs('pet-packages.*') ? 'is-active' : '' }}" href="{{ route('pet-packages.index') }}">Pacotes vendidos</a>
+              @endcan
+              @can('petshop-services.manage')
+                <a class="{{ request()->routeIs('petshop-services.*') ? 'is-active' : '' }}" href="{{ route('petshop-services.index') }}">Serviços e preços</a>
+                <a class="{{ request()->routeIs('petshop-packages.*') ? 'is-active' : '' }}" href="{{ route('petshop-packages.index') }}">Modelos de pacote</a>
+              @endcan
+              @can('commissions.manage')<a class="{{ request()->routeIs('grooming-commissions.*') ? 'is-active' : '' }}" href="{{ route('grooming-commissions.index') }}">Comissões</a>@endcan
+            </div>
+          </details>
+        @endcanany
+
+        @canany(['sales.manage', 'payment-methods.manage', 'fiscal.manage'])
+          <details class="nav-group" @if(request()->routeIs('sales.*', 'fiscal.*')) open @endif>
+            <summary><span class="nav-item-label"><x-ui-icon name="sales" /><span>Vendas</span></span><span class="nav-chevron"><x-ui-icon name="chevron" :size="17" /></span></summary>
+            <div class="nav-submenu">
+              @can('sales.manage')
+                <a class="{{ request()->routeIs('sales.create') ? 'is-active' : '' }}" href="{{ route('sales.create') }}" target="_blank" rel="noopener" aria-label="Abrir ponto de venda em nova aba">Ponto de venda <span aria-hidden="true">↗</span></a>
+                <a class="{{ request()->routeIs('sales.cash-sessions.*') ? 'is-active' : '' }}" href="{{ route('sales.cash-sessions.index') }}">Caixa</a>
+                <a class="{{ request()->routeIs('sales.quotes.*') ? 'is-active' : '' }}" href="{{ route('sales.quotes.index') }}">Orçamentos</a>
+                <a class="{{ request()->routeIs('sales.customer-balances.*') ? 'is-active' : '' }}" href="{{ route('sales.customer-balances.index') }}">Saldo de clientes</a>
+                <a class="{{ request()->routeIs('sales.index', 'sales.edit', 'sales.receipt', 'sales.returns.*', 'sales.cancel') ? 'is-active' : '' }}" href="{{ route('sales.index') }}">Histórico de vendas</a>
+                <a class="{{ request()->routeIs('sales.cashier', 'sales.cashier.close') ? 'is-active' : '' }}" href="{{ route('sales.cashier') }}">Movimentos de caixa</a>
+                <a class="{{ request()->routeIs('sales.profitability') ? 'is-active' : '' }}" href="{{ route('sales.profitability') }}">Rentabilidade</a>
+                <a class="{{ request()->routeIs('sales.product-abc') ? 'is-active' : '' }}" href="{{ route('sales.product-abc') }}">Curva ABC</a>
+                <a class="{{ request()->routeIs('sales.pdv-scale-settings.*', 'sales.pdv-scale-labels.*') ? 'is-active' : '' }}" href="{{ route('sales.pdv-scale-labels.create') }}">Balança e etiquetas</a>
+              @endcan
+              @can('payment-methods.manage')
+                <a class="{{ request()->routeIs('sales.receivables') ? 'is-active' : '' }}" href="{{ route('sales.receivables') }}">Recebíveis de cartão</a>
+                <a class="{{ request()->routeIs('sales.payment-methods.*') ? 'is-active' : '' }}" href="{{ route('sales.payment-methods.index') }}">Formas de pagamento</a>
+              @endcan
+              @can('fiscal.manage')<a class="{{ request()->routeIs('fiscal.*') ? 'is-active' : '' }}" href="{{ route('fiscal.index') }}">Fiscal</a>@endcan
+            </div>
+          </details>
+        @endcanany
+
+        @canany(['products.manage', 'global-products.manage', 'inventory.manage', 'purchase-entries.manage', 'suppliers.manage'])
+          <details class="nav-group" @if(request()->routeIs('products.*', 'global-products.*', 'inventory-movements.*', 'inventory-counts.*', 'purchase-entries.*', 'suppliers.*')) open @endif>
+            <summary><span class="nav-item-label"><x-ui-icon name="inventory" /><span>Estoque e compras</span></span><span class="nav-chevron"><x-ui-icon name="chevron" :size="17" /></span></summary>
+            <div class="nav-submenu">
+              @can('products.manage')
+                <a class="{{ request()->routeIs('products.index', 'products.create', 'products.edit', 'products.diagnostics') ? 'is-active' : '' }}" href="{{ route('products.index') }}">Produtos</a>
+                <a class="{{ request()->routeIs('products.pricing-radar') ? 'is-active' : '' }}" href="{{ route('products.pricing-radar') }}">Radar de preços</a>
+              @endcan
+              @can('inventory.manage')
+                <a class="{{ request()->routeIs('inventory-movements.radar') ? 'is-active' : '' }}" href="{{ route('inventory-movements.radar') }}">Radar de estoque</a>
+                <a class="{{ request()->routeIs('inventory-counts.*') ? 'is-active' : '' }}" href="{{ route('inventory-counts.index') }}">Contagens</a>
+                <a class="{{ request()->routeIs('inventory-movements.index', 'inventory-movements.create', 'inventory-movements.edit') ? 'is-active' : '' }}" href="{{ route('inventory-movements.index') }}">Movimentações</a>
+                <a class="{{ request()->routeIs('inventory-movements.alerts') ? 'is-active' : '' }}" href="{{ route('inventory-movements.alerts') }}">Alertas</a>
+              @endcan
+              @can('purchase-entries.manage')
+                <a class="{{ request()->routeIs('purchase-entries.index', 'purchase-entries.create', 'purchase-entries.edit') ? 'is-active' : '' }}" href="{{ route('purchase-entries.index') }}">Entradas</a>
+                <a class="{{ request()->routeIs('purchase-entries.replenishment') ? 'is-active' : '' }}" href="{{ route('purchase-entries.replenishment') }}">Reposição sugerida</a>
+              @endcan
+              @can('suppliers.manage')<a class="{{ request()->routeIs('suppliers.*') ? 'is-active' : '' }}" href="{{ route('suppliers.index') }}">Fornecedores</a>@endcan
+              @can('global-products.manage')<a class="{{ request()->routeIs('global-products.*') ? 'is-active' : '' }}" href="{{ route('global-products.index') }}">Catálogo global</a>@endcan
+            </div>
+          </details>
+        @endcanany
+
+        @canany(['financial.manage', 'commissions.manage'])
+          <details class="nav-group" @if(request()->routeIs('financial-transactions.*', 'financial-categories.*', 'financial-results.*', 'financial-budgets.*', 'financial-obligations.*', 'financial-bank-reconciliation.*', 'commissions.*')) open @endif>
+            <summary><span class="nav-item-label"><x-ui-icon name="finance" /><span>Financeiro</span></span><span class="nav-chevron"><x-ui-icon name="chevron" :size="17" /></span></summary>
+            <div class="nav-submenu">
+              @can('financial.manage')
+                <a class="{{ request()->routeIs('financial-transactions.index', 'financial-transactions.create', 'financial-transactions.edit') ? 'is-active' : '' }}" href="{{ route('financial-transactions.index') }}">Contas e lançamentos</a>
+                <a class="{{ request()->routeIs('financial-transactions.cash-flow') ? 'is-active' : '' }}" href="{{ route('financial-transactions.cash-flow') }}">Fluxo de caixa</a>
+                <a class="{{ request()->routeIs('financial-bank-reconciliation.*') ? 'is-active' : '' }}" href="{{ route('financial-bank-reconciliation.index') }}">Conciliação bancária</a>
+                <a class="{{ request()->routeIs('financial-obligations.*') ? 'is-active' : '' }}" href="{{ route('financial-obligations.index') }}">Contas a pagar e receber</a>
+                <a class="{{ request()->routeIs('financial-results.*') ? 'is-active' : '' }}" href="{{ route('financial-results.index') }}">Resultado gerencial</a>
+                <a class="{{ request()->routeIs('financial-budgets.*') ? 'is-active' : '' }}" href="{{ route('financial-budgets.index') }}">Orçamento mensal</a>
+                <a class="{{ request()->routeIs('financial-categories.*') ? 'is-active' : '' }}" href="{{ route('financial-categories.index') }}">Categorias</a>
+              @endcan
+              @can('commissions.manage')<a class="{{ request()->routeIs('commissions.*') ? 'is-active' : '' }}" href="{{ route('commissions.index') }}">Comissões</a>@endcan
+            </div>
+          </details>
+        @endcanany
+
+        @canany(['patients.manage', 'medical-records.manage', 'vaccinations.manage'])
+          <details class="nav-group" @if(request()->routeIs('patient-catalog.*', 'pathology-catalog.*', 'exam-catalog.*', 'vaccine-catalog.*')) open @endif>
+            <summary><span class="nav-item-label"><x-ui-icon name="catalog" /><span>Cadastros</span></span><span class="nav-chevron"><x-ui-icon name="chevron" :size="17" /></span></summary>
+            <div class="nav-submenu">
+              @can('patients.manage')
+                <a class="{{ request()->routeIs('patient-catalog.species') ? 'is-active' : '' }}" href="{{ route('patient-catalog.species') }}">Espécies</a>
+                <a class="{{ request()->routeIs('patient-catalog.breeds') ? 'is-active' : '' }}" href="{{ route('patient-catalog.breeds') }}">Raças e variedades</a>
+                <a class="{{ request()->routeIs('patient-catalog.coats') ? 'is-active' : '' }}" href="{{ route('patient-catalog.coats') }}">Pelagens e padrões</a>
+              @endcan
+              @can('medical-records.manage')
+                <a class="{{ request()->routeIs('pathology-catalog.*') ? 'is-active' : '' }}" href="{{ route('pathology-catalog.index') }}">Patologias</a>
+                <a class="{{ request()->routeIs('exam-catalog.*') ? 'is-active' : '' }}" href="{{ route('exam-catalog.index') }}">Exames</a>
+              @endcan
+              @can('vaccinations.manage')<a class="{{ request()->routeIs('vaccine-catalog.*') ? 'is-active' : '' }}" href="{{ route('vaccine-catalog.index') }}">Vacinas</a>@endcan
+              @can('patients.manage')
+                <a class="{{ request()->routeIs('patient-catalog.specialties') ? 'is-active' : '' }}" href="{{ route('patient-catalog.specialties') }}">Minhas espécies de atuação</a>
+              @endcan
+            </div>
+          </details>
+        @endcanany
+
+        @canany(['clinics.manage', 'clinic-branding.manage', 'printers.manage', 'users.manage', 'implementation.manage', 'audit.manage', 'operations.readiness', 'saas.manage'])
+          <details class="nav-group" @if(request()->routeIs('clinics.*', 'clinic-branding.*', 'printers.*', 'access-users.*', 'employees.*', 'implementation.*', 'audit-events.*', 'operations.*', 'saas.*')) open @endif>
+            <summary><span class="nav-item-label"><x-ui-icon name="settings" /><span>Administração</span></span><span class="nav-chevron"><x-ui-icon name="chevron" :size="17" /></span></summary>
+            <div class="nav-submenu">
+              @if(auth()->user()?->clinic_id === null)
+                @can('saas.manage')<a class="{{ request()->routeIs('saas.*') ? 'is-active' : '' }}" href="{{ route('saas.dashboard') }}">Gestão SaaS</a>@endcan
+                @can('clinics.manage')
+                  <a class="{{ request()->routeIs('clinics.*') ? 'is-active' : '' }}" href="{{ route('clinics.index') }}">Clínicas</a>
+                @endcan
+              @endif
+              @if(auth()->user()?->clinic_id !== null)
+                @can('clinic-branding.manage')<a class="{{ request()->routeIs('clinic-branding.*') ? 'is-active' : '' }}" href="{{ route('clinic-branding.edit') }}">Identidade visual</a>@endcan
+              @endif
+              @can('printers.manage')<a class="{{ request()->routeIs('printers.*') ? 'is-active' : '' }}" href="{{ route('printers.index') }}">Impressoras</a>@endcan
+              @can('users.manage')<a class="{{ request()->routeIs('access-users.*') ? 'is-active' : '' }}" href="{{ route('access-users.index') }}">Usuários e acessos</a>@endcan
+              @can('users.manage')<a class="{{ request()->routeIs('employees.*') ? 'is-active' : '' }}" href="{{ route('employees.index') }}">Cadastros funcionais</a>@endcan
+              @if(auth()->user()?->clinic_id !== null)
+                @can('users.manage')<a class="{{ request()->routeIs('legal.acceptance.*') ? 'is-active' : '' }}" href="{{ route('legal.acceptance.show') }}">Contrato e termos</a>@endcan
+              @endif
+              @can('audit.manage')<a class="{{ request()->routeIs('audit-events.*') ? 'is-active' : '' }}" href="{{ route('audit-events.index') }}">Auditoria</a>@endcan
+              @can('implementation.manage')<a class="{{ request()->routeIs('implementation.*') ? 'is-active' : '' }}" href="{{ route('implementation.index') }}">Implantação</a>@endcan
+              @can('operations.readiness')<a class="{{ request()->routeIs('operations.*') ? 'is-active' : '' }}" href="{{ route('operations.index') }}">Central de operações</a>@endcan
+            </div>
+          </details>
+        @endcanany
       </nav>
+
+      <footer class="sidebar-footer">
+        <span class="sidebar-status-dot"></span>
+        <span><strong>Sistema operacional</strong><small>Ambiente seguro e sincronizado</small></span>
+      </footer>
     </aside>
 
+    <button class="sidebar-backdrop" type="button" data-sidebar-close aria-label="Fechar navegação"></button>
+
     <main class="main">
-      <header class="user-bar">
-        <div>
-          <strong>{{ auth()->user()?->name }}</strong>
-          <span>{{ auth()->user()?->email }}</span>
+      <header class="user-bar workspace-bar">
+        <div class="workspace-bar-start">
+          <button class="sidebar-toggle" type="button" data-sidebar-toggle aria-controls="primary-navigation" aria-expanded="false" aria-label="Abrir menu">
+            <x-ui-icon name="menu" />
+          </button>
+          <div class="workspace-context">
+            <small>Espaço de trabalho</small>
+            <strong>{{ $currentClinicName }}</strong>
+          </div>
         </div>
-        <form method="POST" action="{{ route('logout') }}">
-          @csrf
-          <button class="button secondary" type="submit">Sair</button>
-        </form>
+
+        <div class="workspace-actions">
+          @can('appointments.manage')
+            <a class="workspace-action" href="{{ route('appointments.create') }}"><x-ui-icon name="calendar" :size="18" /><span>Nova consulta</span></a>
+          @endcan
+          @can('sales.manage')
+            <a class="workspace-action workspace-action-primary" href="{{ route('sales.create') }}" target="_blank" rel="noopener" aria-label="Abrir PDV em nova aba"><x-ui-icon name="sales" :size="18" /><span>Abrir PDV</span></a>
+          @endcan
+
+          <details class="user-menu">
+            <summary aria-label="Abrir menu do usuário">
+              <span class="user-avatar">{{ mb_strtoupper(mb_substr((string) auth()->user()?->name, 0, 1)) }}</span>
+              <span class="user-menu-copy"><strong>{{ auth()->user()?->name }}</strong><small>{{ auth()->user()?->position ?: 'Equipe VetFlow' }}</small></span>
+              <x-ui-icon name="chevron" :size="16" />
+            </summary>
+            <div class="user-menu-popover">
+              <div class="user-menu-identity">
+                <strong>{{ auth()->user()?->name }}</strong>
+                <span>{{ auth()->user()?->email }}</span>
+              </div>
+              <form method="POST" action="{{ route('logout') }}">
+                @csrf
+                <button class="user-menu-logout" type="submit"><x-ui-icon name="logout" :size="18" />Sair do VetFlow</button>
+              </form>
+            </div>
+          </details>
+        </div>
       </header>
 
+      <div class="workspace-content">
       @if(session('success'))
         <div class="alert success">{{ session('success') }}</div>
+      @endif
+
+      @if(session('warning'))
+        <div class="alert warning">{{ session('warning') }}</div>
       @endif
 
       @if(session('error'))
@@ -106,6 +283,7 @@
       @endif
 
       @yield('content')
+      </div>
     </main>
   </div>
 </body>

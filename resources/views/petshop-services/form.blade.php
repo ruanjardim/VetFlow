@@ -1,4 +1,20 @@
 <div class="form-grid">
+  @if(auth()->user()?->clinic_id === null)
+    <div class="field full">
+      <label for="clinic_id">Clinica</label>
+      <select id="clinic_id" name="clinic_id" required>
+        <option value="">Selecione</option>
+        @foreach($clinics as $clinic)
+          <option value="{{ $clinic->id }}" @selected((int) old('clinic_id', $service->clinic_id ?? 0) === $clinic->id)>
+            {{ $clinic->trade_name ?? $clinic->corporate_name }}
+          </option>
+        @endforeach
+      </select>
+      @if($clinics->isEmpty())
+        <span class="field-hint">Cadastre e ative uma clinica antes de criar servicos PetShop.</span>
+      @endif
+    </div>
+  @endif
   <div class="field">
     <label for="name">Nome</label>
     <input id="name" name="name" value="{{ old('name', $service->name ?? '') }}" required>
@@ -30,6 +46,10 @@
   <div class="field">
     <label for="giant_price">Porte gigante</label>
     <input id="giant_price" name="giant_price" type="number" step="0.01" min="0" value="{{ old('giant_price', $service->giant_price ?? '') }}">
+  </div>
+  <div class="field">
+    <label for="commission_percent">Comissão do profissional (%)</label>
+    <input id="commission_percent" name="commission_percent" type="number" step="0.01" min="0" max="100" value="{{ old('commission_percent', $service->commission_percent ?? '') }}" placeholder="Usa o padrão do profissional">
   </div>
   <div class="field">
     <label for="requires_appointment">Agenda</label>

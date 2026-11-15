@@ -13,9 +13,16 @@ This directory contains the working documentation for VetFlow.
 - [Database overview](BANCO_DE_DADOS.md)
 - [Continuous integration](ci.md)
 - [Deployment guide](deployment.md)
+- [Hostinger production runbook](deployment/hostinger-production.md)
+- [Hostinger incident response](deployment/hostinger-incident-response.md)
 - [KingHost staging runbook](deployment/kinghost-staging.md)
+- [Render demonstration deployment](deploy/render.md)
 - [Release checklist](release-checklist.md)
+- [Backup restore drill](deployment/backup-restore-drill.md)
+- [Runtime operations probe](deployment/runtime-operations-probe.md)
+- [Fiscal homologation activation](deployment/fiscal-homologation.md)
 - [Roadmap](ROADMAP.md)
+- [Product experience roadmap](product-experience-roadmap.md)
 
 ## Database Notes
 
@@ -40,8 +47,16 @@ The employee/access note documents the current decision to use `users`,
 - [Suppliers](modules/suppliers.md)
 - [Sales](modules/sales.md)
 - [Financial](modules/financial.md)
+- [Fiscal](modules/fiscal.md)
 - [Clinical Core](modules/clinical-core.md)
+- [Patients](modules/patients.md)
+- [Patient Clinical Alerts](modules/patient-clinical-alerts.md)
+- [Patient Clinical Timeline](modules/patient-clinical-timeline.md)
+- [Exam Results](modules/exam-results.md)
+- [Hospitalizations](modules/hospitalizations.md)
+- [Prescriptions](modules/prescriptions.md)
 - [Validation](modules/validation.md)
+- [SaaS Foundation](modules/saas.md)
 
 ## Audits
 

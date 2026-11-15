@@ -1,6 +1,6 @@
 # VetFlow Project Context
 
-Updated: 2026-08-01
+Updated: 2026-10-30
 
 ## Product
 
@@ -23,6 +23,9 @@ Important business areas:
 - Pet shop services and service orders.
 - Sales, payments, returns, and cash register closure.
 - Financial transactions.
+- Optional fiscal issuance through an account contracted and owned by each
+  clinic; VetFlow must not make its core PDV or non-fiscal receipt depend on a
+  third-party fiscal subscription.
 - Dashboards and reports.
 
 ## Technical Direction
@@ -53,18 +56,266 @@ Run setup with Composer, npm, migrations, and the Laravel server as described in
 
 ## Current Delivery Focus
 
+The counter PDV now has a deliberately bounded offline-continuity path for a
+device prepared while authenticated. A privacy-safe application shell can
+reopen the regular counter route after an offline F5; the current cart, a
+non-PII clinic catalog and pending supported sales are encrypted locally. UUID
+idempotency and authoritative server reconciliation ensure inventory, open
+cash, finance and audit effects happen at most once. Conflicting stock or
+operational state remains visible in the local queue, and complex linked or
+deferred-payment flows remain online-only. This protects a counter kept alive
+by a UPS without pretending that an unprepared device can cold-start offline or
+that independent offline devices share live inventory.
+
+The financial area now distinguishes operational projection from bank
+evidence. Clinics can register their own financial accounts and import bounded
+CSV/OFX statements without retaining the source file. Deterministic suggestions
+only compare paid VetFlow entries with the same direction and exact value in a
+seven-day window; an operator must confirm every one-to-one match, and any
+reversal requires a recorded reason. Those actions are tenant-scoped and audited and never mutate
+the original ledger. Matches outside the suggestion window require a human
+explanation, ambiguous candidates are never preselected, and pending age plus
+count/value coverage remain visible without changing either source. A reversed
+match returns to pending while its latest attributed reason stays visible and
+exportable. Operators can now confirm exact-cent groups from one bank row to
+several paid ledger rows or from several bank rows to one paid ledger row. A
+net bank credit can also reconcile existing income and expense rows, such as a
+gross receipt minus a separately recorded fee. Every grouped composition needs
+a human justification, reverses as one unit and leaves all source rows intact;
+coverage and CSV output count each bank row only once.
+
 The repository now includes public project documentation, CI, a visual
 walkthrough, assisted onboarding imports, resilient NF-e/product lookup,
 actionable dashboard priorities, clinic-scoped collaborator management, and
 explainable stock replenishment suggestions based on current stock and recent
-received purchases.
+received purchases. Replenishment now also displays a clinic-scoped 90-day net
+demand signal from completed product sales after returns. This read-only signal
+is preserved in suggestion metadata but does not automatically change the
+proposed purchase quantity. The same replenishment view now groups received
+batches by supplier/product and shows delivery counts, weighted observed cost,
+and lead-time samples when purchase and receipt dates are available. These are
+historical facts, not an automatic supplier recommendation or delivery promise.
+Current stock can now be compared with those signals through an explainable
+coverage projection. A rupture warning appears only when demand-derived coverage
+does not exceed the observed average lead time; absent demand or lead-time data
+remains explicitly inconclusive, and the projection never changes a purchase.
+Operators can now append a reviewed or on-hold decision to that exact
+replenishment evidence. The protected history preserves authorship and the
+calculation snapshot, and labels a decision as superseded when any source
+signal changes. Reviews never create a purchase or mutate inventory.
+The same canonical snapshot now accompanies a purchase prefill inside a
+versioned, HMAC-signed envelope. This creates a tamper-detectable foundation
+for comparing future saved purchases with what VetFlow originally suggested;
+saved replenishment items now record whether quantity, cost, or the reference
+supplier was kept or adjusted, including transparent deltas. Invalid or
+scope-mismatched envelopes produce no comparison. These observations remain
+descriptive and never tune a rule or change a purchase automatically.
+The protected purchase-decision history now makes those observations visible
+through the interface, with filters for decision and entry state, suggested
+versus actual values, and strict clinic isolation. Only the safe read model is
+rendered; signed envelopes, fingerprints, and raw intelligence metadata remain
+server-side.
+The same screen consolidates clinic-scoped validation totals, adherence among
+comparable decisions, field-level adjustment counts, and mean absolute
+quantity/cost deviations. Unverifiable records are counted separately and
+never enter the adherence or deviation calculations. These metrics remain
+observational and cannot tune the suggestion algorithm automatically.
+Both the history and its summary use the same explicit purchase-date cohort.
+The default is the latest 90 days, with 30-day, 180-day, and complete-history
+options so older decisions do not silently distort current pilot validation.
+Within that cohort, a product breakdown surfaces the ten items with the most
+adjusted decisions and shows adherence, adjustment types, unavailable evidence,
+and mean quantity/cost deviations without changing any replenishment rule.
+Valid signed suggestions now require a controlled reason when the saved
+quantity, cost, or supplier is changed. The server stores the attributed reason
+with decision schema version 2, requires a bounded note for the `other` option,
+and renders the safe label/note in the purchase history. Kept and unverifiable
+decisions are not burdened with this requirement.
+The validation interface also provides an advisory maturity check for the
+selected cohort. Its visible initial references are 20 comparable decisions,
+5 comparable products, 90% valid evidence, and complete reasons for adjusted
+decisions. It identifies the next missing action and never claims statistical
+significance, approves suppliers, or changes an algorithm automatically.
+An operator can append a reviewed or follow-up-required decision for the
+selected period. The event stores only a stable allowlisted report snapshot and
+its hash; when the metrics, maturity, or product breakdown changes, the latest
+decision is shown as stale and must be reviewed again.
+The full review trail is available as a clinic-scoped, reverse-chronological
+history. Operators can filter by validation period or decision and see whether
+each event still matches current evidence without receiving its hash or stored
+snapshot.
+Above that trail, a four-period portfolio consolidates the 30-, 90-, and
+180-day windows plus complete history. It shows sample size, evidence coverage,
+maturity and latest-review status, with an explicit warning that the cohorts
+overlap and must not be interpreted as independent statistical samples.
+Patient care now includes a permission-aware longitudinal
+profile that connects appointments, medical records, prescriptions,
+vaccinations, and hospitalizations while
+keeping the source records and their access boundaries intact.
+Patient identity also supports an optional clinic-private profile photo and a
+tri-state sterilization value so missing legacy evidence remains visibly
+unknown instead of being treated as a negative answer. The photo is delivered
+only through the authenticated tenant-scoped patient route. Optional microchip
+and free-text identification markings can be maintained, searched, and
+imported without treating either as clinical interpretation; patient searches
+remain tenant-scoped and microchip is deliberately not unique. An optional
+tri-state pedigree declaration and searchable registration number preserve the
+reported identity evidence without VetFlow claiming document authenticity or
+genealogical verification. Patient records now also have an explicit active,
+archived, or deceased lifecycle. Reasoned, attributed transitions are appended
+to the audit trail; archive or death cancels future appointments and schedules,
+while restoration never silently reopens them. Inactive patients cannot receive
+new operational records but their clinical, financial, and longitudinal history
+remains readable under the original permissions. Generic patient deletion is
+not exposed. Structured
+prescriptions now extend that history with a reviewable draft, immutable
+finalization, and explicit cancellation trail. Structured exam requests can
+also receive protected result documents while VetFlow remains neutral about
+their clinical interpretation. Active admissions now keep append-only
+evolutions whose history remains readable after discharge or cancellation.
+Manually recorded patient clinical alerts are now visible across the highest
+risk clinical screens and use an auditable active/resolved lifecycle. VetFlow
+does not infer their severity or generate them from other clinical data.
+The patient profile also assembles permitted source records into a single
+reverse-chronological timeline. This is a read model only: the sequence does
+not duplicate data or imply a clinical relationship between events.
+Sensitive administrative changes to collaborator access and clinic branding
+now produce tenant-scoped, append-only audit events. Password values are never
+stored in that history.
+Backup readiness now includes a read-only snapshot and isolated-restore
+verification workflow. It records only control totals and produces a recent
+evidence file for the release gate; the hosting provider still performs the
+actual export, import, and temporary-database cleanup.
+Runtime readiness now includes a synthetic two-phase probe. Preparation writes
+a private storage sentinel and dispatches one real asynchronous job; verification
+requires that job to read the same sentinel and write a matching result before
+producing evidence for the release gate. Successful verification removes the
+temporary probe artifacts and never creates clinic or clinical records.
+Release traceability now exposes only the normalized full Git SHA at
+`/ops/release`. Staging and production readiness require this identity, so a
+healthy process cannot be mistaken for proof that the intended commit is live.
+The same operational controls now have a protected interface. The Operations
+Center reuses the command-line release gates, locates safe summaries of the
+latest private backup and runtime-probe evidence, records clinic-scoped smoke
+test events, and binds the final human release decision to a hashed evidence
+snapshot. Reports never expose evidence paths or secret runtime material.
+Administrators can also prepare and verify the synthetic runtime probe from
+that interface. Its execution history is append-only and bound to the current
+clinic, environment, and release SHA; the reusable runtime service still owns
+evidence generation and cleanup, so the web and CLI paths cannot drift.
+Restore evidence generated outside the live database can now be imported by an
+operator with the separate execution permission. The intake validates age and
+shape, removes every field outside a strict allowlist, stores the sanitized
+evidence privately, and appends only safe metadata to the tenant/release audit
+history. The interface never performs the restore itself.
+Operators can review those records together with runtime probes, smoke checks,
+and release decisions in a single reverse-chronological history. The read model
+stays within the current clinic and environment, defaults to the published
+release, and never exposes free-form notes, evidence hashes, private paths, or
+runtime sentinels.
+The Operations Center also turns the current gates into an ordered release
+plan. It explains the next safe action, suggests whether infrastructure,
+technical operations, validation, or the release owner should act, and links
+to the corresponding interface section. This guidance is permission-aware but
+advisory: it never changes the environment or records approval automatically.
+Evidence summaries now make their temporal validity explicit. Operators can see
+the configured deadline, a near-expiry warning, expiration, failure, absence,
+or an invalid future date without gaining access to paths, fingerprints,
+hashes, sentinels, or file contents. Temporal validity remains only one part of
+the complete technical gate.
+Banho & Tosa additionally has a dedicated eight-item operational checklist in
+the Operations Center. It is release- and clinic-scoped like the general smoke
+history, while remaining separate from the 12-item technical release gate so a
+module pilot cannot silently approve a production release.
+The Implementation assistant now derives onboarding coverage per clinic from
+its append-only successful import summaries. Completed blocks also receive a
+read-only quality review based on six documented, tenant-scoped checks. Blocks
+without a successful import remain awaiting evaluation, and neither panel
+infers pilot approval or changes business data.
+Pilot preparation now also has a five-item human checklist per clinic. Every
+completion or reopening is stored as a new attributed event, so the current
+state is convenient to read without sacrificing the decision history.
+The pilot plan follows the same principle: every change to its operational and
+support owners, planned date, functional scope, or release notes creates a new
+attributed revision instead of overwriting earlier preparation evidence.
+The final guided-onboarding slice consolidates coverage, quality, checklist,
+and release-plan evidence without converting them into an automatic business
+approval. A human approval or hold decision is stored with a hashed evidence
+snapshot and becomes stale whenever one of those source signals changes.
+Operators can now inspect the complete pilot history, correct quality issues
+through tenant-safe queues, emit the current preparation report, and triage a
+multi-clinic portfolio by readiness status. A reproducible fictitious scenario
+exercises the blocked path before any rule is tuned from pilot evidence.
 
-The first staging candidate is KingHost shared Linux hosting, using only
-fictitious data and a bounded authenticated cron bridge because shared hosting
-does not supervise a permanent queue worker. External provisioning remains
-pending. The next delivery focus is to pass the contract gate, prove backup
-restoration, validate persistent storage and queue processing, execute the
-release checklist in staging, and define release/support ownership.
+The fiscal foundation now prepares clinic-scoped NFC-e/NFS-e drafts, a
+reviewed Niterói NFS-e Nacional payload and a separate RJ NFC-e model 65
+payload in homologation. NFC-e requires an explicit SEFAZ/CSC/certificate
+checklist, independent per-series numbering, product IBS/CBS classification
+and closed payment/troco totals; the CSC itself is never stored. Mixed or
+globally adjusted sales now pass through one explicit fiscal-allocation review.
+The approved snapshot uses exact-cent proportional rules, is shared by both
+document types and cannot be silently recalculated after approval. Independent
+adapter, external-credential, HTTP and submission controls remain disabled by
+default. When explicitly activated, the asynchronous lifecycle supports
+idempotent submission and bounded status reconciliation for both document
+types, definitive cancellation with a frozen justification, and protected
+XML/DANFSe/DANFCe recovery. NFS-e additionally supports authenticated callback
+and webhook re-delivery. NFC-e refreshes its emission time at transmission,
+enforces the cancellation window and provides a separately confirmed,
+range-safe queue for numbering inutilization. Tenant-scoped operational alerts
+expose exhausted work and configurable processing/cancellation delays without
+leaking provider secrets. A clinic-scoped homologation gate now consolidates
+those controls with actual provider-event evidence and a password-confirmed,
+append-only human review. Its secret-free fingerprint becomes stale after
+profile or tax-catalog changes. A passing gate means only that the clinic is
+eligible for the separate production gate. Production now exists only for the
+reviewed Niterói/RJ NFS-e and RJ NFC-e slices, remains disabled server-wide by
+default, requires a clinic-owned production credential, password-confirmed
+activation, independent numbering and the exact approved homologation
+fingerprint, and can be revoked without erasing history. The same safe read
+model produces a printable dossier and JSON
+download with the next action for every pending item, excluding secrets, raw
+payloads and internal evidence fingerprints.
+The same clinic scope now has a daily reconciliation of completed sales against
+their latest NFC-e/NFS-e preparations. It makes missing configuration, rateio,
+payload, submission, processing, rejection, cancellation, return review and
+authorization visible and exportable without inferring a legal duty to issue.
+A monthly document center complements that checklist with tenant-safe filters
+for operational competence, bounded preparation dates, NFC-e/NFS-e type,
+lifecycle status and sale. Its allowlisted, formula-safe private CSV excludes
+raw provider payloads, responses and credentials.
+When that reconciliation has no pending state, an authorized user can confirm
+an internal period closing with the current password. The append-only evidence
+becomes stale after a backdated sale, document change or profile change and does
+not represent a filing, tax settlement or accounting certification. Each
+historical closure has a printable and private no-cache JSON dossier built from
+its frozen sale/document evidence, with current/stale verification and an
+integrity hash that excludes provider secrets and payloads. A monthly history
+center searches those records by clinic, competence, responsible person and
+recalculated current/stale state without modifying the frozen evidence.
+Partial refunds and fully returned sales remain visible in that reconciliation
+and now open an assisted, evidence-bound fiscal review. The operator records
+the source and text of the human guidance; later item, amount, event or document
+changes make it stale. VetFlow deliberately performs no automatic return-note,
+adjustment or cancellation action from this record. Each historical review can
+be printed or exported as a private no-cache JSON dossier. The dossier uses the
+frozen safe evidence, identifies current versus superseded decisions and carries
+an integrity hash without exposing provider payloads or credentials.
+
+Production runs on Hostinger shared Linux hosting at
+`https://vetflowsys.com.br`, deployed from the `0-hostinger-production` branch.
+Because the plan does not supervise a permanent worker, production uses the
+database queue and a bounded CLI Cron Job every five minutes. Release identity,
+isolated backup restoration, persistent storage, asynchronous processing, the
+12-item smoke checklist, and the final human go/no-go decision are release
+gates in the Operations Center. KingHost remains only a historical staging
+candidate and is not the production target.
+
+The Banho & Tosa agenda stores weekly availability per clinic, optional
+professional overrides, lunch breaks, and dated clinic/professional blocks.
+Bookings enforce those rules alongside overlap checks. Service checkout keeps
+the source order-item identity so cumulative partial returns reconcile pending
+or settled grooming commissions proportionally and idempotently.
 
 The global Clinics registry now has a standalone operational guide and an
 explicit global-administrator authorization boundary. Thin or overlapping

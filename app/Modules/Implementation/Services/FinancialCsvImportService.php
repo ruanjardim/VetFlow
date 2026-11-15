@@ -4,7 +4,9 @@ namespace App\Modules\Implementation\Services;
 
 use App\Core\Support\DocumentNormalizer;
 use App\Core\Validation\BrazilianDocumentValidator;
+use App\Modules\Financial\Models\FinancialCategory;
 use App\Modules\Financial\Models\FinancialTransaction;
+use App\Modules\Financial\Services\FinancialCategoryService;
 use App\Modules\Implementation\Contracts\CsvImportService;
 use App\Modules\Suppliers\Models\Supplier;
 use DomainException;
@@ -142,7 +144,8 @@ class FinancialCsvImportService implements CsvImportService
 
     public function __construct(
         private readonly CsvFileAnalyzer $analyzer,
-        private readonly CsvValueNormalizer $normalizer
+        private readonly CsvValueNormalizer $normalizer,
+        private readonly FinancialCategoryService $financialCategories
     ) {}
 
     /**
@@ -224,6 +227,12 @@ class FinancialCsvImportService implements CsvImportService
 
                 FinancialTransaction::query()->create([
                     'clinic_id' => $clinicId,
+                    'financial_category_id' => $this->financialCategories->idForCode(
+                        $clinicId,
+                        $values['type'] === 'expense'
+                            ? FinancialCategory::CODE_OTHER_EXPENSES
+                            : FinancialCategory::CODE_OTHER_INCOME
+                    ),
                     'supplier_id' => $supplier['id'] ?? null,
                     'purchase_entry_id' => null,
                     'installment_number' => 1,

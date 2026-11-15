@@ -1,13 +1,502 @@
 # Changelog
 
+## 2026-11-14
+
+- Updated Laravel from 12.69.3 to 12.72.0 and refreshed its compatible locked
+  dependency set after CVE-2026-128083 was published for earlier 12.x releases.
+  The post-update Composer and npm production audits report no known security
+  advisories, and the complete 555-test backend suite remains green.
+- Hardened NF-e access-key cache reads for Windows ACL, mounted-volume and
+  sandbox environments where metadata can report a readable file as
+  unreadable. VetFlow now attempts the bounded read directly, reports a safe
+  diagnostic when inspection or reading actually fails, and preserves XML
+  upload as the operational fallback.
+- Added clinic-scoped functional collaborator records independent from login
+  accounts, with optional user linkage, relationship/admission data,
+  informational base compensation and encrypted document/payment fields.
+  Creating a clinic user now creates its functional link; sales commission
+  settlements freeze the represented employee and only a masked payment
+  snapshot. A collaborator initially registered without login can later receive
+  credentials and roles without duplicating the functional record. Payroll,
+  taxes, payslips and automatic bank transfers remain explicitly outside this
+  delivery.
+- Added VetFlow-generated adhesive labels for products sold by kilogram. An
+  operator can select a clinic-scoped product, enter up to three decimal places
+  of net weight, choose physical label dimensions and copies, and optionally
+  print origin lot and expiration. The print view renders a standards-compatible
+  EAN-13 carrying the same product code and weight already decoded by the PDV,
+  displays price per kilogram and the calculated total, opens the browser print
+  flow, and fails closed for disabled layouts, incompatible codes, foreign
+  products, invalid precision, field overflow, non-positive prices, and weight
+  above sellable stock. Browser/driver selection remains explicit; direct
+  USB/serial control still requires a model-specific local bridge.
+
+## 2026-10-30
+
+- Added clinic-scoped variable-weight EAN-13 labels to the PDV. Each clinic
+  explicitly configures its scale prefix, product-code width and kilogram
+  precision; products receive a tenant-unique scale code. Online and encrypted
+  offline catalogs validate the EAN checksum, reject unknown/zero/foreign
+  labels, add the decoded fractional kilograms to the cart and preserve the
+  existing three-decimal stock workflow. Direct serial scale protocols remain
+  intentionally out of scope until a manufacturer and model are selected.
+- Added a fail-closed fiscal production gate for the reviewed Niterói/RJ NFS-e
+  and RJ NFC-e slices. Each clinic needs current approved homologation,
+  independent encrypted production credentials and numbering, the global
+  production switch, password confirmation and an immutable activation
+  fingerprint. Production profile editing is locked, every activation and
+  revocation is audited, emergency deactivation restores homologation, and a
+  revoked activation cannot transmit an already prepared production document.
+- Versioned the production route-cache filename by the exact release commit and
+  made Composer publish the release identity before compiling routes. This
+  prevents persistent PHP/OPcache processes from serving a previous release's
+  route table after a Hostinger Git deployment, even when a legacy
+  `APP_ROUTES_CACHE` value has already initialized Laravel's immutable
+  environment repository.
+- Kept the core online PDV renderable during a rolling deployment even when
+  the web process is temporarily serving an older named-route cache. Optional
+  offline endpoints now use stable same-origin paths and remain disabled until
+  the refreshed route table is available, instead of turning that condition
+  into a server error for every cashier.
+- Added continuity for an already loaded PDV during connectivity loss: a
+  bounded clinic catalog without customer PII and supported checkouts are kept
+  in AES-GCM-encrypted IndexedDB storage. Each queued sale has a device ID and
+  idempotency UUID plus a server-encrypted clinic/operator context, synchronizes
+  automatically through the normal atomic sale workflow, and retains explicit
+  stock, cash or payment conflicts for operator review instead of silently
+  losing or duplicating effects. Deferred customer-credit and linked
+  service/package/quote flows remain online-only.
+
+## 2026-10-27
+
+- Reworked the new-sale screen into a dedicated counter mode that removes the
+  administrative shell, keeps operator, clinic, clock and cash context visible,
+  offers browser fullscreen and groups secondary navigation away from the
+  checkout path. Barcode input now has explicit ready/reading/success/warning
+  states, optional sound feedback, focus recovery, rapid numeric wedge capture,
+  repeated-product quantity increments and latest-item emphasis. Payment method
+  shortcuts use counter-sized cards while the existing stock, cash, financial,
+  customer-credit, quote and audit rules remain unchanged.
+
+## 2026-10-26
+
+- Expanded assisted bank reconciliation with human-confirmed exact-cent groups:
+  one bank row can reconcile several paid VetFlow rows, several bank rows can
+  reconcile one paid VetFlow row, and a net credit can combine existing income
+  and expense rows such as an already-recorded bank fee. Every group requires a
+  justification, is tenant/account scoped, reverses atomically, keeps the source
+  ledger unchanged, and appears without double-counting bank coverage in the
+  screen and private CSV.
+
+## 2026-10-25
+
+- Hardened assisted bank reconciliation with a required explanation for manual
+  matches outside the seven-day suggestion window, explicit ambiguity warnings,
+  pending-age bands, count/value coverage percentages and a visible/exportable
+  trail for the latest reversed match. The workflow remains human-confirmed and
+  never mutates the source financial ledger.
+
+## 2026-10-21
+
+- Added clinic-scoped assisted bank reconciliation with financial-account
+  registration, bounded CSV/OFX parsing, file and row duplicate protection,
+  deterministic same-type/exact-value suggestions, human confirmation and
+  reasoned reversal, attributed audit events, pending coverage indicators and
+  a private formula-safe CSV. Imported files are not retained and no ledger
+  entry is mutated by the matching workflow.
+- Replaced the basic cash-flow cards with a clinic-scoped 15/30/60/90-day
+  projection. The new view preserves an explicit operational opening balance,
+  separates realized, scheduled, overdue and undated movements, highlights
+  negative-balance days, groups the same evidence weekly, exposes exact daily
+  composition and exports a private formula-safe CSV without mutating ledger
+  rows or pretending to be a bank reconciliation.
+
+## 2026-10-20
+
+- Added safe previous-month budget copying that preserves existing destination
+  values, plus automatic alerts for expense overruns and unplanned spending.
+- Completed the monthly-budget review workflow with a private formula-safe CSV,
+  exact drilldown into the transactions behind each realized value, a rolling
+  12-month planned-versus-realized history and tenant-safe on-screen audit
+  history.
+- Documented the cost-aware five-task delivery cycle: local validation remains
+  continuous, while GitHub/CI and Hostinger publication are consolidated after
+  the fifth approved task unless an urgent release is explicitly requested.
+
+## 2026-10-19
+
+- Added clinic-scoped monthly budgets by financial category, with Brazilian
+  currency entry, audited changes and planned-versus-realized comparison using
+  either cash or operational-competence actuals.
+
+## 2026-10-18
+
+- Added a clinic-scoped monthly managerial result in Finance, grouped by chart
+  of accounts category, with cash and operational-competence views.
+- Added a private, no-cache and formula-safe CSV export for the selected month
+  and basis.
+
+## 2026-10-13
+
+- Fixed Hostinger Git deployments retaining routes, configuration, or compiled
+  Blade views from the previous release after `composer install`.
+
 All notable project changes should be recorded here.
 
 This project follows the spirit of Keep a Changelog, with one practical adjustment: unreleased internal work can be summarized by documentation or sprint slices before formal version tags exist.
 
 ## [Unreleased]
 
+### Security
+
+- Updated the frontend build chain to `nanoid` 3.3.18 and `postcss` 8.5.26,
+  clearing the current high/moderate npm advisories before the demo release.
+- Updated `league/commonmark` to 2.10.0, including the upstream fixes for the
+  August 2026 denial-of-service and unsafe-link parsing advisories.
+
 ### Added
 
+- Added SaaS commercial governance with audited 10/20/30/40 promotional
+  coupons, validity/plan/duration/redemption controls, non-stacking rules,
+  exact-cent price snapshots, onboarding integration, preserved cancellation
+  history and explicit base/promotional/post-promotion price disclosure. This
+  records administrative billing conditions and does not claim a payment
+  gateway or automatic charge.
+- Added five versioned legal/operational document types with draft/publication
+  states, SHA-256 integrity, an explicit named legal-review gate, public status
+  pages and tenant-admin electronic acceptance. Each accepted package freezes
+  signer, tenant, plan, price, coupon, IP, user agent, document versions and
+  hashes in append-only evidence under one receipt UUID. Seeded text remains a
+  non-effective draft until external legal and operational review is complete.
+
+- Added a clinic-scoped financial chart of categories with safe defaults,
+  custom income/expense categories, immutable types, activation and ordering.
+  The financial ledger now assigns a fallback category to manual entries,
+  validates category type and tenant, filters by category, and automatically
+  classifies sales, purchases, grooming commissions, refunds, card fees, cash
+  expenses and assisted imports without deleting historical classifications.
+- Added a clinic-scoped fiscal document center by operational competence. It
+  combines bounded monthly date, NFC-e/NFS-e, lifecycle-status and sale filters,
+  paginates the tenant-safe result and exports the full filtered conference list
+  as UTF-8, formula-safe, private no-cache CSV without provider payloads,
+  responses or credentials.
+- Added a clinic-scoped assisted fiscal review for partial refunds and fully
+  returned sales. It freezes returned items, amounts, operational events and
+  linked-document states; requires password-confirmed human guidance; keeps an
+  append-only history; and marks a completed review stale after any evidence
+  change. The reconciliation now includes fully returned sales and accepts a
+  current completed review as operationally reconciled without generating,
+  transmitting, cancelling or prescribing any fiscal document automatically.
+  Every historical review now has a printable dossier and private no-cache JSON
+  export containing only its frozen, secret-free return evidence, explicit
+  current/stale status and an integrity hash.
+- Added evidence-bound operational fiscal closing for reconciliation periods of
+  up to 31 days. A period can be confirmed only when every completed sale in
+  scope is authorized (or when VetFlow has no internal movement), requires the
+  current password and human confirmation, records an immutable tenant-scoped
+  snapshot and audit event, blocks duplicate current closures, and becomes
+  visibly stale after a backdated sale, document change or profile change.
+  Each historical closing now exposes a printable dossier and private no-cache
+  JSON export with frozen sales, status totals, document states, current/stale
+  verification and an integrity hash, without provider payloads or credentials.
+  A monthly history center filters those closures by clinic, competence,
+  responsible person and recalculated current/stale state, with direct links to
+  each dossier and the corresponding live reconciliation.
+- Added a clinic-scoped daily fiscal reconciliation for completed sales. It
+  compares the operational sale with the latest NFC-e/NFS-e preparations,
+  separates configuration, allocation, payload, submission, processing,
+  authorization and human-review states, and exports the filtered result as a
+  no-cache, formula-safe CSV. Missing preparation remains an observational
+  signal and never becomes an automatic tax-obligation claim.
+- Added a clinic-scoped homologation gate for the fiscal module. It derives a
+  strict checklist from the active profile, server controls, complete tax
+  catalogs and real Focus homologation events for authorization, rejection,
+  cancellation, reconciliation, protected artifacts and NFS-e webhook
+  recovery. Password-confirmed human reviews are append-only and bound to a
+  secret-free evidence fingerprint; configuration or catalog changes make the
+  latest approval stale. Passing the gate qualifies only a separate technical
+  production review—production issuance remains unavailable. A printable,
+  no-cache dossier and safe JSON export now show the exact next action for
+  every pending check without exposing credential references, certificate
+  references, provider payloads or internal evidence fingerprints.
+- Added a reviewable fiscal allocation for mixed or globally adjusted sales.
+  It uses integer-cent largest-remainder calculations, proportionally splits
+  discounts, additions and received payment methods, assigns delivery and
+  change by an explicit rule, blocks stale or inconsistent preparations, and
+  freezes one tenant-scoped approval shared by NFC-e and NFS-e. The Focus
+  payloads now preserve the approved discount, freight and other-expense
+  totals without enabling external traffic.
+- Added a bring-your-own-Focus-account flow for the fiscal module. Each clinic
+  can connect, rotate and disconnect its own homologation token after current-
+  password confirmation; the token is tenant-scoped, encrypted at rest, hidden
+  from serialization and excluded from snapshots/audit data. Disconnection
+  erases the secret and blocks external fiscal operations without affecting the
+  PDV or non-fiscal receipt, which is now explicitly marked as having no fiscal
+  value.
+- A clinic-scoped fiscal foundation for manually preparing NFC-e and NFS-e
+  drafts from completed sales in homologation. It preserves immutable issuer,
+  recipient, item, payment and total snapshots, uses an idempotency key and an
+  attributed event log, and exposes an explicit provider contract whose safe
+  default implementation blocks every external operation. Production emission,
+  authorization and cancellation remain unavailable; local numbering is only
+  reserved after an operator explicitly generates a reviewed payload.
+- Versioned fiscal classification and readiness queues for active products and
+  services, including NCM/CEST, origin, default CFOP, CST/CSOSN, PIS/COFINS,
+  national/municipal service codes, CNAE, NBS, ISS and forward-compatible
+  IBS/CBS references. Fiscal preparation now requires catalog-linked, minimally
+  classified lines and sends mixed or globally adjusted sales to explicit
+  review before their allocation is frozen.
+- Municipality-aware NFS-e onboarding with Niterói/RJ as the first reviewed
+  profile. The Fiscal center recognizes IBGE code `3303302`, documents the
+  National NFS-e/DPS route effective there since 2026-01-01, shows issuer and
+  certificate readiness without enabling submission, and prevents combining
+  different service-list subitems or ISS rates in one Niterói preparation.
+- Corrected the sale-item service relationship to use the existing
+  `petshop_service_id` column explicitly, allowing service tax profiles to be
+  loaded during NFS-e preparation.
+- Selected Focus NFe as the first provider boundary after a documented vendor
+  comparison. Clinics can record the provider and an opaque external credential
+  reference, while a fail-closed Niterói NFS-e homologation adapter defines the
+  submit, consult and cancel calls. Runtime binding, credentials and external
+  HTTP remain disabled, so this adds no real fiscal transmission.
+- Added fail-closed Focus NFS-e Nacional payload generation for the Niterói
+  pilot. The operator explicitly configures the DPS series/starting number,
+  Simples and special-regime codes, while each service requires ISS and
+  IBS/CBS classification. Generation validates frozen data and totals, reserves
+  one DPS number transactionally, stores a versioned payload and appends an
+  audit event without resolving credentials or sending HTTP traffic.
+- Added a separate fail-closed NFC-e model 65 foundation for RJ homologation.
+  The Fiscal center checks SEFAZ credentialing, state registration,
+  certificate validity, six-digit CSC identifier and an external CSC
+  reference without storing the CSC itself. NFC-e has an independent
+  clinic/series sequence from 1 to 999,999,999, explicit Pix classification,
+  versioned product IBS/CBS fields and a local Focus payload with item,
+  payment and change reconciliation. Generation is idempotent, reserves a
+  number only after every validation passes.
+- Extended the disabled-by-default Focus homologation lifecycle to RJ NFC-e.
+  Reviewed model-65 payloads now use the stable document reference for
+  synchronous emission, protected consultation and cancellation, with an
+  auditable just-in-time emission timestamp, allowlisted response fields,
+  issuer matching, denied-state handling, DANFCe proxying and a configurable
+  30-minute cancellation preflight. Production remains rejected.
+- Added a separate queued NFC-e numbering-inutilization record and UI. Only
+  ranges below the current sequence can be requested; future numbers, ranges
+  containing a prepared VetFlow NFC-e, and overlaps with active or authorized
+  requests fail before dispatch. The synchronous Focus response is checked
+  against CNPJ, model 65, series and exact range before an authorization or
+  rejection is persisted, and all runtime gates remain disabled by default.
+- Added the disabled-by-default Focus homologation lifecycle: idempotent queue
+  transitions, retry-safe submit jobs, bounded delayed reconciliation,
+  allowlisted status mapping and an authenticated size-limited webhook that
+  verifies the issuer and ignores exact replays. Secrets and raw provider
+  errors are excluded from documents and lifecycle events, and all tests use a
+  simulated provider with no live fiscal traffic.
+- Added guarded Focus homologation activation with an external JSON credential
+  store outside the application, exact reference/provider/environment matching,
+  runtime token rotation, conditional provider binding and seven privacy-safe
+  readiness gates. Adapter, outbound HTTP, submission and webhook controls
+  remain independently disabled by default, with a deployment runbook for
+  supervised activation and rollback.
+- Added definitive NFS-e cancellation through the same guarded queue. Only an
+  authorized document can enter the flow, its reviewed justification is frozen
+  across idempotent retries, and cancelled status requires provider/webhook
+  confirmation. The Fiscal center now also highlights tenant-scoped exhausted
+  jobs and processing/cancellation delays using configurable thresholds.
+- Added assisted NFS-e recovery: final and failed-cancellation states can be
+  reconciled without regression, webhook resend is queued with a local
+  cooldown, and XML/DANFSe downloads pass through an authenticated no-cache
+  proxy. Stored absolute URLs, path traversal, oversized/invalid content and
+  unapproved redirect hosts are rejected; Focus credentials are never sent to
+  the redirected artifact host.
+- A tenant-safe team-activation panel in the Implementation assistant with
+  observable active-access, administrator, CRMV and Banho e Tosa professional
+  counts, plus a permission-aware handoff that preselects the clinic when
+  creating a collaborator and returns to the onboarding workflow.
+- A permission-aware first-client handoff between SaaS onboarding and the
+  Implementation assistant, keeping clinic, subscription, and initial
+  administrator creation transactional while avoiding unauthorized dead-end
+  links.
+- Per-clinic Banho & Tosa weekly availability with lunch breaks and grid
+  intervals, optional professional overrides, and dated clinic/professional
+  blocks for holidays, time off, and operational exceptions. Booking and slot
+  suggestions enforce the configured availability.
+- A separate eight-item Banho & Tosa validation checklist in the Operations
+  Center, scoped to clinic, environment, and release without changing the 12
+  mandatory release smoke gates.
+- Customer balance (saldo do cliente): the PDV can finish a sale to be paid
+  later (fiado) for an identified customer and keep the change as credit;
+  customer credit comes from advances, returns and cancellations and pays
+  sales in the PDV, later receipts and settlements. "Saldo de clientes" lists
+  who owes and who has credit; the customer page receives several open sales
+  at once (oldest first), registers advances and gives credit back, with the
+  credit statement. Advances are not revenue until used.
+- Cash sessions per operator (caixa): the operator opens the cash in the PDV
+  with the change float, registers supplies, withdrawals and expenses (paid
+  expenses in the financial module), and closes with the counted cash and the
+  counted totals per method; differences require an operator explanation,
+  are stored, and the card fees become one paid expense per card machine.
+  Opening, closing, review and reopening are append-only audit events, and a
+  closed session has a print-ready 58/80 mm non-fiscal management report.
+  Receiving (PDV, advanced form, later
+  receipts), return refunds and cancellations of paid sales require the
+  operator's open session, where the refunds are recorded. Sessions left open overnight close
+  automatically at 23:59 and wait for review. Managers with
+  `cash-sessions.review` list every session, review (encerrar) or reopen them.
+- Payment methods per card machine: each clinic registers its methods
+  ("Rede Visa Crédito", "PagSeguro Débito") with kind, machine, brand, upfront
+  and installment fees, settlement days, maximum installments and an optional
+  required NSU, starting from the six previous methods. The PDV shows one
+  shortcut per method, the installments allowed by the machine and the NSU
+  field; the advanced form and the later receipt use the same methods. Each
+  payment stores its method, fee, net amount and expected settlement date;
+  the cashier groups receipts by method with fees, and the new "Recebíveis de
+  cartão" report lists each installment by expected date. Managed with the new
+  `payment-methods.manage` permission.
+- PDV quotes (orçamentos): a Venda/Orçamento switch in the PDV saves the cart
+  as a quote (`ORC-000001`) with validity (7 days by default), notes and sale
+  type, without touching stock, money or commissions. Quotes have a list with
+  open/expired/converted/cancelled filters, a printable page, a WhatsApp
+  summary link, editing and cancellation while open, and "Converter em venda",
+  which opens the PDV with the quoted items and prices; completing that sale
+  marks the quote as converted and cancelling it reopens the quote.
+- Sale type on sales and quotes with the six SimplesVet options (in-store for
+  final consumer or resale, delivery/home service, delivery for resale, and
+  internet or phone orders shipped by carrier). Delivery and shipping types
+  carry a delivery address (prefilled from the customer) and a delivery fee
+  added to the total, shown on the receipt and kept out of item
+  profitability.
+- Banho e tosa agenda: day grid per professional with click-to-book free
+  slots, booking duration (defaults to the sum of the services), statuses
+  Agendado/Confirmado/Em espera/Em atendimento/Animal pronto/Não compareceu,
+  late detection, same-professional conflict blocking with an explicit
+  "Encaixe" override, free-slot suggestions in the booking form, and weekly,
+  biweekly, 3-week, or 4-week recurrence that copies the services.
+- Operational board for bath and grooming (ported from `deploy/render`, never
+  released before) with a scheduled column, check-in, "Animal pronto", and
+  "Receber no PDV", which now opens the quick PDV prefilled with the order's
+  customer, pet, items, and discount and closes the order when the sale is
+  completed.
+- Pet size (Pequeno/Médio/Grande/Gigante) on the patient record, suggested
+  from the weight when blank, used to pick the service's size price in
+  service orders.
+- "Atende banho e tosa" flag on collaborators to choose the agenda columns.
+- Bath and grooming packages (Clubinho): package models, sale per pet through
+  the PDV (activated when the sale completes, cancelled with it), balance per
+  service, validity, automatic consumption in service orders with opt-out, and
+  a sold-packages list with status filters and usage history.
+- Groomer commissions: percentage per service or per professional, generated
+  when the order is finished (discount prorated, package sessions valued at the
+  package price per session), reversal when the order is reopened, statement
+  per professional, and settlement that creates the payable in Financeiro.
+  Partial service returns now reconcile the commission proportionally and
+  idempotently, including after settlement and before a later cancellation.
+- The visual agenda can filter by area (Clínica / Banho e tosa) and shows
+  grooming bookings.
+
+- Tenant-safe inventory-variance report for finalized cycle counts with
+  30/90/180-day or complete-history filters, line accuracy, preserved-cost
+  surplus/shortage impact, aggregated product ranking, soft-deleted history,
+  and a no-cache, formula-safe CSV export.
+- Clinic-scoped cycle counts with immutable opening snapshots, category scope,
+  progressive physical quantities, concurrent-stock-change protection,
+  single-use finalization, protected variance movements, and auditable
+  cancellation without stock side effects.
+- Clinic-scoped Pricing Radar for active products with mutually exclusive
+  missing-cost, missing-price, below-cost, break-even, low-margin, and adequate
+  signals plus current stock exposure, without automatic price changes.
+- Clinic-scoped product ABC analysis for the latest 30, 90, or 180 days,
+  ranking return-adjusted net revenue into explicit A/B/C cumulative bands and
+  showing current stock value as read-only purchasing and assortment context.
+- Clinic-scoped Stock Radar with mutually exclusive replenishment, no-recent-
+  demand, high-coverage, new, adequate, and unparameterized signals; cost-value
+  summaries, catalog filters, explicit 30/90/180-day references, and no stock
+  or purchase side effects.
+- Consolidated replenishment pilot portfolio for the 30-, 90-, and 180-day
+  windows plus complete history, combining sample metrics, maturity and latest
+  human-review freshness while explicitly warning that cohorts overlap.
+- Reverse-chronological, clinic-scoped replenishment pilot-review history with
+  period/decision filters and current-versus-stale evidence status, without
+  exposing stored hashes or snapshots.
+- Append-only human reviews for each replenishment validation period, bound to
+  an allowlisted report hash, isolated by clinic, and marked stale whenever the
+  underlying metrics, maturity, or product breakdown changes.
+- Advisory replenishment pilot-maturity panel with explicit comparable-decision,
+  product-coverage, evidence-quality, and reason-completeness references, plus
+  the next missing action and clear non-statistical/non-automatic boundaries.
+- Required, controlled reasons for valid replenishment purchase adjustments,
+  including a bounded note for `other`, decision schema version 2 persistence,
+  edit restoration, and safe reason visibility in purchase-decision history.
+- Product-level replenishment validation ranked by adjusted decisions, with
+  per-product adherence, adjustment rate, changed fields, unavailable evidence,
+  mean deviations, and direct links to the underlying decision list.
+- Explicit purchase-date windows for replenishment validation (30, 90, 180
+  days, or complete history), applied consistently to the clinic-scoped list
+  and summary with a 90-day pilot default.
+- Clinic-scoped replenishment validation metrics covering comparable, kept,
+  adjusted, and unavailable purchase decisions, adherence, adjustment types,
+  and mean absolute quantity/cost deviations with no automatic rule tuning.
+- Clinic-scoped, read-only replenishment purchase-decision history with
+  kept/adjusted/unavailable filters, transparent quantity and cost deltas,
+  supplier comparison, source-entry links, and private evidence internals.
+- Backend comparison of signed replenishment suggestions with saved purchase
+  quantity, unit cost, and supplier, including kept/adjusted classification,
+  transparent deltas, and exclusion of invalid or mismatched evidence.
+- Canonical replenishment evidence service shared by human review and purchase
+  prefill, with versioned snapshots, SHA-256 fingerprints, HMAC signatures,
+  and tamper detection as the basis for later validation metrics.
+- Append-only human review history for replenishment suggestions, including
+  reviewed/on-hold decisions, required hold notes, evidence snapshots,
+  superseded-review detection, and clinic isolation without automatic buying.
+- Tenant-scoped 90-day product demand signals in smart replenishment, with
+  completed-sale counts, returned quantities, monthly averages, safe purchase
+  prefill metadata, and no automatic quantity adjustment.
+- Supplier/product observations for recent received purchases, including
+  delivery count, received quantity, weighted cost, and valid lead-time samples
+  without automatic supplier ranking or promised-date claims.
+- Explainable stock coverage and rupture signals derived from current balance,
+  net daily demand, and observed supplier lead time, including explicit
+  insufficient-data states and no automatic purchase adjustment.
+- Evidence-validity indicators for backup and runtime probes, including safe
+  expiration deadlines, near-expiry warnings, invalid future-date detection,
+  and the same privacy-safe metadata in the readiness JSON report.
+- Permission-aware guided release plan in the Operations Center, translating
+  each current gate into a safe next step, suggested responsibility, and direct
+  interface anchor without executing changes or automating human approval.
+- Unified, read-only operational timeline for runtime probes, restore evidence,
+  smoke checks, and release decisions, with clinic/release filters and private
+  notes, hashes, paths, and evidence contents excluded from the interface.
+- Sanitized restore-evidence intake in the Operations Center, with a 512 KB
+  JSON boundary, freshness/shape validation, append-only tenant/release history,
+  duplicate detection, and a separate execution permission.
+- Interface-assisted runtime probe preparation and verification with an
+  append-only, clinic/release-scoped execution history and private evidence
+  output shared with the CLI release gate.
+- Protected Operations Center with shared CLI/UI release diagnostics, safe
+  backup/runtime evidence discovery, an append-only clinic-scoped smoke
+  checklist, evidence-bound human decisions, stale-decision detection, and
+  print-friendly/no-cache JSON reports.
+- Tenant-safe guided onboarding coverage in the Implementation assistant,
+  derived from the latest successful execution of each supported import block.
+- Read-only onboarding data-quality review for completed import blocks, with
+  transparent pending-record counts and the same accessible-clinic boundary.
+- Append-only clinic pilot checklist with attributed completion and reopening
+  decisions for data review, quality, access, backup, and training.
+- Versioned clinic pilot-release plans with operational and support owners,
+  planned date, functional scope, release notes, and attributed revisions.
+- Consolidated pilot-readiness gates with explicit human approval or hold,
+  immutable evidence snapshots, SHA-256 binding, and stale-decision detection.
+- Public no-cache release identity endpoint backed by a normalized full Git
+  SHA, with Render runtime detection and production release-gate validation.
+- End-to-end runtime operations probe that carries a synthetic persistent
+  storage sentinel through the real asynchronous queue, removes its temporary
+  artifacts after verification, and supplies fresh evidence to the release gate.
+- Read-only backup snapshot and isolated restore verification commands with
+  privacy-safe control totals, JSON evidence, and an evidence-aware release gate.
+- Tenant-scoped administrative audit trail for collaborator access and clinic
+  branding changes, with filtered read-only history and password redaction.
+- Clinic-scoped animal icon branding beside the VetFlow sidebar title, with
+  automatic species-based resolution, manual selection, an off mode, and a
+  dedicated administrator permission.
 - Root README with product overview, stack, setup, validation, and documentation links.
 - Root project status file.
 - Root agent guidance file.
@@ -56,6 +545,7 @@ This project follows the spirit of Keep a Changelog, with one practical adjustme
 - Release-readiness command covering application configuration, database,
   migrations, logging, queue, storage, and production backup confirmation.
 - Operational release checklist with rollback gates and smoke tests.
+
 - Explainable stock replenishment suggestions that combine current balance,
   minimum stock, and the last 180 days of received purchase history, with
   priority, confidence, supplier/cost context, and purchase-entry prefill.
@@ -64,8 +554,64 @@ This project follows the spirit of Keep a Changelog, with one practical adjustme
   smoke-test, and rollback procedures.
 - Disabled-by-default authenticated queue cron endpoint and bounded queue-drain
   command for low-volume shared-hosting staging.
+- Sales profitability report with period and item-type filters, proportional
+  sale-discount allocation, return-adjusted revenue and cost, category/item
+  breakdowns, and missing-cost or negative-margin alerts.
+- Assisted appointment reminder queue with prepared WhatsApp messages, contact
+  outcome tracking, appointment confirmation/cancellation synchronization,
+  destination snapshots, and clinic-scoped audit history.
+- Expandable permission-aware sidebar navigation grouped by clinical care,
+  agenda, sales and services, stock and purchasing, finance, catalogs, and
+  administration.
+- Extensible species and breed catalog for companion, exotic, wildlife, aquatic,
+  and large-animal care, with clinic-owned `Other` entries and structured
+  patient links that preserve legacy text snapshots.
+- Species-aware coat and pattern catalog covering coats, plumage, coloration,
+  and morphs, with automatic form filtering, clinic-owned `Other` entries,
+  structured patient links, search, and catalog navigation.
+- Searchable pathology catalog for companion, production, exotic, wildlife,
+  and aquatic species, with clinic-owned additions, automatic species
+  filtering, tenant-safe medical-record links, and preservation of the
+  free-text diagnosis.
+- Clinic-scoped hospitalization workflow for admissions, discharge records,
+  accommodation, operational follow-up, and patient-profile history without
+  altering the original medical record.
+- Structured clinical prescriptions linked to medical records, with repeatable
+  medication instructions, draft review, immutable finalization, auditable
+  cancellation, print layout, dedicated permission, and patient-profile
+  integration.
+- Tenant-safe exam results linked to structured requests, with reviewable
+  drafts, immutable finalization, auditable cancellation, source-request
+  protection, and an explicit no-automatic-interpretation boundary.
+- Append-only hospitalization evolutions with observation time, author,
+  optional vital-sign snapshots, tenant isolation, and write protection after
+  discharge or cancellation.
+- Auditable patient clinical alerts with active/resolved states, required
+  resolution notes, tenant isolation, and active visibility in the patient
+  profile, medical record, prescription, and hospitalization flows without
+  automatic severity or interpretation.
+- Permission-aware patient clinical timeline that orders appointments,
+  medical records, exam results, prescriptions, vaccinations,
+  hospitalization events/evolutions, and clinical alerts without duplicating
+  or interpreting their source records.
+
+### Fixed
+
+- Cashier return totals now use the partial/full return events recorded in the
+  selected period, so a fully returned sale remains visible as a return after
+  its status changes from completed to returned.
+- Production migrations: the Hostinger Cron Job now calls `artisan` by its
+  absolute path (`migrate --force --seed`). The previous `cd ... && ...`
+  command never ran because hPanel escapes `&`, which left the September
+  migrations pending and broke the PDV, cash, package and commission pages.
+  The runbook documents the hPanel command rules.
+- Weekly schedule queries now include dated events on the final day of the
+  displayed range across SQLite, MySQL, and PostgreSQL date representations.
 
 ### Changed
+
+- Patient taxonomy administration now uses global accent-insensitive
+  alphabetical ordering and history-aware back navigation with safe fallbacks.
 
 - Filled the previously empty engineering process document with the current development workflow.
 - Replaced the database overview with a migration-aligned current model summary.

@@ -3,6 +3,8 @@
 namespace App\Modules\Products\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
+use Illuminate\Validation\Validator;
 
 class StoreProductRequest extends FormRequest
 {
@@ -14,22 +16,39 @@ class StoreProductRequest extends FormRequest
     protected function prepareForValidation(): void
     {
         $this->merge([
+            'clinic_id' => $this->user()?->clinic_id ?? $this->input('clinic_id'),
             'cost_price' => $this->normalizeDecimalValue($this->input('cost_price')),
             'sale_price' => $this->normalizeDecimalValue($this->input('sale_price')),
             'stock_quantity' => $this->normalizeDecimalValue($this->input('stock_quantity')),
             'minimum_stock' => $this->normalizeDecimalValue($this->input('minimum_stock')),
+            'scale_code' => ($scaleCode = preg_replace('/\D+/', '', (string) $this->input('scale_code'))) !== '' ? $scaleCode : null,
         ]);
     }
 
     public function rules(): array
     {
         return [
-            'clinic_id' => ['nullable', 'integer', 'exists:clinics,id'],
+            'clinic_id' => [
+                'required',
+                'integer',
+                Rule::exists('clinics', 'id')
+                    ->where('active', true)
+                    ->whereNull('deleted_at'),
+            ],
             'name' => ['required', 'string', 'max:255'],
             'category' => ['nullable', 'string', 'max:255'],
             'brand' => ['nullable', 'string', 'max:255'],
             'manufacturer' => ['nullable', 'string', 'max:255'],
             'sku' => ['nullable', 'string', 'max:255'],
+            'scale_code' => [
+                'nullable',
+                'digits_between:1,12',
+                Rule::unique('products', 'scale_code')
+                    ->where(fn ($query) => $query
+                        ->where('clinic_id', $this->input('clinic_id'))
+                        ->whereNull('deleted_at'))
+                    ->ignore($this->route('product')),
+            ],
             'barcode' => ['nullable', 'string', 'max:255'],
             'gtin' => ['nullable', 'string', 'max:32'],
             'description' => ['nullable', 'string'],
@@ -48,15 +67,29 @@ class StoreProductRequest extends FormRequest
         ];
     }
 
+    public function after(): array
+    {
+        return [
+            function (Validator $validator): void {
+                if ($this->filled('scale_code') && mb_strtolower(trim((string) $this->input('unit'))) !== 'kg') {
+                    $validator->errors()->add('unit', 'Produtos com código de balança devem usar a unidade kg.');
+                }
+            },
+        ];
+    }
+
     public function messages(): array
     {
         return [
             'name.required' => 'Informe o nome do produto.',
+            'clinic_id.required' => 'Selecione a clinica do produto.',
             'clinic_id.exists' => 'A clinica informada nao foi encontrada.',
             'cost_price.numeric' => 'Informe um custo valido.',
             'sale_price.numeric' => 'Informe um preco de venda valido.',
             'stock_quantity.numeric' => 'Informe uma quantidade em estoque valida.',
             'minimum_stock.numeric' => 'Informe um estoque minimo valido.',
+            'scale_code.digits_between' => 'O código da balança deve ter de 1 a 12 números.',
+            'scale_code.unique' => 'Este código da balança já está vinculado a outro produto desta clínica.',
             'image_file.image' => 'Envie uma imagem valida para o produto.',
             'image_file.max' => 'A imagem do produto pode ter no maximo 4 MB.',
         ];

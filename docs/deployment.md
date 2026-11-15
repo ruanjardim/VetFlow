@@ -3,8 +3,11 @@
 This is a production-readiness guide for VetFlow. It documents the intended
 deployment concerns without locking the project to one hosting provider.
 
-Provider-specific staging instructions live in the
-[KingHost staging runbook](deployment/kinghost-staging.md).
+The active production environment is Hostinger/hPanel at
+`https://vetflowsys.com.br`; use the
+[Hostinger production runbook](deployment/hostinger-production.md) for all
+production changes. The KingHost document is retained only as a historical
+staging option and is not the source of truth for current production.
 
 ## Required Runtime
 
@@ -15,8 +18,8 @@ Provider-specific staging instructions live in the
 - Node/Vite assets built before release.
 - A persistent database, preferably MySQL or MariaDB for production.
 - A persistent storage disk for uploaded product images and future documents.
-- A queue worker, or the explicitly bounded staging cron bridge documented for
-  a provider that cannot supervise a permanent worker.
+- A queue worker, or the bounded Hostinger CLI Cron Job used by production when
+  the hosting plan cannot supervise a permanent worker.
 
 ## Environment
 
@@ -33,6 +36,7 @@ QUEUE_CONNECTION=database
 FILESYSTEM_DISK=local
 VETFLOW_SEED_DEMO_USER=false
 VETFLOW_QUEUE_MODE=worker
+VETFLOW_RELEASE_SHA=<full-40-character-git-sha>
 ```
 
 Generate a real `APP_KEY` during provisioning:
@@ -51,6 +55,8 @@ npm ci
 npm run build
 php artisan migrate --force
 php artisan db:seed --class=AuthorizationSeeder --force
+php artisan db:seed --class=SaasPlanSeeder --force
+php artisan db:seed --class=LegalDocumentSeeder --force
 php artisan config:cache
 php artisan route:cache
 php artisan view:cache
@@ -71,6 +77,12 @@ Laravel filesystem. In production:
 - Run `AuthorizationSeeder` after migrations to synchronize permissions and
   standard role presets. It is idempotent and should not be replaced by manual
   role edits.
+- Run `SaasPlanSeeder` after the SaaS migrations to create missing feature
+  definitions and example commercial plans. Existing plan edits are retained.
+- Run `LegalDocumentSeeder` after the commercial-governance migration. It creates
+  only explicit non-effective drafts and never publishes or accepts a document.
+- Existing clinics are migrated to the internal compatibility plan. Reassign
+  them to commercial plans only after reviewing the intended entitlements.
 - Back up the database before every production migration.
 - Keep `clinic_id` nullable only where the code intentionally supports global
   records or historical migration state.
@@ -82,17 +94,33 @@ Laravel filesystem. In production:
 Run the automated runtime check after migrations and caches are ready:
 
 ```bash
-php artisan vetflow:release:check --backup-confirmed
+php artisan vetflow:runtime:probe
+php artisan vetflow:runtime:probe --verify --probe=<ULID> \
+  --evidence=/secure/evidence/runtime-evidence.json
+php artisan vetflow:release:check \
+  --runtime-evidence=/secure/evidence/runtime-evidence.json \
+  --backup-evidence=/secure/evidence/restore-evidence.json
 ```
 
-Use `--backup-confirmed` only after an operator has verified that a restorable
-database backup exists for the release. The command also checks the application
+Follow the [backup restore drill](deployment/backup-restore-drill.md) and prefer
+its generated evidence. Use `--backup-confirmed` only as a documented manual
+fallback after an operator has verified that a restorable database backup
+exists for the release. The command also checks the application
 key, production debug/HTTPS settings, database connectivity, pending
 migrations, logging, queue configuration, the `jobs` table when applicable,
-and a temporary write/delete probe on the configured storage disk.
+and a temporary write/delete probe on the configured storage disk. The
+[runtime operations probe](deployment/runtime-operations-probe.md) separately
+proves that a real asynchronous job can read the prepared persistent marker and
+write a verifiable result.
+
+The release gate also requires a complete Git SHA in staging and production.
+Set `VETFLOW_RELEASE_SHA` in a generic provider. On Render, the application
+automatically falls back to the platform-provided `RENDER_GIT_COMMIT`.
 
 After deployment:
 
+- request `/up` and confirm a successful health response;
+- request `/ops/release` and compare `release.sha` with the intended commit;
 - login as an active administrator;
 - confirm clinic selection/context;
 - run one product lookup without requiring paid providers;
@@ -101,9 +129,14 @@ After deployment:
 - create a completed sale and verify stock and finance records;
 - review logs for provider, storage, and mail failures.
 
-When `VETFLOW_QUEUE_MODE=cron`, the runtime check also requires the database
-queue, an enabled operational endpoint, a token of at least 32 characters, and
-execution limits below the hosting request timeout.
+When `VETFLOW_QUEUE_MODE=cron`, choose `VETFLOW_QUEUE_CRON_TRANSPORT=cli` for a
+provider Cron Job that can execute Artisan directly. The release gate then
+requires the database queue and safe execution limits while the HTTP endpoint
+stays closed. Use `http` only when direct CLI execution is unavailable; that
+transport additionally requires an enabled operational endpoint, a token of at
+least 32 characters, and a valid header.
 
 Use the complete [release checklist](release-checklist.md) to record the
 pre-release validation, rollback decision, smoke tests, and release evidence.
+During an outage or suspected compromise, follow the
+[Hostinger incident-response runbook](deployment/hostinger-incident-response.md).

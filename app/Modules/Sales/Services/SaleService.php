@@ -3,11 +3,16 @@
 namespace App\Modules\Sales\Services;
 
 use App\Core\Base\BaseService;
+use App\Modules\Commissions\Services\GroomingCommissionService;
+use App\Modules\Financial\Models\FinancialCategory;
 use App\Modules\Financial\Models\FinancialTransaction;
+use App\Modules\Financial\Services\FinancialCategoryService;
 use App\Modules\Inventory\Models\InventoryMovement;
 use App\Modules\Inventory\Services\InventoryMovementService;
 use App\Modules\Inventory\Services\ProductLotService;
+use App\Modules\PetShopServices\Models\PetPackage;
 use App\Modules\PetShopServices\Models\PetShopService;
+use App\Modules\PetShopServices\Services\PetPackageService;
 use App\Modules\Products\Models\Product;
 use App\Modules\Sales\Contracts\SaleRepositoryInterface;
 use App\Modules\Sales\Models\CashRegisterClosure;
@@ -15,56 +20,102 @@ use App\Modules\Sales\Models\Sale;
 use App\Modules\Sales\Models\SaleEvent;
 use App\Modules\Sales\Models\SaleItem;
 use App\Modules\Sales\Models\SalePayment;
+use App\Modules\Sales\Support\SaleType;
 use App\Modules\ServiceOrders\Models\ServiceOrder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 class SaleService extends BaseService
 {
+    public const PAYMENT_METHOD_LABELS = [
+        'cash' => 'Dinheiro',
+        'pix' => 'Pix',
+        'debit_card' => 'Cartao debito',
+        'credit_card' => 'Cartao credito',
+        'transfer' => 'Transferencia',
+        'other' => 'Outro',
+    ];
+
     public function __construct(
         SaleRepositoryInterface $repository,
         private readonly InventoryMovementService $inventoryMovementService,
-        private readonly ProductLotService $lotService
+        private readonly ProductLotService $lotService,
+        private readonly FinancialCategoryService $financialCategories
     ) {
         $this->repository = $repository;
     }
 
     public function create(array $data): Model
     {
-        return DB::transaction(function () use ($data) {
-            $items = $data['items'] ?? [];
-            $payments = $data['payments'] ?? [];
-            unset($data['items'], $data['payments']);
+        if ($existing = $this->idempotentSale($data)) {
+            return $existing;
+        }
 
-            $serviceOrder = $this->serviceOrderWithItems($data['service_order_id'] ?? null);
-
-            if ($serviceOrder && ! $this->hasBillableItems($items)) {
-                $items = $this->itemsFromServiceOrder($serviceOrder);
-
-                if ((float) ($data['discount_total'] ?? 0) <= 0) {
-                    $data['discount_total'] = (float) $serviceOrder->discount_total;
+        try {
+            return DB::transaction(function () use ($data) {
+                if ($existing = $this->idempotentSale($data, true)) {
+                    return $existing;
                 }
+
+                $items = $data['items'] ?? [];
+                $payments = $data['payments'] ?? [];
+                $changeAsCredit = (bool) ($data['change_as_credit'] ?? false);
+                unset($data['items'], $data['payments'], $data['pay_later'], $data['change_as_credit']);
+
+                $serviceOrder = $this->serviceOrderWithItems($data['service_order_id'] ?? null);
+
+                if ($serviceOrder && ! $this->hasBillableItems($items)) {
+                    $items = $this->itemsFromServiceOrder($serviceOrder);
+
+                    if ((float) ($data['discount_total'] ?? 0) <= 0) {
+                        $data['discount_total'] = (float) $serviceOrder->discount_total;
+                    }
+                }
+
+                $data = SaleType::normalizeDelivery($data);
+                $data['code'] = $this->nextCode();
+                $data['sold_at'] = $data['sold_at'] ?? now();
+                $data['source'] = $data['source'] ?? 'pdv';
+                $data['seller_user_id'] = $data['seller_user_id'] ?? auth()->id();
+                $data['discount_total'] = (float) ($data['discount_total'] ?? 0);
+                $data['additions_total'] = (float) ($data['additions_total'] ?? 0);
+
+                /** @var Sale $sale */
+                $sale = $this->repository->create($data);
+
+                $this->syncItems($sale, $items);
+                $this->syncPayments($sale, $payments);
+                $this->recalculateTotals($sale);
+                $this->keepChangeAsCredit($sale->refresh(), $changeAsCredit);
+                $this->applyCompletionEffects($sale->refresh());
+
+                if ($sale->source === 'pdv_offline') {
+                    $this->recordSaleEvent(
+                        $sale->refresh(),
+                        'offline_synced',
+                        amount: (float) $sale->total,
+                        reason: 'Venda capturada sem conexão e sincronizada',
+                        metadata: [
+                            'client_request_id' => $sale->client_request_id,
+                            'offline_device_id' => $sale->offline_device_id,
+                            'offline_captured_at' => optional($sale->offline_captured_at)?->toIso8601String(),
+                            'offline_synced_at' => optional($sale->offline_synced_at)?->toIso8601String(),
+                        ]
+                    );
+                }
+
+                return $sale->refresh();
+            });
+        } catch (QueryException $exception) {
+            if ($existing = $this->idempotentSale($data)) {
+                return $existing;
             }
 
-            $data['code'] = $this->nextCode();
-            $data['sold_at'] = $data['sold_at'] ?? now();
-            $data['source'] = $data['source'] ?? 'pdv';
-            $data['seller_user_id'] = $data['seller_user_id'] ?? auth()->id();
-            $data['discount_total'] = (float) ($data['discount_total'] ?? 0);
-            $data['additions_total'] = (float) ($data['additions_total'] ?? 0);
-
-            /** @var Sale $sale */
-            $sale = $this->repository->create($data);
-
-            $this->syncItems($sale, $items);
-            $this->syncPayments($sale, $payments);
-            $this->recalculateTotals($sale);
-            $this->applyCompletionEffects($sale->refresh());
-
-            return $sale->refresh();
-        });
+            throw $exception;
+        }
     }
 
     public function update(int $id, array $data): Model
@@ -72,14 +123,25 @@ class SaleService extends BaseService
         return DB::transaction(function () use ($id, $data) {
             $items = $data['items'] ?? [];
             $payments = $data['payments'] ?? [];
-            unset($data['items'], $data['payments']);
+            $changeAsCredit = (bool) ($data['change_as_credit'] ?? false);
+            unset($data['items'], $data['payments'], $data['pay_later'], $data['change_as_credit']);
 
             /** @var Sale $sale */
             $sale = $this->repository->findOrFail($id);
             $effectsAlreadyApplied = $sale->stock_applied || $sale->financial_applied;
 
             if ($effectsAlreadyApplied) {
-                unset($data['discount_total'], $data['status']);
+                // Totals are frozen once stock/financial effects exist, and the
+                // delivery data is part of that total.
+                unset(
+                    $data['discount_total'],
+                    $data['status'],
+                    $data['sale_type'],
+                    $data['delivery_fee'],
+                    $data['delivery_address']
+                );
+            } else {
+                $data = SaleType::normalizeDelivery($data);
             }
 
             $serviceOrder = $this->serviceOrderWithItems($data['service_order_id'] ?? null);
@@ -106,6 +168,7 @@ class SaleService extends BaseService
                 $this->syncItems($sale->refresh(), $items);
                 $this->syncPayments($sale->refresh(), $payments);
                 $this->recalculateTotals($sale->refresh());
+                $this->keepChangeAsCredit($sale->refresh(), $changeAsCredit);
                 $this->applyCompletionEffects($sale->refresh());
             }
 
@@ -159,6 +222,10 @@ class SaleService extends BaseService
                 ]);
             }
 
+            if ($sale->status === 'completed') {
+                $this->refundCancelledSale($sale, $reason);
+            }
+
             $sale->payments()->update(['status' => 'cancelled']);
 
             if ($sale->financialTransaction) {
@@ -180,6 +247,20 @@ class SaleService extends BaseService
                         'status' => 'open',
                         'closed_at' => null,
                     ]);
+
+                app(GroomingCommissionService::class)->syncForOrder((int) $sale->service_order_id);
+            }
+
+            if ($sale->pet_package_id) {
+                $petPackage = PetPackage::query()->find($sale->pet_package_id);
+
+                if ($petPackage) {
+                    app(PetPackageService::class)->cancel($petPackage, 'venda '.$sale->code.' cancelada');
+                }
+            }
+
+            if ($sale->sale_quote_id) {
+                app(SaleQuoteService::class)->reopenAfterCancelledSale($sale);
             }
 
             $sale->update([
@@ -296,9 +377,40 @@ class SaleService extends BaseService
             $refundAmount = max(0, min($requestedRefund, $returnedValue));
             $refundMethod = $data['refund_method'] ?? 'cash';
 
+            if ($refundAmount > 0 && $refundMethod === CustomerBalanceService::CREDIT_METHOD) {
+                if (! $sale->tutor_id) {
+                    throw ValidationException::withMessages([
+                        'refund_method' => 'Devolução em crédito precisa de cliente identificado na venda.',
+                    ]);
+                }
+
+                app(CustomerBalanceService::class)->addEntry((int) $sale->tutor_id, $sale->clinic_id ? (int) $sale->clinic_id : null, 'return', $refundAmount, [
+                    'sale_id' => $sale->id,
+                    'description' => 'Devolução da venda '.$sale->code,
+                ]);
+            } elseif ($refundAmount > 0) {
+                $cashSessions = app(CashSessionService::class);
+                $cashSessions->recordRefund(
+                    $cashSessions->requireOpenSession(
+                        auth()->user(),
+                        $sale->clinic_id ? (int) $sale->clinic_id : null,
+                        'refund_amount',
+                        'Abra o seu caixa para registrar o estorno ao cliente.'
+                    ),
+                    $sale,
+                    $refundAmount,
+                    $refundMethod,
+                    // The machine or account the sale was paid with, when the
+                    // refund goes back the same way.
+                    $sale->payments->where('status', 'paid')->firstWhere('method', $refundMethod)?->payment_method_id,
+                    $reason
+                );
+            }
+
             if ($refundAmount > 0) {
                 FinancialTransaction::query()->create([
                     'clinic_id' => $sale->clinic_id,
+                    'financial_category_id' => $this->financialCategories->idForCode($sale->clinic_id, FinancialCategory::CODE_SALE_REFUNDS),
                     'type' => 'expense',
                     'description' => 'Estorno venda '.$sale->code,
                     'amount' => $refundAmount,
@@ -343,6 +455,12 @@ class SaleService extends BaseService
                 'refunded_total' => $newRefundedTotal,
             ]);
 
+            if ($sale->service_order_id) {
+                app(GroomingCommissionService::class)->syncForSaleReturns(
+                    $sale->refresh()->load('items')
+                );
+            }
+
             $this->recordSaleEvent(
                 $sale->refresh(),
                 $allReturned ? 'returned' : 'partial_return',
@@ -363,19 +481,108 @@ class SaleService extends BaseService
         });
     }
 
+    public function addPayment(int $id, array $data): Sale
+    {
+        return DB::transaction(function () use ($id, $data) {
+            /** @var Sale $sale */
+            $sale = Sale::query()
+                ->with(['items', 'payments', 'financialTransaction'])
+                ->findOrFail($id);
+
+            if ($sale->status !== 'completed' || (float) $sale->return_total > 0) {
+                throw ValidationException::withMessages([
+                    'sale' => 'Registre recebimentos apenas para vendas concluidas sem devolucoes.',
+                ]);
+            }
+
+            $outstanding = round(max(0, (float) $sale->total - (float) $sale->paid_total), 2);
+            $amount = round((float) $data['amount'], 2);
+
+            if ($outstanding <= 0) {
+                throw ValidationException::withMessages([
+                    'sale' => 'Esta venda ja esta totalmente quitada.',
+                ]);
+            }
+
+            if ($amount > $outstanding) {
+                throw ValidationException::withMessages([
+                    'amount' => 'O recebimento nao pode ser maior que o saldo pendente de R$ '.number_format($outstanding, 2, ',', '.').'.',
+                ]);
+            }
+
+            $data['paid_at'] = $data['paid_at'] ?? now();
+            $usesCredit = ($data['method'] ?? null) === CustomerBalanceService::CREDIT_METHOD;
+
+            if ($usesCredit) {
+                if (! $sale->tutor_id) {
+                    throw ValidationException::withMessages(['payment_method_id' => 'Pagamento com crédito precisa de cliente identificado na venda.']);
+                }
+
+                app(CustomerBalanceService::class)->ensureCredit((int) $sale->tutor_id, $amount, 'amount');
+                $data = array_merge($data, [
+                    'payment_method_id' => null,
+                    'fee_amount' => 0,
+                    'net_amount' => $amount,
+                    'installments' => 1,
+                    'cash_session_id' => null,
+                ]);
+            } else {
+                $data = app(PaymentMethodService::class)->snapshot($sale->clinic_id, $data);
+                $data['cash_session_id'] = app(CashSessionService::class)
+                    ->requireOpenSession(auth()->user(), $sale->clinic_id ? (int) $sale->clinic_id : null, 'payment_method_id')
+                    ->id;
+            }
+
+            $payment = $sale->payments()->create($this->paymentAttributes($data, $amount, 'paid'));
+
+            if ($usesCredit) {
+                app(CustomerBalanceService::class)->addEntry((int) $sale->tutor_id, $sale->clinic_id ? (int) $sale->clinic_id : null, 'sale_payment', -1 * $amount, [
+                    'sale_id' => $sale->id,
+                    'sale_payment_id' => $payment->id,
+                    'description' => 'Recebimento da venda '.$sale->code,
+                ]);
+            }
+
+            $this->recalculateTotals($sale->refresh());
+
+            $sale = $sale->refresh()->load('financialTransaction');
+            $this->syncFinancialTransactionPaymentStatus($sale, $payment->paid_at);
+
+            $this->recordSaleEvent(
+                $sale,
+                'payment_received',
+                null,
+                null,
+                $amount,
+                'Recebimento registrado',
+                null,
+                [
+                    'payment_id' => $payment->id,
+                    'method' => $payment->method,
+                    'payment_method_id' => $payment->payment_method_id,
+                    'reference' => $payment->reference,
+                ],
+                false
+            );
+
+            return $sale->refresh();
+        });
+    }
+
     public function cashierSummary(?string $from = null, ?string $to = null): array
     {
         [$start, $end] = $this->cashierRange($from, $to);
 
         $sales = Sale::query()
-            ->with(['items', 'payments', 'tutor', 'patient', 'serviceOrder'])
+            ->with(['items', 'payments', 'tutor', 'patient', 'serviceOrder', 'seller'])
             ->where('status', 'completed')
             ->whereBetween('sold_at', [$start, $end])
             ->latest('sold_at')
             ->get();
 
         $payments = SalePayment::query()
-            ->with('sale')
+            ->with(['sale.seller', 'paymentMethod'])
+            ->where('method', '!=', CustomerBalanceService::CREDIT_METHOD)
             ->whereBetween('paid_at', [$start, $end])
             ->whereHas('sale', fn ($query) => $query->where('status', 'completed'))
             ->where('status', 'paid')
@@ -383,6 +590,15 @@ class SaleService extends BaseService
 
         $refundEvents = SaleEvent::query()
             ->where('event_type', 'refund')
+            ->whereHas('sale')
+            ->whereBetween('occurred_at', [$start, $end])
+            ->get()
+            // A return given back as customer credit moves no money.
+            ->reject(fn (SaleEvent $event) => ($event->metadata['refund_method'] ?? null) === CustomerBalanceService::CREDIT_METHOD)
+            ->values();
+
+        $returnEvents = SaleEvent::query()
+            ->whereIn('event_type', ['partial_return', 'returned'])
             ->whereHas('sale')
             ->whereBetween('occurred_at', [$start, $end])
             ->get();
@@ -403,6 +619,7 @@ class SaleService extends BaseService
         $total = $sales->sum(fn (Sale $sale) => (float) $sale->total);
         $paid = $sales->sum(fn (Sale $sale) => (float) $sale->paid_total);
         $received = $payments->sum(fn (SalePayment $payment) => (float) $payment->amount);
+        $cardFees = $payments->sum(fn (SalePayment $payment) => (float) $payment->fee_amount);
         $cashReceived = $payments
             ->where('method', 'cash')
             ->sum(fn (SalePayment $payment) => (float) $payment->amount);
@@ -412,6 +629,8 @@ class SaleService extends BaseService
         $refunds = $refundEvents->sum(fn (SaleEvent $event) => (float) $event->amount);
         $change = $sales->sum(fn (Sale $sale) => (float) $sale->change_total);
         $pending = $sales->sum(fn (Sale $sale) => max(0, (float) $sale->total - (float) $sale->paid_total));
+        $paymentReconciliation = $this->paymentReconciliation($payments, $refundEvents, $change);
+        $reconciledTotal = collect($paymentReconciliation)->sum('expected');
 
         return [
             'period' => [
@@ -428,20 +647,25 @@ class SaleService extends BaseService
                 'discount' => $sales->sum(fn (Sale $sale) => (float) $sale->discount_total),
                 'additions' => $sales->sum(fn (Sale $sale) => (float) $sale->additions_total),
                 'total' => $total,
-                'returns' => $sales->sum(fn (Sale $sale) => (float) $sale->return_total),
+                'returns' => $returnEvents->sum(fn (SaleEvent $event) => (float) $event->amount),
                 'refunds' => $refunds,
                 'net_received' => max(0, $received - $refunds),
                 'paid_on_sales' => $paid,
                 'received' => $received,
+                'card_fees' => round((float) $cardFees, 2),
+                'net_of_fees' => round($received - $cardFees, 2),
                 'cash_received' => $cashReceived,
                 'cash_refunds' => $cashRefunds,
                 'non_cash_received' => max(0, $received - $cashReceived),
                 'change' => $change,
                 'cash_drawer' => max(0, $cashReceived - $change - $cashRefunds),
+                'reconciled_total' => $reconciledTotal,
                 'pending' => $pending,
                 'average_ticket' => $sales->count() > 0 ? $total / $sales->count() : 0,
             ],
             'payments_by_method' => $this->paymentsByMethod($payments),
+            'payment_reconciliation' => $paymentReconciliation,
+            'seller_performance' => $this->sellerPerformance($sales, $payments),
             'recent_sales' => $sales->take(20)->values(),
             'open_sales' => $openSales,
             'top_items' => $this->topSoldItems($sales),
@@ -462,11 +686,31 @@ class SaleService extends BaseService
             $periodFrom = Carbon::parse($period['from'])->startOfDay();
             $periodTo = Carbon::parse($period['to'])->endOfDay();
             $expectedCash = round((float) $stats['cash_drawer'], 2);
-            $expectedTotal = round((float) $stats['net_received'], 2);
-            $countedCash = round((float) ($data['counted_cash'] ?? 0), 2);
-            $countedTotal = round((float) ($data['counted_total'] ?? $expectedTotal), 2);
+            $expectedTotal = round((float) $stats['reconciled_total'], 2);
+            $hasMethodReconciliation = isset($data['counted_methods']) && is_array($data['counted_methods']);
+            $methodReconciliation = collect($summary['payment_reconciliation'])
+                ->map(function (array $method) use ($data, $hasMethodReconciliation) {
+                    $counted = $hasMethodReconciliation
+                        ? (float) ($data['counted_methods'][$method['method']] ?? 0)
+                        : ($method['method'] === 'cash'
+                            ? (float) ($data['counted_cash'] ?? 0)
+                            : (float) $method['expected']);
+
+                    return array_merge($method, [
+                        'counted' => round($counted, 2),
+                        'difference' => round($counted - (float) $method['expected'], 2),
+                    ]);
+                })
+                ->values()
+                ->all();
+            $countedCash = round((float) collect($methodReconciliation)->firstWhere('method', 'cash')['counted'], 2);
+            $countedTotal = $hasMethodReconciliation
+                ? round((float) collect($methodReconciliation)->sum('counted'), 2)
+                : round((float) ($data['counted_total'] ?? $expectedTotal), 2);
             $cashDifference = round($countedCash - $expectedCash, 2);
             $totalDifference = round($countedTotal - $expectedTotal, 2);
+            $methodsBalanced = collect($methodReconciliation)
+                ->every(fn (array $method) => abs((float) $method['difference']) < 0.01);
 
             return CashRegisterClosure::query()->create([
                 'clinic_id' => $data['clinic_id'] ?? null,
@@ -481,7 +725,9 @@ class SaleService extends BaseService
                 'expected_total' => $expectedTotal,
                 'counted_total' => $countedTotal,
                 'total_difference' => $totalDifference,
-                'status' => abs($cashDifference) < 0.01 && abs($totalDifference) < 0.01
+                'status' => abs($cashDifference) < 0.01
+                    && abs($totalDifference) < 0.01
+                    && (! $hasMethodReconciliation || $methodsBalanced)
                     ? 'balanced'
                     : 'difference',
                 'notes' => $data['notes'] ?? null,
@@ -493,6 +739,9 @@ class SaleService extends BaseService
                     'cash_received' => $stats['cash_received'],
                     'cash_refunds' => $stats['cash_refunds'],
                     'change' => $stats['change'],
+                    'payment_reconciliation_version' => 1,
+                    'payment_reconciliation' => $methodReconciliation,
+                    'reconciliation_source' => $hasMethodReconciliation ? 'by_method' : 'legacy_totals',
                 ],
             ]);
         });
@@ -507,7 +756,38 @@ class SaleService extends BaseService
                 continue;
             }
 
-            $sale->items()->create($normalized);
+            $saleItem = $sale->items()->create($normalized);
+            $catalogPrice = $normalized['metadata']['catalog_unit_price'] ?? null;
+
+            if ($sale->status === 'completed' && $catalogPrice !== null) {
+                $this->recordSaleEvent(
+                    $sale,
+                    'unit_price_adjusted',
+                    $saleItem->id,
+                    null,
+                    round(abs((float) $catalogPrice - (float) $normalized['unit_price']) * (float) $normalized['quantity'], 2),
+                    'Preço unitário alterado',
+                    (float) $normalized['quantity'],
+                    [
+                        'catalog_unit_price' => $catalogPrice,
+                        'charged_unit_price' => (float) $normalized['unit_price'],
+                        'user_id' => auth()->id(),
+                    ]
+                );
+            }
+
+            if ($sale->status === 'completed' && (float) $normalized['discount_total'] > 0) {
+                $this->recordSaleEvent(
+                    $sale,
+                    'item_discount',
+                    $saleItem->id,
+                    null,
+                    (float) $normalized['discount_total'],
+                    'Desconto no item',
+                    null,
+                    ['user_id' => auth()->id()]
+                );
+            }
         }
     }
 
@@ -548,6 +828,8 @@ class SaleService extends BaseService
         }
 
         $unitPrice = (float) ($unitPrice ?: 0);
+        $catalogUnitPrice = $product?->sale_price ?? $service?->base_price;
+        $priceAdjusted = $catalogUnitPrice !== null && abs($unitPrice - (float) $catalogUnitPrice) >= 0.005;
         $originalUnitPrice = (float) ($item['original_unit_price'] ?? $product?->sale_price ?? $service?->base_price ?? $unitPrice);
         $costUnitPrice = $type === 'product'
             ? (float) ($product?->cost_price ?? 0)
@@ -585,6 +867,7 @@ class SaleService extends BaseService
             'metadata' => array_filter([
                 'source' => $item['source'] ?? null,
                 'manual_description' => $type === 'custom',
+                'catalog_unit_price' => $priceAdjusted ? (float) $catalogUnitPrice : null,
             ], fn ($value) => $value !== null),
         ];
     }
@@ -641,27 +924,212 @@ class SaleService extends BaseService
 
     private function syncPayments(Sale $sale, array $payments): void
     {
-        foreach ($payments as $payment) {
-            $method = $payment['method'] ?? null;
-            $amount = (float) ($payment['amount'] ?? 0);
+        $paymentMethods = app(PaymentMethodService::class);
+        // Payments of a completed sale go to the operator's open cash
+        // session; suspended sales keep theirs out of any session.
+        $cashSessionId = $sale->status === 'completed' ? $this->currentCashSessionId($sale) : null;
+        $receivedInSession = false;
 
-            if (! $method || $amount <= 0) {
+        $credit = app(CustomerBalanceService::class);
+        $creditUsed = collect($payments)
+            ->filter(fn ($payment) => is_array($payment)
+                && ($payment['method'] ?? null) === CustomerBalanceService::CREDIT_METHOD
+                && ($payment['status'] ?? 'paid') === 'paid')
+            ->sum(fn (array $payment) => round((float) ($payment['amount'] ?? 0), 2));
+
+        if ($sale->status === 'completed' && $creditUsed > 0) {
+            if (! $sale->tutor_id) {
+                throw ValidationException::withMessages(['payments' => 'Pagamento com crédito precisa de cliente identificado.']);
+            }
+
+            $credit->ensureCredit((int) $sale->tutor_id, (float) $creditUsed);
+        }
+
+        foreach ($payments as $payment) {
+            $amount = round((float) ($payment['amount'] ?? 0), 2);
+
+            if ((empty($payment['method']) && empty($payment['payment_method_id'])) || $amount <= 0) {
                 continue;
             }
 
-            $sale->payments()->create([
-                'method' => $method,
-                'amount' => $amount,
-                'installments' => max(1, (int) ($payment['installments'] ?? 1)),
-                'card_brand' => $payment['card_brand'] ?? null,
-                'acquirer' => $payment['acquirer'] ?? null,
-                'paid_at' => $payment['paid_at'] ?? now(),
-                'reference' => $payment['reference'] ?? null,
-                'transaction_reference' => $payment['transaction_reference'] ?? $payment['reference'] ?? null,
-                'status' => $payment['status'] ?? 'paid',
-                'notes' => $payment['notes'] ?? null,
-            ]);
+            $status = $payment['status'] ?? 'paid';
+            $payment['paid_at'] = $status === 'paid' ? ($payment['paid_at'] ?? now()) : null;
+            $usesCredit = ($payment['method'] ?? null) === CustomerBalanceService::CREDIT_METHOD;
+            $payment = $usesCredit
+                ? array_merge($payment, ['payment_method_id' => null, 'fee_amount' => 0, 'net_amount' => $amount, 'installments' => 1])
+                : $paymentMethods->snapshot($sale->clinic_id, $payment);
+
+            if (empty($payment['method'])) {
+                continue;
+            }
+
+            // Customer credit is not money coming in, so it stays out of the
+            // cash session.
+            $payment['cash_session_id'] = $status === 'paid' && ! $usesCredit ? $cashSessionId : null;
+            $receivedInSession = $receivedInSession || $payment['cash_session_id'] !== null;
+
+            $salePayment = $sale->payments()->create($this->paymentAttributes($payment, $amount, $status));
+
+            if ($usesCredit && $status === 'paid' && $sale->status === 'completed') {
+                $credit->addEntry((int) $sale->tutor_id, $sale->clinic_id ? (int) $sale->clinic_id : null, 'sale_payment', -1 * $amount, [
+                    'sale_id' => $sale->id,
+                    'sale_payment_id' => $salePayment->id,
+                    'description' => 'Venda '.$sale->code,
+                ]);
+            }
         }
+
+        if ($receivedInSession) {
+            $sale->update(['cash_session_id' => $cashSessionId]);
+        }
+    }
+
+    /**
+     * The change of a completed sale kept as customer credit: the change is
+     * considered given and deposited back as credit, so the cash session
+     * stays balanced and the credit is not revenue until it is used.
+     */
+    private function keepChangeAsCredit(Sale $sale, bool $changeAsCredit): void
+    {
+        $change = round((float) $sale->change_total, 2);
+
+        if (! $changeAsCredit || $sale->status !== 'completed' || $change <= 0) {
+            return;
+        }
+
+        if (! $sale->tutor_id) {
+            throw ValidationException::withMessages(['change_as_credit' => 'Para guardar o troco como crédito, identifique o cliente.']);
+        }
+
+        $cashSessions = app(CashSessionService::class);
+        $session = $cashSessions->requireOpenSession(auth()->user(), $sale->clinic_id ? (int) $sale->clinic_id : null);
+        $movement = $cashSessions->recordCreditDeposit(
+            $session,
+            $change,
+            'cash',
+            app(PaymentMethodService::class)->defaultForKind($sale->clinic_id ? (int) $sale->clinic_id : null, 'cash')?->id,
+            'Troco guardado como crédito — venda '.$sale->code,
+            ['sale_id' => $sale->id, 'metadata' => ['tutor_id' => $sale->tutor_id]]
+        );
+
+        app(CustomerBalanceService::class)->addEntry((int) $sale->tutor_id, $sale->clinic_id ? (int) $sale->clinic_id : null, 'change', $change, [
+            'sale_id' => $sale->id,
+            'cash_session_id' => $session->id,
+            'description' => 'Troco da venda '.$sale->code,
+            'metadata' => ['cash_session_movement_id' => $movement->id],
+        ]);
+    }
+
+    /**
+     * Cancelling a completed sale gives back what the customer paid and did
+     * not get back yet (change and earlier return refunds deducted). The
+     * money leaves the canceller's open cash session, while the original
+     * payments stay in the session where they were received.
+     */
+    private function refundCancelledSale(Sale $sale, string $reason): void
+    {
+        $paid = $sale->payments->filter(fn (SalePayment $payment) => ($payment->status ?? 'paid') === 'paid');
+        $toRefund = round(max(0, (float) $paid->sum('amount') - (float) $sale->change_total - (float) $sale->refunded_total), 2);
+
+        if ($toRefund <= 0) {
+            return;
+        }
+
+        // The change came out of the cash received, so cash goes first and
+        // the customer credit used in the sale comes back last.
+        $order = fn (SalePayment $payment) => match ($payment->method) {
+            'cash' => 0,
+            CustomerBalanceService::CREDIT_METHOD => 2,
+            default => 1,
+        };
+        $changeLeft = (float) $sale->change_total;
+        $plan = [];
+
+        foreach ($paid->sortBy($order) as $payment) {
+            if ($toRefund <= 0) {
+                break;
+            }
+
+            $amount = (float) $payment->amount;
+
+            if ($payment->method === 'cash' && $changeLeft > 0) {
+                $deducted = min($amount, $changeLeft);
+                $amount -= $deducted;
+                $changeLeft -= $deducted;
+            }
+
+            $amount = round(min($amount, $toRefund), 2);
+
+            if ($amount <= 0) {
+                continue;
+            }
+
+            $plan[] = [$payment, $amount];
+            $toRefund = round($toRefund - $amount, 2);
+        }
+
+        $moneyBack = collect($plan)->filter(fn (array $step) => $step[0]->method !== CustomerBalanceService::CREDIT_METHOD);
+        $cashSessions = app(CashSessionService::class);
+        $session = $moneyBack->isNotEmpty()
+            ? $cashSessions->requireOpenSession(
+                auth()->user(),
+                $sale->clinic_id ? (int) $sale->clinic_id : null,
+                'sale',
+                'Abra o seu caixa para devolver ao cliente o valor desta venda.'
+            )
+            : null;
+
+        foreach ($plan as [$payment, $amount]) {
+            if ($payment->method === CustomerBalanceService::CREDIT_METHOD) {
+                app(CustomerBalanceService::class)->addEntry((int) $sale->tutor_id, $sale->clinic_id ? (int) $sale->clinic_id : null, 'cancellation', $amount, [
+                    'sale_id' => $sale->id,
+                    'sale_payment_id' => $payment->id,
+                    'description' => 'Venda '.$sale->code.' cancelada',
+                ]);
+
+                continue;
+            }
+
+            $cashSessions->recordRefund($session, $sale, $amount, (string) $payment->method, $payment->payment_method_id, $reason);
+        }
+    }
+
+    /**
+     * Open cash session of the logged operator in the sale clinic.
+     */
+    private function currentCashSessionId(Sale $sale): ?int
+    {
+        return app(CashSessionService::class)
+            ->currentFor(auth()->user(), $sale->clinic_id ? (int) $sale->clinic_id : null)
+            ?->id;
+    }
+
+    /**
+     * Columns of a sale payment from a row normalized by
+     * PaymentMethodService::snapshot().
+     *
+     * @param  array<string, mixed>  $payment
+     * @return array<string, mixed>
+     */
+    private function paymentAttributes(array $payment, float $amount, string $status): array
+    {
+        return [
+            'method' => $payment['method'],
+            'payment_method_id' => $payment['payment_method_id'] ?? null,
+            'cash_session_id' => $payment['cash_session_id'] ?? null,
+            'amount' => $amount,
+            'fee_amount' => $payment['fee_amount'] ?? 0,
+            'net_amount' => $payment['net_amount'] ?? $amount,
+            'installments' => max(1, (int) ($payment['installments'] ?? 1)),
+            'card_brand' => ($payment['card_brand'] ?? null) ?: null,
+            'acquirer' => ($payment['acquirer'] ?? null) ?: null,
+            'paid_at' => $payment['paid_at'] ?? null,
+            'expected_settlement_date' => $payment['expected_settlement_date'] ?? null,
+            'reference' => ($payment['reference'] ?? null) ?: null,
+            'transaction_reference' => ($payment['transaction_reference'] ?? null) ?: (($payment['reference'] ?? null) ?: null),
+            'status' => $status,
+            'notes' => $payment['notes'] ?? null,
+        ];
     }
 
     private function recalculateTotals(Sale $sale): void
@@ -671,8 +1139,11 @@ class SaleService extends BaseService
         $subtotal = (float) $sale->items->sum(fn (SaleItem $item) => $this->saleItemNetTotal($item));
         $discount = (float) ($sale->discount_total ?? 0);
         $additions = (float) ($sale->additions_total ?? 0);
-        $total = max(0, $subtotal + $additions - $discount);
-        $paid = (float) $sale->payments->sum('amount');
+        $deliveryFee = (float) ($sale->delivery_fee ?? 0);
+        $total = max(0, $subtotal + $additions + $deliveryFee - $discount);
+        $paid = (float) $sale->payments
+            ->filter(fn (SalePayment $payment) => ($payment->status ?? 'paid') === 'paid')
+            ->sum('amount');
         $itemCostTotal = (float) $sale->items->sum(fn ($item) => (float) $item->cost_unit_price * (float) $item->quantity);
         $grossProfit = round($total - $itemCostTotal, 2);
 
@@ -727,6 +1198,7 @@ class SaleService extends BaseService
         if (! $sale->financial_applied) {
             $financialTransaction = FinancialTransaction::query()->create([
                 'clinic_id' => $sale->clinic_id,
+                'financial_category_id' => $this->financialCategories->idForCode($sale->clinic_id, FinancialCategory::CODE_SALES),
                 'type' => 'income',
                 'description' => 'Venda '.$sale->code,
                 'amount' => $sale->total,
@@ -749,9 +1221,52 @@ class SaleService extends BaseService
                     'status' => 'finished',
                     'closed_at' => $sale->sold_at ?? now(),
                 ]);
+
+            app(GroomingCommissionService::class)->syncForOrder((int) $sale->service_order_id);
+        }
+
+        if ($sale->pet_package_id) {
+            $petPackage = PetPackage::query()->find($sale->pet_package_id);
+
+            if ($petPackage && $petPackage->status === 'pending_payment') {
+                app(PetPackageService::class)->activate($petPackage, $sale);
+            }
+        }
+
+        if ($sale->sale_quote_id) {
+            app(SaleQuoteService::class)->markConverted($sale);
+        }
+
+        if ((float) $sale->discount_total > 0) {
+            $this->recordSaleEvent(
+                $sale,
+                'sale_discount',
+                null,
+                null,
+                (float) $sale->discount_total,
+                'Desconto na venda',
+                null,
+                ['user_id' => auth()->id()]
+            );
         }
 
         $this->recordSaleEvent($sale, 'completed', null, null, (float) $sale->total, 'Venda concluida');
+    }
+
+    private function syncFinancialTransactionPaymentStatus(Sale $sale, mixed $paidAt): void
+    {
+        $financialTransaction = $sale->financialTransaction;
+
+        if (! $financialTransaction) {
+            return;
+        }
+
+        $isPaid = $sale->payment_status === 'paid';
+
+        $financialTransaction->update([
+            'status' => $isPaid ? 'paid' : 'pending',
+            'paid_at' => $isPaid ? $paidAt : null,
+        ]);
     }
 
     private function applyStockMovements(Sale $sale): void
@@ -983,6 +1498,28 @@ class SaleService extends BaseService
         ]);
     }
 
+    private function idempotentSale(array $data, bool $lock = false): ?Sale
+    {
+        $requestId = trim((string) ($data['client_request_id'] ?? ''));
+        $clinicId = (int) ($data['clinic_id'] ?? auth()->user()?->clinic_id ?? 0);
+        $sellerUserId = (int) ($data['seller_user_id'] ?? auth()->id() ?? 0);
+
+        if ($requestId === '' || $clinicId <= 0 || $sellerUserId <= 0) {
+            return null;
+        }
+
+        $query = Sale::query()
+            ->where('client_request_id', $requestId)
+            ->where('clinic_id', $clinicId)
+            ->where('seller_user_id', $sellerUserId);
+
+        if ($lock) {
+            $query->lockForUpdate();
+        }
+
+        return $query->first();
+    }
+
     private function nextCode(): string
     {
         $nextId = ((int) Sale::withTrashed()
@@ -1025,17 +1562,106 @@ class SaleService extends BaseService
         }
     }
 
+    /**
+     * Received amounts per clinic payment method ("Rede Visa Crédito"), with
+     * the card fees and the net amount. Payments recorded before the methods
+     * existed are grouped by kind.
+     */
     private function paymentsByMethod($payments): array
     {
         return $payments
-            ->groupBy('method')
-            ->map(fn ($items, string $method) => [
-                'method' => $method,
-                'label' => $this->paymentMethodLabel($method),
-                'amount' => $items->sum(fn (SalePayment $payment) => (float) $payment->amount),
-                'count' => $items->count(),
-            ])
+            ->groupBy(fn (SalePayment $payment) => $payment->payment_method_id
+                ? 'payment_method:'.$payment->payment_method_id
+                : 'kind:'.$payment->method)
+            ->map(function ($items) {
+                /** @var SalePayment $first */
+                $first = $items->first();
+                $amount = (float) $items->sum(fn (SalePayment $payment) => (float) $payment->amount);
+                $fees = (float) $items->sum(fn (SalePayment $payment) => (float) $payment->fee_amount);
+
+                return [
+                    'method' => $first->method,
+                    'payment_method_id' => $first->payment_method_id,
+                    'label' => $first->methodLabel(),
+                    'kind_label' => $first->kindLabel(),
+                    'amount' => $amount,
+                    'fees' => round($fees, 2),
+                    'net' => round($amount - $fees, 2),
+                    'count' => $items->count(),
+                ];
+            })
             ->sortByDesc('amount')
+            ->values()
+            ->all();
+    }
+
+    private function paymentReconciliation($payments, $refundEvents, float $change): array
+    {
+        $receivedByMethod = $payments
+            ->groupBy('method')
+            ->map(fn ($items) => round((float) $items->sum('amount'), 2));
+        $refundsByMethod = $refundEvents
+            ->groupBy(fn (SaleEvent $event) => $event->metadata['refund_method'] ?? 'other')
+            ->map(fn ($items) => round((float) $items->sum('amount'), 2));
+
+        return collect(self::PAYMENT_METHOD_LABELS)
+            ->map(function (string $label, string $method) use ($receivedByMethod, $refundsByMethod, $change) {
+                $received = (float) $receivedByMethod->get($method, 0);
+                $refunds = (float) $refundsByMethod->get($method, 0);
+                $cashChange = $method === 'cash' ? $change : 0;
+
+                return [
+                    'method' => $method,
+                    'label' => $label,
+                    'received' => round($received, 2),
+                    'refunds' => round($refunds, 2),
+                    'change' => round($cashChange, 2),
+                    'expected' => round(max(0, $received - $refunds - $cashChange), 2),
+                ];
+            })
+            ->values()
+            ->all();
+    }
+
+    private function sellerPerformance($sales, $payments): array
+    {
+        $salesBySeller = $sales->groupBy(
+            fn (Sale $sale) => $sale->seller_user_id ?: 'unassigned'
+        );
+        $paymentsBySeller = $payments->groupBy(
+            fn (SalePayment $payment) => $payment->sale?->seller_user_id ?: 'unassigned'
+        );
+
+        return $salesBySeller
+            ->keys()
+            ->merge($paymentsBySeller->keys())
+            ->unique()
+            ->map(function ($sellerKey) use ($salesBySeller, $paymentsBySeller) {
+                $sellerSales = $salesBySeller->get($sellerKey, collect());
+                $sellerPayments = $paymentsBySeller->get($sellerKey, collect());
+                $seller = $sellerSales->first()?->seller
+                    ?? $sellerPayments->first()?->sale?->seller;
+                $soldTotal = $sellerSales->sum(fn (Sale $sale) => (float) $sale->total);
+                $grossProfit = $sellerSales->sum(fn (Sale $sale) => (float) $sale->gross_profit_total);
+
+                return [
+                    'seller_user_id' => $sellerKey === 'unassigned' ? null : (int) $sellerKey,
+                    'seller_name' => $seller?->name ?? 'Sem operador informado',
+                    'sales_count' => $sellerSales->count(),
+                    'sold_total' => $soldTotal,
+                    'received' => $sellerPayments->sum(
+                        fn (SalePayment $payment) => (float) $payment->amount
+                    ),
+                    'pending' => $sellerSales->sum(
+                        fn (Sale $sale) => max(0, (float) $sale->total - (float) $sale->paid_total)
+                    ),
+                    'gross_profit' => $grossProfit,
+                    'gross_margin_percent' => $soldTotal > 0
+                        ? round(($grossProfit / $soldTotal) * 100, 2)
+                        : null,
+                ];
+            })
+            ->sortByDesc(fn (array $seller) => max($seller['sold_total'], $seller['received']))
             ->values()
             ->all();
     }
@@ -1059,13 +1685,6 @@ class SaleService extends BaseService
 
     private function paymentMethodLabel(string $method): string
     {
-        return match ($method) {
-            'cash' => 'Dinheiro',
-            'pix' => 'Pix',
-            'debit_card' => 'Cartao debito',
-            'credit_card' => 'Cartao credito',
-            'transfer' => 'Transferencia',
-            default => 'Outro',
-        };
+        return self::PAYMENT_METHOD_LABELS[$method] ?? 'Outro';
     }
 }

@@ -21,6 +21,12 @@ class StoreFinancialTransactionRequest extends FormRequest
             'clinic_id' => ['nullable', 'integer', 'exists:clinics,id'],
             'supplier_id' => ['nullable', 'integer', $this->existsInCurrentClinic('suppliers')],
             'purchase_entry_id' => ['nullable', 'integer', $this->existsInCurrentClinic('purchase_entries')],
+            'financial_category_id' => [
+                'nullable',
+                'integer',
+                $this->existsInCurrentClinic('financial_categories')
+                    ->where(fn ($query) => $query->where('type', $this->input('type'))),
+            ],
             'installment_number' => ['nullable', 'integer', 'min:1', 'max:60'],
             'installment_total' => ['nullable', 'integer', 'min:1', 'max:60'],
             'type' => ['required', 'string', Rule::in(['income', 'expense'])],
@@ -55,6 +61,7 @@ class StoreFinancialTransactionRequest extends FormRequest
             'status.in' => 'Informe um status financeiro valido.',
             'supplier_id.exists' => 'O fornecedor informado nao foi encontrado.',
             'purchase_entry_id.exists' => 'A entrada de mercadorias informada nao foi encontrada.',
+            'financial_category_id.exists' => 'A categoria deve pertencer ao estabelecimento e ter o mesmo tipo do lançamento.',
             'payment_method.in' => 'Informe uma forma de pagamento valida.',
         ];
     }
