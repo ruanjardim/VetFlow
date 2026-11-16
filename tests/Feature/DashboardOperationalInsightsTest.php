@@ -11,6 +11,7 @@ use App\Modules\Financial\Models\FinancialTransaction;
 use App\Modules\Products\Models\Product;
 use App\Modules\Sales\Models\Sale;
 use App\Modules\ServiceOrders\Models\ServiceOrder;
+use Database\Seeders\AuthorizationSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -47,7 +48,17 @@ class DashboardOperationalInsightsTest extends TestCase
             'clinic_id' => $clinic->id,
             'active' => true,
         ]);
-        $this->grantPermission($user, 'dashboard.view');
+        $this->grantPermissions($user, [
+            'dashboard.view',
+            'appointments.manage',
+            'schedules.manage',
+            'service-orders.manage',
+            'sales.manage',
+            'financial.manage',
+            'inventory.manage',
+            'products.manage',
+            'global-products.manage',
+        ]);
 
         $response = $this->actingAs($user)->get(route('dashboard'));
 
@@ -80,6 +91,60 @@ class DashboardOperationalInsightsTest extends TestCase
             ->assertSee('data-dashboard-priority="expenses_overdue"', false)
             ->assertSee('data-dashboard-priority="low_stock"', false)
             ->assertDontSee('data-dashboard-priority="financial_overdue"', false);
+    }
+
+    public function test_attendant_dashboard_does_not_receive_or_render_financial_inventory_or_product_intelligence_data(): void
+    {
+        $this->seed(AuthorizationSeeder::class);
+
+        $clinic = $this->createClinic('Clinica Atendente', '30000000000173');
+        $this->createClinicSignals($clinic, 842.37, true);
+
+        $user = User::factory()->create([
+            'clinic_id' => $clinic->id,
+            'name' => 'Marina Souza Homologacao',
+            'active' => true,
+        ]);
+        $this->attachRole($user, Role::query()->where('slug', 'atendimento')->firstOrFail());
+
+        $response = $this->actingAs($user)->get(route('dashboard'));
+
+        $response->assertOk();
+
+        $capabilities = $response->viewData('dashboardCapabilities');
+        $this->assertTrue($capabilities['appointments']);
+        $this->assertTrue($capabilities['serviceOrders']);
+        $this->assertTrue($capabilities['sales']);
+        $this->assertFalse($capabilities['financial']);
+        $this->assertFalse($capabilities['inventory']);
+        $this->assertFalse($capabilities['productIntelligence']);
+
+        $stats = $response->viewData('stats');
+        $this->assertArrayHasKey('sales_today', $stats);
+        $this->assertArrayHasKey('service_orders_open', $stats);
+        $this->assertArrayNotHasKey('financial_month', $stats);
+        $this->assertArrayNotHasKey('expenses_overdue', $stats);
+        $this->assertArrayNotHasKey('low_stock', $stats);
+        $this->assertSame([], $response->viewData('alerts'));
+        $this->assertSame([], $response->viewData('productIntelligence'));
+
+        $priorities = collect($response->viewData('operationalPriorities'));
+        $this->assertFalse($priorities->contains('key', 'expenses_overdue'));
+        $this->assertFalse($priorities->contains('key', 'financial_overdue'));
+        $this->assertFalse($priorities->contains('key', 'low_stock'));
+        $this->assertTrue($priorities->contains('key', 'sales_pending_payment'));
+
+        $response
+            ->assertSee('Vendas hoje')
+            ->assertSee('Abrir PDV')
+            ->assertDontSee('Contas vencidas')
+            ->assertDontSee('Pulso do mês')
+            ->assertDontSee('Central de alertas')
+            ->assertDontSee('Qualidade do catálogo')
+            ->assertDontSee('data-dashboard-metric-link="financial-result"', false)
+            ->assertDontSee('data-dashboard-metric-link="catalog-coverage"', false)
+            ->assertDontSee('data-dashboard-priority="expenses_overdue"', false)
+            ->assertDontSee('data-dashboard-priority="low_stock"', false);
     }
 
     private function createClinicSignals(Clinic $clinic, float $overdueExpense, bool $includeOverdueIncome): void
@@ -155,15 +220,18 @@ class DashboardOperationalInsightsTest extends TestCase
         ]);
     }
 
-    private function grantPermission(User $user, string $permissionSlug): void
+    /**
+     * @param  array<int, string>  $permissionSlugs
+     */
+    private function grantPermissions(User $user, array $permissionSlugs): void
     {
-        $permission = Permission::query()->create([
-            'name' => 'Dashboard de teste',
+        $permissions = collect($permissionSlugs)->map(fn (string $permissionSlug): Permission => Permission::query()->create([
+            'name' => 'Dashboard de teste '.$permissionSlug,
             'slug' => $permissionSlug,
             'description' => 'Permissao para teste do dashboard',
             'group' => 'Tests',
             'active' => true,
-        ]);
+        ]));
 
         $role = Role::query()->create([
             'name' => 'Dashboard test role',
@@ -173,8 +241,13 @@ class DashboardOperationalInsightsTest extends TestCase
             'active' => true,
         ]);
 
-        $role->permissions()->attach($permission->id);
+        $role->permissions()->attach($permissions->pluck('id'));
 
+        $this->attachRole($user, $role);
+    }
+
+    private function attachRole(User $user, Role $role): void
+    {
         DB::table('user_roles')->insert([
             'ulid' => (string) Str::ulid(),
             'user_id' => $user->id,

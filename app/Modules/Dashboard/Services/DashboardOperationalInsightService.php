@@ -4,10 +4,15 @@ namespace App\Modules\Dashboard\Services;
 
 class DashboardOperationalInsightService
 {
-    public function priorities(array $stats): array
+    /**
+     * @param  array<string, bool>  $capabilities
+     */
+    public function priorities(array $stats, array $capabilities): array
     {
-        return array_values(array_filter([
-            $this->priority(
+        $priorities = [];
+
+        if ($capabilities['financial'] ?? false) {
+            $priorities[] = $this->priority(
                 'expenses_overdue',
                 'Financeiro',
                 'Regularizar contas a pagar vencidas',
@@ -17,8 +22,8 @@ class DashboardOperationalInsightService
                 'currency',
                 'Ver fluxo de caixa',
                 route('financial-transactions.cash-flow')
-            ),
-            $this->priority(
+            );
+            $priorities[] = $this->priority(
                 'financial_overdue',
                 'Financeiro',
                 'Cobrar recebimentos vencidos',
@@ -28,8 +33,11 @@ class DashboardOperationalInsightService
                 'currency',
                 'Ver fluxo de caixa',
                 route('financial-transactions.cash-flow')
-            ),
-            $this->priority(
+            );
+        }
+
+        if ($capabilities['inventory'] ?? false) {
+            $priorities[] = $this->priority(
                 'low_stock',
                 'Estoque',
                 'Repor produtos abaixo do minimo',
@@ -39,8 +47,11 @@ class DashboardOperationalInsightService
                 'count',
                 'Ver estoque critico',
                 route('inventory-movements.alerts', ['level' => 'critical']).'#low-stock'
-            ),
-            $this->priority(
+            );
+        }
+
+        if ($capabilities['serviceOrders'] ?? false) {
+            $priorities[] = $this->priority(
                 'service_orders_waiting_pickup',
                 'Comandas',
                 'Liberar pedidos aguardando retirada',
@@ -50,8 +61,11 @@ class DashboardOperationalInsightService
                 'count',
                 'Ver comandas',
                 route('service-orders.index')
-            ),
-            $this->priority(
+            );
+        }
+
+        if ($capabilities['sales'] ?? false) {
+            $priorities[] = $this->priority(
                 'sales_pending_payment',
                 'PDV',
                 'Resolver vendas com pagamento pendente',
@@ -61,8 +75,8 @@ class DashboardOperationalInsightService
                 'currency',
                 'Ver vendas',
                 route('sales.index')
-            ),
-            $this->priority(
+            );
+            $priorities[] = $this->priority(
                 'sales_drafts',
                 'PDV',
                 'Revisar vendas em rascunho',
@@ -72,8 +86,11 @@ class DashboardOperationalInsightService
                 'count',
                 'Ver vendas',
                 route('sales.index')
-            ),
-            $this->priority(
+            );
+        }
+
+        if ($capabilities['appointments'] ?? false) {
+            $priorities[] = $this->priority(
                 'appointments_today',
                 'Agenda',
                 'Acompanhar consultas de hoje',
@@ -83,8 +100,10 @@ class DashboardOperationalInsightService
                 'count',
                 'Ver agenda',
                 route('appointments.index')
-            ),
-        ]));
+            );
+        }
+
+        return array_values(array_filter($priorities));
     }
 
     private function priority(

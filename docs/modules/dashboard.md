@@ -57,7 +57,7 @@ The dashboard does not own tables. It reads from operational modules, including:
 
 ## Important Behavior
 
-- The dashboard route is `/` and is named `dashboard`.
+- The dashboard route is `/dashboard` and is named `dashboard`.
 - The controller delegates data building to `DashboardDataService`.
 - Control Center V2 is identified in the rendered view by
   `data-dashboard-shell="control-center-v2"` and organizes the page into:
@@ -101,7 +101,25 @@ or repositories. Cross-module dashboard additions should preserve that pattern.
 
 ## Permissions
 
-Protected by `dashboard.view`.
+The route is protected by `dashboard.view`, while every dashboard domain is
+also filtered by the permission that protects its destination workflow. The
+filter is applied before querying the database and again when rendering the
+view, so restricted values are not present in the response payload or merely
+hidden with CSS.
+
+- Agenda and consultations: `appointments.manage` and, for schedule links,
+  `schedules.manage`.
+- Patients and tutors: `patients.manage` and `tutors.manage`.
+- Service orders and sales: `service-orders.manage` and `sales.manage`.
+- Financial KPIs, priorities, and alerts: `financial.manage`.
+- Inventory KPIs, priorities, and alerts: `inventory.manage`.
+- Product intelligence: requires both `products.manage` and
+  `global-products.manage`, because the card combines local and global product
+  data and links.
+
+The standard `Atendente` role therefore keeps operational agenda, customer,
+service-order, and PDV signals, but does not receive financial, inventory,
+product-intelligence, or commission-management data.
 
 ## Tests
 
@@ -112,4 +130,6 @@ Relevant access coverage is present in:
 - `tests/Feature/DashboardOperationalInsightsTest.php`
 
 Operational insight coverage verifies clinic isolation, ordering, zero-value
-suppression, the low-stock eligibility rule, and the Control Center V2 shell.
+suppression, the low-stock eligibility rule, the Control Center V2 shell, and a
+regression case using the real `Atendente` role to prevent restricted dashboard
+data from reaching the response.
