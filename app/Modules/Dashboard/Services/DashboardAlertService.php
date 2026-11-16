@@ -9,20 +9,24 @@ class DashboardAlertService
 {
     public function __construct(private readonly StockAlertService $stockAlertService) {}
 
-    public function latest(): array
+    public function latest(bool $includeInventory, bool $includeFinancial): array
     {
-        $data = $this->stockAlertService->data();
+        $inventoryAlerts = $includeInventory
+            ? $this->alertsFromData($this->stockAlertService->data())
+            : [];
 
         return [
-            ...$this->alertsFromData($data),
-            ...$this->financialAlerts(),
+            ...$inventoryAlerts,
+            ...($includeFinancial ? $this->financialAlerts() : []),
         ];
     }
 
-    public function summary(): array
+    public function summary(bool $includeInventory, bool $includeFinancial): array
     {
-        $data = $this->stockAlertService->data();
-        $financialAlerts = $this->financialAlerts();
+        $data = $includeInventory ? $this->stockAlertService->data() : null;
+        $inventoryAlerts = $data ? $this->alertsFromData($data) : [];
+        $inventoryTotal = (int) ($data['stats']['total'] ?? 0);
+        $financialAlerts = $includeFinancial ? $this->financialAlerts() : [];
         $financialTotal = array_sum(array_column($financialAlerts, 'count'));
         $financialCritical = array_sum(array_column(
             array_filter($financialAlerts, fn (array $alert) => $alert['level'] === 'danger'),
@@ -31,16 +35,16 @@ class DashboardAlertService
 
         return [
             'stats' => [
-                'total' => ($data['stats']['total'] ?? 0) + $financialTotal,
+                'total' => $inventoryTotal + $financialTotal,
                 'critical' => ($data['stats']['critical'] ?? 0) + $financialCritical,
                 'attention' => ($data['stats']['attention'] ?? 0) + ($financialTotal - $financialCritical),
                 'cadastro' => $data['stats']['cadastro'] ?? 0,
-                'inventory' => $data['stats']['total'] ?? 0,
+                'inventory' => $inventoryTotal,
                 'financial' => $financialTotal,
             ],
             'latest' => array_slice([
                 ...$financialAlerts,
-                ...$this->alertsFromData($data),
+                ...$inventoryAlerts,
             ], 0, 6),
         ];
     }

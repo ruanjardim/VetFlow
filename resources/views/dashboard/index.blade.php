@@ -6,6 +6,7 @@
   @php($hour = (int) now()->format('H'))
   @php($greeting = $hour < 12 ? 'Bom dia' : ($hour < 18 ? 'Boa tarde' : 'Boa noite'))
   @php($firstName = str((string) auth()->user()?->name)->before(' '))
+  @php($canDashboard = $dashboardCapabilities ?? [])
   @php($alertStats = $alertSummary['stats'] ?? [])
   @php($intelligence = $productIntelligence ?? [])
   @php($intelligenceStats = $intelligence['stats'] ?? [])
@@ -37,52 +38,64 @@
       </div>
     </header>
 
-    <section class="dashboard-kpi-grid" aria-label="Indicadores de hoje">
-      <a class="dashboard-kpi dashboard-kpi-blue" href="{{ route('schedules.index') }}">
-        <span class="dashboard-kpi-icon"><x-ui-icon name="calendar" /></span>
-        <span class="dashboard-kpi-copy"><small>Consultas hoje</small><strong>{{ $stats['appointments_today'] ?? 0 }}</strong><span>{{ $stats['appointments_week'] ?? 0 }} na semana</span></span>
-        <x-ui-icon class="dashboard-kpi-arrow" name="arrow" :size="18" />
-      </a>
-      <a class="dashboard-kpi dashboard-kpi-violet" href="{{ route('service-orders.board') }}">
-        <span class="dashboard-kpi-icon"><x-ui-icon name="grooming" /></span>
-        <span class="dashboard-kpi-copy"><small>Comandas abertas</small><strong>{{ $stats['service_orders_open'] ?? 0 }}</strong><span>{{ $stats['service_orders_waiting_pickup'] ?? 0 }} aguardando retirada</span></span>
-        <x-ui-icon class="dashboard-kpi-arrow" name="arrow" :size="18" />
-      </a>
-      <a class="dashboard-kpi dashboard-kpi-emerald" href="{{ route('sales.index') }}">
-        <span class="dashboard-kpi-icon"><x-ui-icon name="money" /></span>
-        <span class="dashboard-kpi-copy"><small>Vendas hoje</small><strong>R$ {{ number_format($stats['sales_today'] ?? 0, 2, ',', '.') }}</strong><span>R$ {{ number_format($stats['sales_month'] ?? 0, 2, ',', '.') }} no mês</span></span>
-        <x-ui-icon class="dashboard-kpi-arrow" name="arrow" :size="18" />
-      </a>
-      <a class="dashboard-kpi dashboard-kpi-ruby" href="{{ route('financial-transactions.cash-flow') }}">
-        <span class="dashboard-kpi-icon"><x-ui-icon name="finance" /></span>
-        <span class="dashboard-kpi-copy"><small>Contas vencidas</small><strong>R$ {{ number_format(($stats['expenses_overdue'] ?? 0) + ($stats['financial_overdue'] ?? 0), 2, ',', '.') }}</strong><span>Receber e pagar em atraso</span></span>
-        <x-ui-icon class="dashboard-kpi-arrow" name="arrow" :size="18" />
-      </a>
-    </section>
+    @if(($canDashboard['appointments'] ?? false) || ($canDashboard['serviceOrders'] ?? false) || ($canDashboard['sales'] ?? false) || ($canDashboard['financial'] ?? false))
+      <section class="dashboard-kpi-grid" aria-label="Indicadores de hoje">
+        @if(($canDashboard['appointments'] ?? false) && ($canDashboard['schedules'] ?? false))
+          <a class="dashboard-kpi dashboard-kpi-blue" href="{{ route('schedules.index') }}">
+            <span class="dashboard-kpi-icon"><x-ui-icon name="calendar" /></span>
+            <span class="dashboard-kpi-copy"><small>Consultas hoje</small><strong>{{ $stats['appointments_today'] ?? 0 }}</strong><span>{{ $stats['appointments_week'] ?? 0 }} na semana</span></span>
+            <x-ui-icon class="dashboard-kpi-arrow" name="arrow" :size="18" />
+          </a>
+        @endif
+        @if($canDashboard['serviceOrders'] ?? false)
+          <a class="dashboard-kpi dashboard-kpi-violet" href="{{ route('service-orders.board') }}">
+            <span class="dashboard-kpi-icon"><x-ui-icon name="grooming" /></span>
+            <span class="dashboard-kpi-copy"><small>Comandas abertas</small><strong>{{ $stats['service_orders_open'] ?? 0 }}</strong><span>{{ $stats['service_orders_waiting_pickup'] ?? 0 }} aguardando retirada</span></span>
+            <x-ui-icon class="dashboard-kpi-arrow" name="arrow" :size="18" />
+          </a>
+        @endif
+        @if($canDashboard['sales'] ?? false)
+          <a class="dashboard-kpi dashboard-kpi-emerald" href="{{ route('sales.index') }}">
+            <span class="dashboard-kpi-icon"><x-ui-icon name="money" /></span>
+            <span class="dashboard-kpi-copy"><small>Vendas hoje</small><strong>R$ {{ number_format($stats['sales_today'] ?? 0, 2, ',', '.') }}</strong><span>R$ {{ number_format($stats['sales_month'] ?? 0, 2, ',', '.') }} no mês</span></span>
+            <x-ui-icon class="dashboard-kpi-arrow" name="arrow" :size="18" />
+          </a>
+        @endif
+        @if($canDashboard['financial'] ?? false)
+          <a class="dashboard-kpi dashboard-kpi-ruby" href="{{ route('financial-transactions.cash-flow') }}">
+            <span class="dashboard-kpi-icon"><x-ui-icon name="finance" /></span>
+            <span class="dashboard-kpi-copy"><small>Contas vencidas</small><strong>R$ {{ number_format(($stats['expenses_overdue'] ?? 0) + ($stats['financial_overdue'] ?? 0), 2, ',', '.') }}</strong><span>Receber e pagar em atraso</span></span>
+            <x-ui-icon class="dashboard-kpi-arrow" name="arrow" :size="18" />
+          </a>
+        @endif
+      </section>
+    @endif
 
     <section class="dashboard-command-grid">
-      <article class="dashboard-card dashboard-schedule-card">
-        <header class="dashboard-card-heading">
-          <div><span class="dashboard-card-kicker">Agenda</span><h2>{{ $showingToday ? 'Atendimentos de hoje' : 'Próximos atendimentos' }}</h2></div>
-          <a href="{{ route('schedules.index') }}">Ver agenda <x-ui-icon name="arrow" :size="16" /></a>
-        </header>
-        <div class="dashboard-card-body dashboard-list">
-          @forelse($scheduleItems as $appointment)
-            <a class="dashboard-list-item" href="{{ route('appointments.edit', $appointment) }}">
-              <span class="dashboard-time">{{ optional($appointment->scheduled_at)->format('H:i') }}</span>
-              <span class="dashboard-list-main"><strong>{{ $appointment->patient?->name ?: $appointment->title }}</strong><small>{{ $appointment->tutor?->name ?: 'Responsável não informado' }}</small></span>
-              <span class="badge muted-badge">{{ $appointment->status }}</span>
-            </a>
-          @empty
-            <div class="dashboard-empty-state">
-              <span><x-ui-icon name="calendar" :size="24" /></span>
-              <strong>Agenda livre por enquanto</strong>
-              <p>Nenhum atendimento encontrado para o período.</p>
-              @can('appointments.manage')<a class="button secondary" href="{{ route('appointments.create') }}">Agendar consulta</a>@endcan
-            </div>
-          @endforelse
-        </div>
-      </article>
+      @if(($canDashboard['appointments'] ?? false) && ($canDashboard['schedules'] ?? false))
+        <article class="dashboard-card dashboard-schedule-card">
+          <header class="dashboard-card-heading">
+            <div><span class="dashboard-card-kicker">Agenda</span><h2>{{ $showingToday ? 'Atendimentos de hoje' : 'Próximos atendimentos' }}</h2></div>
+            <a href="{{ route('schedules.index') }}">Ver agenda <x-ui-icon name="arrow" :size="16" /></a>
+          </header>
+          <div class="dashboard-card-body dashboard-list">
+            @forelse($scheduleItems as $appointment)
+              <a class="dashboard-list-item" href="{{ route('appointments.edit', $appointment) }}">
+                <span class="dashboard-time">{{ optional($appointment->scheduled_at)->format('H:i') }}</span>
+                <span class="dashboard-list-main"><strong>{{ $appointment->patient?->name ?: $appointment->title }}</strong><small>{{ $appointment->tutor?->name ?: 'Responsável não informado' }}</small></span>
+                <span class="badge muted-badge">{{ $appointment->status }}</span>
+              </a>
+            @empty
+              <div class="dashboard-empty-state">
+                <span><x-ui-icon name="calendar" :size="24" /></span>
+                <strong>Agenda livre por enquanto</strong>
+                <p>Nenhum atendimento encontrado para o período.</p>
+                <a class="button secondary" href="{{ route('appointments.create') }}">Agendar consulta</a>
+              </div>
+            @endforelse
+          </div>
+        </article>
+      @endif
 
       <article class="dashboard-card dashboard-priority-card">
         <header class="dashboard-card-heading">
@@ -118,29 +131,33 @@
           </div>
         </article>
 
-        <article class="dashboard-card dashboard-finance-card">
-          <header class="dashboard-card-heading">
-            <div><span class="dashboard-card-kicker">Financeiro</span><h2>Pulso do mês</h2></div>
-            <a href="{{ route('financial-transactions.cash-flow') }}">Detalhar <x-ui-icon name="arrow" :size="16" /></a>
-          </header>
-          <div class="dashboard-card-body">
-            <a class="dashboard-finance-balance" href="{{ route('financial-transactions.cash-flow') }}" data-dashboard-metric-link="financial-result" aria-label="Abrir fluxo de caixa e ver o resultado realizado">
-              <span><small>Resultado realizado</small><strong class="{{ (($stats['financial_month'] ?? 0) - ($stats['expenses_month'] ?? 0)) < 0 ? 'is-negative' : '' }}">R$ {{ number_format(($stats['financial_month'] ?? 0) - ($stats['expenses_month'] ?? 0), 2, ',', '.') }}</strong></span>
-              <x-ui-icon name="arrow" :size="16" />
-            </a>
-            <div class="dashboard-finance-grid">
-              <a href="{{ route('financial-transactions.index', ['type' => 'income']) }}" data-dashboard-metric-link="income"><span>Receita</span><strong>R$ {{ number_format($stats['financial_month'] ?? 0, 2, ',', '.') }}</strong><x-ui-icon name="arrow" :size="14" /></a>
-              <a href="{{ route('financial-transactions.index', ['type' => 'expense']) }}" data-dashboard-metric-link="expenses"><span>Despesas</span><strong>R$ {{ number_format($stats['expenses_month'] ?? 0, 2, ',', '.') }}</strong><x-ui-icon name="arrow" :size="14" /></a>
-              <a href="{{ route('financial-obligations.index', ['type' => 'income']) }}" data-dashboard-metric-link="receivable"><span>A receber</span><strong>R$ {{ number_format($stats['financial_pending'] ?? 0, 2, ',', '.') }}</strong><x-ui-icon name="arrow" :size="14" /></a>
-              <a href="{{ route('financial-obligations.index', ['type' => 'expense']) }}" data-dashboard-metric-link="payable"><span>A pagar</span><strong>R$ {{ number_format($stats['expenses_pending'] ?? 0, 2, ',', '.') }}</strong><x-ui-icon name="arrow" :size="14" /></a>
+        @if($canDashboard['financial'] ?? false)
+          <article class="dashboard-card dashboard-finance-card">
+            <header class="dashboard-card-heading">
+              <div><span class="dashboard-card-kicker">Financeiro</span><h2>Pulso do mês</h2></div>
+              <a href="{{ route('financial-transactions.cash-flow') }}">Detalhar <x-ui-icon name="arrow" :size="16" /></a>
+            </header>
+            <div class="dashboard-card-body">
+              <a class="dashboard-finance-balance" href="{{ route('financial-transactions.cash-flow') }}" data-dashboard-metric-link="financial-result" aria-label="Abrir fluxo de caixa e ver o resultado realizado">
+                <span><small>Resultado realizado</small><strong class="{{ (($stats['financial_month'] ?? 0) - ($stats['expenses_month'] ?? 0)) < 0 ? 'is-negative' : '' }}">R$ {{ number_format(($stats['financial_month'] ?? 0) - ($stats['expenses_month'] ?? 0), 2, ',', '.') }}</strong></span>
+                <x-ui-icon name="arrow" :size="16" />
+              </a>
+              <div class="dashboard-finance-grid">
+                <a href="{{ route('financial-transactions.index', ['type' => 'income']) }}" data-dashboard-metric-link="income"><span>Receita</span><strong>R$ {{ number_format($stats['financial_month'] ?? 0, 2, ',', '.') }}</strong><x-ui-icon name="arrow" :size="14" /></a>
+                <a href="{{ route('financial-transactions.index', ['type' => 'expense']) }}" data-dashboard-metric-link="expenses"><span>Despesas</span><strong>R$ {{ number_format($stats['expenses_month'] ?? 0, 2, ',', '.') }}</strong><x-ui-icon name="arrow" :size="14" /></a>
+                <a href="{{ route('financial-obligations.index', ['type' => 'income']) }}" data-dashboard-metric-link="receivable"><span>A receber</span><strong>R$ {{ number_format($stats['financial_pending'] ?? 0, 2, ',', '.') }}</strong><x-ui-icon name="arrow" :size="14" /></a>
+                <a href="{{ route('financial-obligations.index', ['type' => 'expense']) }}" data-dashboard-metric-link="payable"><span>A pagar</span><strong>R$ {{ number_format($stats['expenses_pending'] ?? 0, 2, ',', '.') }}</strong><x-ui-icon name="arrow" :size="14" /></a>
+              </div>
             </div>
-          </div>
-        </article>
+          </article>
+        @endif
       </aside>
     </section>
 
-    <section class="dashboard-secondary-grid">
-      <article class="dashboard-card">
+    @if(($canDashboard['patients'] ?? false) || ($canDashboard['tutors'] ?? false))
+      <section class="dashboard-secondary-grid">
+      @if($canDashboard['patients'] ?? false)
+        <article class="dashboard-card">
         <header class="dashboard-card-heading"><div><span class="dashboard-card-kicker">Relacionamento</span><h2>Pacientes recentes</h2></div><a href="{{ route('patients.index') }}">Ver pacientes <x-ui-icon name="arrow" :size="16" /></a></header>
         <div class="dashboard-card-body dashboard-entity-list">
           @forelse($latestPatients ?? [] as $patient)
@@ -149,9 +166,11 @@
             <div class="dashboard-inline-empty">Nenhum paciente cadastrado ainda.</div>
           @endforelse
         </div>
-      </article>
+        </article>
+      @endif
 
-      <article class="dashboard-card">
+      @if($canDashboard['tutors'] ?? false)
+        <article class="dashboard-card">
         <header class="dashboard-card-heading"><div><span class="dashboard-card-kicker">Clientes</span><h2>Responsáveis recentes</h2></div><a href="{{ route('tutores.index') }}">Ver responsáveis <x-ui-icon name="arrow" :size="16" /></a></header>
         <div class="dashboard-card-body dashboard-entity-list">
           @forelse($latestTutors ?? [] as $tutor)
@@ -160,11 +179,15 @@
             <div class="dashboard-inline-empty">Nenhum responsável cadastrado ainda.</div>
           @endforelse
         </div>
-      </article>
-    </section>
+        </article>
+      @endif
+      </section>
+    @endif
 
-    <section class="dashboard-secondary-grid">
-      <article class="dashboard-card">
+    @if(($canDashboard['inventory'] ?? false) || ($canDashboard['financial'] ?? false) || ($canDashboard['productIntelligence'] ?? false))
+      <section class="dashboard-secondary-grid">
+      @if(($canDashboard['inventory'] ?? false) || ($canDashboard['financial'] ?? false))
+        <article class="dashboard-card">
         <header class="dashboard-card-heading"><div><span class="dashboard-card-kicker">Monitoramento</span><h2>Central de alertas</h2></div><span class="badge {{ ($alertStats['critical'] ?? 0) > 0 ? 'danger' : 'success' }}">{{ $alertStats['total'] ?? 0 }} alertas</span></header>
         <div class="dashboard-card-body dashboard-alert-list">
           @forelse($alerts ?? [] as $alert)
@@ -174,9 +197,11 @@
             <div class="dashboard-inline-empty">Nenhum alerta de estoque, cadastro ou financeiro.</div>
           @endforelse
         </div>
-      </article>
+        </article>
+      @endif
 
-      <article class="dashboard-card dashboard-intelligence-card">
+      @if($canDashboard['productIntelligence'] ?? false)
+        <article class="dashboard-card dashboard-intelligence-card">
         <header class="dashboard-card-heading"><div><span class="dashboard-card-kicker">VetFlow Intelligence</span><h2>Qualidade do catálogo</h2></div><span class="badge {{ $healthBadge }}">{{ $intelligenceHealth['label'] }}</span></header>
         <div class="dashboard-card-body">
           <p class="dashboard-intelligence-description">{{ $intelligenceHealth['description'] }}</p>
@@ -193,7 +218,9 @@
           </div>
           <a class="button secondary dashboard-intelligence-button" href="{{ $intelligence['routes']['products_diagnostics'] ?? route('products.diagnostics') }}">Abrir diagnóstico de produtos</a>
         </div>
-      </article>
-    </section>
+        </article>
+      @endif
+      </section>
+    @endif
   </div>
 @endsection
