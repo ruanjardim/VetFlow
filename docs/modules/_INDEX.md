@@ -13,6 +13,7 @@ This index maps the current code modules and the documentation that should event
 | ClinicProducts | Clinic-specific product association | Pending module doc |
 | Clinics | Clinic administration and tenant foundation | Documented in [Clinics](clinics.md) |
 | Dashboard | Operational dashboard data and widgets | Documented in [Dashboard](dashboard.md) |
+| Employees | Functional collaborator records, optional login links and encrypted payment references | Documented in [Employees](employees.md) |
 | Finance | Finance-related area | Pending review; overlaps with Financial |
 | Financial | Ledger, projected cash flow, payable/receivable aging, assisted bank reconciliation, managerial result and monthly budgets | Documented in [Financial](financial.md) |
 | Fiscal | NFC-e/NFS-e preparation, competence-based document center and safe export, daily reconciliation, assisted return review and dossiers, searchable period-closing history and dossiers, reviewed mixed-sale allocation, clinic-owned Focus connection, homologation gate, recovery and NFC-e range inutilization | Documented in [Fiscal](fiscal.md) |
@@ -39,7 +40,7 @@ This index maps the current code modules and the documentation that should event
 | ServiceOrders | Bath and grooming bookings, agenda, operational board, and service orders | Documented in [PetShop Operations](petshop-operations.md) |
 | Suppliers | Supplier management | Documented in [Suppliers](suppliers.md) |
 | Tutors | Responsible person records for patients | Documented in [Responsáveis](tutors.md) |
-| Users | User records and access foundation | Documented in [Access](access.md) and database docs |
+| Users | User records and access foundation | Documented in [Access](access.md), [Employees](employees.md) and database docs |
 | Validation | Shared validation services/controllers | Documented in [Validation](validation.md) |
 
 ## Priority For Module Documentation

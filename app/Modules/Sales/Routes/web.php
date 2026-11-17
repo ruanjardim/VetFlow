@@ -2,6 +2,7 @@
 
 use App\Modules\Sales\Controllers\CashSessionController;
 use App\Modules\Sales\Controllers\CustomerBalanceController;
+use App\Modules\Sales\Controllers\PdvScaleLabelController;
 use App\Modules\Sales\Controllers\PdvScaleSettingController;
 use App\Modules\Sales\Controllers\PdvSessionController;
 use App\Modules\Sales\Controllers\SaleController;
@@ -29,6 +30,12 @@ Route::get('settings/pdv-scale', [PdvScaleSettingController::class, 'edit'])
 
 Route::put('settings/pdv-scale', [PdvScaleSettingController::class, 'update'])
     ->name('sales.pdv-scale-settings.update');
+
+Route::get('sales/scale-labels', [PdvScaleLabelController::class, 'create'])
+    ->name('sales.pdv-scale-labels.create');
+
+Route::get('sales/scale-labels/print', [PdvScaleLabelController::class, 'render'])
+    ->name('sales.pdv-scale-labels.print');
 
 Route::get('sales/customer-balances', [CustomerBalanceController::class, 'index'])
     ->name('sales.customer-balances.index');

@@ -38,6 +38,20 @@ The module is implemented by:
 - store and update form requests;
 - Blade views under `resources/views/access/users`.
 
+Every clinic user created through this module also receives a linked
+`employees` functional record in the same transaction. Updates synchronize
+name, email, phone, position and clinic. The functional active status is kept
+independent: blocking a login does not automatically declare that the person
+was terminated. Collaborators who do not need a login are registered directly
+in the Employees module and do not consume a user license.
+
+An existing functional record without a user can later open the Access create
+flow with its clinic and employee identifiers preselected. Store validation
+requires the same clinic and an unlinked, non-deleted record; the transactional
+service locks that record, creates the user/roles and attaches it without
+duplicating the collaborator. Cross-clinic or already-linked records are
+rejected.
+
 ## Professional Identification
 
 The collaborator form accepts an optional CRMV number and state. Both fields
@@ -117,6 +131,8 @@ php artisan db:seed --class=AuthorizationSeeder --force
 - rejection of custom or inactive roles;
 - soft-deleted role link restoration;
 - protection against administrator self-lockout.
+- automatic creation of the linked functional record.
+- later login assignment to an existing employee without duplication.
 
 `tests/Feature/AdministrativeAuditTrailTest.php` additionally covers the safe,
 tenant-scoped audit snapshots produced by this module.

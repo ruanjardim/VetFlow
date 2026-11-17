@@ -54,7 +54,7 @@
         <tbody>
           @forelse($preview['sellers'] as $row)
             <tr>
-              <td><strong>{{ $row['seller']?->name ?? '-' }}</strong>@if(auth()->user()?->clinic_id === null)<div class="muted">{{ $row['seller']?->clinic?->trade_name ?? $row['seller']?->clinic?->corporate_name ?? '-' }}</div>@endif</td>
+              <td><strong>{{ $row['seller']?->name ?? '-' }}</strong>@if(auth()->user()?->clinic_id === null)<div class="muted">{{ $row['seller']?->clinic?->trade_name ?? $row['seller']?->clinic?->corporate_name ?? '-' }}</div>@endif<div class="muted">{{ data_get($row['seller']?->employee?->paymentSnapshot(), 'method_label', 'Pagamento não informado') }}</div></td>
               <td>{{ $row['rules_count'] }}</td><td>{{ $row['sales_count'] }}</td><td>{{ $money($row['commission_amount']) }}</td>
               <td>@if($row['adjustments_count'] > 0)<span class="badge danger">{{ $row['adjustments_count'] }}</span>@else - @endif</td>
               <td><strong>{{ $money($row['pending_amount']) }}</strong><div class="muted">{{ $row['pending_count'] }} lançamento(s)</div></td>
@@ -119,15 +119,15 @@
 
   <div class="panel">
     <div class="panel-heading"><div><h2>Fechamentos recentes</h2><p>Histórico imutável ligado à conta a pagar correspondente.</p></div></div>
-    <div class="table-wrap"><table><thead><tr><th>Vendedor</th><th>Período</th><th>Vendas</th><th>Lançamentos</th><th>Total</th><th>Vencimento</th><th>Conta a pagar</th><th>Responsável</th></tr></thead><tbody>
+    <div class="table-wrap"><table><thead><tr><th>Vendedor</th><th>Período</th><th>Vendas</th><th>Lançamentos</th><th>Total</th><th>Pagamento</th><th>Vencimento</th><th>Conta a pagar</th><th>Responsável</th></tr></thead><tbody>
       @forelse($settlements as $settlement)
         <tr>
-          <td>{{ $settlement->seller?->name ?? '-' }}</td><td>{{ $settlement->period_start->format('d/m/Y') }} a {{ $settlement->period_end->format('d/m/Y') }}</td><td>{{ $settlement->sales_count }}</td><td>{{ $settlement->entries_count }}</td><td><strong>{{ $money($settlement->total) }}</strong></td><td>{{ $settlement->due_date->format('d/m/Y') }}</td>
+          <td>{{ $settlement->seller?->name ?? '-' }}</td><td>{{ $settlement->period_start->format('d/m/Y') }} a {{ $settlement->period_end->format('d/m/Y') }}</td><td>{{ $settlement->sales_count }}</td><td>{{ $settlement->entries_count }}</td><td><strong>{{ $money($settlement->total) }}</strong></td><td>{{ $settlement->payment_snapshot['method_label'] ?? 'Não informado' }}@if($settlement->payment_snapshot)<div class="muted">{{ $settlement->payment_snapshot['pix_key_masked'] ?? $settlement->payment_snapshot['bank_account_masked'] ?? '' }}</div>@endif</td><td>{{ $settlement->due_date->format('d/m/Y') }}</td>
           <td>@if($settlement->financialTransaction){{ ['paid' => 'Paga', 'pending' => 'Em aberto', 'cancelled' => 'Cancelada'][$settlement->financialTransaction->status] ?? $settlement->financialTransaction->status }}@if(auth()->user()?->hasPermission('financial.manage'))<div><a href="{{ route('financial-transactions.index', ['financial_category_id' => $settlement->financialTransaction->financial_category_id]) }}">Abrir Financeiro</a></div>@endif @else <span class="badge danger">Vínculo indisponível</span>@endif</td>
           <td>{{ $settlement->createdBy?->name ?? 'Sistema' }}<div class="muted">{{ $settlement->created_at->format('d/m/Y H:i') }}</div></td>
         </tr>
       @empty
-        <tr><td colspan="8" class="muted">Nenhum fechamento de comissão de vendas registrado.</td></tr>
+        <tr><td colspan="9" class="muted">Nenhum fechamento de comissão de vendas registrado.</td></tr>
       @endforelse
     </tbody></table></div>
   </div>

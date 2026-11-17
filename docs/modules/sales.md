@@ -41,6 +41,8 @@ financial income, returns, refunds, cancellations, and sale event history.
   receipt of several open sales at once, and credit given back.
 - Decode clinic-configured EAN-13 variable-weight labels into fractional
   kilogram quantities without bypassing stock or checkout rules.
+- Generate browser-printable adhesive labels using the same clinic layout and
+  EAN-13 decoder used by the PDV.
 
 ## Key Classes
 
@@ -58,6 +60,7 @@ financial income, returns, refunds, cancellations, and sale event history.
 | `CustomerBalanceController` | Customer balance list and page: settle open sales, advances, and credit given back; balance JSON for the PDV. |
 | `CustomerBalanceService` | Debt from open sales, the credit ledger, deposits, refunds, and settlements. |
 | `PdvScaleSettingController` | Clinic administration for the variable-weight label layout. |
+| `PdvScaleLabelController` | Tenant-safe product/weight selection and browser print rendering. |
 | `PdvScaleLabelService` | Fail-closed EAN-13 checksum, product-code and kilogram decoding. |
 | `SaleProfitabilityService` | Return-adjusted gross profitability reporting. |
 | `ProductAbcAnalysisService` | Product revenue ranking, cumulative ABC bands, filters, and pagination. |
@@ -173,6 +176,22 @@ financial income, returns, refunds, cancellations, and sale event history.
   products fail closed and are never sent to external product lookup or quick
   registration. Repeated labels add their decoded quantities with three-
   decimal precision, while normal sellable-stock warnings remain visible.
+- **Gerar etiqueta por peso** builds the same EAN-13 from an active kilogram
+  product and an operator-entered net weight. Generation requires the clinic
+  layout to be enabled, an exact-width leading-zero-safe scale code, a positive
+  price per kilogram, representable configured precision, and enough current
+  sellable stock. A foreign-tenant product cannot pass request validation.
+- The adhesive print view renders a real 95-module EAN-13 with quiet zones,
+  product and establishment identity, net weight, current price per kilogram,
+  calculated total, and optional operator-supplied origin lot and expiration.
+  Width and height are bounded in millimeters and 1 to 50 copies are rendered
+  as separate print pages. The barcode carries product and weight, not the
+  displayed total; the PDV therefore remains authoritative for the current
+  catalog price when the label is scanned.
+- Printing uses the browser/system dialog so the workstation can select an
+  installed adhesive printer. VetFlow can show the clinic's configured label
+  queue as guidance, but it does not claim silent USB, serial, Bluetooth, or
+  raw-network printing without a separately installed local print bridge.
 - The encrypted offline catalog contains only the non-sensitive scale layout
   and local product codes. It repeats the same checksum, tenant, unit and weight
   checks before queuing a sale, and the server revalidates the final fractional

@@ -8,7 +8,10 @@
       <h1>Usuarios e acessos</h1>
       <p>Colaboradores, clinicas e perfis operacionais.</p>
     </div>
-    <a class="button" href="{{ route('access-users.create') }}">Novo colaborador</a>
+    <div class="actions">
+      <a class="button secondary" href="{{ route('employees.index') }}">Cadastros funcionais</a>
+      <a class="button" href="{{ route('access-users.create') }}">Novo acesso</a>
+    </div>
   </header>
 
   @if($licenseUsage)
@@ -60,7 +63,12 @@
                 </span>
               </td>
               <td>
-                <a class="button secondary" href="{{ route('access-users.edit', $accessUser->id) }}">Editar acesso</a>
+                <div class="actions">
+                  @if($accessUser->employee)
+                    <a class="button secondary" href="{{ route('employees.edit', $accessUser->employee->id) }}">Cadastro funcional</a>
+                  @endif
+                  <a class="button secondary" href="{{ route('access-users.edit', $accessUser->id) }}">Editar acesso</a>
+                </div>
               </td>
             </tr>
           @empty

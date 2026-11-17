@@ -206,6 +206,10 @@ save it.
 - A single NF-e can contain up to 500 items by default.
 - Access-key lookup checks the VetFlow cache, configured local archives, and
   then the optional fiscal API.
+- Cache and local-archive reads rely on bounded direct reads instead of trusting
+  only the operating system's readability metadata. This keeps valid cached XML
+  usable on Windows ACLs and mounted filesystems that can return a false
+  negative while still failing closed when the read itself is unavailable.
 - Local archive scans are streamed and stop after 1,000 XML files by default.
 - The requested 44-digit key must match the key parsed from the resolved XML
   before any Supplier or Product is created.

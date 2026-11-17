@@ -4,6 +4,7 @@ namespace App\Modules\Commissions\Models;
 
 use App\Models\Concerns\BelongsToClinicTenant;
 use App\Models\User;
+use App\Modules\Employees\Models\Employee;
 use App\Modules\Financial\Models\FinancialTransaction;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -22,6 +23,7 @@ class SalesCommissionSettlement extends Model
         'total' => 'decimal:2',
         'sales_count' => 'integer',
         'entries_count' => 'integer',
+        'payment_snapshot' => 'array',
     ];
 
     public function seller(): BelongsTo
@@ -32,6 +34,11 @@ class SalesCommissionSettlement extends Model
     public function financialTransaction(): BelongsTo
     {
         return $this->belongsTo(FinancialTransaction::class);
+    }
+
+    public function employee(): BelongsTo
+    {
+        return $this->belongsTo(Employee::class);
     }
 
     public function items(): HasMany

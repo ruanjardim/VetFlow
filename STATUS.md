@@ -1,6 +1,6 @@
 # VetFlow Status
 
-Updated: 2026-11-12
+Updated: 2026-11-14
 
 ## Current State
 
@@ -39,10 +39,12 @@ The local working tree was clean before this documentation pass.
   hashes under a shared receipt UUID. This closes the software portion of the
   commercial legal gate, not the pending counsel/operational review.
 
-- Security dependencies were refreshed on 2026-11-06 after advisories released
-  on 2026-11-04: Symfony HTTP Foundation, HTTP Kernel, Routing and YAML are
-  locked at 7.4.23. `composer audit --locked` and the production-only npm audit
-  report no known advisories at this delivery.
+- Security dependencies were refreshed again on 2026-11-14 after
+  CVE-2026-128083 was published: Laravel is locked at 12.72.0 with its compatible
+  dependency set, including the previously updated Symfony components.
+  `composer audit --locked` and the production-only npm audit report no known
+  advisories at this delivery; the complete 555-test backend suite passes after
+  the update.
 - Public launch pricing is now explicit and aligned with the SaaS plan records:
   Essencial at R$ 97/month for up to 3 users, Profissional at R$ 197/month
   for up to 6 users, and Completo at R$ 347/month for up to 15 users. Annual
@@ -74,9 +76,21 @@ The local working tree was clean before this documentation pass.
   product-code width and weight precision), and each kilogram product can keep
   a leading-zero-safe scale code. The PDV validates the EAN checksum, decodes
   the weight to three-decimal quantity and applies the normal stock/checkout
-  rules online or from the encrypted offline catalog. Direct USB/serial scale
-  communication remains model-specific and is not claimed as compatible
-  without a selected manufacturer protocol (see `docs/modules/sales.md`).
+  rules online or from the encrypted offline catalog. VetFlow can now also
+  generate the same EAN-13 as a browser-printable adhesive label with selectable
+  dimensions and copies, weight, price per kilogram, total and optional origin
+  lot/expiration, after checking the current sellable stock. Direct USB/serial
+  scale or silent printer communication remains model-specific and is not
+  claimed as compatible without a selected local bridge and manufacturer
+  protocol (see `docs/modules/sales.md`).
+- Collaborators now have clinic-scoped functional records independent from
+  authentication. A person can be registered without a login; linked users are
+  synchronized by the Access flow; document and payment fields are encrypted;
+  and sales commission closure freezes the employee link plus a masked payment
+  snapshot. A record created without login can later receive credentials and
+  roles without duplication. Reference compensation is informational, and
+  payroll, labor taxes, payslips and automatic bank transfers remain outside
+  the current scope (see `docs/modules/employees.md`).
 - Banho e tosa operation: 24-hour internal booking with clinic/professional
   blocks, cross-midnight conflicts, configurable grid interval, recurrence and
   check-in; operational board; size-based prices; packages; PDV checkout; and
